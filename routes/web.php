@@ -166,14 +166,20 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     Route::post('/job-requirement/update-status', [VacancyController::class, 'updateStatusofRequirement'])->name('requirements.update-status');
 
     Route::get('/broadcast', [BroadcastController::class, 'index'])->name('broadcasts.index');
-    Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('broadcasts.store');
+  
     Route::get('/broadcasts/{id}/edit', [BroadcastController::class, 'edit'])->name('broadcasts.edit');
     Route::put('/broadcasts/{id}', [BroadcastController::class, 'update'])->name('broadcasts.update');
-    Route::post('/broadcasts/{id}/read', [BroadcastController::class, 'markAsRead']);
+
     Route::get('/broadcasts/{id}/recipients', [BroadcastController::class, 'getRecipients']);
 });
 
+Route::post('/broadcasts/{id}/read', [BroadcastController::class, 'markAsRead'])
+    ->middleware('auth')
+    ->name('broadcasts.read');
+
 Route::middleware(['auth'])->group(function () {
+    Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('broadcasts.store');
+    // Route::post('/broadcasts/{id}/read', [BroadcastController::class, 'markAsRead']);
     Route::get('/attendance-history', [EmployeeController::class, 'getAttendance'])->name('attendance-history');
 
     Route::post('/leave/apply', [LeaveApplicationController::class, 'store'])->name('leave.apply');

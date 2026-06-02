@@ -1878,18 +1878,29 @@
                 let button = $(this);
                 let parentCard = $('#msg-card-' + broadcastId);
 
+                console.log('Broadcast ID:', broadcastId);
+
                 $.ajax({
-                    url: `{{ url('/broadcasts') }}/${broadcastId}/read`,
-                    method: 'POST',
-                    data: { _token: '{{ csrf_token() }}' },
+                    url: "/4587/public/broadcasts/" + broadcastId + "/read",
+                    method: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}"
+                    },
                     success: function(response) {
-                        if(response.success) {
-                            // Soften visual weight layout accent to look gray/read
+                        console.log('Success:', response);
+
+                        if (response.success) {
                             parentCard.css('border-left-color', '#e3e6f0');
                             parentCard.find('p').removeClass('text-dark').addClass('text-secondary');
-                            // Remove button smoothly
-                            button.fadeOut(200, function() { $(this).remove(); });
+                            button.fadeOut(200, function() {
+                                $(this).remove();
+                            });
                         }
+                    },
+                    error: function(xhr) {
+                        console.log('Error status:', xhr.status);
+                        console.log('Error response:', xhr.responseText);
+                        alert('Mark as read failed');
                     }
                 });
             });
