@@ -1881,7 +1881,7 @@
                 console.log('Broadcast ID:', broadcastId);
 
                 $.ajax({
-                    url: "/4587/public/broadcasts/" + broadcastId + "/read",
+                    url: `{{ url('/broadcasts') }}/${broadcastId}/read`,
                     method: "POST",
                     data: {
                         _token: "{{ csrf_token() }}"

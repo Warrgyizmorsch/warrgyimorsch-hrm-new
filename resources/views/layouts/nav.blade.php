@@ -214,7 +214,7 @@
 
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
-                        <span class="nxl-micon"><i class="feather-briefcase"></i></span>
+                        <span class="nxl-micon"><i class="fas fa-tasks"></i></span>
                         <span class="nxl-mtext">Project Module</span>
                         <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
@@ -252,7 +252,7 @@
                             </li>
                             <li class="nxl-item">
                                 <a href="{{ route('requirement.show') }}" class="nxl-link">
-                                    <span class="nxl-micon"><i class="feather-briefcase"></i></span>
+                                    <span class="nxl-micon"><i class="fas fa-clipboard-list"></i></span>
                                     <span class="nxl-mtext">Job Requirement</span>
                                 </a>
                             </li>

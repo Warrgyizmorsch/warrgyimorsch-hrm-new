@@ -6,6 +6,7 @@ use App\Models\Payroll;
 use App\Models\Attendance;
 use App\Models\LeaveApplication;
 use App\Models\Employee;
+use App\Models\Holiday;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -52,12 +53,12 @@ class PayrollController extends Controller
         // ✅ GROUPING (required for your blade)
         $select = [
             'attendances.attendance_date',
-            DB::raw("COUNT(CASE WHEN attendances.status = 'present' THEN 1 END) as present_count"),
+            DB::raw("COUNT(CASE WHEN attendances.status = 'present' OR (attendances.status = 'absent' AND holidays.id IS NOT NULL) THEN 1 END) as present_count"),
             DB::raw("COUNT(CASE WHEN attendances.status = 'overtime' THEN 1 END) as overtime_count"),
             DB::raw("COUNT(CASE WHEN attendances.status = 'half_day' THEN 1 END) as half_day_count"),
             DB::raw("COUNT(CASE WHEN attendances.status = 'wfh' THEN 1 END) as wfh_count"),
-            DB::raw("COUNT(CASE WHEN attendances.status IN ('absent','leave') THEN 1 END) as leave_count"),
-            DB::raw("COUNT(CASE WHEN attendances.status = 'absent' THEN 1 END) as absent_count"),
+            DB::raw("COUNT(CASE WHEN attendances.status = 'leave' OR (attendances.status = 'absent' AND holidays.id IS NULL) THEN 1 END) as leave_count"),
+            DB::raw("COUNT(CASE WHEN attendances.status = 'absent' AND holidays.id IS NULL THEN 1 END) as absent_count"),
             DB::raw("SUM(CASE WHEN attendances.check_out IS NOT NULL AND ((attendances.status = 'present' AND TIME(attendances.check_out) <= SUBTIME(TIME(employees.time_out), '00:30:00')) OR (attendances.status = 'half_day' AND TIME(attendances.check_out) <= SUBTIME(ADDTIME(TIME(employees.time_in), SEC_TO_TIME(TIME_TO_SEC(TIMEDIFF(employees.time_out, employees.time_in)) / 2)), '00:30:00'))) THEN 1 ELSE 0 END) as early_count")
         ];
 
@@ -74,7 +75,8 @@ class PayrollController extends Controller
             $groupBy[] = 'attendances.total_hours';
         }
 
-        $attendance = $query->select($select)
+        $attendance = $query->leftJoin('holidays', 'attendances.attendance_date', '=', 'holidays.date')
+            ->select($select)
             ->groupBy($groupBy)
             ->orderBy('attendances.attendance_date', 'desc')
             ->paginate(31);
@@ -117,6 +119,13 @@ class PayrollController extends Controller
             }
 
             $details = $query->get();
+            $holiday = Holiday::whereDate('date', $date)->first();
+            if ($holiday) {
+                $details->each(function ($attendance) use ($holiday) {
+                    $attendance->is_holiday = true;
+                    $attendance->holiday_title = $holiday->title;
+                });
+            }
 
             $earlyOuts = 0;
             $totalPresent = 0;
@@ -1191,11 +1200,11 @@ class PayrollController extends Controller
         attendances.employee_id,
         employees.name as employee_name,
 
-        COUNT(CASE WHEN attendances.status = 'present' THEN 1 END) as present_count,
+        COUNT(CASE WHEN attendances.status = 'present' OR (attendances.status = 'absent' AND holidays.id IS NOT NULL) THEN 1 END) as present_count,
         COUNT(CASE WHEN attendances.total_hours > 9.50 THEN 1 END) as overtime_count,
         COUNT(CASE WHEN attendances.status = 'half_day' THEN 1 END) as half_day_count,
         COUNT(CASE WHEN attendances.status IN ('leave') THEN 1 END) as leave_count,
-        COUNT(CASE WHEN attendances.status IN ('absent') THEN 1 END) as absent_count,
+        COUNT(CASE WHEN attendances.status IN ('absent') AND holidays.id IS NULL THEN 1 END) as absent_count,
         COUNT(CASE WHEN attendances.status = 'wfh' THEN 1 END) as wfh_count,
 
         COUNT(
@@ -1229,7 +1238,8 @@ class PayrollController extends Controller
             END
         ) as early_count
     ")
-            ->join('employees', 'attendances.employee_id', '=', 'employees.id');
+            ->join('employees', 'attendances.employee_id', '=', 'employees.id')
+            ->leftJoin('holidays', 'attendances.attendance_date', '=', 'holidays.date');
 
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
@@ -1293,6 +1303,16 @@ class PayrollController extends Controller
             }
 
             $records = $query->orderBy('attendance_date', 'desc')->get();
+            $holidayMap = Holiday::whereIn('date', $records->pluck('attendance_date')->unique())
+                ->pluck('title', 'date');
+
+            $records->each(function ($attendance) use ($holidayMap) {
+                $dateKey = Carbon::parse($attendance->attendance_date)->format('Y-m-d');
+                if ($holidayMap->has($dateKey)) {
+                    $attendance->is_holiday = true;
+                    $attendance->holiday_title = $holidayMap->get($dateKey);
+                }
+            });
 
             // Calculate activity days efficiently (avoid N+1)
             $activityDays = [];

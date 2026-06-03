@@ -172,8 +172,12 @@ class AttendanceExport implements FromCollection, WithHeadings, ShouldAutoSize, 
                 $statusRaw = strtolower($att->status);
                 $displayText = ucfirst(str_replace('_', ' ', $statusRaw));
                 $isActivityDay = isset($this->activityDays[$dateKey]);
+                $isHoliday = isset($this->holidayMap[$dateKey]);
 
-                if (in_array($statusRaw, ['present', 'late', 'early_out', 'half_day', 'wfh', 'early_leave'])) {
+                if ($isHoliday && $statusRaw === 'absent') {
+                    $displayText = 'Holiday';
+                    $present++;
+                } elseif (in_array($statusRaw, ['present', 'late', 'early_out', 'half_day', 'wfh', 'early_leave'])) {
                     $times = [];
                     if ($att->check_in) {
                         $times[] = Carbon::parse($att->check_in)->format('h:i A');
@@ -233,7 +237,8 @@ class AttendanceExport implements FromCollection, WithHeadings, ShouldAutoSize, 
                 if ($date->isSunday()) {
                     $row[] = 'Sunday';
                 } elseif (isset($this->holidayMap[$dateKey])) {
-                    $row[] = $this->holidayMap[$dateKey];
+                    $row[] = 'Holiday';
+                    $present++;
                 } else {
                     $row[] = '-';
                 }
