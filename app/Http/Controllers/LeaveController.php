@@ -181,16 +181,20 @@ class LeaveController extends Controller
 
             $totalTaken = 0;
             foreach ($approvedLeaves as $leave) {
-                $cat = strtolower($leave->leave_category);
+                $cat = strtolower($leave->leave_category ?? '');
+                $type = strtolower($leave->leave_type ?? '');
 
-                // Gatepass does NOT count in balance
-                if (str_contains($cat, 'gatepass')) {
+                if (str_contains($cat, 'gatepass') || str_contains($cat, 'wfh')) {
                     continue;
                 }
 
-                // Half Day = 0.5
-                if (str_contains($cat, 'half')) {
+                if (str_contains($cat, 'half') || str_contains($type, 'half')) {
                     $totalTaken += 0.5;
+                    continue;
+                }
+
+                if ($leave->total_days !== null) {
+                    $totalTaken += (float) $leave->total_days;
                     continue;
                 }
 

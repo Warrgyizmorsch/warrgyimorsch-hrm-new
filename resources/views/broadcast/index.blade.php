@@ -130,7 +130,7 @@
                                 @foreach($broadcasts as $index => $broadcast)
                                 <tr>
                                     <td>{{ $index + 1 }}</td>
-                                    <td>{{ $broadcast->message }}</td>
+                                    <td style="width: 50%; white-space: normal; word-wrap: break-word; overflow-wrap: break-word;">{{ $broadcast->message }}</td>
                                     <td>
                                         {{ $broadcast->department }}
                                     </td>

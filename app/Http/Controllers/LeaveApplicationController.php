@@ -30,13 +30,19 @@ class LeaveApplicationController extends Controller
 
         foreach ($approvedLeaves as $leave) {
             $category = strtolower($leave->leave_category ?? '');
+            $type = strtolower($leave->leave_type ?? '');
 
-            if (str_contains($category, 'gatepass')) {
+            if (str_contains($category, 'gatepass') || str_contains($category, 'wfh')) {
                 continue;
             }
 
-            if (str_contains($category, 'half')) {
+            if (str_contains($category, 'half') || str_contains($type, 'half')) {
                 $totalTaken += 0.5;
+                continue;
+            }
+
+            if ($leave->total_days !== null) {
+                $totalTaken += (float) $leave->total_days;
                 continue;
             }
 
@@ -267,7 +273,7 @@ class LeaveApplicationController extends Controller
         $leave = LeaveApplication::create($data);
         $employee = Employee::findOrFail($data['employee_id']);
 
-        Mail::to('mdkaif14104@gmail.com')
+        Mail::to(env('LEAVE_APPROVER_EMAIL'))
             ->send((new LeaveApplicationMail($leave, $employee))->replyTo($employee->email));
 
         return response()->json(['success' => true, 'message' => 'Leave application submitted successfully']);

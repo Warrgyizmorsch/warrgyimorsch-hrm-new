@@ -641,10 +641,11 @@
             let count = 0;
             rows.forEach((item, index) => {
                 let match = !filterStatus;
-                if (filterStatus === 'present' && item.status === 'present') match = true;
+                const isHoliday = !!item.is_holiday;
+                if (filterStatus === 'present' && (item.status === 'present' || (isHoliday && item.status === 'absent'))) match = true;
                 if (filterStatus === 'half_day' && item.status === 'half_day') match = true;
                 if (filterStatus === 'leave' && item.status === 'leave') match = true;
-                if (filterStatus === 'absent' && item.status === 'absent') match = true;
+                if (filterStatus === 'absent' && item.status === 'absent' && !isHoliday) match = true;
                 if (filterStatus === 'late' && item.status === 'late') match = true;
                 if (filterStatus === 'overtime' && item.total_hours > 9) match = true;
                 if (filterStatus === 'wfh' && item.status === 'wfh') match = true;
@@ -674,7 +675,10 @@
 
                     const isActivityDay = activityDays[item.attendance_date] || false;
 
-                    if (isActivityDay && (isEarly || item.status === 'early_out' || item.status === 'early_leave' || (item.status === 'half_day' && !isHalfDayPunch))) {
+                    if (isHoliday && item.status === 'absent') {
+                        statusDisplay = 'Holiday';
+                        badgeClass = 'status-badge-success';
+                    } else if (isActivityDay && (isEarly || item.status === 'early_out' || item.status === 'early_leave' || (item.status === 'half_day' && !isHalfDayPunch))) {
                         statusDisplay = 'Present Activity';
                         badgeClass = 'status-badge-info';
                     } else if (isEarly) {
@@ -799,6 +803,7 @@
         function getStatusBadge(status) {
             switch (status.toLowerCase()) {
                 case 'present': return 'status-badge-success';
+                case 'holiday': return 'status-badge-success';
                 case 'absent': return 'status-badge-danger';
                 case 'half_day': return 'status-badge-warning';
                 case 'activity': return 'status-badge-info';
