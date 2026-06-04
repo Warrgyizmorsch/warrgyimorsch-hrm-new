@@ -68,7 +68,7 @@ class BroadcastController extends Controller
     public function getRecipients($id)
     {
         $broadcast = Broadcast::with('readByUsers')->findOrFail($id);
-        dd($broadcast->readByUsers);
+        // dd($broadcast->readByUsers);
         // Map the relationship collection into a clean array structure for your AJAX modal
         $recipients = $broadcast->readByUsers->map(function($user) {
             return [
