@@ -1879,7 +1879,7 @@
                 let parentCard = $('#msg-card-' + broadcastId);
 
                 $.ajax({
-                    url: `{{ url('/broadcasts') }}/${broadcastId}/read`,,
+                    url: `{{ url('/broadcasts') }}/${broadcastId}/read`,
                     method: 'POST',
                     data: { _token: '{{ csrf_token() }}' },
                     success: function(response) {
