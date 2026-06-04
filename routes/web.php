@@ -75,6 +75,12 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::get('/employees-export', [EmployeeController::class, 'export'])->name('employees.export');
 
+    Route::get('/broadcasts/{id}/edit', [BroadcastController::class, 'edit'])->name('broadcasts.edit');
+    Route::put('/broadcasts/{id}', [BroadcastController::class, 'update'])->name('broadcasts.update');
+
+    Route::get('/broadcasts/{id}/recipients', [BroadcastController::class, 'getRecipients']);
+
+
     Route::get('/api/employees/{id}', [EmployeeController::class, 'getJson']);
     Route::get('/api/employees/{id}/attendance', [EmployeeController::class, 'getAttendance']);
 
@@ -167,10 +173,7 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
 
     Route::get('/broadcast', [BroadcastController::class, 'index'])->name('broadcasts.index');
   
-    Route::get('/broadcasts/{id}/edit', [BroadcastController::class, 'edit'])->name('broadcasts.edit');
-    Route::put('/broadcasts/{id}', [BroadcastController::class, 'update'])->name('broadcasts.update');
-
-    Route::get('/broadcasts/{id}/recipients', [BroadcastController::class, 'getRecipients']);
+   
 });
 
 Route::post('/broadcasts/{id}/read', [BroadcastController::class, 'markAsRead'])

@@ -244,7 +244,7 @@
             }
 
             $.ajax({
-                url: `/broadcasts/${id}/recipients`,
+                url: `{{ url('/broadcasts') }}/${id}/recipients`,
                 method: 'GET',
                 success: function(data) {
                     let rows = '';
