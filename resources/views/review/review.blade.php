@@ -45,7 +45,7 @@
                                     $columnClass = ($isAdmin || $isTeamLeader) ? 'col-md-4' : 'col-md-6';
                                 @endphp
                                 <div class="{{ $columnClass }}">
-                                    <label class="fw-bold mb-1">Leave Allotment Month</label>
+                                    <label class="fw-bold mb-1">Select Month</label>
                                     <div class="review-select" data-select>
                                         <input type="hidden" name="month" value="{{ old('month') }}" required>
                                         <button type="button" class="review-select-trigger" data-select-trigger aria-expanded="false">

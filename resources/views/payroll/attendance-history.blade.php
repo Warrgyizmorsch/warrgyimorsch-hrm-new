@@ -63,7 +63,14 @@
                                         @endphp
                                         <tr style="height: 70px; border-bottom: 1px solid #f1f5f9;">
                                             <td class="ps-4 fw-bold text-muted" style="font-size: 13px;">{{ $index + 1 }}</td>
-                                            <td class="fw-bold text-dark" style="font-size: 14px;">{{ $item['date'] }}</td>
+                                            <td class="fw-bold text-dark" style="font-size: 14px;">
+                                                {{ $item['date'] }}
+                                                @if(str_contains($item['date'], '(Sat)'))
+                                                    <span class="badge bg-soft-primary text-primary ms-2">
+                                                        Activity
+                                                    </span>
+                                                @endif
+                                            </td>
                                             <td class="text-center text-muted fw-semibold" style="font-size: 13px;">{{ $item['punch_in'] }}</td>
                                             <td class="text-center text-muted fw-semibold" style="font-size: 13px;">{{ $item['punch_out'] }}</td>
                                             <td class="text-center fw-bold text-primary" style="font-size: 14px;">{{ $item['total_hours'] }}</td>

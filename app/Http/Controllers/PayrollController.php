@@ -482,18 +482,18 @@ class PayrollController extends Controller
 
             $totalDeductions = $pf + $esi + $otherDeduction;
 
-            // // PF (12% of basic portion only)
-            // if ($employee->pf) {
-            //     $basicMonthly = ($employee->basic_salary ?? 0) / 12;
-            //     $pf = ($basicMonthly / $totalDays * $payableDays) * 0.12;
-            // }
+            // PF (12% of basic portion only)
+            if ($employee->pf) {
+                $basicMonthly = ($employee->basic_salary ?? 0) / 12;
+                $pf = ($basicMonthly / $totalDays * $payableDays) * 0.12;
+            }
 
-            // // ESI (only if salary <= 21000)
-            // if ($employee->esi && $grossSalary <= 21000) {
-            //     $esi = $grossSalary * 0.0075;
-            // }
+            // ESI (only if salary <= 21000)
+            if ($employee->esi == 0 && $grossSalary <= 21000) {
+                $esi = $grossSalary * 0.0075;
+            }
 
-            // $totalDeductions = $pf + $esi;
+            $totalDeductions = $pf + $esi;
 
             // 💵 STEP 4: Net Salary
             $netSalary = max(0, $grossSalary - $totalDeductions);

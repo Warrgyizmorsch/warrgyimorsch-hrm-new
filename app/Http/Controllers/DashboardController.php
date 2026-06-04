@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\Payroll;
 use App\Models\Holiday;
 use App\Models\LeaveApplication;
+use App\Models\LeaveAllotment;
 use App\Models\Broadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -83,6 +84,67 @@ class DashboardController extends Controller
             SUM(IF(status = 'early_leave', 1, 0)) as early_count,
             SUM(IF(status = 'absent', 1, 0)) as absent_count
         ")->first();
+    }
+
+    private function getEmployeeLeaveTaken(int $employeeId, ?Carbon $from = null, ?Carbon $to = null): float
+    {
+        $approvedLeaves = LeaveApplication::where('employee_id', $employeeId)
+            ->where('status', 'approved');
+
+        if ($from && $to) {
+            $approvedLeaves->whereDate('start_date', '<=', $to->toDateString())
+                ->where(function ($query) use ($from) {
+                    $query->whereDate('end_date', '>=', $from->toDateString())
+                        ->orWhereNull('end_date');
+                });
+        }
+
+        $approvedLeaves = $approvedLeaves->get();
+
+        $totalTaken = 0;
+
+        foreach ($approvedLeaves as $leave) {
+            $category = strtolower($leave->leave_category ?? '');
+            $type = strtolower($leave->leave_type ?? '');
+
+            if (str_contains($category, 'gatepass') || str_contains($category, 'wfh')) {
+                continue;
+            }
+
+            if (str_contains($category, 'half') || str_contains($type, 'half')) {
+                $totalTaken += 0.5;
+                continue;
+            }
+
+            if ($from && $to) {
+                $startDate = Carbon::parse($leave->start_date)->startOfDay()->max($from->copy()->startOfDay());
+                $endDate = Carbon::parse($leave->end_date ?: $leave->start_date)->startOfDay()->min($to->copy()->startOfDay());
+
+                if ($endDate->lt($startDate)) {
+                    continue;
+                }
+
+                $totalTaken += $startDate->equalTo($endDate)
+                    ? 1
+                    : $startDate->diffInDays($endDate) + 1;
+
+                continue;
+            }
+
+            if ($leave->total_days !== null) {
+                $totalTaken += (float) $leave->total_days;
+                continue;
+            }
+
+            $startDate = Carbon::parse($leave->start_date);
+            $endDate = $leave->end_date ? Carbon::parse($leave->end_date) : $startDate->copy();
+
+            $totalTaken += $startDate->equalTo($endDate)
+                ? 1
+                : $startDate->diffInDays($endDate);
+        }
+
+        return $totalTaken;
     }
 
     public function index(Request $request)
@@ -412,6 +474,32 @@ class DashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $totalAllottedLeave = LeaveAllotment::where('employee_id', $employeeId)->sum('leave_count');
+        $totalUtilizedLeave = $this->getEmployeeLeaveTaken($employeeId);
+        $currentMonthUtilizedLeave = $this->getEmployeeLeaveTaken(
+            $employeeId,
+            Carbon::now()->startOfMonth(),
+            Carbon::now()->endOfMonth()
+        );
+        $currentMonthAllottedLeave = LeaveAllotment::where('employee_id', $employeeId)
+            ->where('month', Carbon::now()->format('m'))
+            ->where('year', Carbon::now()->format('Y'))
+            ->sum('leave_count');
+        $availableLeaveBalance = $totalAllottedLeave - $totalUtilizedLeave;
+        $totalJourney = $employee && $employee->date_of_joining
+            ? Carbon::parse($employee->date_of_joining)->diffForHumans(null, true)
+            : 'N/A';
+        if ($employee && $employee->date_of_joining) {
+            $joiningDate = Carbon::parse($employee->date_of_joining);
+            $days = $joiningDate->diffInDays(now());
+
+            if ($days < 365) {
+                $totalJourney = round($days / 30, 1) . ' Months';
+            } else {
+                $totalJourney = round($days / 365, 1) . ' Years';
+            }
+        }
+
         if (!$isAdmin) {
             return view('userDashboard', compact(
                 'totalEmployees',
@@ -453,7 +541,13 @@ class DashboardController extends Controller
                 'todayLateEmployees',
                 'employee',
                 'celebration',
-                'announcements'
+                'announcements',
+                'availableLeaveBalance',
+                'totalAllottedLeave',
+                'totalUtilizedLeave',
+                'currentMonthUtilizedLeave',
+                'currentMonthAllottedLeave',
+                'totalJourney'
             ));
         }
 
