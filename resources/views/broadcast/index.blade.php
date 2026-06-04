@@ -161,28 +161,134 @@
         </div>
     </div>
 
-    <div class="modal fade" id="receiptModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog" role="document">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-primary text-white" style="height: 60px;">
-                    <h5 class="modal-title font-weight-bold text-white" style="font-size:16px;">Read Receipts Report</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close">
-                    </button>
+    <style>
+        #receiptModal .modal-content {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #receiptModal .receipt-modal-header {
+            background: #0d6efd;
+            padding: 18px 24px;
+        }
+
+        #receiptModal .receipt-icon {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            display: inline-flex;
+            height: 42px;
+            justify-content: center;
+            width: 42px;
+        }
+
+        #receiptModal .receipt-summary {
+            background: #f8fafc;
+            border-bottom: 1px solid #e9ecef;
+            padding: 14px 24px;
+        }
+
+        #receiptModal .receipt-count {
+            color: #0d6efd;
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        #receiptModal .receipt-table-wrap {
+            max-height: 420px;
+            overflow-y: auto;
+        }
+
+        #receiptModal .receipt-table {
+            font-size: 14px;
+        }
+
+        #receiptModal .receipt-table thead th {
+            background: #ffffff;
+            border-bottom: 1px solid #edf0f4;
+            color: #6c757d;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0;
+            padding: 14px 24px;
+            position: sticky;
+            text-transform: uppercase;
+            top: 0;
+            z-index: 1;
+        }
+
+        #receiptModal .receipt-table tbody td {
+            border-color: #f0f2f5;
+            padding: 16px 24px;
+            vertical-align: middle;
+        }
+
+        #receiptModal .receipt-user-avatar {
+            align-items: center;
+            background: #eaf2ff;
+            border-radius: 50%;
+            color: #0d6efd;
+            display: inline-flex;
+            flex: 0 0 36px;
+            font-size: 13px;
+            font-weight: 700;
+            height: 36px;
+            justify-content: center;
+            width: 36px;
+        }
+
+        #receiptModal .receipt-status {
+            background: #eef8f1;
+            border-radius: 8px;
+            color: #198754;
+            display: inline-flex;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 10px;
+        }
+    </style>
+
+    <div class="modal fade" id="receiptModal" tabindex="-1" aria-labelledby="receiptModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header receipt-modal-header text-white border-0">
+                    <div class="d-flex align-items-center">
+                        <span class="receipt-icon me-3">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                        <div>
+                            <h5 class="modal-title font-weight-bold text-white mb-1" id="receiptModalLabel" style="font-size:16px;">Read Receipts Report</h5>
+                            <small class="text-white-50">Employees who have viewed this broadcast</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-0 d-flex justify-content-center">
-                    <table class="table mb-0 text-secondary mt-2" style="font-size: 14px; width:95%">
-                        <thead class="bg-light" style="height:40px">
-                            <tr>
-                                <th class="border-top-0 px-4" style="width: 15%">#</th>
-                                <th class="border-top-0" style="width: 45%">User</th>
-                                <th class="border-top-0" style="width: 40%">Time</th>
-                            </tr>
-                        </thead>
-                        <tbody id="receiptsTableBody"></tbody>
-                    </table>
+                <div class="receipt-summary d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="receipt-count" id="receiptsCount">0</div>
+                        <small class="text-muted">Total reads</small>
+                    </div>
+                    <span class="receipt-status">
+                        <i class="fas fa-check-circle me-1"></i> Viewed
+                    </span>
                 </div>
-                <div class="modal-footer border-top-0 pr-4">
-                    <button type="button" class="btn btn-primary px-4 py-1 font-weight-bold" data-bs-dismiss="modal" style="font-size: 13px; height:40px; width:80px">Close</button>
+                <div class="modal-body p-0">
+                    <div class="receipt-table-wrap">
+                        <table class="table receipt-table mb-0 text-secondary">
+                            <thead>
+                                <tr>
+                                    <th style="width: 12%">#</th>
+                                    <th style="width: 56%">User</th>
+                                    <th style="width: 32%">Read Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="receiptsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top px-4 py-3">
+                    <button type="button" class="btn btn-primary px-4 font-weight-bold" data-bs-dismiss="modal" style="font-size: 13px;">Close</button>
                 </div>
             </div>
         </div>
@@ -191,6 +297,10 @@
 @push('scripts')
     <script>
         let receiptModal = null;
+
+        function escapeReceiptText(value) {
+            return $('<div>').text(value || '').html();
+        }
 
         $(document).ready(function() {
             const receiptModalElement = document.getElementById('receiptModal');
@@ -230,7 +340,8 @@
 
         $(document).on('click', '.btn-view-report', function() {
             let id = $(this).data('id');
-            $('#receiptsTableBody').html('<tr><td colspan="3" class="text-center py-3"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</td></tr>');
+            $('#receiptsCount').text('0');
+            $('#receiptsTableBody').html('<tr><td colspan="3" class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin me-2"></i>Loading read receipts...</td></tr>');
 
             if (!receiptModal) {
                 const receiptModalElement = document.getElementById('receiptModal');
@@ -248,16 +359,35 @@
                 method: 'GET',
                 success: function(data) {
                     let rows = '';
+                    $('#receiptsCount').text(data.length);
+
                     if(data.length === 0) {
-                        rows = '<tr><td colspan="3" class="text-center text-muted py-3">No recipients have read this announcement yet.</td></tr>';
+                        rows = `
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-5">
+                                    <i class="far fa-eye-slash d-block mb-2" style="font-size: 24px;"></i>
+                                    No recipients have read this announcement yet.
+                                </td>
+                            </tr>`;
                     } else {
                         data.forEach((user, index) => {
+                            const userName = escapeReceiptText(user.name);
+                            const readTime = escapeReceiptText(user.time_ago);
+                            const initials = user.name
+                                ? escapeReceiptText(user.name.split(' ').map((part) => part.charAt(0)).join('').substring(0, 2).toUpperCase())
+                                : 'U';
+
                             rows += `
-                                <tr style="height: 60px; background-color: #ffffff !important;">
-                                    <td class="px-4" style="vertical-align: middle; height: 60px; line-height: 44px;">${index + 1}</td>
-                                    <td class="font-weight-bold text-dark" style="vertical-align: middle; height: 60px; line-height: 44px;">${user.name}</td>
-                                    <td style="vertical-align: middle; height: 60px; line-height: 44px;">
-                                        <small class="text-muted"><i class="far fa-clock me-1"></i>${user.time_ago}</small>
+                                <tr>
+                                    <td class="font-weight-bold text-muted">${index + 1}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="receipt-user-avatar me-3">${initials}</span>
+                                            <span class="font-weight-bold text-dark">${userName}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted"><i class="far fa-clock me-1"></i>${readTime}</small>
                                     </td>
                                 </tr>`;
                         });
@@ -265,7 +395,8 @@
                     $('#receiptsTableBody').html(rows);
                 },
                 error: function() {
-                    $('#receiptsTableBody').html('<tr><td colspan="3" class="text-center text-danger py-3">Unable to load read receipts right now.</td></tr>');
+                    $('#receiptsCount').text('0');
+                    $('#receiptsTableBody').html('<tr><td colspan="3" class="text-center text-danger py-5"><i class="fas fa-exclamation-circle me-2"></i>Unable to load read receipts right now.</td></tr>');
                 }
             });
         });
