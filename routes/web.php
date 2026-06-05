@@ -38,6 +38,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/payroll/employee', [PayrollController::class, 'payrollEmployee'])->name('payroll.empindex');
+    Route::get('/payroll/export', [PayrollController::class, 'export'])->name('payroll.export');
     Route::post('/payroll/{id}/remarks', [PayrollController::class, 'saveRemarks']);
     Route::get('/payroll/{id}', [PayrollController::class, 'show'])->name('payroll.show');
 });
@@ -135,7 +136,6 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/payroll/attendance/add', [PayrollController::class, 'addAttendance'])->name('payroll.attendance.add');
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
     Route::get('/payroll/get', [PayrollController::class, 'getPayroll'])->name('payroll.get');
-    Route::get('/payroll/export', [PayrollController::class, 'export'])->name('payroll.export');
     Route::get('/payroll/calculation', [PayrollController::class, 'calculation'])->name('payroll.calculation');
     Route::post('/payroll/calculate', [PayrollController::class, 'calculatePayroll'])->name('payroll.calculate');
     Route::post('/payroll/sendDateRange', [PayrollController::class, 'calculateInRage'])->name('payroll.sendDateRange');
