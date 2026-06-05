@@ -29,9 +29,20 @@ Route::get('/sync-attendance', [ZKTController::class, 'syncAttendance'])
     ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,hr_intern,business_operation_head'])
     ->name('sync.attendance');
 
+Route::get('/payroll/attendance', [PayrollController::class, 'attendance'])
+            ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,hr_intern,business_operation_head'])
+            ->name('payroll.attendance');
+
+
 Route::middleware(['auth', 'verified'])->group(function () {
+    
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/payroll/employee', [PayrollController::class, 'payrollEmployee'])->name('payroll.empindex');
+    Route::post('/payroll/{id}/remarks', [PayrollController::class, 'saveRemarks']);
+    Route::get('/payroll/{id}', [PayrollController::class, 'show'])->name('payroll.show');
 });
+
+
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/summary', [DashboardController::class, 'getMonthlySummary'])->name('dashboard.summary');
@@ -66,6 +77,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
+    
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/employees/create', [EmployeeController::class, 'create'])->name('employees.create');
     Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
@@ -118,7 +130,7 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/api/leave/details/{id}', [LeaveApplicationController::class, 'getDetails']);
     Route::get('/api/leave/employee/{employeeId}', [LeaveApplicationController::class, 'getEmployeeLeaves']);
 
-    Route::get('/payroll/attendance', [PayrollController::class, 'attendance'])->name('payroll.attendance');
+   
     Route::get('/payroll/attendance/get', [PayrollController::class, 'getAttendance'])->name('payroll.attendance.get');
     Route::get('/payroll/attendance/add', [PayrollController::class, 'addAttendance'])->name('payroll.attendance.add');
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
@@ -128,10 +140,10 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::post('/payroll/calculate', [PayrollController::class, 'calculatePayroll'])->name('payroll.calculate');
     Route::post('/payroll/sendDateRange', [PayrollController::class, 'calculateInRage'])->name('payroll.sendDateRange');
     Route::post('/payroll/store', [PayrollController::class, 'storePayroll'])->name('payroll.store');
-    Route::get('/payroll/{id}', [PayrollController::class, 'show'])->name('payroll.show');
+  
     Route::post('/payroll/{id}/status', [PayrollController::class, 'updateStatus'])->name('payroll.status');
     Route::delete('/payroll/{id}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
-    Route::post('/payroll/{id}/remarks', [PayrollController::class, 'saveRemarks']);
+   
     Route::post('/payroll/{id}/mark-read', [PayrollController::class, 'markAsRead']);
   
     Route::get('/payroll/attendance/{id}/edit', [PayrollController::class, 'edit'])->name('payroll.attendance.edit');
@@ -184,7 +196,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('broadcasts.store');
     // Route::post('/broadcasts/{id}/read', [BroadcastController::class, 'markAsRead']);
     Route::get('/attendance-history', [EmployeeController::class, 'getAttendance'])->name('attendance-history');
-
     Route::post('/leave/apply', [LeaveApplicationController::class, 'store'])->name('leave.apply');
 
     Route::get('/profile/details', [ProfileController::class, 'show'])->name('profile.show');

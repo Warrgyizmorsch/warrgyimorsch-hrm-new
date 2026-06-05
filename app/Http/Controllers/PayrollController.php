@@ -729,6 +729,30 @@ class PayrollController extends Controller
         return view('payroll.index', compact('payrolls'));
     }
 
+    public function payrollEmployee(Request $request)
+    {
+        $user_id = auth()->user()->employee_id;
+        $query = Payroll::with('employee')->where('employee_id', $user_id);
+
+        // Filter by month
+        if ($request->filled('month')) {
+            $query->where('month', $request->month);
+        }
+
+        // Filter by employee
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $payrolls = $query->orderBy('created_at', 'desc')->paginate(12);
+        return view('payroll.emppayroll', compact('payrolls'));
+    }
+
 
     /**
      * Get payroll records with filtering
