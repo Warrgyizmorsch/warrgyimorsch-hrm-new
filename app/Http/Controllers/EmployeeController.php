@@ -415,7 +415,10 @@ class EmployeeController extends Controller
                 $minutes = round(($totalHoursDecimal - $hours) * 60);
                 $total_hours = "{$hours}h {$minutes}m";
 
-                if ($record->total_hours < 8 && $record->total_hours > 3) {
+                if ((!$record->check_in && $record->check_out) || ($record->check_in && !$record->check_out)) {
+                    $status = 'Missing Punch';
+                    $statusClass = 'warning';
+                } elseif ($record->total_hours < 8 && $record->total_hours > 3) {
                     $status = 'Half Day';
                     $statusClass = 'warning';
                 } else if($record->total_hours < 3) {

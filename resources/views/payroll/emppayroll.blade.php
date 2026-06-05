@@ -199,10 +199,10 @@
                                                 onclick="viewPayroll({{ $payroll->id }})" title="View">
                                                 <i class="feather-eye"></i>
                                             </a>
-                                            <!-- <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-info text-info"
+                                            <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-info text-info"
                                                 onclick="downloadSlip({{ $payroll->id }}, 'pdf')" title="Download PDF">
                                                 <i class="feather-download"></i>
-                                            </a> -->
+                                            </a>
                                             <!-- <a href="javascript:void(0);"
                                                 class="avatar-text avatar-md bg-soft-danger text-danger"
                                                 onclick="deletePayroll({{ $payroll->id }})" title="Delete">
