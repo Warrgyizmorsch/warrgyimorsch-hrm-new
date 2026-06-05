@@ -458,22 +458,21 @@
             </div>
         </div>
         <div class="row">
-            <!-- [Invoices Awaiting Payment] start -->
+            <!-- [Available Leave Balance] start -->
             <div class="col-xxl-3 col-md-6">
                 <div class="card stretch stretch-full">
                     <div class="card-body">
                         <div class="d-flex align-items-start justify-content-between mb-4">
                             <div class="d-flex gap-4 align-items-center">
                                 <div class="avatar-text avatar-lg bg-gray-200">
-                                    <i class="feather-dollar-sign"></i>
+                                    <i class="feather-check-circle text-success"></i>
                                 </div>
                                 <div>
-                                    <div class="fs-4 fw-bold text-dark">₹{{ number_format($totalPaidAmount, 0) }}</div>
-                                    <h3 class="fs-13 fw-semibold text-truncate-1-line">Paid in {{ $selectedMonthLabel }}
-                                    </h3>
+                                    <div class="fs-4 fw-bold text-dark">{{ number_format($availableLeaveBalance, 1) }}</div>
+                                    <h3 class="fs-13 fw-semibold text-truncate-1-line">Available Leave Balance</h3>
                                 </div>
                             </div>
-                            <div class="dropdown">
+                            <div class="dropdown d-none">
                                 <a href="javascript:void(0);" class="avatar-text avatar-sm" data-bs-toggle="dropdown"
                                     data-bs-offset="0, 10">
                                     <i class="feather-more-vertical"></i>
@@ -500,40 +499,92 @@
                         <div class="pt-4">
                             <div class="d-flex align-items-center justify-content-between">
                                 <a href="javascript:void(0);"
-                                    class="fs-12 fw-medium text-muted text-truncate-1-line">{{ $totalEmpPaid }} Employees
-                                    Paid </a>
+                                    class="fs-12 fw-medium text-muted text-truncate-1-line">Leaves remaining</a>
                                 <div class="w-100 text-end">
-                                    <span class="fs-12 text-dark">₹{{ number_format($totalNetSalary, 0) }}</span>
-                                    <span
-                                        class="fs-11 text-muted">({{ $totalNetSalary > 0 ? round(($totalPaidAmount / $totalNetSalary) * 100) : 0 }}%)</span>
+                                    <span class="fs-12 text-dark">{{ number_format($availableLeaveBalance, 1) }}</span>
+                                    <span class="fs-11 text-muted">days</span>
+                                </div>
+                            </div>
+                            <div class="progress mt-2 ht-3">
+                                <div class="progress-bar bg-success" role="progressbar"
+                                    style="width: {{ $totalAllottedLeave > 0 ? max(0, min(100, ($availableLeaveBalance / $totalAllottedLeave) * 100)) : 0 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- [Available Leave Balance] end -->
+            <!-- [Total Utilized Leave] start -->
+            <div class="col-xxl-3 col-md-6">
+                <div class="card stretch stretch-full">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start justify-content-between mb-4">
+                            <div class="d-flex gap-4 align-items-center">
+                                <div class="avatar-text avatar-lg bg-gray-200">
+                                    <i class="feather-activity text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="fs-4 fw-bold text-dark">{{ number_format($totalUtilizedLeave, 1) }}</div>
+                                    <h3 class="fs-13 fw-semibold text-truncate-1-line">Total Utilized Leave</h3>
+                                </div>
+                            </div>
+                            <div class="dropdown d-none">
+                                <a href="javascript:void(0);" class="avatar-text avatar-sm" data-bs-toggle="dropdown"
+                                    data-bs-offset="0, 10">
+                                    <i class="feather-more-vertical"></i>
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-end">
+                                    <div class="dropdown-header text-uppercase fs-10 fw-800 text-muted">Select History</div>
+                                    @for ($i = 0; $i < 6; $i++)
+                                        @php $m = \Carbon\Carbon::now()->startOfMonth()->subMonths($i); @endphp
+                                        <a href="{{ route('dashboard', ['month' => $m->format('Y-m')]) }}"
+                                            class="dropdown-item {{ $selectedMonth == $m->format('Y-m') ? 'active' : '' }}">
+                                            <i class="feather-calendar me-2"></i>
+                                            <span>{{ $m->format('M Y') }} Overview</span>
+                                        </a>
+                                    @endfor
+                                    <div class="dropdown-divider"></div>
+                                    <a href="javascript:void(0);" class="dropdown-item"
+                                        onclick="showMonthlySummary('{{ $selectedMonth }}')">
+                                        <i class="feather-file-text me-2"></i>
+                                        <span>Full Breakdown Details</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pt-4">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <a href="javascript:void(0);"
+                                    class="fs-12 fw-medium text-muted text-truncate-1-line">Leaves used till now</a>
+                                <div class="w-100 text-end">
+                                    <span class="fs-12 text-dark">{{ number_format($totalUtilizedLeave, 1) }}</span>
+                                    <span class="fs-11 text-muted">days</span>
                                 </div>
                             </div>
                             <div class="progress mt-2 ht-3">
                                 <div class="progress-bar bg-primary" role="progressbar"
-                                    style="width: {{ $totalNetSalary > 0 ? ($totalPaidAmount / $totalNetSalary) * 100 : 0 }}%">
-                                </div>
+                                    style="width: {{ $totalAllottedLeave > 0 ? max(0, min(100, ($totalUtilizedLeave / $totalAllottedLeave) * 100)) : 0 }}%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- [Invoices Awaiting Payment] end -->
-            <!-- [Pending Amount] start -->
+            <!-- [Total Utilized Leave] end -->
+            <!-- [This Month's Utilized Leave] start -->
             <div class="col-xxl-3 col-md-6">
                 <div class="card stretch stretch-full">
                     <div class="card-body">
                         <div class="d-flex align-items-start justify-content-between mb-4">
                             <div class="d-flex gap-4 align-items-center">
                                 <div class="avatar-text avatar-lg bg-gray-200">
-                                    <i class="feather-clock text-warning"></i>
+                                    <i class="feather-trending-up text-warning"></i>
                                 </div>
                                 <div>
-                                    <div class="fs-4 fw-bold text-dark">₹{{ number_format($totalPendingAmount, 0) }}</div>
-                                    <h3 class="fs-13 fw-semibold text-truncate-1-line">Pending in {{ $selectedMonthLabel }}
-                                    </h3>
+                                    <div class="fs-4 fw-bold text-dark">{{ number_format($currentMonthUtilizedLeave, 1) }}</div>
+                                    <h3 class="fs-13 fw-semibold text-truncate-1-line">This Month's Utilized Leave</h3>
                                 </div>
                             </div>
-                            <div class="dropdown">
+                            <div class="dropdown d-none">
                                 <a href="javascript:void(0);" class="avatar-text avatar-sm" data-bs-toggle="dropdown"
                                     data-bs-offset="0, 10">
                                     <i class="feather-more-vertical"></i>
@@ -560,97 +611,41 @@
                         <div class="pt-4">
                             <div class="d-flex align-items-center justify-content-between">
                                 <a href="javascript:void(0);"
-                                    class="fs-12 fw-medium text-muted text-truncate-1-line">Awaiting Payment </a>
+                                    class="fs-12 fw-medium text-muted text-truncate-1-line">{{ now()->format('F Y') }} used</a>
                                 <div class="w-100 text-end">
-                                    <span class="fs-12 text-dark">{{ $totalEmpPending }} Employees</span>
-                                    <span
-                                        class="fs-11 text-muted">({{ $totalNetSalary > 0 ? round(($totalPendingAmount / $totalNetSalary) * 100) : 0 }}%)</span>
+                                    <i class="feather-clock text-warning me-1"></i>
+                                    <span class="fs-12 text-dark">{{ number_format($currentMonthUtilizedLeave, 1) }}</span>
+                                    <span class="fs-11 text-muted">days</span>
                                 </div>
                             </div>
                             <div class="progress mt-2 ht-3">
                                 <div class="progress-bar bg-warning" role="progressbar"
-                                    style="width: {{ $totalNetSalary > 0 ? ($totalPendingAmount / $totalNetSalary) * 100 : 0 }}%">
-                                </div>
+                                    style="width: {{ $currentMonthAllottedLeave > 0 ? max(0, min(100, ($currentMonthUtilizedLeave / $currentMonthAllottedLeave) * 100)) : 0 }}%"></div>
                             </div>
+                            <!-- <div class="d-flex align-items-center justify-content-between mt-2">
+                                <span class="fs-11 text-muted">0 days</span>
+                                <span class="fs-11 text-muted">{{ number_format($currentMonthAllottedLeave, 1) }} days allotted</span>
+                            </div> -->
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- [Pending Amount] end -->
-            <!-- [Rejected Amount] start -->
+            <!-- [This Month's Utilized Leave] end -->
+            <!-- [Total Journey] start -->
             <div class="col-xxl-3 col-md-6">
                 <div class="card stretch stretch-full">
                     <div class="card-body">
                         <div class="d-flex align-items-start justify-content-between mb-4">
                             <div class="d-flex gap-4 align-items-center">
                                 <div class="avatar-text avatar-lg bg-gray-200">
-                                    <i class="feather-x-circle text-danger"></i>
+                                    <i class="feather-briefcase text-info"></i>
                                 </div>
                                 <div>
-                                    <div class="fs-4 fw-bold text-dark">₹{{ number_format($totalRejectedAmount, 0) }}</div>
-                                    <h3 class="fs-13 fw-semibold text-truncate-1-line">Rejected in {{ $selectedMonthLabel }}
-                                    </h3>
+                                    <div class="fs-4 fw-bold text-dark">{{ $totalJourney }}</div>
+                                    <h3 class="fs-13 fw-semibold text-truncate-1-line">Total Journey</h3>
                                 </div>
                             </div>
-                            <div class="dropdown">
-                                <a href="javascript:void(0);" class="avatar-text avatar-sm" data-bs-toggle="dropdown"
-                                    data-bs-offset="0, 10">
-                                    <i class="feather-more-vertical"></i>
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-end">
-                                    <div class="dropdown-header text-uppercase fs-10 fw-800 text-muted">Select History</div>
-                                    @for ($i = 0; $i < 6; $i++)
-                                        @php $m = \Carbon\Carbon::now()->startOfMonth()->subMonths($i); @endphp
-                                        <a href="{{ route('dashboard', ['month' => $m->format('Y-m')]) }}"
-                                            class="dropdown-item {{ $selectedMonth == $m->format('Y-m') ? 'active' : '' }}">
-                                            <i class="feather-calendar me-2"></i>
-                                            <span>{{ $m->format('M Y') }} Overview</span>
-                                        </a>
-                                    @endfor
-                                    <div class="dropdown-divider"></div>
-                                    <a href="javascript:void(0);" class="dropdown-item"
-                                        onclick="showMonthlySummary('{{ $selectedMonth }}')">
-                                        <i class="feather-file-text me-2"></i>
-                                        <span>Full Breakdown Details</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="pt-4">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <a href="javascript:void(0);"
-                                    class="fs-12 fw-medium text-muted text-truncate-1-line">Payment Failed </a>
-                                <div class="w-100 text-end">
-                                    <span class="fs-12 text-dark">Rejected</span>
-                                    <span
-                                        class="fs-11 text-muted">({{ $totalNetSalary > 0 ? round(($totalRejectedAmount / $totalNetSalary) * 100) : 0 }}%)</span>
-                                </div>
-                            </div>
-                            <div class="progress mt-2 ht-3">
-                                <div class="progress-bar bg-danger" role="progressbar"
-                                    style="width: {{ $totalNetSalary > 0 ? ($totalRejectedAmount / $totalNetSalary) * 100 : 0 }}%">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- [Rejected Amount] end -->
-            <!-- [Total Employees] start -->
-            <div class="col-xxl-3 col-md-6">
-                <div class="card stretch stretch-full">
-                    <div class="card-body">
-                        <div class="d-flex align-items-start justify-content-between mb-4">
-                            <div class="d-flex gap-4 align-items-center">
-                                <div class="avatar-text avatar-lg bg-gray-200">
-                                    <i class="feather-users text-primary"></i>
-                                </div>
-                                <div>
-                                    <div class="fs-4 fw-bold text-dark">{{ $totalEmployees }}</div>
-                                    <h3 class="fs-13 fw-semibold text-truncate-1-line">TOTAL STAFF</h3>
-                                </div>
-                            </div>
-                            <div class="dropdown">
+                            <div class="dropdown d-none">
                                 <a href="javascript:void(0);" class="avatar-text avatar-sm" data-bs-toggle="dropdown"
                                     data-bs-offset="0, 10">
                                     <i class="feather-more-vertical"></i>
@@ -682,21 +677,21 @@
                         <div class="pt-4">
                             <div class="d-flex align-items-center justify-content-between">
                                 <a href="javascript:void(0);" class="fs-12 fw-medium text-muted text-truncate-1-line">
-                                    Attendance Rate </a>
+                                    Joined date</a>
                                 <div class="w-100 text-end">
-                                    <span class="fs-12 text-dark">{{ $attendanceRate }}%</span>
-                                    <span class="fs-11 text-muted">(Today)</span>
+                                    <span class="fs-12 text-dark">
+                                        {{ $employee && $employee->date_of_joining ? \Carbon\Carbon::parse($employee->date_of_joining)->format('d M Y') : 'N/A' }}
+                                    </span>
                                 </div>
                             </div>
                             <div class="progress mt-2 ht-3">
-                                <div class="progress-bar bg-primary" role="progressbar"
-                                    style="width: {{ $attendanceRate }}%"></div>
+                                <div class="progress-bar bg-info" role="progressbar" style="width: 100%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- [Total Employees] end -->
+            <!-- [Total Journey] end -->
 
             <div class="row">
 

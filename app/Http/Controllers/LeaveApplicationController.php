@@ -273,8 +273,8 @@ class LeaveApplicationController extends Controller
         $leave = LeaveApplication::create($data);
         $employee = Employee::findOrFail($data['employee_id']);
 
-        Mail::to(env('LEAVE_APPROVER_EMAIL'))
-            ->send((new LeaveApplicationMail($leave, $employee))->replyTo($employee->email));
+        // Mail::to(env('LEAVE_APPROVER_EMAIL'))
+        //     ->send((new LeaveApplicationMail($leave, $employee))->replyTo($employee->email));
 
         return response()->json(['success' => true, 'message' => 'Leave application submitted successfully']);
     }
@@ -378,10 +378,10 @@ class LeaveApplicationController extends Controller
 
         $employee = Employee::find($leave->employee_id);
 
-        if ($employee && $employee->email) {
-            Mail::to($employee->email)
-                ->send(new LeaveStatusUpdatedMail($leave, $employee));
-        }
+        // if ($employee && $employee->email) {
+        //     Mail::to($employee->email)
+        //         ->send(new LeaveStatusUpdatedMail($leave, $employee));
+        // }
 
         return response()->json(['success' => true, 'message' => 'Status updated successfully']);
     }
