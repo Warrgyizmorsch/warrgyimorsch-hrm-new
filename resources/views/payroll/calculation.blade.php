@@ -225,6 +225,7 @@
 <script>
     let isManualDays = false;
     let currentPayrollData = null;
+    let currentPayrollTotalDays = 0;
     document.addEventListener('input', recalculate);
     // document.getElementById('calcType').addEventListener('change', recalculate);
 
@@ -242,17 +243,22 @@
     let hra = parseFloat(document.getElementById('inputHRA').value) || 0;
     let conv = parseFloat(document.getElementById('inputConveyance').value) || 0;
     let med = parseFloat(document.getElementById('inputMedical').value) || 0;
+    let otherAllowance = parseFloat(currentPayrollData?.other_allowance) || 0;
+
+    let fullSalary = basic + hra + conv + med + otherAllowance;
+    let backendPerDaySalary = Number(currentPayrollData?.perdaysalary || 0);
+    let totalDays = Number(currentPayrollTotalDays || currentPayrollData?.total_days || 0);
+    if (!totalDays && backendPerDaySalary > 0 && fullSalary > 0) {
+        totalDays = Math.round(fullSalary / backendPerDaySalary);
+    }
+    totalDays = totalDays || 30;
 
     let payableDays = parseFloat(document.getElementById('inputPayableDays').value) || 0;
-    let totalDays = 30;
-
     payableDays = Math.min(payableDays, totalDays); // ✅ safety
 
     // let calcType = document.getElementById('calcType').value;
 
     let gross = 0;
-
-    let fullSalary = basic + hra + conv + med;
 
     // ✅ PER DAY VALUES
     let perDayBasic = basic / totalDays;
@@ -341,6 +347,7 @@
         .then(data => {
             if (data.success) {
                 currentPayrollData = data.payroll;
+                currentPayrollTotalDays = Number(data.payroll.total_days || 0);
                 // console.log(data.payroll);
                 displayPayrollData(data.payroll);
 
@@ -372,6 +379,7 @@
         console.log('PAYROLL RESPONSE:', p);
         console.log('OT Hours:', p.overtime_hours);
         console.log('OT Days:', p.overtime_days);
+        currentPayrollTotalDays = Number(p.total_days || currentPayrollTotalDays || 0);
         
         document.getElementById('resultMonth').textContent = formattedMonth;
 

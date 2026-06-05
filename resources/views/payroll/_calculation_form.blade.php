@@ -194,7 +194,12 @@
 <script>
     if (typeof isManualDays === 'undefined') {
         var isManualDays = false;
+    }
+    if (typeof currentPayrollData === 'undefined') {
         var currentPayrollData = null;
+    }
+    if (typeof currentPayrollTotalDays === 'undefined') {
+        var currentPayrollTotalDays = 0;
     }
 
     // Use a unique scoped setup if possible, or just re-ensure listeners
@@ -222,12 +227,18 @@
         let hra = parseFloat(document.getElementById('inputHRA')?.value) || 0;
         let conv = parseFloat(document.getElementById('inputConveyance')?.value) || 0;
         let med = parseFloat(document.getElementById('inputMedical')?.value) || 0;
+        let otherAllowance = parseFloat(currentPayrollData?.other_allowance) || 0;
+
+        let fullSalary = basic + hra + conv + med + otherAllowance;
+        let backendPerDaySalary = Number(currentPayrollData?.perdaysalary || 0);
+        let totalDays = Number(currentPayrollTotalDays || currentPayrollData?.total_days || 0);
+        if (!totalDays && backendPerDaySalary > 0 && fullSalary > 0) {
+            totalDays = Math.round(fullSalary / backendPerDaySalary);
+        }
+        totalDays = totalDays || 30;
 
         let payableDays = parseFloat(document.getElementById('inputPayableDays')?.value) || 0;
-        let totalDays = 30;
-
         payableDays = Math.min(payableDays, totalDays);
-        let fullSalary = basic + hra + conv + med;
         let gross = (fullSalary / totalDays) * payableDays; 
 
         if (document.getElementById('overrideCheck')?.checked) {
@@ -277,6 +288,7 @@
         .then(data => {
             if (data.success) {
                 currentPayrollData = data.payroll;
+                currentPayrollTotalDays = Number(data.payroll.total_days || 0);
                 displayPayrollData(data.payroll);
                 noCalc.style.display = 'none';
                 document.getElementById('calculationResult').style.display = 'block';
@@ -296,6 +308,7 @@
         document.getElementById('inputPF').value = p.pf_deduction;
         document.getElementById('inputESI').value = p.esi_deduction;
         document.getElementById('inputOther').value = p.other_deduction || 0;
+        currentPayrollTotalDays = Number(p.total_days || currentPayrollTotalDays || 0);
         const overtimeBox = document.getElementById('overtime_box');
 
         if (overtimeBox) {

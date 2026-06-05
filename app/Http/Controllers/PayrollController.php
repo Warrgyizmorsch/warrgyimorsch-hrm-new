@@ -463,7 +463,7 @@ class PayrollController extends Controller
 
             // Per day salary
             $perDaySalary = $monthlySalary / $totalDays;
-
+            // echo $perDaySalary;exit;
             // Gross Salary
             $grossSalary = $perDaySalary * $payableDays;
 
@@ -512,6 +512,8 @@ class PayrollController extends Controller
                 // Attendance
                 'payable_days' => $payableDays,
                 'unpaid_days' => round($unpaidDays, 2),
+                'total_days' => $totalDays,
+                'perdaysalary'=> round($perDaySalary, 2),
 
                 //  ORIGINAL MONTHLY SALARY (IMPORTANT)
                 'basic_salary' => $employee->basic_salary,
