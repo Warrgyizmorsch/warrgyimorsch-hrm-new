@@ -33,20 +33,20 @@ class ReviewController extends Controller
         }
 
         if (!empty($user->employee_id)) {
-            $employee = Employee::find($user->employee_id);
+            $employee = Employee::active()->find($user->employee_id);
             if ($employee) {
                 return $employee;
             }
         }
 
         if (!empty($user->email)) {
-            $employee = Employee::where('email', $user->email)->first();
+            $employee = Employee::active()->where('email', $user->email)->first();
             if ($employee) {
                 return $employee;
             }
         }
 
-        return Employee::find($user->id);
+        return Employee::active()->find($user->id);
     }
 
     public function index() {
@@ -65,7 +65,7 @@ class ReviewController extends Controller
             $userDepartment = $employeeRecord->department ?? null;
             
             if ($userDepartment) {
-                $employeeIds = Employee::where('department', $userDepartment)->pluck('id');
+                $employeeIds = Employee::active()->where('department', $userDepartment)->pluck('id');
                 $query->whereIn('employee_id', $employeeIds)->latest();
             } else {
                 // Fallback: if no department found, show only their own reviews
@@ -79,8 +79,8 @@ class ReviewController extends Controller
         }
         
         $employees = $isTeamLeader && !$isAdmin && $employeeRecord
-            ? Employee::where('department', $employeeRecord->department)->orderBy('name')->get()
-            : Employee::orderBy('name')->get();
+            ? Employee::active()->where('department', $employeeRecord->department)->orderBy('name')->get()
+            : Employee::active()->orderBy('name')->get();
         
         $reviews = $query->paginate(10);
         return view('review.review', compact('reviews', 'isAdmin', 'isTeamLeader', 'employees'));
@@ -110,7 +110,7 @@ class ReviewController extends Controller
         ]);
 
         if (($isAdmin || $isTeamLeader) && !empty($validated['user_id'])) {
-            $employeeRecord = Employee::find($validated['user_id']);
+            $employeeRecord = Employee::active()->find($validated['user_id']);
         } else {
             $employeeRecord = $this->resolveEmployeeRecord($user);
         }

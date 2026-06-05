@@ -201,7 +201,7 @@
                     </thead>
                     <tbody>
                         @foreach($balances as $b)
-                        <tr class="align-middle inventory-item">
+                        <tr class="align-middle inventory-item" style="border-bottom: 2px solid #e2e2e2;">
                             <td>
                                 <div class="type-pill">
                                     <i class="feather-tag me-2 opacity-50"></i>

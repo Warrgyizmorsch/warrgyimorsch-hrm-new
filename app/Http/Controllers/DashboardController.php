@@ -159,7 +159,7 @@ class DashboardController extends Controller
 
         $isAdmin = in_array($roleId, [1, 2, 3, 4]);
         $isTeamLeader = in_array($roleSlug, ['team_leader']);
-        $employee = Employee::where('id', auth()->user()->employee_id)->first();
+        $employee = Employee::active()->where('id', auth()->user()->employee_id)->first();
         $celebration = $this->getTodayCelebration($employee);
         $employeeId = auth()->user()->employee_id;
 
@@ -180,10 +180,10 @@ class DashboardController extends Controller
         // $totalEmployees = $isAdmin ? Employee::count() : 1;
 
         if(!$isAdmin){
-            $totalEmployees = Employee::where('department', $employee->department)->count();
+            $totalEmployees = Employee::active()->where('department', $employee->department)->count();
         }
         else{
-            $totalEmployees = Employee::count();
+            $totalEmployees = Employee::active()->count();
         }
 
         $analyticsEmployeeId = $isAdmin ? null : $employeeId;
@@ -351,7 +351,7 @@ class DashboardController extends Controller
 
         // Selected month for leave report (default = current month)
         $leaveReport = $this->getLeaveReport($request);
-        $employees = Employee::all();
+        $employees = Employee::active()->get();
 
         // Employee Leave on Today
         // $todayLeaveEmployees = Attendance::with('employee') 
@@ -616,7 +616,7 @@ class DashboardController extends Controller
         $employeeId = auth()->user()->employee_id;
 
         // Logged-in employee department
-        $leaderDepartment = Employee::where('id', $employeeId)
+        $leaderDepartment = Employee::active()->where('id', $employeeId)
             ->value('department');
 
         $query = LeaveApplication::join('employees', 'leave_applications.employee_id', '=', 'employees.id')
@@ -813,7 +813,7 @@ class DashboardController extends Controller
         $employeeId = auth()->user()->employee_id;
 
         // Logged-in employee department
-        $leaderDepartment = Employee::where('id', $employeeId)
+        $leaderDepartment = Employee::active()->where('id', $employeeId)
             ->value('department');
 
         $lateRecords = Attendance::with('employee')

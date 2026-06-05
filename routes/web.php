@@ -87,6 +87,7 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::put('/employees/{id}', [EmployeeController::class, 'update'])->name('employees.update');
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::get('/employees-export', [EmployeeController::class, 'export'])->name('employees.export');
+    Route::post('/employee/update-accountStatus', [EmployeeController::class, 'updateAccountStatus'])->name('users.update-accountStatus');
 
     Route::get('/broadcasts/{id}/edit', [BroadcastController::class, 'edit'])->name('broadcasts.edit');
     Route::put('/broadcasts/{id}', [BroadcastController::class, 'update'])->name('broadcasts.update');

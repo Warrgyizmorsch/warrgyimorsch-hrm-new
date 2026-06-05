@@ -60,4 +60,10 @@ class Employee extends Model
     {
         return $this->hasOne(User::class, 'employee_id');
     }
+    public function scopeActive($query)
+    {
+        return $query->whereHas('user', function ($q) {
+            $q->where('account_status', 'active');
+        });
+    }
 }

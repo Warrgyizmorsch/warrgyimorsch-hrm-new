@@ -52,6 +52,7 @@ class EmployeeController extends Controller
             ->get();
 
         $employees = $baseQuery
+            ->with('user')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery->where('name', 'like', "%{$search}%")
@@ -588,6 +589,25 @@ class EmployeeController extends Controller
             return back()->with('error', 'Error: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+
+    public function updateAccountStatus(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        $user = User::findOrFail($request->user_id);
+
+        $user->update([
+            'account_status' => $request->status
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status updated successfully.'
+        ]);
     }
 
     /**
