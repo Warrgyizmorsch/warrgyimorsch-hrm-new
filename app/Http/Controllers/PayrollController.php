@@ -473,27 +473,16 @@ class PayrollController extends Controller
             }
 
             // 📉 STEP 3: Deductions
-            $pf = 0;
-            $esi = 0;
+            $otherDeduction = (float) ($request->other_deduction ?? 0);
 
-            $pf = $request->pf ?? $pf;
-            $esi = $request->esi ?? $esi;
-            $otherDeduction = $request->other_deduction ?? 0;
+            // PF: employee contribution is 12% of earned monthly basic.
+            $earnedBasic = (($employee->basic_salary ?? 0) / $totalDays) * $payableDays;
+            $pf = $employee->pf ? ($earnedBasic * 0.12) : 0;
+
+            // ESI: employee contribution is 0.75% of gross for ESI-enabled employees up to 21,000 wages.
+            $esi = ($employee->esi && $grossSalary <= 21000) ? ($grossSalary * 0.0075) : 0;
 
             $totalDeductions = $pf + $esi + $otherDeduction;
-
-            // PF (12% of basic portion only)
-            if ($employee->pf) {
-                $basicMonthly = ($employee->basic_salary ?? 0) / 12;
-                $pf = ($basicMonthly / $totalDays * $payableDays) * 0.12;
-            }
-
-            // ESI (only if salary <= 21000)
-            if ($employee->esi == 0 && $grossSalary <= 21000) {
-                $esi = $grossSalary * 0.0075;
-            }
-
-            $totalDeductions = $pf + $esi;
 
             // 💵 STEP 4: Net Salary
             $netSalary = max(0, $grossSalary - $totalDeductions);
@@ -521,6 +510,8 @@ class PayrollController extends Controller
                 'conveyance_allowance' => $employee->conveyance_allowance,
                 'medical_allowance' => $employee->medical_allowance,
                 'other_allowance' => $employee->other_allowance,
+                'pf_enabled' => (bool) $employee->pf,
+                'esi_enabled' => (bool) $employee->esi,
 
                 //  CALCULATED (for reference only)
                 'calculated_basic' => round(($employee->basic_salary / $totalDays) * $payableDays, 2),

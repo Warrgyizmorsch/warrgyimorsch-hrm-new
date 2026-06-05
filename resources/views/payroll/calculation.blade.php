@@ -226,18 +226,27 @@
     let isManualDays = false;
     let currentPayrollData = null;
     let currentPayrollTotalDays = 0;
+    let isManualPF = false;
+    let isManualESI = false;
     document.addEventListener('input', recalculate);
     // document.getElementById('calcType').addEventListener('change', recalculate);
 
     document.getElementById('inputPayableDays').addEventListener('input', function () {
         isManualDays = true;
     });
+    document.getElementById('inputPF').addEventListener('input', function () {
+        isManualPF = true;
+    });
+    document.getElementById('inputESI').addEventListener('input', function () {
+        isManualESI = true;
+    });
 
     document.getElementById('overrideCheck').addEventListener('change', function () {
         document.getElementById('overrideAmount').disabled = !this.checked;
     });
 
-   function recalculate() {
+function recalculate(event) {
+    const sourceId = event?.target?.id || '';
 
     let basic = parseFloat(document.getElementById('inputBasic').value) || 0;
     let hra = parseFloat(document.getElementById('inputHRA').value) || 0;
@@ -294,6 +303,18 @@
     // ✅ UI Update
     document.getElementById('tableGrossSalary').innerText = '₹ ' + gross.toFixed(2);
 
+    let earnedBasic = totalDays > 0 ? (basic / totalDays) * payableDays : 0;
+    let autoPF = currentPayrollData?.pf_enabled ? earnedBasic * 0.12 : 0;
+    let autoESI = (currentPayrollData?.esi_enabled && gross <= 21000) ? gross * 0.0075 : 0;
+
+    if (sourceId !== 'inputPF') {
+        document.getElementById('inputPF').value = autoPF.toFixed(2);
+    }
+
+    if (sourceId !== 'inputESI') {
+        document.getElementById('inputESI').value = autoESI.toFixed(2);
+    }
+
     let pf = parseFloat(document.getElementById('inputPF').value) || 0;
     let esi = parseFloat(document.getElementById('inputESI').value) || 0;
     let other = parseFloat(document.getElementById('inputOther').value) || 0;
@@ -319,6 +340,8 @@
     // =========================
     function calculatePayroll() {
         isManualDays = false;
+        isManualPF = false;
+        isManualESI = false;
         const month = document.getElementById('monthSelect').value;
         const employeeId = document.getElementById('employeeSelect').value;
 
@@ -401,6 +424,8 @@
         document.getElementById('inputConveyance').value = p.conveyance_allowance;
         document.getElementById('inputMedical').value = p.medical_allowance;
 
+        isManualPF = false;
+        isManualESI = false;
         document.getElementById('inputPF').value = p.pf_deduction;
         document.getElementById('inputESI').value = p.esi_deduction;
         document.getElementById('inputOther').value = p.other_deduction || 0;
@@ -464,6 +489,11 @@
                 pf_deduction: document.getElementById('inputPF').value,
                 esi_deduction: document.getElementById('inputESI').value,
                 other_deduction: document.getElementById('inputOther').value,
+                deductions: (
+                    (parseFloat(document.getElementById('inputPF').value) || 0) +
+                    (parseFloat(document.getElementById('inputESI').value) || 0) +
+                    (parseFloat(document.getElementById('inputOther').value) || 0)
+                ).toFixed(2),
 
                 net_salary: document.getElementById('tableNetSalary').innerText.replace(/[₹,]/g,''),
                 gross_salary: document.getElementById('tableGrossSalary').innerText.replace(/[₹,]/g,'')
