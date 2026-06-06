@@ -11,10 +11,10 @@ use App\Exports\LeaveApplicationsExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+// use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\LeaveApplicationMail;
-use App\Mail\LeaveStatusUpdatedMail;
+// use App\Mail\LeaveApplicationMail;
+// use App\Mail\LeaveStatusUpdatedMail;
 
 class LeaveApplicationController extends Controller
 {
@@ -199,20 +199,20 @@ class LeaveApplicationController extends Controller
         }
 
         if ($isAdmin) {
-            $employees = Employee::all();
+            $employees = Employee::active()->get();
         } elseif ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
                 $query->whereHas('employee', function ($q) use ($department) {
                     $q->where('department', $department);
                 });
-                $employees = Employee::where('department', $department)->get();
+                $employees = Employee::active()->where('department', $department)->get();
             } else {
                 $employees = collect();
             }
         } else {
             $query->where('employee_id', $user->employee_id);
-            $employees = Employee::where('id', $user->employee_id)->get();
+            $employees = Employee::active()->where('id', $user->employee_id)->get();
         }
 
         $leaves = $query->orderBy('created_at', 'desc')->paginate(15);
@@ -271,7 +271,7 @@ class LeaveApplicationController extends Controller
 
         // LeaveApplication::create($data);
         $leave = LeaveApplication::create($data);
-        $employee = Employee::findOrFail($data['employee_id']);
+        $employee = Employee::active()->findOrFail($data['employee_id']);
 
         // Mail::to(env('LEAVE_APPROVER_EMAIL'))
         //     ->send((new LeaveApplicationMail($leave, $employee))->replyTo($employee->email));
@@ -376,7 +376,7 @@ class LeaveApplicationController extends Controller
 
         $leave->update(['status' => $request->status]);
 
-        $employee = Employee::find($leave->employee_id);
+        $employee = Employee::active()->find($leave->employee_id);
 
         // if ($employee && $employee->email) {
         //     Mail::to($employee->email)

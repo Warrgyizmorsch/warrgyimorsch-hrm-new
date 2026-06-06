@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\DailyTask;
-use App\Models\TaskFollowUp;
+// use App\Models\TaskFollowUp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
+// use Illuminate\Support\Facades\DB;
 
 class ProjectController extends Controller
 {
@@ -39,16 +39,16 @@ class ProjectController extends Controller
         $projects = $query->latest()->get();
         
         if ($isAdmin) {
-            $employees = \App\Models\Employee::all();
+            $employees = \App\Models\Employee::active()->get();
         } elseif ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
-                $employees = \App\Models\Employee::where('department', $department)->get();
+                $employees = \App\Models\Employee::active()->where('department', $department)->get();
             } else {
                 $employees = collect();
             }
         } else {
-            $employees = \App\Models\Employee::where('id', $user->employee_id)->get();
+            $employees = \App\Models\Employee::active()->where('id', $user->employee_id)->get();
         }
 
         $departments = \App\Models\Department::all();
@@ -72,16 +72,16 @@ class ProjectController extends Controller
         ]);
 
         if ($isAdmin) {
-            $employees = \App\Models\Employee::all();
+            $employees = \App\Models\Employee::active()->get();
         } elseif ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
-                $employees = \App\Models\Employee::where('department', $department)->get();
+                $employees = \App\Models\Employee::active()->where('department', $department)->get();
             } else {
                 $employees = collect();
             }
         } else {
-            $employees = \App\Models\Employee::where('id', $user->employee_id)->get();
+            $employees = \App\Models\Employee::active()->where('id', $user->employee_id)->get();
         }
 
         $departments = \App\Models\Department::all();
@@ -130,7 +130,7 @@ class ProjectController extends Controller
 
     public function show(Project $project)
     {
-        $employees = \App\Models\Employee::all();
+        $employees = \App\Models\Employee::active()->get();
         $departments = \App\Models\Department::all();
 
         // 1. Get all tasks created for this project
@@ -194,7 +194,7 @@ class ProjectController extends Controller
 
     public function edit(Project $project)
     {
-        $employees = \App\Models\Employee::all();
+        $employees = \App\Models\Employee::active()->get();
         $departments = \App\Models\Department::all();
 
         return view('projects.edit', compact('project', 'employees', 'departments'));
