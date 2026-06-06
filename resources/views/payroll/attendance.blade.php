@@ -110,6 +110,8 @@
                                                 $label = 'This Week';
                                             elseif ($range == 'month')
                                                 $label = 'This Month';
+                                            elseif ($range == 'lastMonth')
+                                                $label = 'Last Month';
                                             elseif ($range == '3months')
                                                 $label = 'Last 3 Months';
                                             elseif ($range == '6months')
@@ -142,6 +144,9 @@
                                             <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'month' ? 'active' : '' }}"
                                                 href="javascript:void(0);"
                                                 onclick="selectQuickRange('month', 'This Month')">This Month</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'lastMonth' ? 'active' : '' }}"
+                                                href="javascript:void(0);"
+                                                onclick="selectQuickRange('lastMonth', 'Last Month')">Last Month</a>
                                             <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '3months' ? 'active' : '' }}"
                                                 href="javascript:void(0);"
                                                 onclick="selectQuickRange('3months', 'Last 3 Months')">Last 3 Months</a>
@@ -551,6 +556,10 @@
                     break;
                 case 'month':
                     start = new Date(today.getFullYear(), today.getMonth(), 1);
+                    break;
+                case 'lastMonth':
+                    start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    end = new Date(today.getFullYear(), today.getMonth(), 0);
                     break;
                 case '3months':
                     start.setMonth(today.getMonth() - 2);

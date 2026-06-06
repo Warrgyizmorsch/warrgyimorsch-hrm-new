@@ -1,4 +1,8 @@
     <div class="p-4">
+        <!-- Hidden fields for edit mode -->
+        <input type="hidden" id="payrollIdForUpdate" value="">
+        <input type="hidden" id="isEditMode" value="false">
+        
         <!-- Calculation Filter Card -->
         <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; background: white;">
             <div class="card-header bg-white border-0 px-4 py-3 border-bottom text-center">
@@ -20,7 +24,7 @@
                                         placeholder="Search employee..." onkeyup="wghrmFilterItems(this)"
                                         onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
                                 </div>
-                                @foreach(\App\Models\Employee::all() as $emp)
+                                @foreach(\App\Models\Employee::active()->get() as $emp)
                                     <a class="dropdown-item wghrm-custom-dropdown-item"
                                         href="javascript:void(0);"
                                         onclick="document.getElementById('employeeSelect').value='{{ $emp->id }}'; document.getElementById('employeeSelectBtn').innerText='{{ addslashes($emp->name) }}'; bootstrap.Dropdown.getInstance(this.closest('.dropdown').querySelector('.dropdown-toggle')).hide();">
@@ -378,27 +382,35 @@
         if (!currentPayrollData) return;
         btn.disabled = true;
         
-        fetch('{{ url("/payroll/store") }}', {
-            method: 'POST',
+        const payrollId = document.getElementById('payrollIdForUpdate').value;
+        const isEditMode = document.getElementById('isEditMode').value === 'true';
+        
+        const payloadData = {
+            ...currentPayrollData,
+            basic_salary: document.getElementById('inputBasic').value,
+            hra: document.getElementById('inputHRA').value,
+            conveyance_allowance: document.getElementById('inputConveyance').value,
+            medical_allowance: document.getElementById('inputMedical').value,
+            payable_days: document.getElementById('inputPayableDays').value,
+            pf_deduction: document.getElementById('inputPF').value,
+            esi_deduction: document.getElementById('inputESI').value,
+            other_deduction: document.getElementById('inputOther').value,
+            deductions: (
+                (parseFloat(document.getElementById('inputPF').value) || 0) +
+                (parseFloat(document.getElementById('inputESI').value) || 0) +
+                (parseFloat(document.getElementById('inputOther').value) || 0)
+            ).toFixed(2),
+            net_salary: document.getElementById('tableNetSalary').innerText.replace(/[₹,]/g,''),
+            gross_salary: document.getElementById('tableGrossSalary').innerText.replace(/[₹,]/g,'')
+        };
+        
+        const url = isEditMode ? `{{ url("/payroll") }}/${payrollId}` : '{{ url("/payroll/store") }}';
+        const method = isEditMode ? 'PUT' : 'POST';
+        
+        fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({
-                ...currentPayrollData,
-                basic_salary: document.getElementById('inputBasic').value,
-                hra: document.getElementById('inputHRA').value,
-                conveyance_allowance: document.getElementById('inputConveyance').value,
-                medical_allowance: document.getElementById('inputMedical').value,
-                payable_days: document.getElementById('inputPayableDays').value,
-                pf_deduction: document.getElementById('inputPF').value,
-                esi_deduction: document.getElementById('inputESI').value,
-                other_deduction: document.getElementById('inputOther').value,
-                deductions: (
-                    (parseFloat(document.getElementById('inputPF').value) || 0) +
-                    (parseFloat(document.getElementById('inputESI').value) || 0) +
-                    (parseFloat(document.getElementById('inputOther').value) || 0)
-                ).toFixed(2),
-                net_salary: document.getElementById('tableNetSalary').innerText.replace(/[₹,]/g,''),
-                gross_salary: document.getElementById('tableGrossSalary').innerText.replace(/[₹,]/g,'')
-            })
+            body: JSON.stringify(payloadData)
         })
         .then(res => res.json())
         .then(data => {
@@ -406,13 +418,13 @@
                 if (typeof Toast !== 'undefined') {
                     Toast.fire({
                         icon: 'success',
-                        title: 'Payroll saved successfully!'
+                        title: isEditMode ? 'Payroll updated successfully!' : 'Payroll saved successfully!'
                     });
                     setTimeout(() => {
                         location.reload();
                     }, 1500);
                 } else {
-                    alert('Payroll saved successfully!');
+                    alert(isEditMode ? 'Payroll updated successfully!' : 'Payroll saved successfully!');
                     location.reload();
                 }
             } else {
@@ -428,4 +440,43 @@
             }
         });
     }
+
+    // Reset form when offcanvas is hidden
+    function resetPayrollForm() {
+        document.getElementById('payrollIdForUpdate').value = '';
+        document.getElementById('isEditMode').value = 'false';
+        document.getElementById('employeeSelect').value = '';
+        document.getElementById('employeeSelectBtn').innerText = 'Select';
+        document.getElementById('monthSelect').value = new Date().toISOString().substring(0, 7);
+        document.getElementById('inputPayableDays').value = '';
+        document.getElementById('inputBasic').value = '';
+        document.getElementById('inputHRA').value = '';
+        document.getElementById('inputConveyance').value = '';
+        document.getElementById('inputMedical').value = '';
+        document.getElementById('inputPF').value = '';
+        document.getElementById('inputESI').value = '';
+        document.getElementById('inputOther').value = '';
+        document.getElementById('overrideCheck').checked = false;
+        document.getElementById('overrideAmount').disabled = true;
+        document.getElementById('overrideAmount').value = '';
+        
+        currentPayrollData = null;
+        isManualDays = false;
+        isManualPF = false;
+        isManualESI = false;
+        currentPayrollTotalDays = 0;
+        
+        document.getElementById('calculationResult').style.display = 'none';
+        document.getElementById('noCalculation').style.display = 'block';
+    }
+
+    // Add event listener to reset form when offcanvas is hidden
+    document.addEventListener('DOMContentLoaded', function() {
+        const offcanvasEl = document.getElementById('payrollCalculationOffcanvas');
+        if (offcanvasEl) {
+            offcanvasEl.addEventListener('hidden.bs.offcanvas', function() {
+                resetPayrollForm();
+            });
+        }
+    });
 </script>
