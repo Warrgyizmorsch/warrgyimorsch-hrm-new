@@ -1144,6 +1144,67 @@ class PayrollController extends Controller
             ->with('success', 'Attendance updated successfully');
     }
 
+    /**
+     * Get payroll record for editing
+     */
+    public function editPayroll($id)
+    {
+        try {
+            $payroll = Payroll::with('employee')->findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $payroll->id,
+                    'employee_id' => $payroll->employee_id,
+                    'employee_name' => $payroll->employee->name,
+                    'month' => $payroll->month,
+                    'payable_days' => $payroll->payable_days,
+                    'basic_salary' => $payroll->basic_salary,
+                    'hra' => $payroll->hra,
+                    'conveyance_allowance' => $payroll->conveyance_allowance,
+                    'medical_allowance' => $payroll->medical_allowance,
+                    'other_allowance' => $payroll->other_allowance,
+                    'gross_salary' => $payroll->gross_salary,
+                    'pf_deduction' => $payroll->pf_deduction,
+                    'esi_deduction' => $payroll->esi_deduction,
+                    'other_deduction' => $payroll->other_deduction,
+                    'net_salary' => $payroll->net_salary,
+                    'status' => $payroll->status,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Update payroll record
+     */
+    public function updatePayroll(Request $request, $id)
+    {
+        try {
+            $data = $request->all();
+            
+            $payroll = Payroll::findOrFail($id);
+            $payroll->update($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll updated successfully!',
+                'payroll_id' => $payroll->id,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
     public function destroy($id)
     {
         try {

@@ -250,6 +250,11 @@
                                                 onclick="viewPayroll({{ $payroll->id }})" title="View">
                                                 <i class="feather-eye"></i>
                                             </a>
+                                            <a href="javascript:void(0);"
+                                                class="avatar-text avatar-md bg-soft-primary text-primary"
+                                                onclick="editPayroll({{ $payroll->id }})" title="Edit">
+                                                <i class="feather-edit"></i>
+                                            </a>
                                             <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-info text-info"
                                                 onclick="downloadSlip({{ $payroll->id }}, 'pdf')" title="Download PDF">
                                                 <i class="feather-download"></i>
@@ -542,6 +547,57 @@
                 })
                 .catch(err => {
                     document.getElementById('payrollModalBody').innerHTML = '<div class="p-5 text-center text-danger">Error loading payroll data.</div>';
+                });
+        }
+
+        function editPayroll(id) {
+            // Fetch payroll data
+            fetch(`/payroll/${id}/edit`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const payroll = data.data;
+                        
+                        // Set the payroll ID for update
+                        document.getElementById('payrollIdForUpdate').value = id;
+                        
+                        // Pre-fill form fields
+                        document.getElementById('employeeSelect').value = payroll.employee_id;
+                        document.getElementById('employeeSelectBtn').innerText = payroll.employee_name;
+                        document.getElementById('monthSelect').value = payroll.month;
+                        document.getElementById('inputPayableDays').value = payroll.payable_days || '';
+                        document.getElementById('inputBasic').value = payroll.basic_salary || '';
+                        document.getElementById('inputHRA').value = payroll.hra || '';
+                        document.getElementById('inputConveyance').value = payroll.conveyance_allowance || '';
+                        document.getElementById('inputMedical').value = payroll.medical_allowance || '';
+                        document.getElementById('inputPF').value = payroll.pf_deduction || '';
+                        document.getElementById('inputESI').value = payroll.esi_deduction || '';
+                        document.getElementById('inputOther').value = payroll.other_deduction || '';
+                        
+                        // Set currentPayrollData for calculations
+                        window.currentPayrollData = payroll;
+                        
+                        // Set the isEditMode flag
+                        document.getElementById('isEditMode').value = 'true';
+                        
+                        // Show calculation result
+                        document.getElementById('calculationResult').style.display = 'block';
+                        document.getElementById('noCalculation').style.display = 'none';
+                        
+                        // Recalculate to show totals
+                        recalculate();
+                        
+                        // Open offcanvas
+                        const offcanvasEl = document.getElementById('payrollCalculationOffcanvas');
+                        const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+                        offcanvas.show();
+                    } else {
+                        alert('Error loading payroll data: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    alert('Error loading payroll data');
                 });
         }
 
