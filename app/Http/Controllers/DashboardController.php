@@ -988,9 +988,9 @@ class DashboardController extends Controller
     private function getTodayCelebration($employee)
     {
         $today = \Carbon\Carbon::today()->startOfDay();
-
+        $dob =      $employee->date_of_birth ?? ''  ;
         // ---------------- Birthday ----------------
-        $birthday = \Carbon\Carbon::parse($employee->date_of_birth)->year(now()->year);
+        $birthday = \Carbon\Carbon::parse($dob)->year(now()->year);
 
         if ($birthday->isPast() && !$birthday->isToday()) {
             $birthday->addYear();

@@ -208,10 +208,10 @@
                                         <span class="text-muted small fw-bold">{{ $payroll->month }}</span>
                                     </td>
                                     <td class="text-center fw-bold">{{ $payroll->payable_days }}</td>
-                                    <td class="text-end fw-bold text-dark">₹{{ number_format($payroll->gross_salary, 2) }}</td>
-                                    <td class="text-end fw-bold text-danger">₹{{ number_format($payroll->deductions, 2) }}</td>
-                                    <td class="text-end fw-bold text-primary" style="font-size: 15px;">
-                                        ₹{{ number_format($payroll->net_salary, 2) }}</td>
+                                    <!-- <td class="text-end fw-bold text-dark">₹{{ number_format($payroll->gross_salary, 2) }}</td> -->
+                                    <!-- <td class="text-end fw-bold text-danger">₹{{ number_format($payroll->deductions, 2) }}</td> -->
+                                    <!-- <td class="text-end fw-bold text-primary" style="font-size: 15px;">
+                                        ₹{{ number_format($payroll->net_salary, 2) }}</td> -->
                                     <td class="text-center">
                                         @php
                                             $statusClass = 'bg-soft-warning text-warning';

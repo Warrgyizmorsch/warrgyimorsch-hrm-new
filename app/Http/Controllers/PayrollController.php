@@ -403,15 +403,21 @@ class PayrollController extends Controller
                     case 'wfh':
                     case 'late':
                     case 'leave':
+                    case 'missing_punch':
+                    case 'missing_punch':
+                    case 'early_leave':
+                    case 'overtime':
                         $attendanceDays += 1;
                         break;
 
                     case 'half_day':
+                    case 'half_day_leave':
                         $attendanceDays += 0.5;
                         break;
 
                     case 'absent':
                     case 'unpaid':
+                    case 'unpaid_leave':
                     case 'unauthorised':
                     default:
                         break;
