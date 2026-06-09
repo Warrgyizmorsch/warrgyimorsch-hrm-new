@@ -132,30 +132,59 @@
                 </div>
 
                 <!-- STATUS -->
-                <div class="col-md-3">
-                    <label class="form-label">Status</label>
-                    <select id="filterStatus" class="form-select" onchange="applyFilters()">
-                        <option value="">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="awaited">Awaited</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="selected">Selected</option>
-                    </select>
+                <div class="dropdown" style="width: 27% !important;">
+                    <label class="form-label">All Status</label>
+                    <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between" 
+                            type="button" id="statusDropdownBtn" data-bs-toggle="dropdown" style="height: 46px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff;">
+                        <span>All Status</span>
+                    </button>
+                    <input type="hidden" id="filterStatus" value="">
+                    
+                    <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                        <div class="wghrm-custom-search-box">
+                            <input type="text" class="wghrm-custom-search-input" placeholder="Search status..." onkeyup="wghrmFilterItems(this)">
+                        </div>
+                        <div class="wghrm-items-container">
+                            <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" 
+                            onclick="document.getElementById('filterStatus').value=''; document.getElementById('statusDropdownBtn').querySelector('span').innerText='All Status'; applyFilters();">All Status</a>
+                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" 
+                            onclick="document.getElementById('filterStatus').value='pending'; document.getElementById('statusDropdownBtn').querySelector('span').innerText='Pending'; applyFilters();">Pending</a>
+                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" 
+                            onclick="document.getElementById('filterStatus').value='awaited'; document.getElementById('statusDropdownBtn').querySelector('span').innerText='Awaited'; applyFilters();">Awaited</a>
+                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" 
+                            onclick="document.getElementById('filterStatus').value='rejected'; document.getElementById('statusDropdownBtn').querySelector('span').innerText='Rejected'; applyFilters();">Rejected</a>
+                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" 
+                            onclick="document.getElementById('filterStatus').value='selected'; document.getElementById('statusDropdownBtn').querySelector('span').innerText='Selected'; applyFilters();">Selected</a>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- DEPARTMENT -->
-                <div class="col-md-3">
-                    <label class="form-label">Department</label>
-                    <select id="filterDepartment" class="form-select" onchange="applyFilters()">
-                        <option value="">All Departments</option>
-                        @foreach($departments as $dept)
-                            <option value="{{ $dept->name }}">{{ $dept->name }}</option>
-                        @endforeach
-                    </select>
+                <div class="dropdown" style="width: 27% !important;">
+                    <label class="form-label">All Departments</label>
+                    <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between" 
+                            type="button" id="deptDropdownBtn" data-bs-toggle="dropdown" style="height: 46px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff;">
+                        <span>All Departments</span>
+                    </button>
+                    <input type="hidden" id="filterDepartment" value="">
+                    
+                    <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                        <div class="wghrm-custom-search-box">
+                            <input type="text" class="wghrm-custom-search-input" placeholder="Search department..." onkeyup="wghrmFilterItems(this)">
+                        </div>
+                        <div class="wghrm-items-container">
+                            <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" 
+                            onclick="document.getElementById('filterDepartment').value=''; document.getElementById('deptDropdownBtn').querySelector('span').innerText='All Departments'; applyFilters();">All Departments</a>
+                            @foreach($departments as $dept)
+                                <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" 
+                                onclick="document.getElementById('filterDepartment').value='{{ $dept->name }}'; document.getElementById('deptDropdownBtn').querySelector('span').innerText='{{ $dept->name }}'; applyFilters();">{{ $dept->name }}</a>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
 
                 <!-- BUTTONS -->
-                <div class="col-md-2 d-flex align-items-end justify-content-center">
+                <div class="col-md-1 d-flex align-items-end justify-content-center">
                     <!-- <button type="button"
                         class="btn btn-primary flex-grow-1 fw-bold"
                         onclick="applyFilters()"
@@ -203,11 +232,11 @@
 
                                 <tbody>
                                     @foreach($applications as $app)
-                                    <tr>
+                                    <tr class="job-row">
 
                                         {{-- BASIC INFORMATION --}}
                                         <td>
-                                            <div class="fw-semibold">{{ $app->name }}</div>
+                                            <div class="fw-semibold job-name">{{ $app->name }}</div>
 
                                             <div class="small text-muted">
                                                 <i class="feather-mail me-1"></i> {{ $app->email }}
@@ -222,7 +251,7 @@
                                             </div>
 
                                             <div class="small text-muted">
-                                                <i class="feather-grid me-1"></i> {{ $app->department->name ?? 'N/A' }}
+                                                <i class="feather-grid me-1"></i> <span class="job-department">{{ $app->department->name ?? 'N/A' }}</span>
                                             </div>
 
                                             <div class="small text-muted">
@@ -269,7 +298,7 @@
                                                 @csrf
 
                                                 <select name="status" style="width: 120px;"
-                                                    class="form-select form-select-sm"
+                                                    class="form-select form-select-sm job-status-select"
                                                     onchange="this.form.submit()">
 
                                                     <option value="Pending" {{ $app->status == 'Pending' ? 'selected' : '' }}>Pending</option>
@@ -339,56 +368,84 @@
 
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Qualification</label>
-                                <select class="form-select" name="qualification" required>
-                                    <option value="">Select Qualification</option>
-
-                                    <option value="B.Tech">B.Tech</option>
-                                    <option value="BCA">BCA</option>
-                                    <option value="MCA">MCA</option>
-                                    <option value="M.Tech">M.Tech</option>
-                                    <option value="B.Sc IT">B.Sc IT</option>
-                                    <option value="M.Sc IT">M.Sc IT</option>
-                                    <option value="B.Sc Computer Science">B.Sc Computer Science</option>
-                                    <option value="M.Sc Computer Science">M.Sc Computer Science</option>
-                                    <option value="BE Computer Engineering">BE Computer Engineering</option>
-                                    <option value="Diploma in Computer Engineering">
-                                        Diploma in Computer Engineering
-                                    </option>
-                                    <option value="PGDCA">PGDCA</option>
-                                    <option value="MBA IT">MBA IT</option>
-                                    <option value="Full Stack Development">Full Stack Development</option>
-                                    <option value="Cyber Security">Cyber Security</option>
-                                    <option value="Data Science">Data Science</option>
-                                    <option value="Artificial Intelligence">Artificial Intelligence</option>
-                                    <option value="Machine Learning">Machine Learning</option>
-                                    <option value="Other">Other</option>
-                                </select>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between" 
+                                            type="button" id="qualOffcanvasBtn" data-bs-toggle="dropdown" style="height: 44px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff; color: #4b5563;">
+                                        <span>Select Qualification</span>
+                                    </button>
+                                    <input type="hidden" name="qualification" id="offcanvasQualification" value="" required>
+                                    
+                                    <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                                        <div class="wghrm-custom-search-box">
+                                            <input type="text" class="wghrm-custom-search-input" placeholder="Search qualification..." onkeyup="wghrmFilterItems(this)">
+                                        </div>
+                                        <div class="wghrm-items-container">
+                                            <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', '', 'qualOffcanvasBtn', 'Select Qualification', this)">Select Qualification</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'B.Tech', 'qualOffcanvasBtn', 'B.Tech', this)">B.Tech</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'BCA', 'qualOffcanvasBtn', 'BCA', this)">BCA</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'MCA', 'qualOffcanvasBtn', 'MCA', this)">MCA</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'M.Tech', 'qualOffcanvasBtn', 'M.Tech', this)">M.Tech</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'B.Sc IT', 'qualOffcanvasBtn', 'B.Sc IT', this)">B.Sc IT</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'M.Sc IT', 'qualOffcanvasBtn', 'M.Sc IT', this)">M.Sc IT</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'B.Sc Computer Science', 'qualOffcanvasBtn', 'B.Sc Computer Science', this)">B.Sc Computer Science</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'M.Sc Computer Science', 'qualOffcanvasBtn', 'M.Sc Computer Science', this)">M.Sc Computer Science</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'BE Computer Engineering', 'qualOffcanvasBtn', 'BE Computer Engineering', this)">BE Computer Engineering</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'Diploma in Computer Engineering', 'qualOffcanvasBtn', 'Diploma in Computer Engineering', this)">Diploma in Computer Engineering</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'PGDCA', 'qualOffcanvasBtn', 'PGDCA', this)">PGDCA</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'MBA IT', 'qualOffcanvasBtn', 'MBA IT', this)">MBA IT</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'Full Stack Development', 'qualOffcanvasBtn', 'Full Stack Development', this)">Full Stack Development</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'Cyber Security', 'qualOffcanvasBtn', 'Cyber Security', this)">Cyber Security</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'Data Science', 'qualOffcanvasBtn', 'Data Science', this)">Data Science</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'Artificial Intelligence', 'qualOffcanvasBtn', 'Artificial Intelligence', this)">Artificial Intelligence</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'Machine Learning', 'qualOffcanvasBtn', 'Machine Learning', this)">Machine Learning</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasQualification', 'Other', 'qualOffcanvasBtn', 'Other', this)">Other</a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Department</label>
-
-                                <select class="form-select" name="department_id" required>
-                                    <option value="">Select Department</option>
-
-                                    @foreach($departments as $department)
-                                        <option value="{{ $department->id }}">
-                                            {{ $department->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between" 
+                                            type="button" id="deptOffcanvasBtn" data-bs-toggle="dropdown" style="height: 44px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff; color: #4b5563;">
+                                        <span>Select Department</span>
+                                    </button>
+                                    <input type="hidden" name="department_id" id="offcanvasDepartment" value="" required>
+                                    
+                                    <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                                        <div class="wghrm-custom-search-box">
+                                            <input type="text" class="wghrm-custom-search-input" placeholder="Search department..." onkeyup="wghrmFilterItems(this)">
+                                        </div>
+                                        <div class="wghrm-items-container">
+                                            <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasDepartment', '', 'deptOffcanvasBtn', 'Select Department', this)">Select Department</a>
+                                            @foreach($departments as $department)
+                                                <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasDepartment', '{{ $department->id }}', 'deptOffcanvasBtn', '{{ $department->name }}', this)">{{ $department->name }}</a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Designation</label>
-
-                                <select class="form-select" name="designation" required>
-                                    <option value="">Select Designation</option>
-
-                                    @foreach($designations as $designation)
-                                        <option value="{{ $designation->name }}">
-                                            {{ $designation->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between" 
+                                            type="button" id="desigOffcanvasBtn" data-bs-toggle="dropdown" style="height: 44px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff; color: #4b5563;">
+                                        <span>Select Designation</span>
+                                    </button>
+                                    <input type="hidden" name="designation" id="offcanvasDesignation" value="" required>
+                                    
+                                    <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                                        <div class="wghrm-custom-search-box">
+                                            <input type="text" class="wghrm-custom-search-input" placeholder="Search designation..." onkeyup="wghrmFilterItems(this)">
+                                        </div>
+                                        <div class="wghrm-items-container">
+                                            <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasDesignation', '', 'desigOffcanvasBtn', 'Select Designation', this)">Select Designation</a>
+                                            @foreach($designations as $designation)
+                                                <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasDesignation', '{{ $designation->name }}', 'desigOffcanvasBtn', '{{ $designation->name }}', this)">{{ $designation->name }}</a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Experience</label>
@@ -413,23 +470,47 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Status</label>
-                                <select class="form-select"name="status">
-                                    <option>Pending</option>
-                                    <option>Selected</option>
-                                    <option>Awaited</option>
-                                    <option>Rejected</option>
-                                </select>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between" 
+                                            type="button" id="statusOffcanvasBtn" data-bs-toggle="dropdown" style="height: 44px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff; color: #4b5563;">
+                                        <span>Pending</span>
+                                    </button>
+                                    <input type="hidden" name="status" id="offcanvasStatus" value="Pending">
+                                    
+                                    <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                                        <div class="wghrm-custom-search-box">
+                                            <input type="text" class="wghrm-custom-search-input" placeholder="Search status..." onkeyup="wghrmFilterItems(this)">
+                                        </div>
+                                        <div class="wghrm-items-container">
+                                            <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasStatus', 'Pending', 'statusOffcanvasBtn', 'Pending', this)">Pending</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasStatus', 'Selected', 'statusOffcanvasBtn', 'Selected', this)">Selected</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasStatus', 'Awaited', 'statusOffcanvasBtn', 'Awaited', this)">Awaited</a>
+                                            <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasStatus', 'Rejected', 'statusOffcanvasBtn', 'Rejected', this)">Rejected</a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Interviewer</label>
-                                <select class="form-select" name="interviewer_id">
-                                    <option value="">Select Interviewer</option>
-                                    @foreach($employees as $employee)
-                                        <option value="{{ $employee->id }}">
-                                            {{ $employee->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between" 
+                                            type="button" id="interviewerOffcanvasBtn" data-bs-toggle="dropdown" style="height: 44px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff; color: #4b5563;">
+                                        <span>Select Interviewer</span>
+                                    </button>
+                                    <input type="hidden" name="interviewer_id" id="offcanvasInterviewer" value="">
+                                    
+                                    <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                                        <div class="wghrm-custom-search-box">
+                                            <input type="text" class="wghrm-custom-search-input" placeholder="Search interviewer..." onkeyup="wghrmFilterItems(this)">
+                                        </div>
+                                        <div class="wghrm-items-container">
+                                            <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasInterviewer', '', 'interviewerOffcanvasBtn', 'Select Interviewer', this)">Select Interviewer</a>
+                                            @foreach($employees as $employee)
+                                                <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="updateOffcanvasDropdown('offcanvasInterviewer', '{{ $employee->id }}', 'interviewerOffcanvasBtn', '{{ $employee->name }}', this)">{{ $employee->name }}</a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md">
                                 <label class="form-label">Interview Description / Link</label>
@@ -461,6 +542,46 @@
             </form>
         </div>
     </div>
+
+    <style>
+        .wghrm-custom-dropdown-menu {
+            border-radius: 12px !important;
+            padding: 4px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
+            border: 1px solid #e4e6ef !important;
+            min-width: 220px;
+        }
+        .wghrm-custom-search-box {
+            padding: 4px 4px 8px 4px;
+        }
+        .wghrm-custom-search-input {
+            width: 100%;
+            border: 1px solid #ebedf3;
+            background-color: #f5f8fa;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 14px;
+            outline: none;
+        }
+        .wghrm-custom-search-input:focus {
+            border-color: #4e73df;
+        }
+        .wghrm-items-container {
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .wghrm-custom-dropdown-item {
+            border-radius: 8px !important;
+            padding: 8px 12px !important;
+            font-size: 14px;
+            color: #4b5563 !important;
+            margin-bottom: 2px;
+        }
+        .wghrm-custom-dropdown-item.active, .wghrm-custom-dropdown-item:hover {
+            background-color: #f1f3f9 !important;
+            color: #4e73df !important;
+        }
+    </style>
 
     <script>
         // Toggle filter
@@ -501,6 +622,11 @@
             document.getElementById("filterName").value = "";
             document.getElementById("filterStatus").value = "";
             document.getElementById("filterDepartment").value = "";
+            
+            // Clear label text configurations manually 
+            document.getElementById("statusDropdownBtn").querySelector('span').innerText = 'All Status';
+            document.getElementById("deptDropdownBtn").querySelector('span').innerText = 'All Departments';
+            
             applyFilters();
         }
 
@@ -523,5 +649,29 @@
                     .classList.add('d-none');
             }
         });
+
+        function wghrmFilterItems(input) {
+            let filter = input.value.toLowerCase();
+            let container = input.closest('.dropdown-menu').querySelector('.wghrm-items-container');
+            let items = container.getElementsByClassName('wghrm-custom-dropdown-item');
+            
+            for (let i = 0; i < items.length; i++) {
+                let text = items[i].textContent || items[i].innerText;
+                if (text.toLowerCase().indexOf(filter) > -1) {
+                    items[i].style.setProperty('display', '', 'important');
+                } else {
+                    items[i].style.setProperty('display', 'none', 'important');
+                }
+            }
+        }
+
+        function updateOffcanvasDropdown(inputId, val, btnId, text, element) {
+            document.getElementById(inputId).value = val;
+            document.getElementById(btnId).querySelector('span').innerText = text;
+            
+            let container = element.closest('.wghrm-items-container');
+            container.querySelectorAll('.wghrm-custom-dropdown-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+        }
     </script>
 @endsection

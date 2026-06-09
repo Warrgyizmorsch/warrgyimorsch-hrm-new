@@ -140,7 +140,7 @@
                         <div class="d-flex align-items-center gap-2">
                             <span class="text-muted fw-bold text-uppercase"
                                 style="font-size: 10px; letter-spacing: 0.5px;">Show</span>
-                            <select id="entriesLimit" class="form-select border-0 shadow-none fw-bold"
+                            <select id="entriesLimit" class="form-select select-small border-0 shadow-none fw-bold"
                                 onchange="paginateTable()"
                                 style="width: 80px; height: 38px; border-radius: 8px; font-size: 13px; color: #334155; background-color: #f1f5f9; padding: 0 10px; cursor: pointer; transition: all 0.2s ease;">
                                 <option value="20">20</option>

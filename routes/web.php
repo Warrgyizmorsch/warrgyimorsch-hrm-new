@@ -87,6 +87,7 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::put('/employees/{id}', [EmployeeController::class, 'update'])->name('employees.update');
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::get('/employees-export', [EmployeeController::class, 'export'])->name('employees.export');
+    Route::post('/employee/update-accountStatus', [EmployeeController::class, 'updateAccountStatus'])->name('users.update-accountStatus');
 
     Route::get('/broadcasts/{id}/edit', [BroadcastController::class, 'edit'])->name('broadcasts.edit');
     Route::put('/broadcasts/{id}', [BroadcastController::class, 'update'])->name('broadcasts.update');
@@ -140,6 +141,8 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::post('/payroll/calculate', [PayrollController::class, 'calculatePayroll'])->name('payroll.calculate');
     Route::post('/payroll/sendDateRange', [PayrollController::class, 'calculateInRage'])->name('payroll.sendDateRange');
     Route::post('/payroll/store', [PayrollController::class, 'storePayroll'])->name('payroll.store');
+    Route::get('/payroll/{id}/edit', [PayrollController::class, 'editPayroll'])->name('payroll.edit');
+    Route::put('/payroll/{id}', [PayrollController::class, 'updatePayroll'])->name('payroll.update');
   
     Route::post('/payroll/{id}/status', [PayrollController::class, 'updateStatus'])->name('payroll.status');
     Route::delete('/payroll/{id}', [PayrollController::class, 'destroy'])->name('payroll.destroy');

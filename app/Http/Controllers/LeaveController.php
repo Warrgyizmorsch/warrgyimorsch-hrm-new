@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\LeaveAllotment;
-use App\Models\Attendance;
+// use App\Models\Attendance;
 use App\Exports\LeaveBalancesExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
@@ -39,7 +39,7 @@ class LeaveController extends Controller
         ]);
 
         if ($isAdmin) {
-            $employees = Employee::orderBy('name', 'asc')->get();
+            $employees = Employee::active()->orderBy('name', 'asc')->get();
             $allotments = LeaveAllotment::where('month', $month)
                 ->where('year', $year)
                 ->get()
@@ -55,7 +55,7 @@ class LeaveController extends Controller
         } elseif ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
-                $employees = Employee::where('department', $department)->orderBy('name', 'asc')->get();
+                $employees = Employee::active()->where('department', $department)->orderBy('name', 'asc')->get();
                 $employeeIds = $employees->pluck('id');
                 
                 $allotments = LeaveAllotment::where('month', $month)
@@ -79,7 +79,7 @@ class LeaveController extends Controller
             }
         } else {
             $employee_id = $user->employee_id;
-            $employees = Employee::where('id', $employee_id)->get();
+            $employees = Employee::active()->where('id', $employee_id)->get();
             $allotments = LeaveAllotment::where('month', $month)
                 ->where('year', $year)
                 ->where('employee_id', $employee_id)
@@ -168,7 +168,7 @@ class LeaveController extends Controller
 
     private function calculateBalances($employees = null)
     {
-        $employees = $employees ?? Employee::orderBy('name', 'asc')->get();
+        $employees = $employees ?? Employee::active()->orderBy('name', 'asc')->get();
         $balances = [];
 
         foreach ($employees as $employee) {

@@ -81,7 +81,7 @@ class PayrollController extends Controller
             ->orderBy('attendances.attendance_date', 'desc')
             ->paginate(31);
 
-        $empQuery = Employee::orderBy('name', 'asc');
+        $empQuery = Employee::active()->orderBy('name', 'asc');
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
@@ -202,7 +202,7 @@ class PayrollController extends Controller
      */
     public function addAttendance()
     {
-        $employees = Employee::all();
+        $employees = Employee::active()->get();
         return view('payroll.add-attendance', compact('employees'));
     }
 
@@ -354,7 +354,7 @@ class PayrollController extends Controller
             $month = $request->month; // YYYY-MM
             $employeeId = $request->employee_id;
 
-            $employee = Employee::findOrFail($employeeId);
+            $employee = Employee::active()->findOrFail($employeeId);
 
             // 📅 Month Setup
             $date = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
@@ -469,7 +469,7 @@ class PayrollController extends Controller
 
             // Per day salary
             $perDaySalary = $monthlySalary / $totalDays;
-            // echo $perDaySalary;exit;
+
             // Gross Salary
             $grossSalary = $perDaySalary * $payableDays;
 
@@ -479,16 +479,27 @@ class PayrollController extends Controller
             }
 
             // 📉 STEP 3: Deductions
-            $otherDeduction = (float) ($request->other_deduction ?? 0);
+            $pf = 0;
+            $esi = 0;
 
-            // PF: employee contribution is 12% of earned monthly basic.
-            $earnedBasic = (($employee->basic_salary ?? 0) / $totalDays) * $payableDays;
-            $pf = $employee->pf ? ($earnedBasic * 0.12) : 0;
-
-            // ESI: employee contribution is 0.75% of gross for ESI-enabled employees up to 21,000 wages.
-            $esi = ($employee->esi && $grossSalary <= 21000) ? ($grossSalary * 0.0075) : 0;
+            $pf = $request->pf ?? $pf;
+            $esi = $request->esi ?? $esi;
+            $otherDeduction = $request->other_deduction ?? 0;
 
             $totalDeductions = $pf + $esi + $otherDeduction;
+
+            // PF (12% of basic portion only)
+            if ($employee->pf) {
+                $basicMonthly = ($employee->basic_salary ?? 0) / 12;
+                $pf = ($basicMonthly / $totalDays * $payableDays) * 0.12;
+            }
+
+            // ESI (only if salary <= 21000)
+            if ($employee->esi == 0 && $grossSalary <= 21000) {
+                $esi = $grossSalary * 0.0075;
+            }
+
+            $totalDeductions = $pf + $esi;
 
             // 💵 STEP 4: Net Salary
             $netSalary = max(0, $grossSalary - $totalDeductions);
@@ -507,8 +518,6 @@ class PayrollController extends Controller
                 // Attendance
                 'payable_days' => $payableDays,
                 'unpaid_days' => round($unpaidDays, 2),
-                'total_days' => $totalDays,
-                'perdaysalary'=> round($perDaySalary, 2),
 
                 //  ORIGINAL MONTHLY SALARY (IMPORTANT)
                 'basic_salary' => $employee->basic_salary,
@@ -516,8 +525,6 @@ class PayrollController extends Controller
                 'conveyance_allowance' => $employee->conveyance_allowance,
                 'medical_allowance' => $employee->medical_allowance,
                 'other_allowance' => $employee->other_allowance,
-                'pf_enabled' => (bool) $employee->pf,
-                'esi_enabled' => (bool) $employee->esi,
 
                 //  CALCULATED (for reference only)
                 'calculated_basic' => round(($employee->basic_salary / $totalDays) * $payableDays, 2),
@@ -557,7 +564,7 @@ class PayrollController extends Controller
     public function calculateInRage(Request $request)
     {
         try {
-            $employee = Employee::findOrFail($request->employee_id);
+            $employee = Employee::active()->findOrFail($request->employee_id);
 
             $start = \Carbon\Carbon::parse($request->from_date)->startOfMonth();
             $end = \Carbon\Carbon::parse($request->to_date)->endOfMonth();
@@ -630,7 +637,7 @@ class PayrollController extends Controller
         $response = $this->calculatePayroll($request);
 
         $payroll = $response->getData()->payroll;
-        $payroll->employee = Employee::find($employeeId);
+        $payroll->employee = Employee::active()->find($employeeId);
 
         return $payroll;
     }
@@ -1143,6 +1150,67 @@ class PayrollController extends Controller
             ->with('success', 'Attendance updated successfully');
     }
 
+    /**
+     * Get payroll record for editing
+     */
+    public function editPayroll($id)
+    {
+        try {
+            $payroll = Payroll::with('employee')->findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $payroll->id,
+                    'employee_id' => $payroll->employee_id,
+                    'employee_name' => $payroll->employee->name,
+                    'month' => $payroll->month,
+                    'payable_days' => $payroll->payable_days,
+                    'basic_salary' => $payroll->basic_salary,
+                    'hra' => $payroll->hra,
+                    'conveyance_allowance' => $payroll->conveyance_allowance,
+                    'medical_allowance' => $payroll->medical_allowance,
+                    'other_allowance' => $payroll->other_allowance,
+                    'gross_salary' => $payroll->gross_salary,
+                    'pf_deduction' => $payroll->pf_deduction,
+                    'esi_deduction' => $payroll->esi_deduction,
+                    'other_deduction' => $payroll->other_deduction,
+                    'net_salary' => $payroll->net_salary,
+                    'status' => $payroll->status,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Update payroll record
+     */
+    public function updatePayroll(Request $request, $id)
+    {
+        try {
+            $data = $request->all();
+            
+            $payroll = Payroll::findOrFail($id);
+            $payroll->update($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll updated successfully!',
+                'payroll_id' => $payroll->id,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
     public function destroy($id)
     {
         try {
@@ -1210,7 +1278,7 @@ class PayrollController extends Controller
         $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
         $isTeamLeader = in_array($role, ['team_leader']);
 
-        $empQuery = Employee::orderBy('name', 'asc');
+        $empQuery = Employee::active()->orderBy('name', 'asc');
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
@@ -1309,7 +1377,7 @@ class PayrollController extends Controller
             // Security check for Team Leader
             if ($isTeamLeader) {
                 $department = $user->employee->department ?? null;
-                $targetEmployee = Employee::find($request->employee_id);
+                $targetEmployee = Employee::active()->find($request->employee_id);
                 if ($department && $targetEmployee && $targetEmployee->department !== $department) {
                     return response()->json(['success' => false, 'message' => 'Unauthorized access to employee data.'], 403);
                 }
@@ -1370,7 +1438,7 @@ class PayrollController extends Controller
                 }
             }
 
-            $employeeName = Employee::where('id', $request->employee_id)->value('name');
+            $employeeName = Employee::active()->where('id', $request->employee_id)->value('name');
 
             return response()->json([
                 'success' => true,
@@ -1386,7 +1454,7 @@ class PayrollController extends Controller
 
     public function editByName(Request $request, $employee_id)
     {
-        $employee = Employee::findOrFail($employee_id);
+        $employee = Employee::active()->findOrFail($employee_id);
 
         $query = Attendance::where('employee_id', $employee_id);
 

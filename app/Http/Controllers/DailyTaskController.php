@@ -32,17 +32,17 @@ class DailyTaskController extends Controller
             ]);
         }
 
-        $otherProject->update(['members' => Employee::pluck('id')->toArray()]);
+        $otherProject->update(['members' => Employee::active()->pluck('id')->toArray()]);
 
         if ($role == 'team_leader') {
             $teamLeaderDepartment = auth()->user()->employee->department ?? null;
 
-            $departmentEmployeeIds = Employee::where('department', $teamLeaderDepartment)
+            $departmentEmployeeIds = Employee::active()->where('department', $teamLeaderDepartment)
                 ->pluck('id');
 
             $query->whereIn('employee_id', $departmentEmployeeIds);
 
-            $employees = Employee::where('department', $teamLeaderDepartment)->get();
+            $employees = Employee::active()->where('department', $teamLeaderDepartment)->get();
 
             $projects = Project::where(function ($q) use ($departmentEmployeeIds) {
                 foreach ($departmentEmployeeIds as $employeeId) {
@@ -54,14 +54,14 @@ class DailyTaskController extends Controller
 
             $query->where('employee_id', $employeeId);
 
-            $employees = Employee::where('id', $employeeId)->get();
+            $employees = Employee::active()->where('id', $employeeId)->get();
 
             $projects = Project::whereJsonContains('members', (string) $employeeId)
                 ->orderBy('name')
                 ->get();
         } else {
             $projects = Project::orderBy('name')->get();
-            $employees = Employee::orderBy('name')->get();
+            $employees = Employee::active()->orderBy('name')->get();
         }
 
         if ($request->project_id) {

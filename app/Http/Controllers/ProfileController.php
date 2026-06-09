@@ -109,12 +109,39 @@ class ProfileController extends Controller
                 ->sum('total_days');
             // echo $total_used;exit;
             $balances[] = [
-                'type' => date('F') . ' Leave Cycle (' . date('Y') . ')',
+                'type' => 'Total' . ' Leave Cycle ',
                 'allotted' => $total_allotted,
                 'used' => $total_used,
-                'available' => $total_allotted - $total_used,
+                'available' => max(0, $total_allotted - $total_used),
                 'reference' => 'Monthly Quota'
             ];
+
+            // Monthly Rows
+            $monthlyAllotments = LeaveAllotment::where('employee_id', $employee->id)
+                ->orderBy('year', 'desc')
+                ->orderBy('month', 'desc')
+                ->get();
+
+            foreach ($monthlyAllotments as $allotment) {
+
+                $used = LeaveApplication::where('employee_id', $employee->id)
+                    ->where('status', 'approved')
+                    ->where('leave_category', 'NOT LIKE', '%WFH%')
+                    ->whereYear('start_date', $allotment->year)
+                    ->whereMonth('start_date', $allotment->month)
+                    ->sum('total_days');
+
+                $balances[] = [
+                    'type' => strtoupper(date(
+                        'F',
+                        mktime(0, 0, 0, $allotment->month, 1)
+                    )) . " ({$allotment->year})",
+                    'allotted' => $allotment->leave_count,
+                    'used' => $used,
+                    'available' => max(0, $allotment->leave_count - $used),
+                    'reference' => 'Monthly Quota'
+                ];
+            }
         }
 
         return view('profile.leave-balance', [

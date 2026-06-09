@@ -337,6 +337,7 @@
                                     <th style="width:200px; padding: 15px; font-size: 14px; text-align: center;">DEPARTMENT</th>
                                     <th style="width:140px; padding: 15px; font-size: 14px; text-align: center;">ATTENDANCE</th>
                                     <th style="width:140px; padding: 15px; font-size: 14px; text-align: center;">PHOTO</th>
+                                    <th style="width:140px; padding: 15px; font-size: 14px; text-align: center;">ACCOUNT STATUS</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -371,6 +372,18 @@
                                             @else
                                                 <div style="width:45px;height:45px;background:rgba(99, 102, 241, 0.1);color:#6366f1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;margin:0 auto;">{{ substr($emp->name, 0, 1) }}</div>
                                             @endif
+                                        </td>
+                                        <td>
+                                            <select class="form-select account-status" data-user-id="{{ $emp->user->id ?? $emp->id }}">
+                                                <option value="active"
+                                                    {{ ($emp->user->account_status ?? 'active') == 'active' ? 'selected' : '' }}>
+                                                    Active
+                                                </option>
+                                                <option value="inactive"
+                                                    {{ ($emp->user->account_status ?? 'active') == 'inactive' ? 'selected' : '' }}>
+                                                    Inactive
+                                                </option>
+                                            </select>
                                         </td>
                                     </tr>
                                 @empty
@@ -1257,6 +1270,7 @@
         </style>
 
         <!-- SEARCH & VIEW MODAL -->
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script>
             // Legacy search binding guard: current page uses .employee-page-search-input fields instead.
             const legacySearchInput = document.getElementById('searchInput');
@@ -2032,6 +2046,36 @@
                 initializeSearchDropdown('departmentFilterDropdown', 'filterDepartment', 'All Departments');
                 
                 console.log('=== Initialization complete ===');
+            });
+
+
+            $(document).on('change', '.account-status', function () {
+                let status = $(this).val();
+                let userId = $(this).data('user-id');
+                $.ajax({
+                    url: "{{ route('users.update-accountStatus') }}",
+                    type: "POST",
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        user_id: userId,
+                        status: status
+                    },
+                    
+                    success: function(response) {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.success(response.message);
+                        } else {
+                            alert(response.message);
+                        }
+                    },
+                    error: function() {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.error('Something went wrong');
+                        } else {
+                            alert('Something went wrong');
+                        }
+                    }
+                });
             });
         </script>
 

@@ -399,8 +399,8 @@
                                         <td class="text-center small fw-bold">${item.total_allotted}</td>
                                         <td class="text-center small fw-bold text-muted">${item.total_taken}</td>
                                         <td class="text-center pe-3">
-                                            <span class="badge rounded-pill px-2 py-1 ${item.balance < 0 ? 'bg-soft-danger text-danger' : 'bg-soft-primary text-primary'} fw-bold" style="font-size: 10px;">
-                                                ${item.balance}
+                                            <span class="badge rounded-pill px-2 py-1 ${item.balance <= 0 ? 'bg-soft-danger text-danger' : 'bg-soft-primary text-primary'} fw-bold" style="font-size: 10px;">
+                                                ${item.balance < 0 ? 0 : item.balance }
                                             </span>
                                         </td>
                                     `;
