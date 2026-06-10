@@ -968,18 +968,18 @@ class PayrollController extends Controller
      * Export attendance records (Professional Monthly Excel Grid)
      */
     public function exportAttendance(Request $request)
-    {
-        $start = $request->start_date;
-        $end = $request->end_date;
-        $employeeId = $request->employee_id;
+        {
+            $start = $request->start_date;
+            $end = $request->end_date;
+            $employeeId = $request->employee_id;
 
-        $filename = 'attendance_' . $start . '_to_' . $end . '.xlsx';
+            $filename = 'attendance_export.xlsx';
 
-        return Excel::download(
-            new \App\Exports\AttendanceExport($start, $end, $employeeId),
-            $filename
-        );
-    }
+            return Excel::download(
+                new \App\Exports\AttendanceExport($start, $end, $employeeId),
+                $filename
+            );
+        }
     /**
      * Update payroll status
      */

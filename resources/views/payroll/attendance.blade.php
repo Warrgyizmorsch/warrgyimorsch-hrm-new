@@ -982,34 +982,38 @@
             window.location.href = `{{ url('/payroll/attendance') }}/${id}/edit`;
         }
 
-        function exportAttendance() {
+         function exportAttendance() {
             const start = document.getElementById('startDate').value;
             const end = document.getElementById('endDate').value;
             const employeeId = document.getElementById('selectedEmployeeId')?.value || '';
 
-            let url = "{{ route('payroll.attendance.export') }}"
-
-            let params = [];
-
-            if (start) {
-                params.push("start_date=" + start);
-            }
-
-            if (end) {
-                params.push("end_date=" + end);
-            }
-
-            if (employeeId) {
-                params.push("employee_id=" + employeeId);
-            }
-
-            if (params.length > 0) {
-                url += "?" + params.join("&");
-            }
-
-            window.location.href = url;
+            fetch('{{ route("payroll.attendance.export") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    start_date: start,
+                    end_date: end,
+                    employee_id: employeeId
+                })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'attendance.xlsx'; // change filename if needed
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                console.error('Export failed:', error);
+            });
         }
-
 
         document.addEventListener('DOMContentLoaded', function () {
             if (typeof feather !== 'undefined') {
