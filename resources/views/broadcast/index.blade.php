@@ -111,8 +111,28 @@
 
             {{-- Data Table List Section --}}
             <div class="card shadow-sm border-0">
-                <div class="card-header" style="font-size: 20px; font-weight: 500;">
-                    Broadcast List
+                <div class="d-flex justify-content-between">
+                    <div class="card-header" style="font-size: 20px; font-weight: 500;">
+                        Broadcast List
+                    </div>
+
+                    <!-- SHOW ENTRIES -->
+                    <div class="d-flex align-items-center gap-2 me-5">
+                        <span class="text-muted small fw-bold text-uppercase">Show</span>
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" id="showEntriesBtn"
+                                style="width: 80px; height: 44px; padding: 0 15px;">
+                                {{ $perPage ?? 20 }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                            </div>
+                        </div>
+                        <span class="text-muted small fw-bold text-uppercase">entries</span>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -156,12 +176,40 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- PAGINATION -->
+                    @if($broadcasts->hasPages())
+                        <div class="card-footer bg-white border-0 py-3 attendance-pagination">
+                            {{ $broadcasts->appends(request()->query())->links('pagination::bootstrap-5') }}
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 
     <style>
+            .wghrm-custom-select-btn {
+                background-color: #fff !important;
+                border: 1px solid #e2e8f0 !important;
+                border-radius: 12px !important;
+                color: #1e293b !important;
+                padding: 10px 16px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                width: 100% !important;
+                height: 48px !important;
+                font-size: 14px !important;
+                font-weight: 600 !important;
+                transition: all 0.2s !important;
+                text-align: left !important;
+            }
+            .wghrm-custom-select-btn:focus {
+                border-color: #3858f9 !important;
+                box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.1) !important;
+                outline: none !important;
+            }
         #receiptModal .modal-content {
             border-radius: 8px;
             overflow: hidden;

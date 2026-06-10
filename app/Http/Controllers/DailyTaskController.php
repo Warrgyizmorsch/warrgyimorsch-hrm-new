@@ -80,9 +80,16 @@ class DailyTaskController extends Controller
             $query->where('end_date', '<=', $request->upto_date);
         }
 
-        $tasks = $query->latest()->get();
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
 
-        return view('projects.tasks.index', compact('tasks', 'projects', 'employees', 'isAdmin'));
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
+        $tasks = $query->latest()->paginate($perPage)->withQueryString();
+
+        return view('projects.tasks.index', compact('tasks', 'projects', 'employees', 'isAdmin', 'perPage'));
     }
 
     public function store(Request $request)

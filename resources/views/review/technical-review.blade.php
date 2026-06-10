@@ -8,13 +8,83 @@
             </div>
             <ul class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
-                <li class="breadcrumb-item">Personal Review</li>
+                <li class="breadcrumb-item">Technical Review</li>
             </ul>
         </div>
-        <div class="page-header-right">
+        <div class="page-header-right d-flex justify-content-between">
+            <button type="button" class="btn btn-primary me-5" data-bs-toggle="modal" data-bs-target="#evaluationModal">
+                <i class="feather-settings me-1"></i>
+                Manage Evaluation
+            </button>
             <button id="openCreateReviewBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReviewModal" data-mode="create">
                 <i class="fa fa-plus me-1"></i> Create Review
             </button>
+        </div>
+    </div>
+
+    <div class="modal fade" id="evaluationModal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5>Manage Review Evaluation</h5>
+                </div>
+
+                <form action="{{ url('/technical-review-evaluation/store') }}"
+                    method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label>Department</label>
+                            <select name="department" class="form-select" required>
+                                <option value="">Select Department</option>
+                                @foreach($departments as $department)
+                                    <option value="{{ $department->name }}">
+                                        {{ $department->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Criteria Name</th>
+                                    <th>Max Point</th>
+                                    <th width="80">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="criteriaContainer">
+                                <tr>
+                                    <td><input type="text" name="criterianame[]" class="form-control" required></td>
+                                    <td><input type="number" name="maxpoint[]" class="form-control max-point" step="0.01" required></td>
+                                    <td width="120" class="d-flex justify-content-between">
+                                        <button type="button" class="btn btn-primary add-row"><i class="feather-plus"></i></button>
+                                        <button type="button" class="btn btn-danger remove-row"><i class="feather-minus"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th class="text-end">Total</th>
+                                    <th>
+                                        <input type="number" id="totalPoints" class="form-control" readonly>
+                                    </th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="submit" id="saveEvaluationBtn" class="btn btn-primary">
+                            Save
+                        </button>
+                    </div>
+
+                </form>
+            </div>
         </div>
     </div>
 
@@ -30,10 +100,10 @@
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header bg-primary">
-                        <h5 class="modal-title text-white">Personal Review Evaluation</h5>
+                        <h5 class="modal-title text-white">Technical Review Evaluation</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <form id="reviewForm" action="{{ url('/employee-review/store') }}" method="POST">
+                    <form id="technicalReviewForm" action="{{ url('/technical-review/store') }}" method="POST">
                         @csrf
                         <div class="modal-body">
                             @php
@@ -147,113 +217,40 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>Attendance <input type="hidden" name="criteria_name[]" value="Attendance"></td>
-                                        <td>5 <input type="hidden" name="criteria_point[]" value="5"></td>
-                                        <td><input type="number" step=".5" class="form-control self-input" data-point="5" name="self_review[]" min="0" max="5" value="{{ old('self_review.0') }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="5" name="author_review[]" min="0" max="5" value="{{ old('author_review.0') }}"></td>                                      
-                                        @endif
-                                        @if($isAdmin)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="5" name="author_review[]" min="0" max="5" value="{{ old('author_review.0') }}"></td>
-                                            <td><input type="number" step=".5" class="form-control admin-input" data-point="5" name="admin_review[]" min="0" max="5" value="{{ old('admin_review.0') }}"></td>
-                                        @endif
-                                    </tr>
-                                    <tr>
-                                        <td>Behaviour <input type="hidden" name="criteria_name[]" value="Behaviour"></td>
-                                        <td>7.5 <input type="hidden" name="criteria_point[]" value="7.5"></td>
-                                        <td><input type="number" step=".5" class="form-control self-input" data-point="7.5" name="self_review[]" min="0" max="7.5" value="{{ old('self_review.1') }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="7.5" name="author_review[]" min="0" max="7.5" value="{{ old('author_review.1') }}"></td>
-                                        @endif
-                                        @if($isAdmin)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="7.5" name="author_review[]" min="0" max="7.5" value="{{ old('author_review.1') }}"></td>
-                                            <td><input type="number" step=".5" class="form-control admin-input" data-point="7.5" name="admin_review[]" min="0" max="7.5" value="{{ old('admin_review.1') }}"></td>
-                                        @endif
-                                    </tr>
-                                    <tr>
-                                        <td>Results <input type="hidden" name="criteria_name[]" value="Results"></td>
-                                        <td>12.5 <input type="hidden" name="criteria_point[]" value="12.5"></td>
-                                        <td><input type="number" step=".5" class="form-control self-input" data-point="12.5" name="self_review[]" min="0" max="12.5" value="{{ old('self_review.2') }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="12.5" name="author_review[]" min="0" max="12.5" value="{{ old('author_review.2') }}"></td>
-                                        @endif
-                                        @if($isAdmin)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="12.5" name="author_review[]" min="0" max="12.5" value="{{ old('author_review.2') }}"></td>
-                                            <td><input type="number" step=".5" class="form-control admin-input" data-point="12.5" name="admin_review[]" min="0" max="12.5" value="{{ old('admin_review.2') }}"></td>
-                                        @endif
-                                    </tr>
-                                    <tr>
-                                        <td>Extra Efforts <input type="hidden" name="criteria_name[]" value="Extra Efforts"></td>
-                                        <td>5 <input type="hidden" name="criteria_point[]" value="5"></td>
-                                        <td><input type="number" step=".5" class="form-control self-input" data-point="5" name="self_review[]" min="0" max="5" value="{{ old('self_review.3') }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="5" name="author_review[]" min="0" max="5" value="{{ old('author_review.3') }}"></td>
-                                        @endif
-                                        @if($isAdmin)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="5" name="author_review[]" min="0" max="5" value="{{ old('author_review.3') }}"></td>
-                                            <td><input type="number" step=".5" class="form-control admin-input" data-point="5" name="admin_review[]" min="0" max="5" value="{{ old('admin_review.3') }}"></td>
-                                        @endif
-                                    </tr>
-                                    <tr>
-                                        <td>Honesty <input type="hidden" name="criteria_name[]" value="Honesty"></td>
-                                        <td>5 <input type="hidden" name="criteria_point[]" value="5"></td>
-                                        <td><input type="number" step=".5" class="form-control self-input" data-point="5" name="self_review[]" min="0" max="5" value="{{ old('self_review.4') }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="5" name="author_review[]" min="0" max="5" value="{{ old('author_review.4') }}"></td>          
-                                        @endif
-                                        @if($isAdmin)                                        
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="5" name="author_review[]" min="0" max="5" value="{{ old('author_review.4') }}"></td>
-                                            <td><input type="number" step=".5" class="form-control admin-input" data-point="5" name="admin_review[]" min="0" max="5" value="{{ old('admin_review.4') }}"></td>
-                                        @endif
-                                    </tr>
-                                    <tr>
-                                        <td>Punctuality <input type="hidden" name="criteria_name[]" value="Punctuality"></td>
-                                        <td>5 <input type="hidden" name="criteria_point[]" value="5"></td>
-                                        <td><input type="number" step=".5" class="form-control self-input" data-point="5" name="self_review[]" min="0" max="5" value="{{ old('self_review.5') }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="5" name="author_review[]" min="0" max="5" value="{{ old('author_review.5') }}"></td>                                        
-                                        @endif
-                                        @if($isAdmin)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="5" name="author_review[]" min="0" max="5" value="{{ old('author_review.5') }}"></td>                                        
-                                            <td><input type="number" step=".5" class="form-control admin-input" data-point="5" name="admin_review[]" min="0" max="5" value="{{ old('admin_review.5') }}"></td>
-                                        @endif
-                                    </tr>
-                                    <tr>
-                                        <td>Reporting <input type="hidden" name="criteria_name[]" value="Reporting"></td>
-                                        <td>7.5 <input type="hidden" name="criteria_point[]" value="7.5"></td>
-                                        <td><input type="number" step=".5" class="form-control self-input" data-point="7.5" name="self_review[]" min="0" max="7.5" value="{{ old('self_review.6') }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="7.5" name="author_review[]" min="0" max="7.5" value="{{ old('author_review.6') }}"></td>
-                                        @endif
-                                        @if($isAdmin)
-                                        <td><input type="number" step=".5" class="form-control author-input" data-point="7.5" name="author_review[]" min="0" max="7.5" value="{{ old('author_review.6') }}"></td>
-                                        <td><input type="number" step=".5" class="form-control admin-input" data-point="7.5" name="admin_review[]" min="0" max="7.5" value="{{ old('admin_review.6') }}"></td>
-                                        @endif
-                                    </tr>
-                                    <tr>
-                                        <td>Customer Relationship <input type="hidden" name="criteria_name[]" value="Customer Relationship"></td>
-                                        <td>2.5 <input type="hidden" name="criteria_point[]" value="2.5"></td>
-                                        <td><input type="number" step=".5" class="form-control self-input" data-point="2.5" name="self_review[]" min="0" max="2.5" value="{{ old('self_review.7') }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="2.5" name="author_review[]" min="0" max="2.5" value="{{ old('author_review.7') }}"></td>
-                                        @endif
-                                        @if($isAdmin)
-                                            <td><input type="number" step=".5" class="form-control author-input" data-point="2.5" name="author_review[]" min="0" max="2.5" value="{{ old('author_review.7') }}"></td>
-                                            <td><input type="number" step=".5" class="form-control admin-input" data-point="2.5" name="admin_review[]" min="0" max="2.5" value="{{ old('admin_review.7') }}"></td>
-                                        @endif
-                                    </tr>
-                                    <tr>
-                                        <td><b>Total</b></td>
-                                        <td><input readonly value="50" class="form-control"></td>
-                                        <td><input readonly id="selfTotal" name="self_total" class="form-control" value="{{ old('self_total', 0) }}"></td>
-                                        @if($isTeamLeader)
-                                            <td><input readonly id="authorTotal" name="author_total" class="form-control" value="{{ old('author_total', 0) }}"></td>
-                                        @endif
-                                        @if($isAdmin)
-                                            <td><input readonly id="authorTotal" name="author_total" class="form-control" value="{{ old('author_total', 0) }}"></td>
-                                            <td><input readonly id="adminTotal" name="admin_total" class="form-control" value="{{ old('admin_total', 0) }}"></td>
-                                        @endif
+                                    @php
+                                        $department = $employeeRecord->department ?? '';
+                                    @endphp
+
+                                    @foreach($evaluations as $evaluation)
+                                        <tr>
+                                            <td>
+                                                {{ $evaluation->criteria_name }}
+                                                <input type="hidden" name="criteria_name[]" value="{{ $evaluation->criteria_name }}">
+                                            </td>
+                                            <td>
+                                                {{ $evaluation->max_point }}
+                                                <input type="hidden" name="criteria_point[]" value="{{ $evaluation->max_point }}">
+                                            </td>
+                                            <td>
+                                                <input type="number" name="self_review[]" class="form-control">
+                                            </td>
+                                            <td>
+                                                <input type="number" name="author_review[]" class="form-control">
+                                            </td>
+                                            <td>
+                                                <input type="number" name="admin_review[]" class="form-control">
+                                            </td>
+                                        </tr>
+                                    @endforeach
+
+                                    <tr class="fw-bold">
+                                        <td>Total</td>
+                                        <td>
+                                            {{ $evaluations->sum('max_point') }}
+                                        </td>
+                                        <td id="selfTotal">0</td>
+                                        <td id="teamTotal">0</td>
+                                        <td id="adminTotal">0</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -313,7 +310,7 @@
                             </button>
                             @if($isAdmin || $isTeamLeader)
                                 <button
-                                    class="btn btn-success edit-review-btn ms-1"
+                                    class="btn btn-success edit-technical-review-btn ms-1"
                                     style="height: 20px; width:20px"
                                     data-mode="edit"
                                     data-review-id="{{ $review->id }}"
@@ -558,226 +555,291 @@
     </style>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const customSelects = document.querySelectorAll("[data-select]");
+        document.addEventListener('DOMContentLoaded', function () {
+            function setupReviewSelect(selectEl) {
+                const trigger = selectEl.querySelector('[data-select-trigger]');
+                const menu = selectEl.querySelector('[data-select-menu]');
+                const label = selectEl.querySelector('[data-select-label]');
+                const hiddenInput = selectEl.querySelector('input[type="hidden"]');
+                const searchInput = selectEl.querySelector('[data-select-search]');
+                const options = selectEl.querySelectorAll('[data-select-option]');
 
-            function closeAllSelects(exceptSelect = null) {
-                customSelects.forEach(function(select) {
-                    if (select === exceptSelect) {
-                        return;
-                    }
+                if (!trigger || !menu || !label || !hiddenInput) return;
 
-                    const trigger = select.querySelector("[data-select-trigger]");
-                    const menu = select.querySelector("[data-select-menu]");
-                    if (!trigger || !menu) {
-                        return;
-                    }
-
-                    select.classList.remove("is-open");
-                    trigger.setAttribute("aria-expanded", "false");
-                    menu.hidden = true;
-                });
-            }
-
-            customSelects.forEach(function(select) {
-                const hiddenInput = select.querySelector("input[type='hidden']");
-                const trigger = select.querySelector("[data-select-trigger]");
-                const menu = select.querySelector("[data-select-menu]");
-                const searchInput = select.querySelector("[data-select-search]");
-                const label = select.querySelector("[data-select-label]");
-                const options = select.querySelectorAll("[data-select-option]");
-
-                if (!hiddenInput || !trigger || !menu || !label) {
-                    return;
-                }
-
-                trigger.addEventListener("click", function() {
-                    const isOpen = select.classList.contains("is-open");
-                    closeAllSelects(select);
-
-                    select.classList.toggle("is-open", !isOpen);
-                    trigger.setAttribute("aria-expanded", String(!isOpen));
-                    menu.hidden = isOpen;
-
-                    if (!isOpen && searchInput) {
-                        searchInput.value = "";
-                        options.forEach(option => option.classList.remove("is-hidden"));
-                        searchInput.focus();
-                    }
+                trigger.addEventListener('click', function () {
+                    const isOpen = !menu.hasAttribute('hidden');
+                    document.querySelectorAll('.review-select [data-select-menu]').forEach(m => m.setAttribute('hidden', ''));
+                    menu.toggleAttribute('hidden', isOpen);
                 });
 
-                options.forEach(function(option) {
-                    option.addEventListener("click", function() {
-                        hiddenInput.value = option.dataset.value || "";
-                        label.textContent = option.textContent.trim();
-                        options.forEach(item => item.classList.remove("is-selected"));
-                        option.classList.add("is-selected");
-                        closeAllSelects();
+                options.forEach(option => {
+                    option.addEventListener('click', function () {
+                        const value = this.dataset.value || '';
+                        hiddenInput.value = value;
+                        label.textContent = this.textContent.trim();
+
+                        options.forEach(opt => opt.classList.remove('is-selected'));
+                        this.classList.add('is-selected');
+                        menu.setAttribute('hidden', '');
                     });
                 });
 
                 if (searchInput) {
-                    searchInput.addEventListener("input", function() {
-                        const keyword = searchInput.value.trim().toLowerCase();
-
-                        options.forEach(function(option) {
-                            const text = option.textContent.toLowerCase();
-                            option.classList.toggle("is-hidden", !text.includes(keyword));
+                    searchInput.addEventListener('input', function () {
+                        const q = this.value.toLowerCase();
+                        options.forEach(opt => {
+                            opt.style.display = opt.textContent.toLowerCase().includes(q) ? '' : 'none';
                         });
                     });
                 }
-            });
-
-            document.addEventListener("click", function(e) {
-                if (!e.target.closest("[data-select]")) {
-                    closeAllSelects();
-                }
-            });
-            
-            function updateTotals() {
-                let selfTotal = 0;
-                let authorTotal = 0;
-                let adminTotal = 0;
-
-                document.querySelectorAll(".self-input").forEach(function(input) {
-                    let val = parseFloat(input.value);
-                    if (!isNaN(val)) selfTotal += val;
-                });
-
-                document.querySelectorAll(".author-input").forEach(function(input) {
-                    let val = parseFloat(input.value);
-                    if (!isNaN(val)) authorTotal += val;
-                });
-
-                document.querySelectorAll(".admin-input").forEach(function(input) {
-                    let val = parseFloat(input.value);
-                    if (!isNaN(val)) adminTotal += val;
-                });
-
-                document.getElementById("selfTotal").value = selfTotal % 1 === 0 ? selfTotal : selfTotal.toFixed(1);
-                document.getElementById("authorTotal").value = authorTotal % 1 === 0 ? authorTotal : authorTotal.toFixed(1);
-                document.getElementById("adminTotal").value = adminTotal % 1 === 0 ? adminTotal : adminTotal.toFixed(1);
             }
 
-            document.addEventListener("input", function(e) {
-                if (e.target.classList.contains("self-input") || e.target.classList.contains("author-input") || e.target.classList.contains("admin-input")) {
-                    let max = parseFloat(e.target.getAttribute("data-point")) || 0;
-                    let val = parseFloat(e.target.value) || 0;
+            document.querySelectorAll('.review-select').forEach(setupReviewSelect);
 
-                    if (val > max && e.target.value !== "") {
-                        alert("Cannot exceed " + max + " points for this criteria");
-                        e.target.value = "";
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('.review-select')) {
+                    document.querySelectorAll('.review-select [data-select-menu]').forEach(menu => menu.setAttribute('hidden', ''));
+                }
+            });
+
+            function updateTotals() {
+                let selfTotal = 0;
+                let teamTotal = 0;
+                let adminTotal = 0;
+
+                let hasSelf = false;
+                let hasTeam = false;
+                let hasAdmin = false;
+
+                document.querySelectorAll('input[name="self_review[]"]').forEach(input => {
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val)) {
+                        selfTotal += val;
+                        hasSelf = true;
                     }
+                });
+
+                document.querySelectorAll('input[name="author_review[]"]').forEach(input => {
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val)) {
+                        teamTotal += val;
+                        hasTeam = true;
+                    }
+                });
+
+                document.querySelectorAll('input[name="admin_review[]"]').forEach(input => {
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val)) {
+                        adminTotal += val;
+                        hasAdmin = true;
+                    }
+                });
+
+                document.getElementById('selfTotal').textContent = hasSelf ? selfTotal.toFixed(2) : '';
+                document.getElementById('teamTotal').textContent = hasTeam ? teamTotal.toFixed(2) : '';
+                document.getElementById('adminTotal').textContent = hasAdmin ? adminTotal.toFixed(2) : '';
+            }
+
+            document.addEventListener('input', function (e) {
+                if (
+                    e.target.matches('input[name="self_review[]"]') ||
+                    e.target.matches('input[name="author_review[]"]') ||
+                    e.target.matches('input[name="admin_review[]"]')
+                ) {
                     updateTotals();
                 }
             });
 
-            // Run validation check on blur fallback
-            document.addEventListener("focusout", function(e) {
-                if (e.target.classList.contains("self-input") || e.target.classList.contains("author-input") || e.target.classList.contains("author-input")) {
-                    let max = parseFloat(e.target.getAttribute("data-point")) || 0;
-                    let val = parseFloat(e.target.value) || 0;
+            updateTotals();
+        });
 
-                    if (val > max && e.target.value !== "") {
-                        e.target.value = "";
-                        updateTotals();
-                    }
-                }
-            });
+        document.addEventListener('DOMContentLoaded', function () {
+            const reviewForm = document.getElementById('technicalReviewForm');
 
-            // Handle switching modal between create and edit modes
-            const reviewForm = document.getElementById('reviewForm');
-            const openCreateBtn = document.getElementById('openCreateReviewBtn');
-
-            function setSelectValueWithinForm(name, value) {
+            function setSelectValue(name, value) {
                 const input = reviewForm.querySelector(`input[name="${name}"]`);
                 if (!input) return;
-                input.value = value || '';
+
+                input.value = value;
+
                 const select = input.closest('.review-select');
-                if (select) {
-                    const options = select.querySelectorAll('[data-select-option]');
-                    let foundText = '';
-                    options.forEach(opt => {
-                        if (opt.dataset.value == value) {
-                            opt.classList.add('is-selected');
-                            foundText = opt.textContent.trim();
-                        } else {
-                            opt.classList.remove('is-selected');
-                        }
-                    });
-                    const label = select.querySelector('[data-select-label]');
-                    if (label) label.textContent = foundText || value || label.textContent;
+                if (!select) return;
+
+                const options = select.querySelectorAll('[data-select-option]');
+                const label = select.querySelector('[data-select-label]');
+
+                let foundText = '';
+                options.forEach(opt => {
+                    if (opt.dataset.value === String(value)) {
+                        opt.classList.add('is-selected');
+                        foundText = opt.textContent.trim();
+                    } else {
+                        opt.classList.remove('is-selected');
+                    }
+                });
+
+                if (label) {
+                    label.textContent = foundText || value || 'Select';
                 }
             }
 
-            function resetFormToCreate() {
-                reviewForm.action = '{{ url('/employee-review/store') }}';
-                // Clear month/period/employee selects
-                ['month', 'period', 'user_id'].forEach(name => {
-                    const input = reviewForm.querySelector(`input[name="${name}"]`);
-                    if (!input) return;
-                    input.value = '';
-                    const select = input.closest('.review-select');
-                    if (select) {
-                        const label = select.querySelector('[data-select-label]');
-                        if (label) {
-                            if (name === 'user_id') label.textContent = 'Choose Employee...';
-                            else if (name === 'month') label.textContent = 'Select Month';
-                            else if (name === 'period') label.textContent = 'First Half';
-                        }
-                        select.querySelectorAll('[data-select-option]').forEach(op => op.classList.remove('is-selected'));
-                    }
-                });
-                // Clear numeric inputs
-                reviewForm.querySelectorAll('.self-input, .author-input, .admin-input').forEach(inp => inp.value = '');
-                updateTotals();
-            }
+            document.querySelectorAll('.edit-technical-review-btn').forEach(btn => {
+                btn.addEventListener('click', async function () {
+                    const reviewId = this.dataset.reviewId;
 
-            if (openCreateBtn) {
-                openCreateBtn.addEventListener('click', resetFormToCreate);
-            }
-
-            document.querySelectorAll('.edit-review-btn').forEach(btn => {
-                btn.addEventListener('click', async function() {
-                    const id = this.dataset.reviewId;
-                    reviewForm.action = `/employee-review/${id}/update`;
-                    setSelectValueWithinForm('month', this.dataset.month);
-                    setSelectValueWithinForm('period', this.dataset.period);
-                    setSelectValueWithinForm('user_id', this.dataset.userId);
+                    setSelectValue('month', this.dataset.month);
+                    setSelectValue('period', this.dataset.period);
+                    setSelectValue('user_id', this.dataset.userId);
 
                     try {
-                        const res = await fetch(`/review-details/${id}`);
-                        if (!res.ok) throw new Error('Failed to fetch review details');
+                        const res = await fetch(`{{ url('/technical-review-details') }}/${reviewId}`);
                         const details = await res.json();
 
-                        reviewForm.querySelectorAll('.self-input').forEach((inp, i) => {
-                            if (details[i] && details[i].self_review !== undefined && details[i].self_review !== null) {
-                                inp.value = details[i].self_review;
-                            }
+                        const selfInputs = reviewForm.querySelectorAll('input[name="self_review[]"]');
+                        const authorInputs = reviewForm.querySelectorAll('input[name="author_review[]"]');
+                        const adminInputs = reviewForm.querySelectorAll('input[name="admin_review[]"]');
+
+                        selfInputs.forEach((input, i) => {
+                            input.value = details[i]?.self_review != null && details[i]?.self_review !== 0 ? details[i].self_review : '';
                         });
-                        reviewForm.querySelectorAll('.author-input').forEach((inp, i) => {
-                            if (details[i] && details[i].author_review !== undefined && details[i].author_review !== null && Number(details[i].author_review) !== 0) {
-                                inp.value = details[i].author_review;
-                            } else {
-                                inp.value = '';
-                            }
+
+                        authorInputs.forEach((input, i) => {
+                            input.value = details[i]?.author_review != null && details[i]?.author_review !== 0 ? details[i].author_review : '';
                         });
-                        reviewForm.querySelectorAll('.admin-input').forEach((inp, i) => {
-                            if (details[i] && details[i].admin_review !== undefined && details[i].admin_review !== null && Number(details[i].admin_review) !== 0) {
-                                inp.value = details[i].admin_review;
-                            } else {
-                                inp.value = '';
-                            }
+
+                        adminInputs.forEach((input, i) => {
+                            input.value = details[i]?.admin_review != null && details[i]?.admin_review !== 0 ? details[i].admin_review : '';
                         });
 
                         updateTotals();
-                    } catch (err) {
-                        console.error(err);
+                    } catch (error) {
+                        console.error('Failed to load review details:', error);
                     }
                 });
             });
+        });
+    </script>
 
-            updateTotals();
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const departmentSelect = document.querySelector('select[name="department"]');
+            const criteriaContainer = document.getElementById('criteriaContainer');
+            const totalPoints = document.getElementById('totalPoints');
+            const saveBtn = document.getElementById('saveEvaluationBtn');
+
+            function rowHtml(name = '', point = '') {
+                return `
+                    <tr>
+                        <td>
+                            <input type="text" name="criterianame[]" class="form-control" value="${name}" required>
+                        </td>
+                        <td>
+                            <input type="number" name="maxpoint[]" class="form-control max-point" step="0.01" value="${point}" required>
+                        </td>
+                        <td width="120" class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-primary add-row">
+                                <i class="feather-plus"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger remove-row">
+                                <i class="feather-minus"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            }
+
+            function calculateTotal() {
+                let total = 0;
+                document.querySelectorAll('#criteriaContainer .max-point').forEach(input => {
+                    total += parseFloat(input.value) || 0;
+                });
+
+                if (totalPoints) {
+                    totalPoints.value = total.toFixed(2);
+                }
+
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                }
+            }
+
+            function renderRows(rows) {
+                criteriaContainer.innerHTML = '';
+
+                if (rows && rows.length > 0) {
+                    rows.forEach(row => {
+                        criteriaContainer.insertAdjacentHTML('beforeend', `
+                            <tr>
+                                <td>
+                                    <input type="text" name="criterianame[]" class="form-control" value="${row.criteria_name ?? ''}" required>
+                                </td>
+                                <td>
+                                    <input type="number" name="maxpoint[]" class="form-control max-point" step="0.01" value="${row.max_point ?? ''}" required>
+                                </td>
+                                <td width="120" class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-primary add-row"><i class="feather-plus"></i></button>
+                                    <button type="button" class="btn btn-danger remove-row"><i class="feather-minus"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    criteriaContainer.insertAdjacentHTML('beforeend', rowHtml());
+                }
+
+                calculateTotal();
+            }
+
+            function loadDepartmentRows(deptName) {
+                if (!deptName) {
+                    renderRows([]);
+                    return;
+                }
+
+                fetch(`{{ url('technical-review-evaluation/fetch') }}?department=${encodeURIComponent(deptName)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        renderRows(data);
+                    })
+                    .catch(error => {
+                        console.error('Failed to load department rows:', error);
+                        renderRows([]);
+                    });
+            }
+
+            document.addEventListener('click', function (e) {
+                if (e.target.closest('.add-row')) {
+                    criteriaContainer.insertAdjacentHTML('beforeend', rowHtml());
+                    calculateTotal();
+                }
+
+                if (e.target.closest('.remove-row')) {
+                    const rows = criteriaContainer.querySelectorAll('tr');
+
+                    if (rows.length > 1) {
+                        e.target.closest('tr').remove();
+                    } else {
+                        e.target.closest('tr').querySelectorAll('input').forEach(input => input.value = '');
+                    }
+
+                    calculateTotal();
+                }
+            });
+
+            document.addEventListener('input', function (e) {
+                if (e.target.classList.contains('max-point')) {
+                    calculateTotal();
+                }
+            });
+
+            if (departmentSelect) {
+                departmentSelect.addEventListener('change', function () {
+                    loadDepartmentRows(this.value);
+                });
+
+                if (departmentSelect.value) {
+                    loadDepartmentRows(departmentSelect.value);
+                }
+            }
         });
     </script>
 @endsection

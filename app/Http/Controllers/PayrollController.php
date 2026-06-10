@@ -75,11 +75,18 @@ class PayrollController extends Controller
             $groupBy[] = 'attendances.total_hours';
         }
 
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
         $attendance = $query->leftJoin('holidays', 'attendances.attendance_date', '=', 'holidays.date')
             ->select($select)
             ->groupBy($groupBy)
             ->orderBy('attendances.attendance_date', 'desc')
-            ->paginate(31);
+            ->paginate($perPage);
 
         $empQuery = Employee::active()->orderBy('name', 'asc');
         if ($isTeamLeader) {
@@ -90,7 +97,7 @@ class PayrollController extends Controller
         }
         $employees = $empQuery->get();
 
-        return view('payroll.attendance', compact('attendance', 'employees'));
+        return view('payroll.attendance', compact('attendance', 'employees', 'perPage'));
     }
 
     /**
@@ -731,8 +738,15 @@ class PayrollController extends Controller
             $query->where('status', $request->status);
         }
 
-        $payrolls = $query->orderBy('created_at', 'desc')->paginate(10);
-        return view('payroll.index', compact('payrolls'));
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
+        $payrolls = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        return view('payroll.index', compact('payrolls', 'perPage'));
     }
 
     public function payrollEmployee(Request $request)
@@ -755,8 +769,15 @@ class PayrollController extends Controller
             $query->where('status', $request->status);
         }
 
-        $payrolls = $query->orderBy('created_at', 'desc')->paginate(12);
-        return view('payroll.emppayroll', compact('payrolls'));
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
+        $payrolls = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        return view('payroll.emppayroll', compact('payrolls', 'perPage'));
     }
 
 
@@ -1354,14 +1375,22 @@ class PayrollController extends Controller
         if ($request->filled('end_date')) {
             $query->whereDate('attendances.attendance_date', '<=', $request->end_date);
         }
+
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+            
         $attendance = $query
             ->groupBy('attendances.employee_id', 'employees.name')
-            ->paginate(10)
+            ->paginate($perPage)
             ->appends($request->all());
 
         
 
-        return view('payroll.employeeWise', compact('attendance', 'employees'));
+        return view('payroll.employeeWise', compact('attendance', 'employees', 'perPage'));
     }
 
     public function employeeWiseDetails(Request $request)

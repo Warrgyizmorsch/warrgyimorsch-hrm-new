@@ -260,12 +260,28 @@
                     </li>
                 @endif
 
-                <li class="nxl-item">
-                    <a href="{{ route('employee.review') }}" class="nxl-link">
+                <li class="nxl-item nxl-hasmenu">
+                    <a href="javascript:void(0);" class="nxl-link">
                         <span class="nxl-micon"><i class="feather-star"></i></span>
                         <span class="nxl-mtext">Employee Review</span>
+                        <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
+                    <ul class="nxl-submenu">
+                        <li class="nxl-item">
+                            <a href="{{ route('employee.review') }}" class="nxl-link">
+                                <span class="nxl-micon"><i class="feather-user"></i></span>
+                                <span class="nxl-mtext">Personal Review</span>
+                            </a>
+                        </li>
+                        <li class="nxl-item">
+                            <a href="{{ route('technical.review') }}" class="nxl-link">
+                                <span class="nxl-micon"><i class="feather-code"></i></span>
+                                <span class="nxl-mtext">Technical Review</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
+                
                 <li class="nxl-item">
                     <a href="{{ route('payroll.empindex') }}" class="nxl-link">
                         <span class="nxl-micon"><i class="feather-file-text"></i></span>

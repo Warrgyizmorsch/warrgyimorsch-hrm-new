@@ -163,6 +163,24 @@
         <div class="px-4 pb-5">
             <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
                 <div class="card-body p-0">
+                    <!-- SHOW ENTRIES -->
+                    <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
+                        <span class="text-muted small fw-bold text-uppercase">Show</span>
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" id="showEntriesBtn"
+                                style="width: 80px; height: 44px; padding: 0 15px;">
+                                {{ $perPage ?? 20 }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                            </div>
+                        </div>
+                        <span class="text-muted small fw-bold text-uppercase">entries</span>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="bg-light">
@@ -1399,5 +1417,192 @@
         .leave-history-pagination nav .d-none.flex-sm-fill.d-sm-flex.align-items-sm-center.justify-content-sm-between > div:first-child {
             display: none !important;
         }
+
+            .wghrm-custom-select-btn {
+                background-color: #fff !important;
+                border: 1px solid #e2e8f0 !important;
+                border-radius: 12px !important;
+                color: #1e293b !important;
+                padding: 10px 16px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                width: 100% !important;
+                height: 48px !important;
+                font-size: 14px !important;
+                font-weight: 600 !important;
+                transition: all 0.2s !important;
+                text-align: left !important;
+            }
+            .wghrm-custom-select-btn:focus {
+                border-color: #3858f9 !important;
+                box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.1) !important;
+                outline: none !important;
+            }
+            .wghrm-custom-dropdown-menu {
+                border-radius: 12px !important;
+                box-shadow: 0 15px 40px rgba(0,0,0,0.12) !important;
+                padding: 8px !important;
+                border: 1px solid #e2e8f0 !important;
+                width: 100% !important;
+                min-width: 200px !important;
+                z-index: 9999 !important;
+            }
+            .wghrm-custom-search-box {
+                padding: 4px;
+                margin-bottom: 8px;
+                border-bottom: 1px solid #f1f5f9;
+            }
+            .wghrm-custom-search-input {
+                width: 100% !important;
+                padding: 8px 12px !important;
+                border-radius: 8px !important;
+                border: 1px solid #e2e8f0 !important;
+                font-size: 13px !important;
+                outline: none !important;
+                background: #f8fafc !important;
+            }
+            .wghrm-custom-dropdown-item {
+                border-radius: 8px !important;
+                padding: 10px 15px !important;
+                font-weight: 600 !important;
+                font-size: 13px !important;
+                color: #475569 !important;
+                cursor: pointer !important;
+                display: block !important;
+                text-decoration: none !important;
+            }
+            .wghrm-custom-dropdown-item:hover, .wghrm-custom-dropdown-item.active {
+                background: #f1f5f9 !important;
+                color: #3858f9 !important;
+            }
+
+            .wghrm-search-dropdown {
+                position: relative;
+                width: 100%;
+                overflow: visible;
+            }
+
+            .wghrm-dropdown-trigger {
+                width: 100%;
+                border: 1px solid #e2e8f0;
+                background: #fff;
+                border-radius: 12px;
+                padding: 10px 14px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+                position: relative;
+                z-index: 1;
+            }
+
+            .wghrm-dropdown-trigger.open {
+                border-color: #3858f9;
+                box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.08);
+            }
+
+            .wghrm-trigger-text {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .wghrm-dropdown-menu {
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                right: 0;
+                background: #fff;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+                z-index: 9999 !important;
+                padding: 10px;
+                display: none;
+                min-width: 100%;
+                width: auto;
+                pointer-events: auto !important;
+                visibility: visible !important;
+            }
+
+            .wghrm-dropdown-menu.show {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
+
+            .wghrm-search-container {
+                position: relative;
+                margin-bottom: 10px;
+                display: block !important;
+                visibility: visible !important;
+            }
+
+            .wghrm-search-icon {
+                position: absolute;
+                top: 50%;
+                left: 12px;
+                transform: translateY(-50%);
+                width: 14px;
+                height: 14px;
+                color: #94a3b8;
+            }
+
+            .wghrm-search-dropdown .wghrm-search-input {
+                width: 100%;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                background: #f8fafc;
+                padding: 10px 12px 10px 34px;
+                font-size: 13px;
+                font-weight: 600;
+                color: #334155;
+                outline: none;
+            }
+
+            .wghrm-search-dropdown .wghrm-search-input:focus {
+                border-color: #3858f9;
+                box-shadow: 0 0 0 3px rgba(56, 88, 249, 0.08);
+            }
+
+            .wghrm-items-list {
+                max-height: 220px;
+                overflow-y: auto;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+
+            .wghrm-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                border-radius: 10px;
+                padding: 10px 12px;
+                color: #475569;
+                cursor: pointer;
+                transition: all 0.18s ease;
+            }
+
+            .wghrm-item:hover,
+            .wghrm-item.selected {
+                background: #f1f5f9;
+                color: #3858f9;
+            }
+
+            .wghrm-item-check {
+                opacity: 0;
+                transition: opacity 0.18s ease;
+            }
+
+            .wghrm-item.selected .wghrm-item-check {
+                opacity: 1;
+            }
     </style>
 @endsection

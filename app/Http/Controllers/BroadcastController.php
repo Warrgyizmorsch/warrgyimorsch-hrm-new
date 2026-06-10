@@ -9,11 +9,18 @@ use Illuminate\Http\Request;
 
 class BroadcastController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $broadcasts = Broadcast::orderBy('created_at', 'desc')->get();
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
+        $broadcasts = Broadcast::orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
         $departments = Department::orderBy('name', 'asc')->get();
-        return view('broadcast.index', compact('broadcasts', 'departments'));
+        return view('broadcast.index', compact('broadcasts', 'departments', 'perPage'));
     }
 
     // Save standard entries

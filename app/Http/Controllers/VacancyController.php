@@ -35,14 +35,21 @@ class VacancyController extends Controller
             $applicationsQuery->where('designation', $selectedRole);
         }
 
-        $applications = $applicationsQuery->latest()->get();
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
+        $applications = $applicationsQuery->latest()->paginate($perPage)->withQueryString();
 
         $pendingCount  = (clone $statsQuery)->where('status', 'pending')->count();
         $awaitedCount  = (clone $statsQuery)->where('status', 'awaited')->count();
         $rejectedCount = (clone $statsQuery)->where('status', 'rejected')->count();
         $selectedCount = (clone $statsQuery)->where('status', 'selected')->count();
 
-        return view('vacancy.index', compact('departments', 'designations', 'employees', 'applications', 'pendingCount', 'awaitedCount', 'rejectedCount', 'selectedCount', 'selectedRole'));
+        return view('vacancy.index', compact('departments', 'designations', 'employees', 'applications', 'pendingCount', 'awaitedCount', 'rejectedCount', 'selectedCount', 'selectedRole', 'perPage'));
     }
 
     public function store(Request $request)
@@ -76,8 +83,15 @@ class VacancyController extends Controller
     }
 
 
-    public function showRequirements() {
+    public function showRequirements(Request $request) {
         $roles = DB::table('designations')->get();
+
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
 
         $requirements = DB::table('job_requirements')
             ->leftJoin(
@@ -96,7 +110,8 @@ class VacancyController extends Controller
                     ->selectRaw('count(*)');
             }, 'applications_count')
             ->latest()
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
         $departments = Department::select('id','name')->get();
         $designations = Designation::select('id', 'name')->get();
@@ -108,7 +123,7 @@ class VacancyController extends Controller
             ->latest()
             ->get();
 
-        return view('vacancy.job_requirement', compact('roles', 'requirements', 'departments', 'designations', 'employees', 'applications'));
+        return view('vacancy.job_requirement', compact('roles', 'requirements', 'departments', 'designations', 'employees', 'applications', 'perPage'));
     }
 
     public function storeRequirement(Request $request)
