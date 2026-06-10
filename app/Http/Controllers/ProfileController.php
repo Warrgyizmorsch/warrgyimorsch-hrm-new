@@ -108,19 +108,20 @@ class ProfileController extends Controller
                 // ->whereMonth('start_date', date('m'))
                 ->sum('total_days');
             // echo $total_used;exit;
-            $balances[] = [
-                'type' => 'Total' . ' Leave Cycle ',
+            $totalLeaveCycle = [
                 'allotted' => $total_allotted,
                 'used' => $total_used,
                 'available' => max(0, $total_allotted - $total_used),
-                'reference' => 'Monthly Quota'
             ];
 
             // Monthly Rows
             $monthlyAllotments = LeaveAllotment::where('employee_id', $employee->id)
-                ->orderBy('year', 'desc')
-                ->orderBy('month', 'desc')
+                ->orderBy('year', 'asc')
+                ->orderBy('month', 'asc')
                 ->get();
+
+            $monthlyBalances = [];
+            $carryForward = 0;
 
             foreach ($monthlyAllotments as $allotment) {
 
@@ -131,16 +132,30 @@ class ProfileController extends Controller
                     ->whereMonth('start_date', $allotment->month)
                     ->sum('total_days');
 
-                $balances[] = [
+                $available = max(
+                    0,
+                    $carryForward + $allotment->leave_count - $used
+                );
+
+                $monthlyBalances[] = [
                     'type' => strtoupper(date(
                         'F',
                         mktime(0, 0, 0, $allotment->month, 1)
                     )) . " ({$allotment->year})",
                     'allotted' => $allotment->leave_count,
                     'used' => $used,
-                    'available' => max(0, $allotment->leave_count - $used),
+                    'available' => $available,
                     'reference' => 'Monthly Quota'
                 ];
+
+                $carryForward = $available;
+            }
+
+            // Reverse so latest month appears first
+            $monthlyBalances = array_reverse($monthlyBalances);
+
+            foreach ($monthlyBalances as $row) {
+                $balances[] = $row;
             }
         }
 
@@ -148,6 +163,7 @@ class ProfileController extends Controller
             'user' => $user,
             'employee' => $employee,
             'balances' => $balances,
+            'totalLeaveCycle' => $totalLeaveCycle,
             'total_allotted' => $balances[0]['allotted'] ?? 0,
             'total_used' => $balances[0]['used'] ?? 0,
             'balance' => $balances[0]['available'] ?? 0
@@ -167,11 +183,27 @@ class ProfileController extends Controller
             $leaves = LeaveApplication::where('employee_id', $employee->id)->orderBy('created_at', 'desc')->get();
         }
 
+        // Total remaining balance
+        $total_allotted = LeaveAllotment::where('employee_id', $employee->id)->sum('leave_count');
+        $total_used = LeaveApplication::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->where('leave_category', 'NOT LIKE', '%WFH%') // Exclude WFH from used leaves
+            // ->whereYear('start_date', date('Y'))
+            // ->whereMonth('start_date', date('m'))
+            ->sum('total_days');
+    
+        $totalLeaveCycle = [
+            'allotted' => $total_allotted,
+            'used' => $total_used,
+            'available' => max(0, $total_allotted - $total_used),
+        ];
+
         return view('profile.leave-history', [
             'user' => $user,
             'employee' => $employee,
             'leaves' => $leaves,
             'holidays' => $holidays,
+            'totalLeaveCycle' => $totalLeaveCycle,
         ]);
     }
 

@@ -237,6 +237,24 @@
 
                 <!-- Desktop Table View -->
                 <div class="d-none d-lg-block">
+                    <!-- SHOW ENTRIES -->
+                    <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
+                        <span class="text-muted small fw-bold text-uppercase">Show</span>
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" id="showEntriesBtn"
+                                style="width: 80px; height: 44px; padding: 0 15px;">
+                                {{ $perPage ?? 20 }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                            </div>
+                        </div>
+                        <span class="text-muted small fw-bold text-uppercase">entries</span>
+                    </div>
+                    
                     <div class="table-responsive">
                         <table class="table align-middle mb-0">
                             <thead style="background: #ffffff; border-bottom: 1px solid #f1f5f9;">

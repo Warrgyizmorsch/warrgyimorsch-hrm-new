@@ -453,15 +453,9 @@
                     </div>
 
                     <!-- PAGINATION -->
-                    @if($employees->count())
-                        <div class="d-flex justify-content-between align-items-center mt-4">
-                            <div class="text-muted small">
-                                Showing {{ $employees->firstItem() }} to {{ $employees->lastItem() }} of {{ $employees->total() }}
-                                entries
-                            </div>
-                            <div class="{{ $employees->lastPage() <= 1 ? 'd-none' : '' }}">
-                                {{ $employees->appends(request()->query())->links('pagination::bootstrap-5') }}
-                            </div>
+                    @if($employees->hasPages())
+                        <div class="card-footer bg-white border-0 py-3 attendance-pagination">
+                            {{ $employees->appends(request()->query())->links('pagination::bootstrap-5') }}
                         </div>
                     @endif
 

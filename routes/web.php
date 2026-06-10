@@ -66,8 +66,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/employee-review', [ReviewController::class, 'index'])->name('employee.review');
     Route::post('/employee-review/store', [ReviewController::class, 'store']);
+    Route::post('/employee-review/{id}/update', [ReviewController::class, 'update']);
     Route::get('/review-details/{id}', [ReviewController::class, 'details'])->name('employee.review.details');
-
+    Route::get('/technical-review', [ReviewController::class, 'technicalReview'])->name('technical.review');
+    Route::post('/technical-review/store', [ReviewController::class, 'technicalReviewStore']);
+    Route::post('/technical-review/{id}/update', [ReviewController::class, 'technicalReviewUpdate']);
+    Route::get('/technical-review-details/{id}', [ReviewController::class, 'technicalReviewDetails']);
+    Route::post('/technical-review-evaluation/store', [ReviewController::class, 'storeTechnicalEvaluation']);
+    Route::get('/technical-review-evaluation/fetch', [ReviewController::class, 'fetchByDepartment']);
+    
     Route::get('/celebrations', [EmployeeController::class, 'employeeDays'])->name('employees.employeeDays');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

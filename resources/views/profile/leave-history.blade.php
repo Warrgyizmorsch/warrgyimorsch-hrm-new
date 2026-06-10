@@ -279,6 +279,14 @@
     <div class="offcanvas offcanvas-end custom-side-modal" tabindex="-1" id="applyLeaveModal" style="width: 650px;">
         <div class="offcanvas-header bg-white border-bottom p-4">
             <h5 class="offcanvas-title fw-bold" id="applyLeaveModalLabel">Apply For Leave</h5>
+            <span class="badge py-2"
+                style="
+                    background: {{ $totalLeaveCycle['available'] > 0 ? '#e8fff3' : '#ffeaea' }};
+                    color: {{ $totalLeaveCycle['available'] > 0 ? '#0f9d58' : '#dc3545' }};
+                    font-size:13px;
+                ">
+                Balance: {{ number_format($totalLeaveCycle['available'], 1) }}
+            </span>
             <button type="button" class="btn-close text-reset shadow-none" data-bs-dismiss="offcanvas"
                 aria-label="Close"></button>
         </div>

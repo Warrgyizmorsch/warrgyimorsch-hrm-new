@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class ProjectController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
@@ -27,6 +27,13 @@ class ProjectController extends Controller
             'team_leader'
         ]);
 
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
         $query = Project::with(['tasks.employee']);
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
@@ -36,7 +43,7 @@ class ProjectController extends Controller
                 $query->whereRaw('1=0'); // Force empty if no department
             }
         }
-        $projects = $query->latest()->get();
+        $projects = $query->latest()->paginate($perPage)->withQueryString();
         
         if ($isAdmin) {
             $employees = \App\Models\Employee::active()->get();
@@ -52,7 +59,7 @@ class ProjectController extends Controller
         }
 
         $departments = \App\Models\Department::all();
-        return view('projects.index', compact('projects', 'employees', 'departments', 'isAdmin'));
+        return view('projects.index', compact('projects', 'employees', 'departments', 'isAdmin', 'perPage'));
     }
 
     public function create()

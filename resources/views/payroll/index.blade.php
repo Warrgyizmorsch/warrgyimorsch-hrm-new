@@ -64,11 +64,11 @@
                             </div>
                         </div>
 
-                        <button type="button" class="avatar-text avatar-md bg-primary text-white border-0 shadow-sm"
+                        <!-- <button type="button" class="avatar-text avatar-md bg-primary text-white border-0 shadow-sm"
                             data-bs-toggle="offcanvas" data-bs-target="#payrollCalculationOffcanvas"
                             title="New Calculation">
                             <i class="feather-plus"></i>
-                        </button>
+                        </button> -->
                     </div>
                 </div>
 
@@ -177,6 +177,234 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Calculation Filter Card -->
+                <div class="card border-0 shadow-sm mt-3 bg-light" style="border-radius: 12px;">
+                    <div class="card-header border-0 px-4 border-bottom text-center">
+                        <h6 class="fw-bold mb-0 text-dark">Setup Calculation Parameters</h6>
+                    </div>
+                    <div class="card-body p-4 pt-0">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-4">
+                                <label class="form-label small fw-bold text-muted mb-2">Employee</label>
+                                <div class="dropdown">
+                                    <button class="wghrm-custom-select-btn fw-bold dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeSelectBtn"
+                                        style="border-radius: 8px; height: 45px !important; font-size: 13px; background: #f1f5f9; border: none; box-shadow: none;">
+                                        Select
+                                    </button>
+                                    <div class="dropdown-menu wghrm-custom-dropdown-menu" style="width: 100%;">
+                                        <div class="wghrm-custom-search-box">
+                                            <input type="text" class="wghrm-custom-search-input"
+                                                placeholder="Search employee..." onkeyup="wghrmFilterItems(this)"
+                                                onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
+                                        </div>
+                                        @foreach(\App\Models\Employee::active()->get() as $emp)
+                                            <a class="dropdown-item wghrm-custom-dropdown-item"
+                                                href="javascript:void(0);"
+                                                onclick="document.getElementById('employeeSelect').value='{{ $emp->id }}'; document.getElementById('employeeSelectBtn').innerText='{{ addslashes($emp->name) }}'; bootstrap.Dropdown.getInstance(this.closest('.dropdown').querySelector('.dropdown-toggle')).hide();">
+                                                {{ $emp->name }}
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <input type="hidden" id="employeeSelect" value="">
+                            </div>
+                            <div class="col-4 text-center">
+                                <label class="form-label small fw-bold text-muted mb-2">Month</label>
+                                <input type="month" id="monthSelect"
+                                    class="form-control border-0 bg-light py-2 px-2 shadow-none fw-bold text-center"
+                                    value="{{ date('Y-m', strtotime('-1 month')) }}" style="border-radius: 8px; height: 45px !important; font-size: 13px;">
+                            </div>
+                            <div class="col-4 ps-0 d-flex justify-content-between">
+                                <button
+                                    class="btn btn-primary w-50 fw-bold shadow-sm ms-5"
+                                    onclick="calculatePayroll()"
+                                    style="background: #3858f9; border: none; height: 45px !important; border-radius: 8px; font-size: 12px; letter-spacing: 0.5px;">
+                                    CALCULATE
+                                </button>
+                                <a href="{{ route('payroll.index') }}"
+                                    class="btn btn-soft-danger fw-bold d-flex align-items-center justify-content-center me-3"
+                                    style="border-radius: 8px; height: 44px; width: 80px; font-size: 13px;">
+                                RESET</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculation Result -->
+                <div id="calculationResult" style="display: none;">
+                    <div class="row g-3">
+                        <!-- Earnings -->
+                        <div class="col-12">
+                            <div class="border rounded-3 p-3 bg-light-subtle">
+                                <h6 class="fw-bold text-primary text-uppercase mb-3">
+                                    Earnings
+                                </h6>
+
+                                <div class="row g-3">
+                                    <div class="col-lg col-md-6">
+                                        <label class="form-label small text-muted">Payable Days</label>
+                                        <input type="number" step="0.01" id="inputPayableDays"
+                                            class="form-control">
+                                    </div>
+
+                                    <div class="col-lg col-md-6">
+                                        <label class="form-label small text-muted">Basic Salary</label>
+                                        <input type="number" id="inputBasic"
+                                            class="form-control">
+                                    </div>
+
+                                    <div class="col-lg col-md-6">
+                                        <label class="form-label small text-muted">HRA</label>
+                                        <input type="number" id="inputHRA"
+                                            class="form-control">
+                                    </div>
+
+                                    <div class="col-lg col-md-6">
+                                        <label class="form-label small text-muted">Conveyance</label>
+                                        <input type="number" id="inputConveyance"
+                                            class="form-control">
+                                    </div>
+
+                                    <div class="col-lg col-md-6">
+                                        <label class="form-label small text-muted">Medical</label>
+                                        <input type="number" id="inputMedical"
+                                            class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Deductions -->
+                        <div class="col-12">
+                            <div class="border rounded-3 p-3 bg-light-subtle">
+                                <h6 class="fw-bold text-danger text-uppercase mb-3">
+                                    Deductions
+                                </h6>
+
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted">PF</label>
+                                        <input type="number" id="inputPF"
+                                            class="form-control">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted">ESI</label>
+                                        <input type="number" id="inputESI"
+                                            class="form-control">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted">Other</label>
+                                        <input type="number" id="inputOther"
+                                            class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="border rounded-3 p-3 h-100">
+                                        <div class="small text-muted mb-1">Override</div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <input type="checkbox" id="overrideCheck" class="form-check-input">
+                                            <input type="number" id="overrideAmount"
+                                                class="form-control"
+                                                placeholder="Amount" disabled>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="border rounded-3 p-3 h-100 text-center">
+                                        <div class="small text-muted">Gross Salary</div>
+                                        <div class="fw-bold fs-4 text-primary"
+                                            id="tableGrossSalary">
+                                            ₹ 0.00
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="border rounded-3 p-3 h-100 text-center">
+                                        <div class="small text-muted">Total Deductions</div>
+                                        <div class="fw-bold fs-4 text-danger"
+                                            id="tableTotalDeductions">
+                                            ₹ 0.00
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-center">
+                            <div class="col-8">
+                                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; background: white;">
+                                    <div class="card-header bg-white border-bottom px-4 py-3">
+                                        <h6 class="fw-bold mb-0 text-dark">Net Salary & Summary</h6>
+                                    </div>
+                                    <div class="card-body p-3 text-center">
+                                        <div class="p-3 rounded-4 mb-3 shadow-sm"
+                                            style="background: linear-gradient(135deg, #3858f9 0%, #1e3a8a 100%);">
+                                            <div class="text-white opacity-75 small mb-1">Take Home Pay</div>
+                                            <div class="fs-2 fw-bold text-white" id="tableNetSalary">₹ 0.00</div>
+                                        </div>
+    
+                                        <div class="row g-2 mb-4">
+                                            <div class="col-4">
+                                                <div class="p-2 bg-light rounded-3">
+                                                    <div class="text-muted fs-10 mb-1">Payable</div>
+                                                    <div class="fw-bold" id="resultPayableDays">0</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="p-2 bg-light rounded-3">
+                                                    <div class="text-muted fs-10 mb-1">Unpaid</div>
+                                                    <div class="fw-bold text-danger" id="resultUnpaidDays">0</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="p-2 bg-light rounded-3">
+                                                    <div class="text-muted fs-10 mb-1">Loss</div>
+                                                    <div class="fw-bold text-danger" id="resultSalaryLoss">₹ 0.00</div>
+                                                </div>
+                                            </div>
+                                        </div>
+    
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-primary py-3 fw-bold shadow-sm"
+                                                style="background: #3858f9; border: none; border-radius: 12px;" onclick="savePayroll(this)">
+                                                <i class="bi bi-check2-circle me-2 fs-5"></i> SUBMIT & SAVE PAYROLL
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SHOW ENTRIES -->
+                <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
+                    <span class="text-muted small fw-bold text-uppercase">Show</span>
+                    <div class="dropdown">
+                        <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" id="showEntriesBtn"
+                            style="width: 80px; height: 44px; padding: 0 15px;">
+                            {{ $perPage ?? 20 }}
+                        </button>
+                        <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
+                            <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                            <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                            <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                        </div>
+                    </div>
+                    <span class="text-muted small fw-bold text-uppercase">entries</span>
                 </div>
 
                 <div class="table-responsive">
@@ -319,8 +547,8 @@
                     </div>
                 </div>
                 @if($payrolls->hasPages())
-                    <div class="card-footer bg-white border-0 py-3">
-                        {{ $payrolls->appends(request()->query())->links() }}
+                    <div class="card-footer bg-white border-0 py-3 payroll-pagination">
+                        {{ $payrolls->appends(request()->query())->links('pagination::bootstrap-5') }}
                     </div>
                 @endif
             </div>
@@ -811,6 +1039,43 @@
             padding-bottom: 5px;
         }
 
+        .payroll-pagination .pagination {
+            margin-bottom: 0;
+            justify-content: center;
+            gap: 0.35rem;
+        }
+
+        .payroll-pagination .page-link {
+            min-width: 38px;
+            height: 38px;
+            padding: 0.5rem 0.75rem;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #475569;
+            font-weight: 600;
+            box-shadow: none;
+        }
+
+        .payroll-pagination .page-item.active .page-link {
+            background: #3858f9;
+            border-color: #3858f9;
+            color: #fff;
+        }
+
+        .payroll-pagination .page-item.disabled .page-link {
+            color: #94a3b8;
+            background: #f8fafc;
+            border-color: #e2e8f0;
+        }
+
+        .payroll-pagination .page-link svg {
+            width: 14px !important;
+            height: 14px !important;
+        }
+
         /* Premium Calendar/Date Input Styling */
         input[type="date"],
         input[type="month"] {
@@ -861,4 +1126,290 @@
             }
         }
     </style>
+
+<script>
+    if (typeof isManualDays === 'undefined') {
+        var isManualDays = false;
+    }
+    if (typeof currentPayrollData === 'undefined') {
+        var currentPayrollData = null;
+    }
+    if (typeof currentPayrollTotalDays === 'undefined') {
+        var currentPayrollTotalDays = 0;
+    }
+    if (typeof isManualPF === 'undefined') {
+        var isManualPF = false;
+    }
+    if (typeof isManualESI === 'undefined') {
+        var isManualESI = false;
+    }
+
+    // Use a unique scoped setup if possible, or just re-ensure listeners
+    function initPayrollLogic() {
+        document.addEventListener('input', recalculate);
+        const daysInput = document.getElementById('inputPayableDays');
+        if(daysInput) {
+            daysInput.addEventListener('input', function () {
+                isManualDays = true;
+            });
+        }
+
+        const pfInput = document.getElementById('inputPF');
+        if(pfInput) {
+            pfInput.addEventListener('input', function () {
+                isManualPF = true;
+            });
+        }
+
+        const esiInput = document.getElementById('inputESI');
+        if(esiInput) {
+            esiInput.addEventListener('input', function () {
+                isManualESI = true;
+            });
+        }
+
+        const overrideCheck = document.getElementById('overrideCheck');
+        if(overrideCheck) {
+            overrideCheck.addEventListener('change', function () {
+                document.getElementById('overrideAmount').disabled = !this.checked;
+            });
+        }
+    }
+
+    initPayrollLogic();
+
+   function recalculate(event) {
+        const sourceId = event?.target?.id || '';
+        let basic = parseFloat(document.getElementById('inputBasic')?.value) || 0;
+        let hra = parseFloat(document.getElementById('inputHRA')?.value) || 0;
+        let conv = parseFloat(document.getElementById('inputConveyance')?.value) || 0;
+        let med = parseFloat(document.getElementById('inputMedical')?.value) || 0;
+        let otherAllowance = parseFloat(currentPayrollData?.other_allowance) || 0;
+
+        let fullSalary = basic + hra + conv + med + otherAllowance;
+        let backendPerDaySalary = Number(currentPayrollData?.perdaysalary || 0);
+        let totalDays = Number(currentPayrollTotalDays || currentPayrollData?.total_days || 0);
+        if (!totalDays && backendPerDaySalary > 0 && fullSalary > 0) {
+            totalDays = Math.round(fullSalary / backendPerDaySalary);
+        }
+        totalDays = totalDays || 30;
+
+        let payableDays = parseFloat(document.getElementById('inputPayableDays')?.value) || 0;
+        payableDays = Math.min(payableDays, totalDays);
+        let gross = (fullSalary / totalDays) * payableDays; 
+
+        if (document.getElementById('overrideCheck')?.checked) {
+            let override = parseFloat(document.getElementById('overrideAmount').value);
+            if (!isNaN(override) && override > 0) gross = override;
+        }
+
+        if(document.getElementById('tableGrossSalary')) document.getElementById('tableGrossSalary').innerText = '₹ ' + gross.toFixed(2);
+
+        let earnedBasic = totalDays > 0 ? (basic / totalDays) * payableDays : 0;
+        let autoPF = currentPayrollData?.pf_enabled ? earnedBasic * 0.12 : 0;
+        let autoESI = (currentPayrollData?.esi_enabled && gross <= 21000) ? gross * 0.0075 : 0;
+
+        if (sourceId !== 'inputPF' && document.getElementById('inputPF')) {
+            document.getElementById('inputPF').value = autoPF.toFixed(2);
+        }
+
+        if (sourceId !== 'inputESI' && document.getElementById('inputESI')) {
+            document.getElementById('inputESI').value = autoESI.toFixed(2);
+        }
+
+        let pf = parseFloat(document.getElementById('inputPF')?.value) || 0;
+        let esi = parseFloat(document.getElementById('inputESI')?.value) || 0;
+        let other = parseFloat(document.getElementById('inputOther')?.value) || 0;
+
+        let totalDeduction = pf + esi + other;
+        let net = gross - totalDeduction;
+
+        if(document.getElementById('tableTotalDeductions')) document.getElementById('tableTotalDeductions').innerText = '₹ ' + totalDeduction.toFixed(2);
+        if(document.getElementById('tableNetSalary')) document.getElementById('tableNetSalary').innerText = '₹ ' + net.toFixed(2);
+
+        if(document.getElementById('resultPayableDays')) document.getElementById('resultPayableDays').innerText = payableDays;
+        let unpaidDays = totalDays - payableDays;
+        if(document.getElementById('resultUnpaidDays')) document.getElementById('resultUnpaidDays').innerText = unpaidDays.toFixed(2);
+
+        let salaryLoss = fullSalary - gross;
+        if(document.getElementById('resultSalaryLoss')) document.getElementById('resultSalaryLoss').innerText = '₹ ' + salaryLoss.toFixed(2);
+    }
+
+    function calculatePayroll() {
+        isManualDays = false;
+        isManualPF = false;
+        isManualESI = false;
+        const month = document.getElementById('monthSelect').value;
+        const employeeId = document.getElementById('employeeSelect').value;
+
+        if (!month || !employeeId) {
+            alert('Please select person and month');
+            return;
+        }
+
+        const noCalc = document.getElementById('noCalculation');
+        noCalc.innerHTML = `<div class="py-5 text-center"><div class="spinner-border text-primary"></div></div>`;
+
+        fetch('{{ url("/payroll/calculate") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ month, employee_id: employeeId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                currentPayrollData = data.payroll;
+                currentPayrollTotalDays = Number(data.payroll.total_days || 0);
+                displayPayrollData(data.payroll);
+                noCalc.style.display = 'none';
+                document.getElementById('calculationResult').style.display = 'block';
+            } else alert(data.message);
+        });
+    }
+
+    function displayPayrollData(p) {
+        const formattedMonth = new Date(p.month + '-01').toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+        if(document.getElementById('resultMonth')) document.getElementById('resultMonth').textContent = formattedMonth;
+
+        document.getElementById('inputPayableDays').value = p.payable_days;
+        document.getElementById('inputBasic').value = p.basic_salary;
+        document.getElementById('inputHRA').value = p.hra;
+        document.getElementById('inputConveyance').value = p.conveyance_allowance;
+        document.getElementById('inputMedical').value = p.medical_allowance;
+        isManualPF = false;
+        isManualESI = false;
+        document.getElementById('inputPF').value = p.pf_deduction;
+        document.getElementById('inputESI').value = p.esi_deduction;
+        document.getElementById('inputOther').value = p.other_deduction || 0;
+        currentPayrollTotalDays = Number(p.total_days || currentPayrollTotalDays || 0);
+        const overtimeBox = document.getElementById('overtime_box');
+
+        if (overtimeBox) {
+            const otHours = Number(p.overtime_hours || 0);
+            const otDays = Number(p.overtime_days || 0);
+
+            overtimeBox.style.display = 'block';
+
+            if (otHours > 0) {
+                overtimeBox.innerHTML = `
+                    <div class="alert alert-info mb-3">
+                        <strong>${p.emp_name}</strong> worked 
+                        <strong>${otHours}</strong> hrs 
+                        (<strong>${otDays}</strong> days) extra this month
+                    </div>
+                `;
+            } else {
+                overtimeBox.innerHTML = `
+                    <div class="alert alert-secondary mb-3">
+                        No overtime this month
+                    </div>
+                `;
+            }
+        }
+
+        recalculate();
+    }
+
+    function savePayroll(btn) {
+        if (!currentPayrollData) return;
+        btn.disabled = true;
+        
+        const payrollId = document.getElementById('payrollIdForUpdate').value;
+        const isEditMode = document.getElementById('isEditMode').value === 'true';
+        
+        const payloadData = {
+            ...currentPayrollData,
+            basic_salary: document.getElementById('inputBasic').value,
+            hra: document.getElementById('inputHRA').value,
+            conveyance_allowance: document.getElementById('inputConveyance').value,
+            medical_allowance: document.getElementById('inputMedical').value,
+            payable_days: document.getElementById('inputPayableDays').value,
+            pf_deduction: document.getElementById('inputPF').value,
+            esi_deduction: document.getElementById('inputESI').value,
+            other_deduction: document.getElementById('inputOther').value,
+            deductions: (
+                (parseFloat(document.getElementById('inputPF').value) || 0) +
+                (parseFloat(document.getElementById('inputESI').value) || 0) +
+                (parseFloat(document.getElementById('inputOther').value) || 0)
+            ).toFixed(2),
+            net_salary: document.getElementById('tableNetSalary').innerText.replace(/[₹,]/g,''),
+            gross_salary: document.getElementById('tableGrossSalary').innerText.replace(/[₹,]/g,'')
+        };
+        
+        const url = isEditMode ? `{{ url("/payroll") }}/${payrollId}` : '{{ url("/payroll/store") }}';
+        const method = isEditMode ? 'PUT' : 'POST';
+        
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify(payloadData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof Toast !== 'undefined') {
+                    Toast.fire({
+                        icon: 'success',
+                        title: isEditMode ? 'Payroll updated successfully!' : 'Payroll saved successfully!'
+                    });
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    alert(isEditMode ? 'Payroll updated successfully!' : 'Payroll saved successfully!');
+                    location.reload();
+                }
+            } else {
+                if (typeof Toast !== 'undefined') {
+                    Toast.fire({
+                        icon: 'error',
+                        title: data.message || 'Error saving payroll'
+                    });
+                } else {
+                    alert(data.message || 'Error saving payroll');
+                }
+                btn.disabled = false;
+            }
+        });
+    }
+
+    // Reset form when offcanvas is hidden
+    function resetPayrollForm() {
+        document.getElementById('payrollIdForUpdate').value = '';
+        document.getElementById('isEditMode').value = 'false';
+        document.getElementById('employeeSelect').value = '';
+        document.getElementById('employeeSelectBtn').innerText = 'Select';
+        document.getElementById('monthSelect').value = new Date().toISOString().substring(0, 7);
+        document.getElementById('inputPayableDays').value = '';
+        document.getElementById('inputBasic').value = '';
+        document.getElementById('inputHRA').value = '';
+        document.getElementById('inputConveyance').value = '';
+        document.getElementById('inputMedical').value = '';
+        document.getElementById('inputPF').value = '';
+        document.getElementById('inputESI').value = '';
+        document.getElementById('inputOther').value = '';
+        document.getElementById('overrideCheck').checked = false;
+        document.getElementById('overrideAmount').disabled = true;
+        document.getElementById('overrideAmount').value = '';
+        
+        currentPayrollData = null;
+        isManualDays = false;
+        isManualPF = false;
+        isManualESI = false;
+        currentPayrollTotalDays = 0;
+        
+        document.getElementById('calculationResult').style.display = 'none';
+        document.getElementById('noCalculation').style.display = 'block';
+    }
+
+    // Add event listener to reset form when offcanvas is hidden
+    document.addEventListener('DOMContentLoaded', function() {
+        const offcanvasEl = document.getElementById('payrollCalculationOffcanvas');
+        if (offcanvasEl) {
+            offcanvasEl.addEventListener('hidden.bs.offcanvas', function() {
+                resetPayrollForm();
+            });
+        }
+    });
+</script>
 @endpush

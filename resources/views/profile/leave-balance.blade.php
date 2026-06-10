@@ -2,6 +2,22 @@
 
 @section('content')
 <style>
+    .leave-summary-card{
+        background:#fff;
+        border-radius:20px;
+        box-shadow:0 8px 25px rgba(0,0,0,.08);
+        border:1px solid #edf0f5;
+        overflow:hidden;
+    }
+
+    .leave-summary-card h2{
+        font-size:2.2rem;
+    }
+
+    .leave-summary-card .border-end{
+        border-color:#edf0f5 !important;
+    }
+    
     .inventory-container {
         background: #f8fafc;
         min-height: 100vh;
@@ -184,6 +200,48 @@
             <div class="premium-search shadow-sm">
                 <i class="feather-search text-primary" style="font-size: 18px;"></i>
                 <input type="text" id="inventorySearch" placeholder="Search leave categories..." onkeyup="filterInventory()">
+            </div>
+        </div>
+
+        <div class="leave-summary-card mb-4">
+            <div class="row align-items-center g-0">
+
+                <div class="col-md-4 text-center border-end">
+                    <div class="p-4">
+                        <h6 class="text-muted text-uppercase mb-2">
+                            Total Allocated
+                        </h6>
+                        <h2 class="fw-bold text-primary mb-0">
+                            {{ number_format($totalLeaveCycle['allotted'], 1) }}
+                        </h2>
+                        <small>Days</small>
+                    </div>
+                </div>
+
+                <div class="col-md-4 text-center border-end">
+                    <div class="p-4">
+                        <h6 class="text-muted text-uppercase mb-2">
+                            Total Used
+                        </h6>
+                        <h2 class="fw-bold text-danger mb-0">
+                            {{ number_format($totalLeaveCycle['used'], 1) }}
+                        </h2>
+                        <small>Days</small>
+                    </div>
+                </div>
+
+                <div class="col-md-4 text-center">
+                    <div class="p-4">
+                        <h6 class="text-muted text-uppercase mb-2">
+                            Available Balance
+                        </h6>
+                        <h2 class="fw-bold text-success mb-0">
+                            {{ number_format($totalLeaveCycle['available'], 1) }}
+                        </h2>
+                        <small>Days</small>
+                    </div>
+                </div>
+
             </div>
         </div>
 

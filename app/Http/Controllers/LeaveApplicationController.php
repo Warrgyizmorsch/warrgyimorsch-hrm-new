@@ -215,12 +215,19 @@ class LeaveApplicationController extends Controller
             $employees = Employee::active()->where('id', $user->employee_id)->get();
         }
 
-        $leaves = $query->orderBy('created_at', 'desc')->paginate(15);
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
+        $leaves = $query->orderBy('created_at', 'desc')->paginate($perPage);
         $holidays = Holiday::pluck('date')
             ->map(fn ($date) => Carbon::parse($date)->format('Y-m-d'))
             ->values();
 
-        return view('leave.history', compact('leaves', 'employees', 'holidays'));
+        return view('leave.history', compact('leaves', 'employees', 'holidays', 'perPage'));
     }
 
     public function store(Request $request)
