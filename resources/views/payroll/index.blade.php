@@ -29,7 +29,8 @@
                         <div class="d-none d-md-flex align-items-center"
                             style="width: 280px; background: #f1f5f9; border-radius: 10px; border: 1px solid #e2e8f0; height: 40px; padding: 0 15px; transition: all 0.3s ease;">
                             <i class="feather-search text-muted" style="font-size: 14px;"></i>
-                            <input type="text" id="tableSearch" onkeyup="searchTable()" placeholder="Search..."
+                            <input type="text" id="tableSearch" onkeyup="searchTable(event)" placeholder="Search..."
+                                value="{{ request('search') }}"
                                 style="background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important; width: 100%; height: 100%; padding-left: 10px; font-size: 13px; font-weight: 500; color: #334155;">
                         </div>
 
@@ -279,7 +280,7 @@
 
                         <!-- Deductions -->
                         <div class="col-12">
-                            <div class="border rounded-3 p-3 bg-light-subtle">
+                            <div class="border rounded-3 p-3 pt-0 bg-light-subtle">
                                 <h6 class="fw-bold text-danger text-uppercase mb-3">
                                     Deductions
                                 </h6>
@@ -342,46 +343,60 @@
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-center">
-                            <div class="col-8">
-                                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; background: white;">
-                                    <div class="card-header bg-white border-bottom px-4 py-3">
-                                        <h6 class="fw-bold mb-0 text-dark">Net Salary & Summary</h6>
-                                    </div>
-                                    <div class="card-body p-3 text-center">
-                                        <div class="p-3 rounded-4 mb-3 shadow-sm"
-                                            style="background: linear-gradient(135deg, #3858f9 0%, #1e3a8a 100%);">
-                                            <div class="text-white opacity-75 small mb-1">Take Home Pay</div>
-                                            <div class="fs-2 fw-bold text-white" id="tableNetSalary">₹ 0.00</div>
-                                        </div>
-    
-                                        <div class="row g-2 mb-4">
-                                            <div class="col-4">
-                                                <div class="p-2 bg-light rounded-3">
-                                                    <div class="text-muted fs-10 mb-1">Payable</div>
-                                                    <div class="fw-bold" id="resultPayableDays">0</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="p-2 bg-light rounded-3">
-                                                    <div class="text-muted fs-10 mb-1">Unpaid</div>
-                                                    <div class="fw-bold text-danger" id="resultUnpaidDays">0</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="p-2 bg-light rounded-3">
-                                                    <div class="text-muted fs-10 mb-1">Loss</div>
-                                                    <div class="fw-bold text-danger" id="resultSalaryLoss">₹ 0.00</div>
+                        <div class="d-flex align-items-center justify-content-center" style="background-color: #f3f4f6; width: 98%; margin: 0 10px 0 12px;">
+                            <div class="col-10">
+                                <div class="card-body p-4">
+                                    <div class="row align-items-center">
+
+                                        <!-- Left Side -->
+                                        <div class="col-md-4 ms-4">
+                                            <div class="h-100 d-flex flex-column justify-content-center rounded-4 p-4"
+                                                style="background: linear-gradient(135deg, #3858f9 0%, #1e3a8a 100%); min-height: 80px;">
+                                                <div class="text-white opacity-75 mb-2">Take Home Pay</div>
+                                                <div class="fw-bold text-white" id="tableNetSalary" style="font-size: 2rem;">
+                                                    ₹ 0.00
                                                 </div>
                                             </div>
                                         </div>
-    
-                                        <div class="d-grid gap-2">
-                                            <button class="btn btn-primary py-3 fw-bold shadow-sm"
-                                                style="background: #3858f9; border: none; border-radius: 12px;" onclick="savePayroll(this)">
-                                                <i class="bi bi-check2-circle me-2 fs-5"></i> SUBMIT & SAVE PAYROLL
+
+                                        <!-- Right Side -->
+                                        <div class="col-md-7" style="min-height: 80px;">
+
+                                            <!-- Summary Row -->
+                                            <div class="row mb-2 d-flex justify-content-between">
+
+                                                <div class="summary-box ms-3">
+                                                    <div class="summary-label">Payable</div>
+                                                    <div class="summary-value text-primary" id="resultPayableDays">
+                                                        0
+                                                    </div>
+                                                </div>
+
+                                                <div class="summary-box">
+                                                    <div class="summary-label">Unpaid</div>
+                                                    <div class="summary-value text-danger" id="resultUnpaidDays">
+                                                        0
+                                                    </div>
+                                                </div>
+
+                                                <div class="summary-box me-3">
+                                                    <div class="summary-label">Loss</div>
+                                                    <div class="summary-value text-danger" id="resultSalaryLoss">
+                                                        ₹ 0.00
+                                                    </div>
+                                                </div>
+
+                                            </div>
+
+                                            <!-- Submit Button -->
+                                            <button class="btn w-100 py-3 fw-bold text-white"
+                                                style="background:#3858f9;border:none;border-radius:12px;"
+                                                onclick="savePayroll(this)">
+                                                <i class="bi bi-check2-circle me-2"></i>
+                                                SUBMIT PAYROLL
                                             </button>
                                         </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -390,7 +405,7 @@
                 </div>
 
                 <!-- SHOW ENTRIES -->
-                <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
+                <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2 mt-3">
                     <span class="text-muted small fw-bold text-uppercase">Show</span>
                     <div class="dropdown">
                         <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
@@ -722,21 +737,35 @@
         function applyFilters() {
             const month = document.getElementById('monthFilter').value;
             const empId = document.getElementById('employeeFilter').value;
-            window.location.href = `{{ route("payroll.index") }}?month=${month}&employee_id=${empId}`;
+            const searchVal = document.getElementById('tableSearch').value;
+            let url = `{{ route("payroll.index") }}?month=${month}&employee_id=${empId}`;
+            if (searchVal) {
+                url += `&search=${encodeURIComponent(searchVal)}`;
+            }
+            window.location.href = url;
         }
 
-        function searchTable() {
-            const filter = document.getElementById('tableSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('table tbody tr.hover-row');
-            
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                if (text.includes(filter)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+        let searchTimeout;
+        function searchTable(event) {
+            if (event && event.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                performSearch();
+                return;
+            }
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 800);
+        }
+
+        function performSearch() {
+            const searchVal = document.getElementById('tableSearch').value;
+            const url = new URL(window.location.href);
+            if (searchVal) {
+                url.searchParams.set('search', searchVal);
+            } else {
+                url.searchParams.delete('search');
+            }
+            url.searchParams.set('page', 1);
+            window.location.href = url.toString();
         }
 
         // Custom Dropdown Search Logic
@@ -896,6 +925,28 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        .summary-box{
+            background:#ffffff;
+            border-radius:12px;
+            text-align:center;
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            width: 30%;
+            padding: 4px 0 4px 0;
+        }
+
+        .summary-label{
+            font-size:13px;
+            color:#6b7280;
+            margin-bottom: 4px;
+        }
+
+        .summary-value{
+            font-size:22px;
+            font-weight:700;
+        }
 
         .wghrm-custom-select-btn {
             background-color: #fff;

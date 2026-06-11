@@ -50,6 +50,33 @@ class PayrollController extends Controller
         if ($request->filled('employee_id')) {
             $query->where('attendances.employee_id', $request->employee_id);
         }
+
+        // ✅ Apply search filter
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $normalizedSearch = str_replace('/', '-', $search);
+            $query->where(function($q) use ($search, $normalizedSearch) {
+                $q->where('attendances.status', 'like', "%{$search}%")
+                    ->orWhere('employees.name', 'like', "%{$search}%");
+
+                try {
+                    if (preg_match('/^\d{1,2}-\d{1,2}-\d{4}$/', $normalizedSearch)) {
+                        $formattedDate = Carbon::createFromFormat('d-m-Y', $normalizedSearch)->format('Y-m-d');
+                        $q->orWhere('attendances.attendance_date', $formattedDate);
+                    } elseif (preg_match('/^\d{1,2}-\d{1,2}$/', $normalizedSearch)) {
+                        $parts = explode('-', $normalizedSearch);
+                        $q->orWhere(function($sub) use ($parts) {
+                            $sub->whereMonth('attendances.attendance_date', $parts[1])
+                                ->whereDay('attendances.attendance_date', $parts[0]);
+                        });
+                    } else {
+                        $q->orWhere('attendances.attendance_date', 'like', "%{$search}%");
+                    }
+                } catch (\Exception $e) {
+                    $q->orWhere('attendances.attendance_date', 'like', "%{$search}%");
+                }
+            });
+        }
         // ✅ GROUPING (required for your blade)
         $select = [
             'attendances.attendance_date',
@@ -738,6 +765,21 @@ class PayrollController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Global search across paginated pages
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('employee', function($eq) use ($search) {
+                    $eq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhere('month', 'like', "%{$search}%")
+                ->orWhere('status', 'like', "%{$search}%")
+                ->orWhere('payable_days', 'like', "%{$search}%")
+                ->orWhere('gross_salary', 'like', "%{$search}%")
+                ->orWhere('net_salary', 'like', "%{$search}%");
+            });
+        }
+
         $perPage = (int) $request->query('per_page', 20);
         $allowedPerPage = [20, 50, 100];
 
@@ -1364,6 +1406,12 @@ class PayrollController extends Controller
         // FILTER BY EMPLOYEE NAME
         if ($request->filled('employee_id')) {
             $query->where('attendances.employee_id', $request->employee_id);
+        }
+
+        // FILTER BY SEARCH (Employee Name)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where('employees.name', 'like', "%{$search}%");
         }
 
         // FILTER BY START DATE

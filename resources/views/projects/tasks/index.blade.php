@@ -138,7 +138,7 @@
                     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center"
                         style="border-radius: 12px 12px 0 0;">
                         <!-- SHOW ENTRIES -->
-                        <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
+                        <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2" id="taskTableContainerHeaderPart">
                             <span class="text-muted small fw-bold text-uppercase">Show</span>
                             <div class="dropdown">
                                 <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
@@ -160,11 +160,13 @@
                                 <span class="input-group-text bg-transparent border-0"><i
                                          class="feather-search text-muted" style="font-size: 13px;"></i></span>
                                 <input type="text" id="taskSearch"
-                                    class="form-control border-0 bg-transparent shadow-none fw-bold" onkeyup="filterTasks()"
+                                    class="form-control border-0 bg-transparent shadow-none fw-bold" onkeyup="searchTable()"
+                                    value="{{ request('search') }}"
                                     placeholder="Search tasks..." style="height: 38px; font-size: 13px; color: #334155;">
                             </div>
                         </div>
                     </div>
+                    <div id="taskTableContainerBodyPart">
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0" id="tasksTable">
@@ -690,29 +692,12 @@
                             </table>
                         </div>
                         <!-- ARROW PAGINATION -->
-                        <div class="px-4 py-4 border-top d-flex justify-content-between align-items-center bg-white"
-                            style="border-radius: 0 0 12px 12px;">
-                            <div class="small text-muted fw-bold" id="entriesInfo" style="font-size: 14px;">Showing 1 to
-                                {{ $tasks->count() }} of {{ $tasks->count() }} entries
+                        @if($tasks->hasPages())
+                            <div class="card-footer bg-white border-0 py-3">
+                                {{ $tasks->appends(request()->query())->links('pagination::bootstrap-5') }}
                             </div>
-                            <nav id="taskPaginationNav">
-                                <ul class="pagination pagination-md mb-0 gap-1" id="paginationList">
-                                    <li class="page-item disabled mx-1"><a
-                                            class="page-link border rounded d-flex align-items-center justify-content-center text-muted shadow-none"
-                                            href="#" style="width: 40px; height: 40px;"><i
-                                                class="feather-chevron-left"></i></a></li>
-                                    <li class="page-item active mx-1"><a
-                                            class="page-link border rounded d-flex align-items-center justify-content-center text-white shadow-sm"
-                                            href="#"
-                                            style="background: #3858f9; border-color: #3858f9; width: 40px; height: 40px; font-weight: 700;">1</a>
-                                    </li>
-                                    <li class="page-item disabled mx-1"><a
-                                            class="page-link border rounded d-flex align-items-center justify-content-center text-muted shadow-none"
-                                            href="#" style="width: 40px; height: 40px;"><i
-                                                class="feather-chevron-right"></i></a></li>
-                                </ul>
-                            </nav>
-                        </div>
+                        @endif
+                    </div>
                     </div>
                 </div>
             </div>
@@ -2608,107 +2593,91 @@
                 document.querySelector('#followUpModal .modal-dialog').classList.add('modal-xl');
             }
 
-            function getFilteredTaskRows() {
-                const filter = (document.getElementById('taskSearch')?.value || '').toLowerCase().trim();
-                const rows = Array.from(document.querySelectorAll('#tasksTable tbody .task-row'));
-
-                return rows.filter(row => row.innerText.toLowerCase().includes(filter));
+            let searchTimeout;
+            function searchTable() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(performSearch, 400);
             }
 
-            function renderTaskPagination(totalItems, totalPages) {
-                const nav = document.getElementById('taskPaginationNav');
-                const paginationList = document.getElementById('paginationList');
-
-                if (!nav || !paginationList) return;
-
-                if (totalItems === 0 || totalPages <= 1) {
-                    nav.classList.add('d-none');
-                    paginationList.innerHTML = '';
-                    return;
+            function performSearch() {
+                const searchVal = document.getElementById('taskSearch').value;
+                let url = new URL(window.location.href);
+                if (searchVal) {
+                    url.searchParams.set('search', searchVal);
+                } else {
+                    url.searchParams.delete('search');
                 }
+                url.searchParams.set('page', 1);
 
-                nav.classList.remove('d-none');
+                window.history.pushState(null, '', url.toString());
 
-                let html = `
-                    <li class="page-item ${currentTaskPage === 1 ? 'disabled' : ''} mx-1">
-                        <a class="page-link border rounded d-flex align-items-center justify-content-center ${currentTaskPage === 1 ? 'text-muted shadow-none' : 'text-dark'}"
-                           href="javascript:void(0);"
-                           onclick="changeTaskPage(${currentTaskPage - 1})"
-                           style="width: 40px; height: 40px;">
-                            <i class="feather-chevron-left"></i>
-                        </a>
-                    </li>
-                `;
+                fetch(url.toString(), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(res => res.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    const newBody = doc.getElementById('taskTableContainerBodyPart');
+                    const currentBody = document.getElementById('taskTableContainerBodyPart');
+                    if (newBody && currentBody) {
+                        currentBody.innerHTML = newBody.innerHTML;
+                    }
+                    
+                    const newHeader = doc.getElementById('taskTableContainerHeaderPart');
+                    const currentHeader = document.getElementById('taskTableContainerHeaderPart');
+                    if (newHeader && currentHeader) {
+                        currentHeader.innerHTML = newHeader.innerHTML;
+                    }
 
-                for (let i = 1; i <= totalPages; i++) {
-                    html += `
-                        <li class="page-item ${i === currentTaskPage ? 'active' : ''} mx-1">
-                            <a class="page-link border rounded d-flex align-items-center justify-content-center ${i === currentTaskPage ? 'text-white shadow-sm' : 'text-dark shadow-none'}"
-                               href="javascript:void(0);"
-                               onclick="changeTaskPage(${i})"
-                               style="${i === currentTaskPage ? 'background: #3858f9; border-color: #3858f9;' : ''} width: 40px; height: 40px; font-weight: 700;">
-                                ${i}
-                            </a>
-                        </li>
-                    `;
+                    if (window.feather) {
+                        feather.replace();
+                    }
+                })
+                .catch(err => console.error('Error fetching search results:', err));
+            }
+
+            // AJAX navigation for pagination and entries dropdown inside container
+            document.addEventListener('click', function(e) {
+                const ajaxLink = e.target.closest('#taskTableContainerBodyPart a, #taskTableContainerHeaderPart a');
+                if (ajaxLink && (ajaxLink.closest('.pagination') || ajaxLink.closest('.dropdown-menu'))) {
+                    const targetUrl = ajaxLink.getAttribute('href');
+                    if (targetUrl && targetUrl !== 'javascript:void(0)' && !targetUrl.startsWith('#')) {
+                        e.preventDefault();
+                        
+                        window.history.pushState(null, '', targetUrl);
+                        
+                        fetch(targetUrl, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(res => res.text())
+                        .then(html => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const newBody = doc.getElementById('taskTableContainerBodyPart');
+                            const currentBody = document.getElementById('taskTableContainerBodyPart');
+                            if (newBody && currentBody) {
+                                currentBody.innerHTML = newBody.innerHTML;
+                                currentBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                            const newHeader = doc.getElementById('taskTableContainerHeaderPart');
+                            const currentHeader = document.getElementById('taskTableContainerHeaderPart');
+                            if (newHeader && currentHeader) {
+                                currentHeader.innerHTML = newHeader.innerHTML;
+                            }
+                            if (window.feather) {
+                                feather.replace();
+                            }
+                        })
+                        .catch(err => console.error('Error fetching dynamic content:', err));
+                    }
                 }
-
-                html += `
-                    <li class="page-item ${currentTaskPage === totalPages ? 'disabled' : ''} mx-1">
-                        <a class="page-link border rounded d-flex align-items-center justify-content-center ${currentTaskPage === totalPages ? 'text-muted shadow-none' : 'text-dark'}"
-                           href="javascript:void(0);"
-                           onclick="changeTaskPage(${currentTaskPage + 1})"
-                           style="width: 40px; height: 40px;">
-                            <i class="feather-chevron-right"></i>
-                        </a>
-                    </li>
-                `;
-
-                paginationList.innerHTML = html;
-            }
-
-            function paginateTable() {
-                const rows = Array.from(document.querySelectorAll('#tasksTable tbody .task-row'));
-                const filteredRows = getFilteredTaskRows();
-                const totalItems = filteredRows.length;
-                const limit = parseInt(document.getElementById('entriesLimit')?.value, 10) || 20;
-                const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-
-                if (currentTaskPage > totalPages) {
-                    currentTaskPage = totalPages;
-                }
-
-                const startIndex = (currentTaskPage - 1) * limit;
-                const endIndex = startIndex + limit;
-
-                rows.forEach(row => {
-                    row.style.display = 'none';
-                });
-
-                filteredRows.slice(startIndex, endIndex).forEach(row => {
-                    row.style.display = '';
-                });
-
-                const infoStart = totalItems === 0 ? 0 : startIndex + 1;
-                const infoEnd = Math.min(endIndex, totalItems);
-                document.getElementById('entriesInfo').innerText = `Showing ${infoStart} to ${infoEnd} of ${totalItems} entries`;
-
-                renderTaskPagination(totalItems, totalPages);
-            }
-
-            function changeTaskPage(page) {
-                const filteredRows = getFilteredTaskRows();
-                const limit = parseInt(document.getElementById('entriesLimit')?.value, 10) || 20;
-                const totalPages = Math.max(1, Math.ceil(filteredRows.length / limit));
-
-                currentTaskPage = Math.min(Math.max(page, 1), totalPages);
-                paginateTable();
-            }
-
-            function filterTasks() {
-                currentTaskPage = 1;
-                paginateTable();
-            }
+            });
 
             document.getElementById('followUpForm').addEventListener('submit', function (e) {
                 e.preventDefault();
@@ -2931,7 +2900,6 @@
 
             setInterval(updateTaskTimers, 1000);
             document.addEventListener('DOMContentLoaded', () => {
-                filterTasks();
                 updateTaskTimers();
             });
 

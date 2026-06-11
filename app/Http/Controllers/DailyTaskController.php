@@ -79,6 +79,19 @@ class DailyTaskController extends Controller
         if ($request->upto_date) {
             $query->where('end_date', '<=', $request->upto_date);
         }
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('task_title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhereHas('project', function ($pq) use ($search) {
+                      $pq->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('employee', function ($eq) use ($search) {
+                      $eq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
 
         $perPage = (int) $request->query('per_page', 20);
         $allowedPerPage = [20, 50, 100];

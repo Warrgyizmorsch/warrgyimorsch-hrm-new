@@ -38,8 +38,10 @@ class LeaveController extends Controller
             'team_leader'
         ]);
 
+        $selectedMonthStart = Carbon::createFromDate($year, $month, 1);
+
         if ($isAdmin) {
-            $employees = Employee::active()->orderBy('name', 'asc')->get();
+            $employees = Employee::active()->whereDate('date_of_joining', '<', $selectedMonthStart)->orderBy('name', 'asc')->get();
             $allotments = LeaveAllotment::where('month', $month)
                 ->where('year', $year)
                 ->get()
@@ -55,7 +57,7 @@ class LeaveController extends Controller
         } elseif ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
-                $employees = Employee::active()->where('department', $department)->orderBy('name', 'asc')->get();
+                $employees = Employee::active()->where('department', $department)->whereDate('date_of_joining', '<', $selectedMonthStart)->orderBy('name', 'asc')->get();
                 $employeeIds = $employees->pluck('id');
                 
                 $allotments = LeaveAllotment::where('month', $month)
