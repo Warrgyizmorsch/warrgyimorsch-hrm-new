@@ -12,10 +12,12 @@
             </ul>
         </div>
         <div class="page-header-right d-flex justify-content-between">
-            <button type="button" class="btn btn-primary me-5" data-bs-toggle="modal" data-bs-target="#evaluationModal">
-                <i class="feather-settings me-1"></i>
-                Manage Evaluation
-            </button>
+            @if ($isTeamLeader || $isAdmin)
+                <button type="button" class="btn btn-primary me-5" data-bs-toggle="modal" data-bs-target="#evaluationModal">
+                    <i class="feather-settings me-1"></i>
+                    Manage Evaluation
+                </button>
+            @endif
             <button id="openCreateReviewBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReviewModal" data-mode="create">
                 <i class="fa fa-plus me-1"></i> Create Review
             </button>
@@ -35,15 +37,20 @@
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label>Department</label>
-                            <select name="department" class="form-select" required>
-                                <option value="">Select Department</option>
-                                @foreach($departments as $department)
-                                    <option value="{{ $department->name }}">
-                                        {{ $department->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <label class="form-label fw-semibold">Department</label>
+                            @if($isTeamLeader)
+                                <div class="form-control-plaintext fw-bold">{{ $employeeRecord->department ?? 'N/A' }}</div>
+                                <input type="hidden" id="department" name="department" value="{{ $employeeRecord->department ?? '' }}">
+                            @else
+                                <select id="department" name="department" class="form-select evaluation-department-select" required>
+                                    <option value="">Select Department</option>
+                                    @foreach($departments as $department)
+                                        <option value="{{ $department->name }}">
+                                            {{ $department->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            @endif
                         </div>
 
                         <table class="table">
@@ -216,7 +223,7 @@
                                         @endif
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="technicalReviewCriteriaBody">
                                     @php
                                         $department = $employeeRecord->department ?? '';
                                     @endphp
@@ -232,27 +239,36 @@
                                                 <input type="hidden" name="criteria_point[]" value="{{ $evaluation->max_point }}">
                                             </td>
                                             <td>
-                                                <input type="number" name="self_review[]" class="form-control">
+                                                <input type="number" name="self_review[]" class="form-control self-review" step="0.01" min="0" max="{{ $evaluation->max_point }}">
                                             </td>
-                                            <td>
-                                                <input type="number" name="author_review[]" class="form-control">
-                                            </td>
-                                            <td>
-                                                <input type="number" name="admin_review[]" class="form-control">
-                                            </td>
+                                            @if($isTeamLeader || $isAdmin)
+                                                <td>
+                                                    <input type="number" name="author_review[]" class="form-control author-review" step="0.01" min="0" max="{{ $evaluation->max_point }}">
+                                                </td>
+                                            @endif
+                                            @if($isAdmin)
+                                                <td>
+                                                    <input type="number" name="admin_review[]" class="form-control admin-review" step="0.01" min="0" max="{{ $evaluation->max_point }}">
+                                                </td>
+                                            @endif
                                         </tr>
                                     @endforeach
-
+                                </tbody>
+                                <tfoot>
                                     <tr class="fw-bold">
                                         <td>Total</td>
-                                        <td>
+                                        <td id="criteriaPointTotal">
                                             {{ $evaluations->sum('max_point') }}
                                         </td>
                                         <td id="selfTotal">0</td>
-                                        <td id="teamTotal">0</td>
-                                        <td id="adminTotal">0</td>
+                                        @if($isTeamLeader || $isAdmin)
+                                            <td id="teamTotal">0</td>
+                                        @endif
+                                        @if($isAdmin)
+                                            <td id="adminTotal">0</td>
+                                        @endif
                                     </tr>
-                                </tbody>
+                                </tfoot>
                             </table>
                         </div>
                         <div class="modal-footer bg-light">
@@ -541,6 +557,72 @@
             display: none;
         }
 
+        /* Main Select Box */
+        .select2-container--default .select2-selection--single {
+            height: 56px !important;
+            border: 1.5px solid #4f6fff !important;
+            border-radius: 14px !important;
+            display: flex !important;
+            align-items: center !important;
+            padding: 0 15px !important;
+            font-size: 18px;
+            font-weight: 600;
+            background: #fff;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #334155 !important;
+            line-height: normal !important;
+            padding-left: 0 !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 54px !important;
+            right: 12px !important;
+        }
+
+        /* Dropdown */
+        .select2-dropdown {
+            border: 1px solid #e5e7eb !important;
+            border-radius: 16px !important;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,.08);
+        }
+
+        /* Search Input */
+        .select2-search--dropdown {
+            padding: 12px;
+        }
+
+        .select2-search--dropdown .select2-search__field {
+            height: 48px;
+            border: 1px solid #d1d5db !important;
+            border-radius: 10px !important;
+            padding: 0 15px !important;
+            font-size: 16px;
+        }
+
+        /* Options */
+        .select2-results__option {
+            padding: 14px 18px !important;
+            font-size: 17px;
+            color: #334155;
+            border-radius: 10px;
+            margin: 4px 8px;
+        }
+
+        /* Hover */
+        .select2-results__option--highlighted.select2-results__option--selectable {
+            background: #eef2ff !important;
+            color: #4f6fff !important;
+        }
+
+        /* Selected Option */
+        .select2-results__option--selected {
+            background: #eef2ff !important;
+            color: #4f6fff !important;
+        }
+
         @media (max-width: 767.98px) {
             .review-select-trigger {
                 min-height: 50px;
@@ -552,7 +634,68 @@
                 padding: 12px;
             }
         }
+
+        #evaluationModal .evaluation-department-select,
+        #evaluationModal .select2-container--default .select2-selection--single {
+            min-height: 46px;
+            border: 1px solid #d9e2ef;
+            border-radius: 12px;
+            background-color: #fff;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+            font-size: 14px;
+        }
+
+        #evaluationModal .evaluation-department-select {
+            padding: 10px 14px;
+            color: #334155;
+        }
+
+        #evaluationModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 44px;
+            padding-left: 14px;
+            color: #334155;
+        }
+
+        #evaluationModal .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 44px;
+            right: 10px;
+        }
+
+        .evaluation-department-dropdown.select2-dropdown {
+            border: 1px solid #d9e2ef;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14);
+        }
+
+        .evaluation-department-dropdown .select2-search--dropdown {
+            padding: 10px;
+        }
+
+        .evaluation-department-dropdown .select2-search__field {
+            border: 1px solid #d9e2ef !important;
+            border-radius: 10px;
+            padding: 8px 10px;
+            outline: none;
+        }
+
+        .evaluation-department-dropdown .select2-results__option {
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+
+        .evaluation-department-dropdown .select2-results__option--highlighted {
+            background-color: #3858f9 !important;
+            color: #fff !important;
+        }
+
+        .evaluation-department-dropdown .select2-results__option--selected {
+            background-color: #3858f9 !important;
+            color: #fff !important;
+        }
     </style>
+
+    <link href="{{ asset('assets/vendors/css/select2.min.css') }}" rel="stylesheet" />
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -602,7 +745,7 @@
                 }
             });
 
-            function updateTotals() {
+            window.updateTechnicalReviewTotals = function () {
                 let selfTotal = 0;
                 let teamTotal = 0;
                 let adminTotal = 0;
@@ -635,10 +778,22 @@
                     }
                 });
 
-                document.getElementById('selfTotal').textContent = hasSelf ? selfTotal.toFixed(2) : '';
-                document.getElementById('teamTotal').textContent = hasTeam ? teamTotal.toFixed(2) : '';
-                document.getElementById('adminTotal').textContent = hasAdmin ? adminTotal.toFixed(2) : '';
-            }
+                const selfTotalEl = document.getElementById('selfTotal');
+                const teamTotalEl = document.getElementById('teamTotal');
+                const adminTotalEl = document.getElementById('adminTotal');
+
+                if (selfTotalEl) {
+                    selfTotalEl.textContent = hasSelf ? selfTotal.toFixed(2) : '';
+                }
+
+                if (teamTotalEl) {
+                    teamTotalEl.textContent = hasTeam ? teamTotal.toFixed(2) : '';
+                }
+
+                if (adminTotalEl) {
+                    adminTotalEl.textContent = hasAdmin ? adminTotal.toFixed(2) : '';
+                }
+            };
 
             document.addEventListener('input', function (e) {
                 if (
@@ -646,15 +801,23 @@
                     e.target.matches('input[name="author_review[]"]') ||
                     e.target.matches('input[name="admin_review[]"]')
                 ) {
-                    updateTotals();
+                    window.updateTechnicalReviewTotals();
                 }
             });
 
-            updateTotals();
+            window.updateTechnicalReviewTotals();
         });
 
         document.addEventListener('DOMContentLoaded', function () {
             const reviewForm = document.getElementById('technicalReviewForm');
+            const createReviewBtn = document.getElementById('openCreateReviewBtn');
+            const criteriaBody = document.getElementById('technicalReviewCriteriaBody');
+            const defaultCriteriaRows = criteriaBody ? criteriaBody.innerHTML : '';
+            const submitBtn = reviewForm.querySelector('button[type="submit"]');
+            const storeAction = `{{ url('/technical-review/store') }}`;
+            const updateActionBase = `{{ url('/technical-review') }}`;
+            const canReviewAsTeamLeader = @json($isTeamLeader || $isAdmin);
+            const canReviewAsAdmin = @json($isAdmin);
 
             function setSelectValue(name, value) {
                 const input = reviewForm.querySelector(`input[name="${name}"]`);
@@ -683,9 +846,125 @@
                 }
             }
 
+            function displayReviewValue(value) {
+                const numberValue = parseFloat(value);
+
+                if (value === null || value === undefined || value === '' || numberValue === 0) {
+                    return '';
+                }
+
+                return value;
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? '').replace(/[&<>"']/g, function (char) {
+                    return {
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#039;',
+                    }[char];
+                });
+            }
+
+            function updateCriteriaPointTotal() {
+                const criteriaPointTotal = document.getElementById('criteriaPointTotal');
+                let total = 0;
+
+                document.querySelectorAll('input[name="criteria_point[]"]').forEach(input => {
+                    total += parseFloat(input.value) || 0;
+                });
+
+                if (criteriaPointTotal) {
+                    criteriaPointTotal.textContent = total.toFixed(2);
+                }
+            }
+
+            function renderEditRows(details) {
+                if (!criteriaBody) {
+                    return;
+                }
+
+                criteriaBody.innerHTML = '';
+
+                details.forEach(detail => {
+                    const criteriaName = escapeHtml(detail.criteria_name);
+                    const criteriaPoint = escapeHtml(detail.criteria_point);
+                    const selfReview = escapeHtml(displayReviewValue(detail.self_review));
+                    const authorReview = escapeHtml(displayReviewValue(detail.author_review));
+                    const adminReview = escapeHtml(displayReviewValue(detail.admin_review));
+                    let reviewCells = `
+                        <td>
+                            <input type="number" name="self_review[]" class="form-control" step="0.01" min="0" value="${selfReview}" max="${criteriaPoint}">
+                        </td>`;
+
+                    if (canReviewAsTeamLeader) {
+                        reviewCells += `
+                            <td>
+                                <input type="number" name="author_review[]" class="form-control" step="0.01" min="0" value="${authorReview}" max="${criteriaPoint}">
+                            </td>`;
+                    }
+
+                    if (canReviewAsAdmin) {
+                        reviewCells += `
+                            <td>
+                                <input type="number" name="admin_review[]" class="form-control" step="0.01" min="0" value="${adminReview}" max="${criteriaPoint}">
+                            </td>`;
+                    }
+
+                    criteriaBody.insertAdjacentHTML('beforeend', `
+                        <tr>
+                            <td>
+                                ${criteriaName}
+                                <input type="hidden" name="detail_id[]" value="${escapeHtml(detail.id)}">
+                                <input type="hidden" name="criteria_name[]" value="${criteriaName}">
+                            </td>
+                            <td>
+                                ${criteriaPoint}
+                                <input type="hidden" name="criteria_point[]" value="${criteriaPoint}">
+                            </td>
+                            ${reviewCells}
+                        </tr>
+                    `);
+                });
+
+                updateCriteriaPointTotal();
+                window.updateTechnicalReviewTotals();
+            }
+
+            function resetReviewFormForCreate() {
+                reviewForm.action = storeAction;
+
+                if (submitBtn) {
+                    submitBtn.textContent = 'Save Entry';
+                }
+
+                if (criteriaBody) {
+                    criteriaBody.innerHTML = defaultCriteriaRows;
+                }
+
+                reviewForm.querySelectorAll('input[name="self_review[]"], input[name="author_review[]"], input[name="admin_review[]"]').forEach(input => {
+                    input.value = '';
+                });
+
+                updateCriteriaPointTotal();
+                window.updateTechnicalReviewTotals();
+            }
+
+            if (createReviewBtn) {
+                createReviewBtn.addEventListener('click', resetReviewFormForCreate);
+            }
+
             document.querySelectorAll('.edit-technical-review-btn').forEach(btn => {
                 btn.addEventListener('click', async function () {
                     const reviewId = this.dataset.reviewId;
+
+                    reviewForm.action = `${updateActionBase}/${reviewId}/update`;
+
+                    if (submitBtn) {
+                        submitBtn.textContent = 'Update Entry';
+                    }
 
                     setSelectValue('month', this.dataset.month);
                     setSelectValue('period', this.dataset.period);
@@ -695,23 +974,7 @@
                         const res = await fetch(`{{ url('/technical-review-details') }}/${reviewId}`);
                         const details = await res.json();
 
-                        const selfInputs = reviewForm.querySelectorAll('input[name="self_review[]"]');
-                        const authorInputs = reviewForm.querySelectorAll('input[name="author_review[]"]');
-                        const adminInputs = reviewForm.querySelectorAll('input[name="admin_review[]"]');
-
-                        selfInputs.forEach((input, i) => {
-                            input.value = details[i]?.self_review != null && details[i]?.self_review !== 0 ? details[i].self_review : '';
-                        });
-
-                        authorInputs.forEach((input, i) => {
-                            input.value = details[i]?.author_review != null && details[i]?.author_review !== 0 ? details[i].author_review : '';
-                        });
-
-                        adminInputs.forEach((input, i) => {
-                            input.value = details[i]?.admin_review != null && details[i]?.admin_review !== 0 ? details[i].admin_review : '';
-                        });
-
-                        updateTotals();
+                        renderEditRows(details);
                     } catch (error) {
                         console.error('Failed to load review details:', error);
                     }
@@ -722,7 +985,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const departmentSelect = document.querySelector('select[name="department"]');
+            const departmentSelect = document.getElementById('department');
             const criteriaContainer = document.getElementById('criteriaContainer');
             const totalPoints = document.getElementById('totalPoints');
             const saveBtn = document.getElementById('saveEvaluationBtn');
@@ -832,12 +1095,65 @@
             });
 
             if (departmentSelect) {
-                departmentSelect.addEventListener('change', function () {
-                    loadDepartmentRows(this.value);
-                });
+                const handleChange = function () {
+                    loadDepartmentRows(departmentSelect.value);
+                };
+
+                departmentSelect.addEventListener('change', handleChange);
+
+                if (window.jQuery) {
+                    jQuery(departmentSelect).on('change', handleChange);
+                }
 
                 if (departmentSelect.value) {
                     loadDepartmentRows(departmentSelect.value);
+                }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const departmentSelect = document.getElementById('department');
+
+            if (!departmentSelect || !window.jQuery) {
+                return;
+            }
+
+            function initializeEvaluationDepartmentSelect() {
+                if (!jQuery.fn || !jQuery.fn.select2 || !jQuery(departmentSelect).is('select') || jQuery(departmentSelect).hasClass('select2-hidden-accessible')) {
+                    return;
+                }
+
+                jQuery(departmentSelect).select2({
+                    placeholder: 'Search department...',
+                    width: '100%',
+                    dropdownParent: jQuery('#evaluationModal'),
+                    dropdownCssClass: 'evaluation-department-dropdown'
+                });
+            }
+
+            if (jQuery.fn && jQuery.fn.select2) {
+                initializeEvaluationDepartmentSelect();
+                return;
+            }
+
+            const select2Script = document.createElement('script');
+            select2Script.src = `{{ asset('assets/vendors/js/select2.min.js') }}`;
+            select2Script.onload = initializeEvaluationDepartmentSelect;
+            document.body.appendChild(select2Script);
+        });
+
+        document.addEventListener('input', function (e) {
+            if (
+                e.target.classList.contains('self-review') ||
+                e.target.classList.contains('author-review') ||
+                e.target.classList.contains('admin-review')
+            ) {
+                let max = parseFloat(e.target.getAttribute('max')) || 0;
+                let value = parseFloat(e.target.value) || 0;
+
+                if (value > max) {
+                    alert(`Review point cannot be greater than ${max}`);
+                    e.target.value = max;
                 }
             }
         });

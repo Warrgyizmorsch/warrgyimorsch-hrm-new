@@ -235,8 +235,9 @@
                     </div>
                 @endif
 
-                <!-- Desktop Table View -->
-                <div class="d-none d-lg-block">
+                <div id="attendanceTableContainer">
+                    <!-- Desktop Table View -->
+                    <div class="d-none d-lg-block">
                     <!-- SHOW ENTRIES -->
                     <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
                         <span class="text-muted small fw-bold text-uppercase">Show</span>
@@ -497,6 +498,7 @@
                         {{ $attendance->appends(request()->query())->links('pagination::bootstrap-5') }}
                     </div>
                 @endif
+                </div>
             </div>
         </div>
     </div>
@@ -612,20 +614,43 @@
             bootstrap.Dropdown.getInstance(document.getElementById('quickRangeBtn')).hide();
         }
 
+        let searchTimeout;
         function searchTable() {
-            const filter = document.getElementById('tableSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('table tbody tr.hover-row');
-            const cards = document.querySelectorAll('.mobile-card-wrapper');
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 400);
+        }
 
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(filter) ? '' : 'none';
-            });
+        function performSearch() {
+            const searchVal = document.getElementById('tableSearch').value;
+            let url = new URL(window.location.href);
+            if (searchVal) {
+                url.searchParams.set('search', searchVal);
+            } else {
+                url.searchParams.delete('search');
+            }
+            url.searchParams.set('page', 1);
 
-            cards.forEach(card => {
-                const text = card.textContent.toLowerCase();
-                card.style.display = text.includes(filter) ? '' : 'none';
-            });
+            window.history.pushState(null, '', url.toString());
+
+            fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newContainer = doc.getElementById('attendanceTableContainer');
+                const currentContainer = document.getElementById('attendanceTableContainer');
+                if (newContainer && currentContainer) {
+                    currentContainer.innerHTML = newContainer.innerHTML;
+                }
+                if (window.feather) {
+                    feather.replace();
+                }
+            })
+            .catch(err => console.error('Error fetching search results:', err));
         }
 
         function wghrmFilterItems(input) {
@@ -659,6 +684,40 @@
             if (!quickRange.value || (quickRange.value === 'today' && !startInput.value)) {
                 updateDateRange('today');
             }
+
+            // AJAX navigation for pagination and entries dropdown inside container
+            document.addEventListener('click', function(e) {
+                const ajaxLink = e.target.closest('#attendanceTableContainer a');
+                if (ajaxLink && (ajaxLink.closest('.pagination') || ajaxLink.closest('.dropdown-menu'))) {
+                    const targetUrl = ajaxLink.getAttribute('href');
+                    if (targetUrl && targetUrl !== 'javascript:void(0)' && !targetUrl.startsWith('#')) {
+                        e.preventDefault();
+                        
+                        window.history.pushState(null, '', targetUrl);
+                        
+                        fetch(targetUrl, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(res => res.text())
+                        .then(html => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const newContainer = doc.getElementById('attendanceTableContainer');
+                            const currentContainer = document.getElementById('attendanceTableContainer');
+                            if (newContainer && currentContainer) {
+                                currentContainer.innerHTML = newContainer.innerHTML;
+                                currentContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                            if (window.feather) {
+                                feather.replace();
+                            }
+                        })
+                        .catch(err => console.error('Error fetching dynamic content:', err));
+                    }
+                }
+            });
         });
 
         function selectEmployee(val, label) {
@@ -672,6 +731,7 @@
             const end = document.getElementById('endDate').value;
             const range = document.getElementById('quickRange').value;
             const empId = document.getElementById('selectedEmployeeId').value;
+            const searchVal = document.getElementById('tableSearch').value;
 
             let url = new URL(window.location.href);
             if (start) url.searchParams.set('start_date', start);
@@ -679,7 +739,11 @@
             if (range) url.searchParams.set('range', range);
             if (empId) url.searchParams.set('employee_id', empId);
             else url.searchParams.delete('employee_id');
+
+            if (searchVal) url.searchParams.set('search', searchVal);
+            else url.searchParams.delete('search');
             
+            url.searchParams.set('page', 1);
             window.location.href = url.toString();
         }
 

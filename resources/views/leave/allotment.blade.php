@@ -90,7 +90,7 @@
                                                 <td class="ps-4 py-3">
                                                     <div class="d-flex align-items-center gap-3">
                                                         <div
-                                                            class="avatar-text avatar-xs bg-soft-primary text-primary small fw-bold">
+                                                            class="avatar-text avatar-md bg-soft-primary text-primary">
                                                             {{ substr($emp->name, 0, 1) }}
                                                         </div>
                                                         <span class="fw-bold text-dark">{{ $emp->name }}</span>

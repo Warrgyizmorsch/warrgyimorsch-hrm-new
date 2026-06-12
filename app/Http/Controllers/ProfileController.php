@@ -15,9 +15,55 @@ use App\Models\Attendance;
 use App\Models\LeaveApplication;
 use App\Models\LeaveAllotment;
 use App\Models\Holiday;
+use Carbon\Carbon;
 
 class ProfileController extends Controller
 {
+    private function calculateDeductibleLeaveDays(int $employeeId, ?int $year = null, ?int $month = null): float
+    {
+        $query = LeaveApplication::where('employee_id', $employeeId)
+            ->where('status', 'approved');
+
+        if ($year !== null) {
+            $query->whereYear('start_date', $year);
+        }
+
+        if ($month !== null) {
+            $query->whereMonth('start_date', $month);
+        }
+
+        $approvedLeaves = $query->get();
+        $totalTaken = 0;
+
+        foreach ($approvedLeaves as $leave) {
+            $category = strtolower($leave->leave_category ?? '');
+            $type = strtolower($leave->leave_type ?? '');
+
+            if (str_contains($category, 'gatepass') || str_contains($category, 'wfh')) {
+                continue;
+            }
+
+            if (str_contains($category, 'half') || str_contains($type, 'half')) {
+                $totalTaken += 0.5;
+                continue;
+            }
+
+            if ($leave->total_days !== null) {
+                $totalTaken += (float) $leave->total_days;
+                continue;
+            }
+
+            $startDate = Carbon::parse($leave->start_date);
+            $endDate = $leave->end_date ? Carbon::parse($leave->end_date) : $startDate->copy();
+
+            $totalTaken += $startDate->equalTo($endDate)
+                ? 1
+                : $startDate->diffInDays($endDate);
+        }
+
+        return $totalTaken;
+    }
+
     /**
      * Display the user's profile form.
      */
@@ -96,17 +142,17 @@ class ProfileController extends Controller
         $employee = Employee::find($user->employee_id);
         
         $balances = [];
+        $totalLeaveCycle = [
+            'allotted' => 0,
+            'used' => 0,
+            'available' => 0,
+        ];
+
         if ($employee) {
             // Allotment: Treating the leave_count as a monthly quota
             $total_allotted = LeaveAllotment::where('employee_id', $employee->id)->sum('leave_count');
 
-            // Usage: Approved leaves that START in this month
-            $total_used = LeaveApplication::where('employee_id', $employee->id)
-                ->where('status', 'approved')
-                ->where('leave_category', 'NOT LIKE', '%WFH%') // Exclude WFH from used leaves
-                // ->whereYear('start_date', date('Y'))
-                // ->whereMonth('start_date', date('m'))
-                ->sum('total_days');
+            $total_used = $this->calculateDeductibleLeaveDays($employee->id);
             // echo $total_used;exit;
             $totalLeaveCycle = [
                 'allotted' => $total_allotted,
@@ -125,12 +171,11 @@ class ProfileController extends Controller
 
             foreach ($monthlyAllotments as $allotment) {
 
-                $used = LeaveApplication::where('employee_id', $employee->id)
-                    ->where('status', 'approved')
-                    ->where('leave_category', 'NOT LIKE', '%WFH%')
-                    ->whereYear('start_date', $allotment->year)
-                    ->whereMonth('start_date', $allotment->month)
-                    ->sum('total_days');
+                $used = $this->calculateDeductibleLeaveDays(
+                    $employee->id,
+                    (int) $allotment->year,
+                    (int) $allotment->month
+                );
 
                 $available = max(
                     0,
@@ -183,15 +228,13 @@ class ProfileController extends Controller
             $leaves = LeaveApplication::where('employee_id', $employee->id)->orderBy('created_at', 'desc')->get();
         }
 
-        // Total remaining balance
-        $total_allotted = LeaveAllotment::where('employee_id', $employee->id)->sum('leave_count');
-        $total_used = LeaveApplication::where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->where('leave_category', 'NOT LIKE', '%WFH%') // Exclude WFH from used leaves
-            // ->whereYear('start_date', date('Y'))
-            // ->whereMonth('start_date', date('m'))
-            ->sum('total_days');
-    
+        $total_allotted = $employee
+            ? LeaveAllotment::where('employee_id', $employee->id)->sum('leave_count')
+            : 0;
+        $total_used = $employee
+            ? $this->calculateDeductibleLeaveDays($employee->id)
+            : 0;
+
         $totalLeaveCycle = [
             'allotted' => $total_allotted,
             'used' => $total_used,

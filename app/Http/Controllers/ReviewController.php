@@ -346,24 +346,71 @@ class ReviewController extends Controller
     {
         $review = TechnicalReview::with('details')->findOrFail($id);
 
-        foreach ($review->details as $index => $detail) {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:employees,id',
+            'month' => 'required|string',
+            'period' => 'required|string',
+            'self_review' => 'nullable|array',
+            'author_review' => 'nullable|array',
+            'admin_review' => 'nullable|array',
+            'detail_id' => 'nullable|array',
+            'detail_id.*' => 'nullable|integer',
+            'self_review.*' => 'nullable|numeric|min:0',
+            'author_review.*' => 'nullable|numeric|min:0',
+            'admin_review.*' => 'nullable|numeric|min:0',
+        ]);
+
+        $exists = TechnicalReview::where('employee_id', $validated['user_id'])
+            ->where('month', $validated['month'])
+            ->where('period', $validated['period'])
+            ->where('id', '!=', $review->id)
+            ->exists();
+
+        if ($exists) {
+            return back()->withErrors(
+                'Technical review already exists for this period.'
+            );
+        }
+
+        $review->employee_id = $validated['user_id'];
+        $review->month = $validated['month'];
+        $review->period = $validated['period'];
+
+        $detailsById = $review->details->keyBy('id');
+
+        foreach ($validated['detail_id'] ?? [] as $index => $detailId) {
+            $detail = $detailsById->get((int) $detailId);
+
+            if (!$detail) {
+                continue;
+            }
+
+            $detail->self_review =
+                array_key_exists($index, $validated['self_review'] ?? [])
+                    ? ($validated['self_review'][$index] ?? 0)
+                    : $detail->self_review;
 
             $detail->author_review =
-                $request->author_review[$index]
-                ?? $detail->author_review;
+                array_key_exists($index, $validated['author_review'] ?? [])
+                    ? ($validated['author_review'][$index] ?? 0)
+                    : $detail->author_review;
 
             $detail->admin_review =
-                $request->admin_review[$index]
-                ?? $detail->admin_review;
+                array_key_exists($index, $validated['admin_review'] ?? [])
+                    ? ($validated['admin_review'][$index] ?? 0)
+                    : $detail->admin_review;
 
             $detail->save();
         }
 
+        $review->self_total =
+            $review->details()->sum('self_review');
+
         $review->author_total =
-            $review->details->sum('author_review');
+            $review->details()->sum('author_review');
 
         $review->admin_total =
-            $review->details->sum('admin_review');
+            $review->details()->sum('admin_review');
 
         $review->save();
 
@@ -376,7 +423,9 @@ class ReviewController extends Controller
     public function technicalReviewDetails($id)
     {
         return response()->json(
-            TechnicalReviewDetail::where('review_id', $id)->get()
+            TechnicalReviewDetail::where('review_id', $id)
+                ->orderBy('id')
+                ->get()
         );
     }
 
@@ -384,35 +433,45 @@ class ReviewController extends Controller
     // Add Review Criteria
     public function storeTechnicalEvaluation(Request $request)
     {
-        $criteriaNames = $request->criterianame ?? [];
-        $maxPoints = $request->maxpoint ?? [];
-        $department = $request->department;
+        $validated = $request->validate([
+            'department' => 'required|string',
+            'criterianame' => 'nullable|array',
+            'criterianame.*' => 'nullable|string',
+            'maxpoint' => 'nullable|array',
+            'maxpoint.*' => 'nullable|numeric|min:0',
+        ]);
 
-        $submittedCriteria = [];
+        $criteriaNames = $validated['criterianame'] ?? [];
+        $maxPoints = $validated['maxpoint'] ?? [];
+        $department = $validated['department'];
+
+        $rows = [];
 
         foreach ($criteriaNames as $index => $criteria) {
-            $criteria = trim($criteria);
+            $criteria = trim((string) $criteria);
 
             if ($criteria === '') {
                 continue;
             }
 
-            $submittedCriteria[] = $criteria;
-
-            TechnicalReviewEvaluation::updateOrCreate(
-                [
-                    'department' => $department,
-                    'criteria_name' => $criteria,
-                ],
-                [
-                    'max_point' => $maxPoints[$index] ?? 0,
-                ]
-            );
+            $rows[] = [
+                'department' => $department,
+                'criteria_name' => $criteria,
+                'max_point' => $maxPoints[$index] ?? 0,
+                'sort_order' => count($rows) + 1,
+                'status' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
         }
 
-        TechnicalReviewEvaluation::where('department', $department)
-            ->whereNotIn('criteria_name', $submittedCriteria)
-            ->delete();
+        DB::transaction(function () use ($department, $rows) {
+            TechnicalReviewEvaluation::where('department', $department)->delete();
+
+            if (!empty($rows)) {
+                TechnicalReviewEvaluation::insert($rows);
+            }
+        });
 
         return back()->with('success', 'Evaluation saved successfully.');
     }
