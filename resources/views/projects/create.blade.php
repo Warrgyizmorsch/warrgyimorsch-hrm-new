@@ -23,158 +23,23 @@
             <div class="col-lg-12">
                 <div class="card border-top-0">
                     <div class="card-body p-0">
-                        <div id="project-create-wizard" style="visibility: hidden; height: 0; overflow: hidden;">
-
-                            <!-- Step 1: Type -->
-                            <h3>TYPE</h3>
-                            <section>
-                                <div class="mb-5">
-                                    <h2 class="fs-16 fw-bold">Project type</h2>
-                                    <p class="text-muted">Select project type first.</p>
-                                </div>
-                                <fieldset>
-                                    <label class="w-100" for="project_personal">
-                                        <input class="card-input-element" type="radio" name="type" id="project_personal"
-                                            value="Personal" required>
-                                        <span
-                                            class="card card-body d-flex flex-row justify-content-between align-items-center">
-                                            <span class="hstack gap-3">
-                                                <span class="avatar-text"><i class="feather-user"></i></span>
-                                                <span>
-                                                    <span class="d-block fs-13 fw-bold text-dark">Personal Project</span>
-                                                    <span class="d-block text-muted mb-0">Individual project
-                                                        management</span>
-                                                </span>
-                                            </span>
-                                        </span>
-                                    </label>
-                                    <label class="w-100" for="project_team">
-                                        <input class="card-input-element" type="radio" name="type" id="project_team"
-                                            value="Team">
-                                        <span
-                                            class="card card-body d-flex flex-row justify-content-between align-items-center">
-                                            <span class="hstack gap-3">
-                                                <span class="avatar-text"><i class="feather-users"></i></span>
-                                                <span>
-                                                    <span class="d-block fs-13 fw-bold text-dark">Team Project</span>
-                                                    <span class="d-block text-muted mb-0">Collaborative project for multiple
-                                                        members</span>
-                                                </span>
-                                            </span>
-                                        </span>
-                                    </label>
-                                </fieldset>
-                                <hr class="mb-5">
-                                <div class="mb-5">
-                                    <h2 class="fs-16 fw-bold">Project manage</h2>
-                                    <p class="text-muted">Who can manage projects</p>
-                                </div>
-                                <fieldset>
-                                    <label class="w-100" for="project_everyone">
-                                        <input class="card-input-element" type="radio" name="manage" id="project_everyone"
-                                            value="Everyone" required>
-                                        <span
-                                            class="card card-body d-flex flex-row justify-content-between align-items-center">
-                                            <span class="hstack gap-3">
-                                                <span class="avatar-text"><i class="feather-globe"></i></span>
-                                                <span>
-                                                    <span class="d-block fs-13 fw-bold text-dark">Everyone</span>
-                                                    <span class="d-block text-muted mb-0">Visible to all authenticated
-                                                        users.</span>
-                                                </span>
-                                            </span>
-                                        </span>
-                                    </label>
-                                    <label class="w-100" for="project_admin">
-                                        <input class="card-input-element" type="radio" name="manage" id="project_admin"
-                                            value="Admin">
-                                        <span
-                                            class="card card-body d-flex flex-row justify-content-between align-items-center">
-                                            <span class="hstack gap-3">
-                                                <span class="avatar-text"><i class="feather-shield"></i></span>
-                                                <span>
-                                                    <span class="d-block fs-13 fw-bold text-dark">Only Admin's</span>
-                                                    <span class="d-block text-muted mb-0">Only admins can manage
-                                                        everything.</span>
-                                                </span>
-                                            </span>
-                                        </span>
-                                    </label>
-                                </fieldset>
-                            </section>
-
-                            <!-- Step 2: Details -->
-                            <h3>DETAILS</h3>
-                            <section>
-                                <div class="mb-5">
-                                    <h2 class="fs-16 fw-bold">Project details</h2>
+                        <div id="project-create-form" class="p-5">
+                                <div class="mb-5 d-flex align-items-center" style="background-color:#3858f9; height: 50px">
+                                    <h2 class="fs-16 fw-bold text-white ps-3 pt-2">Project details</h2>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-6 mb-4">
+                                    <div class="col-md-4 mb-4">
                                         <label class="form-label fw-bold fs-12 text-muted text-uppercase">Project Name <span
                                                 class="text-danger">*</span></label>
                                         <input type="text" class="form-control premium-input shadow-none" id="projectName"
                                             placeholder="e.g. Website development" required>
                                     </div>
-                                    <div class="col-md-6 mb-4">
+                                    <div class="col-md-4 mb-4">
                                         <label class="form-label fw-bold fs-12 text-muted text-uppercase">Technology</label>
                                         <input type="text" class="form-control premium-input shadow-none"
                                             id="projectTechnology" placeholder="e.g. PHP, Laravel, React">
                                     </div>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold fs-12 text-muted text-uppercase">Project
-                                        Description</label>
-                                    <textarea id="summernote-main" class="form-control"
-                                        style="min-height: 200px; border-radius: 8px;"></textarea>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">Start Date <span
-                                                class="text-danger">*</span></label>
-                                        <input type="date" class="form-control premium-input shadow-none"
-                                            id="projectStartDate" required>
-                                    </div>
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">End Date</label>
-                                        <input type="date" class="form-control premium-input shadow-none"
-                                            id="projectEndDate" onclick="this.showPicker()">
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">Department <span
-                                                class="text-danger">*</span></label>
-                                        <select class="form-select premium-select" id="projectDepartment"
-                                            data-placeholder="Select Department" {{ auth()->user()->role == 'team_leader' ? 'disabled' : '' }} required>
-                                            <option value=""></option>
-                                            @foreach($departments as $dept)
-                                                <option value="{{ $dept->name }}"
-                                                    {{ auth()->user()->role == 'team_leader' && $dept->name == auth()->user()->employee->department ? 'selected' : '' }}>
-                                                    {{ $dept->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        @if(auth()->user()->role == 'team_leader')
-                                            <input type="hidden"
-                                                name="department"
-                                                value="{{ auth()->user()->employee->department }}">
-                                        @endif
-                                    </div>
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">Status</label>
-                                        <select class="form-select premium-select" id="projectStatus"
-                                            data-placeholder="Select Status">
-                                            <option value=""></option>
-                                            <option value="Pending">Pending</option>
-                                            <option value="In Process">In Process</option>
-                                            <option value="Completed">Completed</option>
-                                            <option value="On Hold">On Hold</option>
-                                            <option value="Review">Review</option>
-                                            <option value="Rework">Rework</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-4">
+                                    <div class="col-md-4 mb-4">
                                         <label class="form-label fw-bold fs-12 text-muted text-uppercase">
                                             Services <span class="text-danger">*</span>
                                         </label>
@@ -222,17 +87,59 @@
                                         </select>
                                     </div>
                                 </div>
-                            </section>
-
-                            <!-- Step 3: Assigned -->
-                            <h3>ASSIGNED</h3>
-                            <section>
-                                <div class="mb-5">
-                                    <h2 class="fs-16 fw-bold">Project Assignment</h2>
-                                    <p class="text-muted">Select project leads and team members.</p>
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold fs-12 text-muted text-uppercase">Project
+                                        Description</label>
+                                    <textarea id="summernote-main" class="form-control"
+                                        style="min-height: 200px; border-radius: 8px;"></textarea>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-6 mb-4">
+                                    <div class="col-md-4 mb-4">
+                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">Start Date <span
+                                                class="text-danger">*</span></label>
+                                        <input type="date" class="form-control premium-input shadow-none"
+                                            id="projectStartDate" required>
+                                    </div>
+                                    <div class="col-md-4 mb-4">
+                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">End Date</label>
+                                        <input type="date" class="form-control premium-input shadow-none"
+                                            id="projectEndDate" onclick="this.showPicker()">
+                                    </div>
+                                    <div class="col-md-4 mb-4">
+                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">Status</label>
+                                        <select class="form-select premium-select" id="projectStatus"
+                                            data-placeholder="Select Status">
+                                            <option value=""></option>
+                                            <option value="Pending">Pending</option>
+                                            <option value="In Process">In Process</option>
+                                            <option value="Completed">Completed</option>
+                                            <option value="On Hold">On Hold</option>
+                                            <option value="Review">Review</option>
+                                            <option value="Rework">Rework</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-4">
+                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">Department <span
+                                                class="text-danger">*</span></label>
+                                        <select class="form-select premium-select" id="projectDepartment" multiple
+                                            data-placeholder="Select Department" {{ auth()->user()->role == 'team_leader' ? 'disabled' : '' }} required>
+                                            <option value=""></option>
+                                            @foreach($departments as $dept)
+                                                <option value="{{ $dept->name }}"
+                                                    {{ auth()->user()->role == 'team_leader' && $dept->name == auth()->user()->employee->department ? 'selected' : '' }}>
+                                                    {{ $dept->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @if(auth()->user()->role == 'team_leader')
+                                            <input type="hidden"
+                                                name="department"
+                                                value="{{ auth()->user()->employee->department }}">
+                                        @endif
+                                    </div>
+                                    <div class="col-md-4 mb-4">
                                         <label class="form-label fw-bold fs-12 text-muted text-uppercase">Project Leads
                                             <span class="text-danger">*</span></label>
                                         <select class="form-select premium-select" id="projectLeaders" multiple="multiple"
@@ -242,7 +149,7 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-md-6 mb-4">
+                                    <div class="col-md-4 mb-4">
                                         <label class="form-label fw-bold fs-12 text-muted text-uppercase">Team
                                             Members</label>
                                         <select class="form-select premium-select" id="projectMembers" multiple="multiple"
@@ -253,15 +160,27 @@
                                         </select>
                                     </div>
                                 </div>
-                            </section>
-
+                                <div class="row">
+                                    <div class="col-md-8 mb-3">
+                                        <label class="form-label">Documents</label>
+                                        <input type="file" id="projectDocuments" name="documents[]" class="form-control" multiple>
+                                        <small class="text-muted">
+                                            You can select multiple files.
+                                        </small>
+                                    </div>
+                                    <div class="col-md-4 mb-3 d-flex align-items-center">
+                                        <button type="button" id="submitProject" class="btn btn-primary h-50 w-100">
+                                            Create Project
+                                        </button>
+                                    </div>
+                                </div>  
                         </div>
 
                         <!-- Hidden Form for Submission -->
-                        <form id="finalCreateForm" action="{{ route('projects.store') }}" method="POST" style="display: none;">
+                        <form id="finalCreateForm" action="{{ route('projects.store') }}" method="POST" enctype="multipart/form-data" style="display: none;">
                             @csrf
-                            <input type="hidden" name="type" id="hiddenType">
-                            <input type="hidden" name="manage" id="hiddenManage">
+                            <!-- <input type="hidden" name="type" id="hiddenType">
+                            <input type="hidden" name="manage" id="hiddenManage"> -->
                             <input type="hidden" name="name" id="hiddenName">
                             <input type="hidden" name="technology" id="hiddenTechnology">
                             <input type="hidden" name="description" id="hiddenDesc">
@@ -279,7 +198,7 @@
     </div>
 
     <style>
-        #project-create-wizard h3 {
+        /* #project-create-wizard h3 {
             display: none !important;
             visibility: hidden !important;
             height: 0 !important;
@@ -358,7 +277,7 @@
             border-radius: 4px !important;
             text-decoration: none !important;
             font-weight: 600 !important;
-        }
+        } */
 
         .card-input-element {
             display: none;
@@ -454,7 +373,9 @@
         }
 
         #services+.select2-container .select2-selection--multiple {
-            align-items: flex-start !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
             padding: 6px 12px !important;
         }
 
@@ -463,29 +384,47 @@
             flex-wrap: wrap !important;
             align-items: center !important;
             gap: 4px !important;
-            width: 100% !important;
+            width: auto !important;
             margin: 0 !important;
             padding: 0 !important;
             line-height: 1.4 !important;
         }
 
         #services+.select2-container .select2-selection--multiple .select2-search--inline {
-            flex: 1 1 220px !important;
-            min-width: 220px !important;
+            flex: 1 1 auto !important;
             margin: 0 !important;
         }
 
         #services+.select2-container .select2-selection--multiple .select2-search__field {
             width: 100% !important;
-            min-width: 220px !important;
             height: 28px !important;
             margin: 0 !important;
             color: #1a202c !important;
             font-weight: 600 !important;
             font-size: 13px !important;
+            resize: none !important;
+            overflow: hidden !important;
+            padding: 4px 0 !important;
+            line-height: 20px !important;
+            text-align: left !important;
         }
 
         #services+.select2-container .select2-selection--multiple .select2-search__field::placeholder {
+            color: #94a3b8 !important;
+            opacity: 1 !important;
+        }
+
+        #services+.select2-container .select2-selection--multiple .select2-search__field::-webkit-input-placeholder {
+            color: #94a3b8 !important;
+            opacity: 1 !important;
+        }
+
+        #services+.select2-container .select2-selection--multiple .select2-search__field::-moz-placeholder {
+            color: #94a3b8 !important;
+            opacity: 1 !important;
+        }
+
+        #services+.select2-container .select2-selection--multiple .select2-search__field:-ms-input-placeholder {
             color: #94a3b8 !important;
             opacity: 1 !important;
         }
@@ -504,112 +443,87 @@
             // We will use a state variable to track if the project name is currently valid
             var isProjectNameValid = true;
 
-            $("#project-create-wizard").steps({
-                headerTag: "h3",
-                bodyTag: "section",
-                transitionEffect: "fade",
-                autoFocus: true,
-                labels: { finish: "FINISH", next: "NEXT", previous: "PREVIOUS" },
-                onInit: function (event, currentIndex) {
-                    $("#project-create-wizard").css({ 'visibility': 'visible', 'height': 'auto', 'overflow': 'visible' });
-
-                    // Initialize Summernote FIRST so it doesn't get blocked
-                    $('#summernote-main').summernote({
-                        height: 250,
-                        placeholder: 'Enter detailed project description...',
-                        toolbar: [
-                            ['style', ['style']],
-                            ['font', ['bold', 'underline', 'clear']],
-                            ['color', ['color']],
-                            ['para', ['ul', 'ol', 'paragraph']],
-                            ['table', ['table']],
-                            ['insert', ['link', 'picture', 'video']],
-                            ['view', ['fullscreen', 'codeview', 'help']]
-                        ]
-                    });
-
-                    // Initialize Select2
-                    if ($.fn.select2) {
-                        $('.premium-select').not('#services').each(function () {
-                            $(this).select2({
-                                width: '100%',
-                                placeholder: $(this).data('placeholder'),
-                                allowClear: true,
-                                minimumResultsForSearch: 0
-                            });
-                        });
-                    }
-                },
-                onStepChanging: function (event, currentIndex, newIndex) {
-                    // Always allow going back
-                    if (currentIndex > newIndex) return true;
-
-                    // Clear generic step-change error indicators
-                    $('.form-control, .form-select, .note-editor').not('#projectName').removeClass('is-invalid');
-                    $('.invalid-feedback').not('.duplicate-feedback').remove();
-
-                    // Validation for Step 1: Type & Manage
-                    if (currentIndex === 0) {
-                        var type = $('input[name="type"]:checked').val();
-                        var manage = $('input[name="manage"]:checked').val();
-                        var hasError = false;
-
-                        if (!type) {
-                            $('[for="project_personal"]').parent().after('<div class="invalid-feedback d-block fw-bold mt-2" style="font-size: 11px; margin-left: 5px;">Please select project type.</div>');
-                            hasError = true;
-                        }
-                        if (!manage) {
-                            $('[for="project_everyone"]').parent().after('<div class="invalid-feedback d-block fw-bold mt-2" style="font-size: 11px; margin-left: 5px;">Please select management access.</div>');
-                            hasError = true;
-                        }
-
-                        if (hasError) return false;
-                    }
-
-                    // Validation for Step 2: Details
-                    if (currentIndex === 1) {
-                        var name = $('#projectName').val();
-                        var dept = $('#projectDepartment').val();
-                        var startDate = $('#projectStartDate').val();
-                        var hasError = false;
-
-                        // STOPS WIZARD FROM RUNNING NEXT IF SYSTEM CACHED AN EXTRA DUPLICATION PROBLEM
-                        if (!isProjectNameValid || $('#projectName').hasClass('is-invalid')) {
-                            return false;
-                        }
-
-                        if (!name) {
-                            $('#projectName').addClass('is-invalid').after('<div class="invalid-feedback fw-bold text-danger mt-1" style="font-size: 11px;">Project name is required.</div>');
-                            hasError = true;
-                        }
-                        if (!startDate) {
-                            $('#projectStartDate').addClass('is-invalid').after('<div class="invalid-feedback fw-bold mt-1" style="font-size: 11px;">Start date is required.</div>');
-                            hasError = true;
-                        }
-                        if (!dept) {
-                            $('#projectDepartment').addClass('is-invalid');
-                            $('#projectDepartment').parent().append('<div class="invalid-feedback d-block fw-bold mt-1" style="font-size: 11px;">Department is required.</div>');
-                            hasError = true;
-                        }
-
-                        if (hasError) return false;
-                    }
-
-                    // Validation for Step 3: Assigned
-                    if (currentIndex === 2) {
-                        var leaders = $('#projectLeaders').val();
-                        if (!leaders || leaders.length === 0) {
-                            $('#projectLeaders').parent().append('<div class="invalid-feedback d-block fw-bold mt-1" style="font-size: 11px;">Please select at least one Project Lead.</div>');
-                            return false;
-                        }
-                    }
-
-                    return true;
-                },
-                onFinished: function (event, currentIndex) {
-                    syncAndSubmit();
-                }
+            // Initialize Summernote FIRST so it doesn't get blocked
+            $('#summernote-main').summernote({
+                height: 250,
+                placeholder: 'Enter detailed project description...',
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'underline', 'clear']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link', 'picture', 'video']],
+                    ['view', ['fullscreen', 'codeview', 'help']]
+                ]
             });
+
+            // Initialize Select2
+            if ($.fn.select2) {
+                $('.premium-select').not('#services').each(function () {
+                    $(this).select2({
+                        width: '100%',
+                        placeholder: $(this).data('placeholder'),
+                        allowClear: true,
+                        minimumResultsForSearch: 0
+                    });
+                });
+            }
+
+            // Submit button click
+            $('#submitProject').on('click', function (e) {
+                e.preventDefault();
+
+                $('.invalid-feedback').remove();
+                $('.form-control, .form-select').removeClass('is-invalid');
+
+                let name = $('#projectName').val();
+                let dept = $('#projectDepartment').val();
+                let startDate = $('#projectStartDate').val();
+                let leaders = $('#projectLeaders').val();
+
+                let hasError = false;
+
+                // Duplicate name validation
+                if (!isProjectNameValid || $('#projectName').hasClass('is-invalid')) {
+                    return false;
+                }
+
+                if (!name) {
+                    $('#projectName')
+                        .addClass('is-invalid')
+                        .after('<div class="invalid-feedback">Project name is required.</div>');
+                    hasError = true;
+                }
+
+                if (!startDate) {
+                    $('#projectStartDate')
+                        .addClass('is-invalid')
+                        .after('<div class="invalid-feedback">Start date is required.</div>');
+                    hasError = true;
+                }
+
+                if (!dept) {
+                    $('#projectDepartment').addClass('is-invalid');
+                    $('#projectDepartment').parent()
+                        .append('<div class="invalid-feedback d-block">Department is required.</div>');
+                    hasError = true;
+                }
+
+                if (!leaders || leaders.length === 0) {
+                    $('#projectLeaders').parent()
+                        .append('<div class="invalid-feedback d-block">Please select at least one Project Lead.</div>');
+                    hasError = true;
+                }
+
+                if (hasError) {
+                    return false;
+                }
+
+                // Submit form
+                syncAndSubmit();
+            });
+
 
             function syncAndSubmit() {
                 $('#hiddenType').val($('input[name="type"]:checked').val());
@@ -641,6 +555,9 @@
                     });
                 }
                 $('#hiddenLeadersContainer').html(leadersHtml);
+
+                // Append documents input to the final form
+                $('#finalCreateForm').append($('#projectDocuments'));
 
                 $('#finalCreateForm').submit();
             }
@@ -704,9 +621,12 @@
                 $('#projectLeaders').empty();
                 $('#projectMembers').empty();
 
-                const filteredEmployees = allEmployees.filter(emp =>
-                    emp.department === selectedDepartment
-                );
+                const filteredEmployees = allEmployees.filter(emp => {
+                    if (Array.isArray(selectedDepartment)) {
+                        return selectedDepartment.includes(emp.department);
+                    }
+                    return selectedDepartment && emp.department === selectedDepartment;
+                });
 
                 filteredEmployees.forEach(function (emp) {
                     const empId = String(emp.id);

@@ -115,13 +115,9 @@
                         <div class="modal-body">
                             @php
                                 $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                                $periods = ['First Half', 'Second Half'];
                             @endphp
                             <div class="row">
-                                @php
-                                    $columnClass = ($isAdmin || $isTeamLeader) ? 'col-md-4' : 'col-md-6';
-                                @endphp
-                                <div class="{{ $columnClass }}">
+                                <div class="col-md-6">
                                     <label class="fw-bold mb-1">Select Month</label>
                                     <div class="review-select" data-select>
                                         <input type="hidden" name="month" value="{{ old('month') }}" required>
@@ -149,33 +145,8 @@
                                     </div>
                                 </div>
 
-                                <div class="{{ $columnClass }}">
-                                    <label class="fw-bold mb-1">Select Period</label>
-                                    <div class="review-select" data-select>
-                                        <input type="hidden" name="period" value="{{ old('period', 'First Half') }}" required>
-                                        <button type="button" class="review-select-trigger" data-select-trigger aria-expanded="false">
-                                            <span data-select-label>{{ old('period', 'First Half') }}</span>
-                                            <i class="fa fa-chevron-down review-select-icon"></i>
-                                        </button>
-                                        <div class="review-select-menu" data-select-menu hidden>
-                                            <div class="review-select-options" data-select-options>
-                                                @foreach($periods as $period)
-                                                    <button
-                                                        type="button"
-                                                        class="review-select-option {{ old('period', 'First Half') === $period ? 'is-selected' : '' }}"
-                                                        data-select-option
-                                                        data-value="{{ $period }}"
-                                                    >
-                                                        {{ $period }}
-                                                    </button>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 @if($isAdmin || $isTeamLeader)
-                                    <div class="{{ $columnClass }}">
+                                    <div class="col-md-6">
                                         <label class="fw-bold mb-1">Select Employee</label>
                                         <div class="review-select" data-select>
                                             <input type="hidden" name="user_id" value="{{ old('user_id') }}" required>
@@ -315,7 +286,7 @@
                 @foreach($reviews as $review)
                     <tr style="height: 50px;">
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $review->month }} ({{ $review->period }})</td>
+                        <td>{{ $review->month }}</td>
                         <td>{{ $review->employee->name ?? 'N/A' }}</td>
                         <td>{{ $review->self_total }}</td>
                         <td>{{ $review->author_total }}</td>

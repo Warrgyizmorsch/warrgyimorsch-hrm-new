@@ -132,7 +132,7 @@
                                         <div class="p-3 border rounded-3 bg-light bg-opacity-10">
                                             <span
                                                 class="fs-11 text-muted text-uppercase fw-bold d-block mb-1">Department</span>
-                                            <span class="fw-bold text-dark">{{ $project->department }}</span>
+                                            <span class="fw-bold text-dark">{{implode(', ', $project->department)}}</span>
                                         </div>
                                     </div>
                                     <div class="col-sm-4">
@@ -187,6 +187,28 @@
                                     @endphp
                                     {!! $cleanDescription !!}
                                 </div>
+
+                                @if(is_array($project->documents) && count($project->documents) > 0)
+                                    <div class="mt-5 border-top pt-4">
+                                        <h6 class="fw-bold text-dark mb-3">Attached Documents</h6>
+                                        <div class="row g-3">
+                                            @foreach($project->documents as $doc)
+                                                @php
+                                                    $fileName = basename($doc);
+                                                    $fileUrl = asset('storage/' . $doc);
+                                                @endphp
+                                                <div class="col-md-4">
+                                                    <div class="d-flex align-items-center p-3 border rounded-3 bg-light bg-opacity-10" style="min-height: 52px;">
+                                                        <i class="feather-file-text text-primary me-2 flex-shrink-0 fs-18"></i>
+                                                        <a href="{{ $fileUrl }}" target="_blank" class="text-primary text-decoration-none fw-bold text-truncate small" title="{{ $fileName }}">
+                                                            {{ $fileName }}
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>

@@ -18,10 +18,11 @@ class Project extends Model
         'department',
         'description',
         'technology',
-        'type',
-        'manage',
+        // 'type',
+        // 'manage',
         'leaders',
         'members',
+        'documents',
     ];
 
     protected $casts = [
@@ -29,11 +30,40 @@ class Project extends Model
         'end_date' => 'date',
         'leaders' => 'array',
         'members' => 'array',
+        'documents' => 'array',
     ];
 
     public function getRouteKeyName()
     {
         return 'slug';
+    }
+
+    public function getDepartmentAttribute($value)
+    {
+        if (empty($value)) {
+            return [];
+        }
+        $decoded = json_decode($value, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+        return array_map('trim', explode(',', $value));
+    }
+
+    public function setDepartmentAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['department'] = json_encode(array_values(array_filter($value)));
+        } elseif (is_string($value)) {
+            if (str_starts_with($value, '[') && str_ends_with($value, ']')) {
+                $this->attributes['department'] = $value;
+            } else {
+                $parts = array_map('trim', explode(',', $value));
+                $this->attributes['department'] = json_encode($parts);
+            }
+        } else {
+            $this->attributes['department'] = json_encode([]);
+        }
     }
 
     public function tasks()
