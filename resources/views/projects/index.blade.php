@@ -255,7 +255,7 @@
                                                 $normalizedStatus = 'Completed';
                                         @endphp
                                         <tr class="single-item" data-name="{{ strtolower($project->name) }}"
-                                            data-status="{{ $normalizedStatus }}" data-department="{{ $project->department }}">
+                                            data-status="{{ $normalizedStatus }}" data-department="{{ is_array($project->department) ? implode(',', $project->department) : $project->department }}">
                                             <td>
                                                 <div class="item-checkbox ms-1">
                                                     <div class="form-check">
@@ -308,7 +308,7 @@
                                                 <a href="{{ route('projects.show', $project) }}" class="hstack gap-3">
                                                     <div>
                                                         <span
-                                                            class="text-truncate-1-line fw-semibold text-dark">{{ $project->department }}</span>
+                                                            class="text-truncate-1-line fw-semibold text-dark"></span>
                                                     </div>
                                                 </a>
                                             </td>
@@ -341,7 +341,7 @@
                                                         
                                                         <div class="hstack gap-2 flex-wrap mb-1">
                                                             <span class="badge bg-soft-secondary text-secondary fs-11">{{ $project->technology }}</span>
-                                                            <span class="badge bg-soft-primary text-primary fs-11 fw-semibold">{{ $project->department }}</span>
+                                                            <span class="badge bg-soft-primary text-primary fs-11 fw-semibold">{{ is_array($project->department) ? implode(', ', $project->department) : $project->department }}</span>
                                                         </div>
 
                                                         <div class="fs-12 text-muted text-truncate-1-line mb-1" style="max-width: 280px;">
@@ -377,21 +377,21 @@
                                                 @endif
                                             </td> -->
                                             <td>
-                                                <div class="dropdown" style="min-width: 120px;">
+                                                <div class="dropdown" style="min-width: 140px;" data-bs-auto-close="outside">
                                                     @php
                                                         $leaders = is_array($project->leaders) ? $project->leaders : [];
-                                                        $currentLead = "Select Lead...";
+                                                        $leaderNames = [];
                                                         foreach ($employees as $emp) {
                                                             if (in_array($emp->id, $leaders)) {
-                                                                $currentLead = $emp->name;
-                                                                break;
+                                                                $leaderNames[] = $emp->name;
                                                             }
                                                         }
+                                                        $currentLeads = count($leaderNames) > 0 ? implode(', ', $leaderNames) : 'Select Leads...';
                                                     @endphp
                                                     <button class="lead-select-btn dropdown-toggle shadow-none" type="button"
                                                         data-bs-toggle="dropdown" aria-expanded="false"
                                                         data-bs-boundary="viewport">
-                                                        <span class="text-truncate">{{ $currentLead }}</span>
+                                                        <span class="text-truncate">{{ $currentLeads }}</span>
                                                         <i class="feather-chevron-down fs-10 ms-1"></i>
                                                     </button>
                                                     <ul class="dropdown-menu shadow-lg border-0"
@@ -413,13 +413,15 @@
                                                         </li>
                                                         <li><a class="dropdown-item fw-bold lead-item py-2 mb-1 rounded mx-2"
                                                                 href="javascript:void(0);"
-                                                                onclick="updateProjectLead('{{ $project->slug }}', '')">No
-                                                                Lead</a></li>
+                                                                onclick="updateProjectLeads('{{ $project->slug }}', [])">No
+                                                                Leads</a></li>
                                                         @foreach($employees as $emp)
-                                                            <li><a class="dropdown-item fw-bold lead-item py-2 mb-1 rounded mx-2 {{ in_array($emp->id, $leaders) ? 'active' : '' }}"
-                                                                    href="javascript:void(0);"
-                                                                    onclick="updateProjectLead('{{ $project->slug }}', {{ $emp->id }})">{{ $emp->name }}</a>
-                                                            </li>
+                                                            @if(in_array($emp->department, (array)$project->department))
+                                                                <li><a class="dropdown-item fw-bold lead-item py-2 mb-1 rounded mx-2 {{ in_array($emp->id, $leaders) ? 'active' : '' }}"
+                                                                        href="javascript:void(0);"
+                                                                        onclick='toggleProjectLead("{{ $project->slug }}", @json($leaders), {{ $emp->id }})'>{{ $emp->name }}</a>
+                                                                </li>
+                                                            @endif
                                                         @endforeach
                                                     </ul>
                                                 </div>
@@ -464,10 +466,12 @@
                                                                 onclick='updateProjectMembers("{{ $project->slug }}", [])'>No
                                                                 Members</a></li>
                                                         @foreach($employees as $emp)
-                                                            <li><a class="dropdown-item fw-bold lead-item py-2 mb-1 rounded mx-2 {{ in_array($emp->id, $members) ? 'active' : '' }}"
-                                                                    href="javascript:void(0);"
-                                                                    onclick='toggleProjectMember("{{ $project->slug }}", @json($members), {{ $emp->id }})'>{{ $emp->name }}</a>
-                                                            </li>
+                                                            @if(in_array($emp->department, (array)$project->department))
+                                                                <li><a class="dropdown-item fw-bold lead-item py-2 mb-1 rounded mx-2 {{ in_array($emp->id, $members) ? 'active' : '' }}"
+                                                                        href="javascript:void(0);"
+                                                                        onclick='toggleProjectMember("{{ $project->slug }}", @json($members), {{ $emp->id }})'>{{ $emp->name }}</a>
+                                                                </li>
+                                                            @endif
                                                         @endforeach
                                                     </ul>
                                                 </div>
@@ -993,10 +997,11 @@
                 $('#projectList tbody tr.single-item').each(function () {
                     var rowName = $(this).data('name') || '';
                     var rowStatus = $(this).data('status') || '';
-                    var rowDept = $(this).data('department') || '';
+                    var rowDept = String($(this).data('department') || '');
                     var matchName = name === "" || rowName.includes(name);
                     var matchStatus = status === "" || rowStatus === status;
-                    var matchDept = department === "" || rowDept === department;
+                    var rowDepts = rowDept ? rowDept.split(',') : [];
+                    var matchDept = department === "" || rowDepts.includes(department);
                     if (matchName && matchStatus && matchDept) { $(this).show(); } else { $(this).hide(); }
                 });
             };
@@ -1059,6 +1064,32 @@
             const modal = new bootstrap.Modal(document.getElementById('quickViewModal'));
             document.getElementById('qvProjectName').innerText = project.name;
             document.getElementById('qvDescription').innerHTML = project.description || '<p class="text-muted">No description available.</p>';
+
+            // Handle documents display
+            const qvDocsContainer = document.getElementById('qvDocumentsContainer');
+            const qvDocsList = document.getElementById('qvDocuments');
+            qvDocsContainer.style.display = 'none';
+            qvDocsList.innerHTML = '';
+
+            const documents = project.documents || [];
+            if (Array.isArray(documents) && documents.length > 0) {
+                let docsHtml = '<div class="row g-3">';
+                documents.forEach((doc, idx) => {
+                    const fileName = doc.split('/').pop();
+                    const fileUrl = `/storage/${doc}`;
+                    docsHtml += `
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center p-2 border rounded bg-light" style="min-height: 48px;">
+                                <i class="feather-file-text text-primary me-2 flex-shrink-0 fs-16"></i>
+                                <a href="${fileUrl}" target="_blank" class="text-primary text-decoration-none fw-bold text-truncate small" title="${fileName}">${fileName}</a>
+                            </div>
+                        </div>
+                    `;
+                });
+                docsHtml += '</div>';
+                qvDocsList.innerHTML = docsHtml;
+                qvDocsContainer.style.display = 'block';
+            }
 
             const leaders = project.leaders || [];
             const members = project.members || [];
@@ -1260,9 +1291,20 @@
             setTimeout(() => location.reload(), 500);
         };
 
-        window.updateProjectLead = function (id, leadId) {
-            updateProjectField(id, { leaders: leadId ? [leadId] : [] }, 'Lead Updated');
+        window.updateProjectLeads = function (id, leaderIds) {
+            updateProjectField(id, { leaders: leaderIds }, 'Leads Updated');
             setTimeout(() => location.reload(), 500);
+        };
+
+        window.toggleProjectLead = function (id, currentLeaders, leaderId) {
+            currentLeaders = Array.isArray(currentLeaders) ? currentLeaders.map(Number) : [];
+            leaderId = Number(leaderId);
+
+            var updatedLeaders = currentLeaders.includes(leaderId)
+                ? currentLeaders.filter(function (id) { return id !== leaderId; })
+                : currentLeaders.concat(leaderId);
+
+            window.updateProjectLeads(id, updatedLeaders);
         };
 
         window.updateProjectMembers = function (id, memberIds) {
@@ -1309,6 +1351,12 @@
                         <label class="text-muted small text-uppercase fw-bold mb-2 d-block">Description</label>
                         <div id="qvDescription" class="p-3 bg-light rounded-3 text-dark fs-14"
                             style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0;">
+                        </div>
+                    </div>
+
+                    <div class="mb-4" id="qvDocumentsContainer" style="display: none;">
+                        <label class="text-muted small text-uppercase fw-bold mb-2 d-block">Attached Documents</label>
+                        <div id="qvDocuments">
                         </div>
                     </div>
 

@@ -93,6 +93,7 @@
                                                 Pending</option>
                                             <option value="In Process" {{ request('status') == 'In Process' ? 'selected' : '' }}>In Process</option>
                                             <option value="Completed" {{ request('status') == 'Completed' ? 'selected' : '' }}>Completed</option>
+                                            <option value="Incomplete" {{ request('status') == 'Incomplete' ? 'selected' : '' }}>Incomplete</option>
                                             <option value="On Hold" {{ request('status') == 'On Hold' ? 'selected' : '' }}>On
                                                 Hold</option>
                                             <option value="Review" {{ request('status') == 'Review' ? 'selected' : '' }}>
@@ -503,13 +504,20 @@
                                                     @if($task->status_changed_at)
 
                                                         <div class="status-time">
+                                                            @php
+                                                                $hours = (int) explode(':', $task->formatted_total_time)[0];
+                                                                $isIncomplete = $hours < 8;
+                                                            @endphp
 
                                                             <i class="feather-clock"></i>
 
                                                             {{ $task->status_changed_at->format('d M Y h:i A') }}
                                                             @if ($s == "Completed")
-                                                                <div class="text-primary fw-bold">
+                                                                <div class="{{ $isIncomplete ? 'text-danger' : 'text-primary' }} fw-bold">
                                                                     {{ $task->formatted_total_time }}
+                                                                    @if($isIncomplete)
+                                                                        <span class="badge bg-danger ms-2">Incomplete</span>
+                                                                    @endif
                                                                 </div>
                                                             @endif
                                                         </div>

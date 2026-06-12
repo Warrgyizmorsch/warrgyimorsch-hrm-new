@@ -71,7 +71,16 @@ class DailyTaskController extends Controller
             $query->where('employee_id', $request->employee_id);
         }
         if ($request->status) {
-            $query->where('status', $request->status);
+            if ($request->status === 'Incomplete') {
+                $query->where('status', 'Completed')
+                    ->where(function ($sub) {
+                        $sub->select(\Illuminate\Support\Facades\DB::raw('COALESCE(SUM(CAST(time_taken AS DECIMAL(10,2))), 0)'))
+                            ->from('task_follow_ups')
+                            ->whereColumn('task_follow_ups.daily_task_id', 'daily_tasks.id');
+                    }, '<', 8);
+            } else {
+                $query->where('status', $request->status);
+            }
         }
         if ($request->from_date) {
             $query->where('start_date', '>=', $request->from_date);

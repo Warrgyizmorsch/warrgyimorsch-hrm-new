@@ -9,7 +9,6 @@ class TechnicalReview extends Model
     protected $fillable = [
         'employee_id',
         'month',
-        'period',
         'self_total',
         'author_total',
         'admin_total',

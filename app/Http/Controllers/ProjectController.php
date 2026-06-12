@@ -38,7 +38,10 @@ class ProjectController extends Controller
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
-                $query->where('department', $department);
+                $query->where(function ($q) use ($department) {
+                    $q->whereJsonContains('department', $department)
+                      ->orWhere('department', 'like', '%' . $department . '%');
+                });
             } else {
                 $query->whereRaw('1=0'); // Force empty if no department
             }
@@ -113,9 +116,27 @@ class ProjectController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'department' => 'required|string',
             'description' => 'required',
-            'type' => 'required',
-            'manage' => 'required',
+            'documents.*' => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
+            // 'type' => 'required',
+            // 'manage' => 'required',
         ]);
+
+        $documents = [];
+
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $file) {
+
+                $fileName = time().'_'.$file->getClientOriginalName();
+
+                $path = $file->storeAs(
+                    'project-documents',
+                    $fileName,
+                    'public'
+                );
+
+                $documents[] = $path;
+            }
+        }
 
         $project = Project::create([
             'name' => $request->name,
@@ -128,8 +149,9 @@ class ProjectController extends Controller
             'technology' => $request->technology,
             'leaders' => $request->leaders,
             'members' => $request->members,
-            'type' => $request->type,
-            'manage' => $request->manage,
+            'documents' => $documents,
+            // 'type' => $request->type,
+            // 'manage' => $request->manage,
         ]);
 
         return redirect()->route('projects.index')->with('success', 'Project created successfully');
@@ -215,9 +237,37 @@ class ProjectController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'department' => 'required|string',
             'description' => 'required',
-            'type' => 'required',
-            'manage' => 'required',
+            'documents.*' => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
+            // 'type' => 'required',
+            // 'manage' => 'required',
         ]);
+
+        $documents = is_array($project->documents) ? $project->documents : [];
+
+        // Handle deleted documents
+        if ($request->has('deleted_documents')) {
+            foreach ($request->deleted_documents as $deletedFile) {
+                if (($key = array_search($deletedFile, $documents)) !== false) {
+                    unset($documents[$key]);
+                    // Delete file from disk
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($deletedFile);
+                }
+            }
+            $documents = array_values($documents); // reindex
+        }
+
+        // Handle new documents
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $file) {
+                $fileName = time().'_'.$file->getClientOriginalName();
+                $path = $file->storeAs(
+                    'project-documents',
+                    $fileName,
+                    'public'
+                );
+                $documents[] = $path;
+            }
+        }
 
         $project->update([
             'name' => $request->name,
@@ -230,8 +280,9 @@ class ProjectController extends Controller
             'technology' => $request->technology,
             'leaders' => $request->leaders,
             'members' => $request->members,
-            'type' => $request->type,
-            'manage' => $request->manage,
+            'documents' => $documents,
+            // 'type' => $request->type,
+            // 'manage' => $request->manage,
         ]);
 
         return redirect()->route('projects.index')->with('success', 'Project updated successfully');

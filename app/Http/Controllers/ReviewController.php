@@ -290,7 +290,6 @@ class ReviewController extends Controller
                 : 'nullable') . '|exists:employees,id',
 
             'month' => 'required',
-            'period' => 'required',
 
             'criteria_name' => 'required|array',
             'criteria_point' => 'required|array',
@@ -306,19 +305,17 @@ class ReviewController extends Controller
 
         $exists = TechnicalReview::where('employee_id', $employeeRecord->id)
             ->where('month', $request->month)
-            ->where('period', $request->period)
             ->exists();
 
         if ($exists) {
             return back()->withErrors(
-                'Technical review already exists for this period.'
+                'Technical review already exists for this month.'
             );
         }
 
         $review = TechnicalReview::create([
             'employee_id' => $employeeRecord->id,
             'month' => $request->month,
-            'period' => $request->period,
             'self_total' => array_sum($request->self_review ?? []),
             'author_total' => array_sum($request->author_review ?? []),
             'admin_total' => array_sum($request->admin_review ?? []),
@@ -349,7 +346,6 @@ class ReviewController extends Controller
         $validated = $request->validate([
             'user_id' => 'required|exists:employees,id',
             'month' => 'required|string',
-            'period' => 'required|string',
             'self_review' => 'nullable|array',
             'author_review' => 'nullable|array',
             'admin_review' => 'nullable|array',
@@ -362,19 +358,17 @@ class ReviewController extends Controller
 
         $exists = TechnicalReview::where('employee_id', $validated['user_id'])
             ->where('month', $validated['month'])
-            ->where('period', $validated['period'])
             ->where('id', '!=', $review->id)
             ->exists();
 
         if ($exists) {
             return back()->withErrors(
-                'Technical review already exists for this period.'
+                'Technical review already exists for this month.'
             );
         }
 
         $review->employee_id = $validated['user_id'];
         $review->month = $validated['month'];
-        $review->period = $validated['period'];
 
         $detailsById = $review->details->keyBy('id');
 
