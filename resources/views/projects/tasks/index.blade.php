@@ -791,24 +791,13 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Task Title <span
                                 class="text-danger">*</span></label>
                         <input type="text" name="task_title" id="taskTitle" class="form-control premium-input"
                             placeholder="Enter Task Title..." required>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Start Date <span
-                                class="text-danger">*</span></label>
-                        <input type="date" name="start_date" id="taskStartDate" class="form-control premium-input" value="{{ now()->format('Y-m-d') }}"
-                            onclick="this.showPicker()" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">End Date</label>
-                        <input type="date" name="end_date" id="taskEndDate" class="form-control premium-input" value="{{ now()->format('Y-m-d') }}"
-                            onclick="this.showPicker()">
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Priority <span
                                 class="text-danger">*</span></label>
                         <select name="priority" id="taskPriority" class="form-select premium-select"
@@ -819,7 +808,18 @@
                             <option value="Low">Low</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Start Date <span
+                                class="text-danger">*</span></label>
+                        <input type="date" name="start_date" id="taskStartDate" class="form-control premium-input" value="{{ now()->format('Y-m-d') }}"
+                            onclick="this.showPicker()" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">End Date</label>
+                        <input type="date" name="end_date" id="taskEndDate" class="form-control premium-input" value="{{ now()->format('Y-m-d') }}"
+                            onclick="this.showPicker()">
+                    </div>
+                    <div class="col-md-4 d-none">
                         <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Status</label>
                         <select name="status" id="taskStatus" class="form-select premium-select"
                             data-placeholder="Select Status..." required>Pending
