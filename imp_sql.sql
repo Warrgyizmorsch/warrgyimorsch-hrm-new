@@ -12,3 +12,5 @@ MODIFY status ENUM(
     'unpaid_leave',
     'unauthorised'
 ) NOT NULL DEFAULT 'absent';
+
+ALTER TABLE `leave_applications` ADD `approved_by` INT(6) NOT NULL AFTER `total_days`, ADD `approved_at` DATETIME NULL DEFAULT NULL AFTER `approved_by`, ADD `cancelled_at` DATETIME NULL DEFAULT NULL AFTER `approved_at`;
