@@ -49,7 +49,7 @@
         </div>
     </div>
 
-    <div class="page-header-collapse">
+    <!-- <div class="page-header-collapse">
         <div class="accordion-body pb-2">
             <div class="row g-3">
                 @php
@@ -152,7 +152,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
     <!-- [ page-header ] end -->
 
     <div class="filter-wrapper" id="filterSection" style="display: none;">
@@ -194,6 +194,48 @@
             </div>
         </div>
     </div>
+
+    <!-- Project Status Dashboard -->
+        <div class="project-status-dashboard mt-4 ms-5">
+                            <div class="d-flex flex-wrap gap-2">
+
+                                <button class="status-filter-card active border-dark" data-filter="all">
+                                    All
+                                    <span class="badge bg-dark rounded-pill" id="count-all">0</span>
+                                </button>
+
+                                <button class="status-filter-card pending border-secondry" data-filter="Pending">
+                                    Pending
+                                    <span class="badge bg-secondary rounded-pill" id="count-pending">0</span>
+                                </button>
+
+                                <button class="status-filter-card process border-primary" data-filter="In Process">
+                                    In Process
+                                    <span class="badge bg-primary rounded-pill" id="count-process">0</span>
+                                </button>
+
+                                <button class="status-filter-card review border-info" data-filter="Review">
+                                    Review
+                                    <span class="badge bg-info rounded-pill" id="count-review">0</span>
+                                </button>
+
+                                <button class="status-filter-card hold border-warning" data-filter="On Hold">
+                                    On Hold
+                                    <span class="badge bg-warning rounded-pill" id="count-hold">0</span>
+                                </button>
+
+                                <button class="status-filter-card rework border-danger" data-filter="Rework">
+                                    Rework
+                                    <span class="badge bg-danger rounded-pill" id="count-rework">0</span>
+                                </button>
+
+                                <button class="status-filter-card completed border-success" data-filter="Completed">
+                                    Completed
+                                    <span class="badge bg-success rounded-pill" id="count-completed">0</span>
+                                </button>
+
+                            </div>
+        </div>
 
     <!-- [ Main Content ] start -->
     <div class="main-content">
@@ -570,6 +612,52 @@
     </div>
 
     <style>
+        .project-status-dashboard {
+            overflow-x: auto;
+        }
+
+        .project-status-dashboard .d-flex {
+            flex-wrap: wrap;
+        }
+
+        .status-filter-card {
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all .2s ease;
+            font-size: 13px;
+            font-weight: 600;
+            min-width: auto;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-filter-card:hover {
+            background: #f8fafc;
+        }
+
+        .status-filter-card.active {
+            background: #eff6ff;
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+
+        .status-title,
+        .status-count {
+            display: inline;
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-count {
+            opacity: .8;
+        }
+
         /* Progress Circle */
         .progress-circle {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -767,7 +855,7 @@
             font-size: 13px !important;
         }
 
-    .wghrm-custom-select-btn {
+            .wghrm-custom-select-btn {
                 background-color: #fff !important;
                 border: 1px solid #e2e8f0 !important;
                 border-radius: 12px !important;
@@ -1332,6 +1420,92 @@
                 success: function () { if (typeof Toast !== 'undefined') Toast.fire({ icon: 'success', title: successTitle }); }
             });
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+
+        const rows = document.querySelectorAll('#projectList tbody tr.single-item');
+
+        const counts = {
+            all: 0,
+            pending: 0,
+            process: 0,
+            review: 0,
+            hold: 0,
+            rework: 0,
+            completed: 0
+        };
+
+        rows.forEach(row => {
+
+            counts.all++;
+
+            let status = row.dataset.status.trim();
+
+            switch(status) {
+
+                case 'Pending':
+                    counts.pending++;
+                    break;
+
+                case 'In Process':
+                    counts.process++;
+                    break;
+
+                case 'Review':
+                    counts.review++;
+                    break;
+
+                case 'On Hold':
+                    counts.hold++;
+                    break;
+
+                case 'Rework':
+                    counts.rework++;
+                    break;
+
+                case 'Completed':
+                    counts.completed++;
+                    break;
+            }
+        });
+
+        document.getElementById('count-all').innerText = counts.all;
+        document.getElementById('count-pending').innerText = counts.pending;
+        document.getElementById('count-process').innerText = counts.process;
+        document.getElementById('count-review').innerText = counts.review;
+        document.getElementById('count-hold').innerText = counts.hold;
+        document.getElementById('count-rework').innerText = counts.rework;
+        document.getElementById('count-completed').innerText = counts.completed;
+
+        const filterButtons = document.querySelectorAll('.status-filter-card');
+
+        filterButtons.forEach(btn => {
+
+            btn.addEventListener('click', function () {
+
+                filterButtons.forEach(b => b.classList.remove('active'));
+
+                this.classList.add('active');
+
+                const filter = this.dataset.filter;
+
+                rows.forEach(row => {
+
+                    const rowStatus = row.dataset.status.trim();
+
+                    if(filter === 'all') {
+                        row.style.display = '';
+                    } else {
+                        row.style.display =
+                            rowStatus === filter ? '' : 'none';
+                    }
+                });
+
+            });
+
+        });
+
+    });
     </script>
 
     <!-- Quick View Modal -->
