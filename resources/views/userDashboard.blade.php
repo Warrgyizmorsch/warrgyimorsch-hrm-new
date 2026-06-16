@@ -468,7 +468,7 @@
                                     <i class="feather-check-circle text-success"></i>
                                 </div>
                                 <div>
-                                    <div class="fs-4 fw-bold text-dark">{{ number_format($availableLeaveBalance, 1) }}</div>
+                                    <div class="fs-4 fw-bold text-dark">{{ number_format(max($availableLeaveBalance, 0),1) }}</div>
                                     <h3 class="fs-13 fw-semibold text-truncate-1-line">Available Leave Balance</h3>
                                 </div>
                             </div>
@@ -641,7 +641,7 @@
                                     <i class="feather-briefcase text-info"></i>
                                 </div>
                                 <div>
-                                    <div class="fs-4 fw-bold text-dark">{{ $totalJourney }}</div>
+                                    <div class="fs-5 fw-bold text-dark">{{ $totalJourney }}</div>
                                     <h3 class="fs-13 fw-semibold text-truncate-1-line">Total Journey</h3>
                                 </div>
                             </div>

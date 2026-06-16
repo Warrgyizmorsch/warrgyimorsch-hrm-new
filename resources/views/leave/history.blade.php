@@ -896,9 +896,9 @@
                 return;
             }
 
-            const numericBalance = Number(balance ?? 0);
+            const numericBalance = Math.max(Number(balance ?? 0), 0);
             badge.textContent = Number.isInteger(numericBalance) ? numericBalance : numericBalance.toFixed(1);
-            badge.className = `badge px-2 py-1 ${numericBalance < 0 ? 'bg-soft-danger text-danger' : 'bg-soft-primary text-primary'} fw-bold`;
+            badge.className = `badge px-2 py-1 ${numericBalance == 0 ? 'bg-soft-danger text-danger' : 'bg-soft-primary text-primary'} fw-bold`;
             badge.style.fontSize = '20px';
         }
 

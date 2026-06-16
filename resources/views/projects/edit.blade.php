@@ -133,7 +133,7 @@
                                         <label class="form-label fw-bold fs-12 text-muted text-uppercase">Department <span
                                                 class="text-danger">*</span></label>
                                         <select class="form-select premium-select" id="projectDepartment" multiple
-                                            data-placeholder="Select Department" {{ auth()->user()->role == 'team_leader' ? 'disabled' : '' }} required>
+                                            data-placeholder="Select Department" required>
                                             <option value=""></option>
                                             @foreach($departments as $dept)
                                                 <option value="{{ $dept->name }}"

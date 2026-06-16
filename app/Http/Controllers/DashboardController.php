@@ -12,6 +12,7 @@ use App\Models\Broadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 
 class DashboardController extends Controller
 {
@@ -486,18 +487,20 @@ class DashboardController extends Controller
             ->where('year', Carbon::now()->format('Y'))
             ->sum('leave_count');
         $availableLeaveBalance = $totalAllottedLeave - $totalUtilizedLeave;
-        $totalJourney = $employee && $employee->date_of_joining
-            ? Carbon::parse($employee->date_of_joining)->diffForHumans(null, true)
-            : 'N/A';
-        if ($employee && $employee->date_of_joining) {
-            $joiningDate = Carbon::parse($employee->date_of_joining);
-            $days = $joiningDate->diffInDays(now());
 
-            if ($days < 365) {
-                $totalJourney = round($days / 30, 1) . ' Months';
-            } else {
-                $totalJourney = round($days / 365, 1) . ' Years';
-            }
+        // Total Journy
+        if ($employee && $employee->date_of_joining) {
+            $interval = Carbon::parse($employee->date_of_joining)->diff(now());
+
+            $parts = [];
+
+            if ($interval->y > 0) $parts[] = $interval->y . ' year' . ($interval->y > 1 ? 's' : '');
+            if ($interval->m > 0) $parts[] = $interval->m . ' month' . ($interval->m > 1 ? 's' : '');
+            if ($interval->d > 0) $parts[] = $interval->d . ' day' . ($interval->d > 1 ? 's' : '');
+
+            $totalJourney = implode(' ', $parts);
+        } else {
+            $totalJourney = 'N/A';
         }
 
         if (!$isAdmin) {
@@ -954,7 +957,7 @@ class DashboardController extends Controller
                     $today->copy()->subDay()
                 ];
             case 'week':
-                return [$today->copy()->startOfWeek(), $today];
+                return [$today->copy()->subDays(6)->startOfDay(), $today->copy()->endOfDay()];
 
             case 'month':
                 return [$today->copy()->startOfMonth(), $today];

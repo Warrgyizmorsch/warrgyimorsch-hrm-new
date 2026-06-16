@@ -48,18 +48,18 @@ class ProjectController extends Controller
         }
         $projects = $query->latest()->paginate($perPage)->withQueryString();
         
-        if ($isAdmin) {
-            $employees = \App\Models\Employee::active()->get();
-        } elseif ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
-            if ($department) {
-                $employees = \App\Models\Employee::active()->where('department', $department)->get();
-            } else {
-                $employees = collect();
-            }
-        } else {
-            $employees = \App\Models\Employee::active()->where('id', $user->employee_id)->get();
-        }
+        $employees = \App\Models\Employee::active()->get();
+        // if ($isAdmin) {
+        // } elseif ($isTeamLeader) {
+        //     $department = $user->employee->department ?? null;
+        //     if ($department) {
+        //         $employees = \App\Models\Employee::active()->where('department', $department)->get();
+        //     } else {
+        //         $employees = collect();
+        //     }
+        // } else {
+        //     $employees = \App\Models\Employee::active()->where('id', $user->employee_id)->get();
+        // }
 
         $departments = \App\Models\Department::all();
         return view('projects.index', compact('projects', 'employees', 'departments', 'isAdmin', 'perPage'));
@@ -81,18 +81,18 @@ class ProjectController extends Controller
             'team_leader'
         ]);
 
-        if ($isAdmin) {
-            $employees = \App\Models\Employee::active()->get();
-        } elseif ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
-            if ($department) {
-                $employees = \App\Models\Employee::active()->where('department', $department)->get();
-            } else {
-                $employees = collect();
-            }
-        } else {
-            $employees = \App\Models\Employee::active()->where('id', $user->employee_id)->get();
-        }
+        $employees = \App\Models\Employee::active()->get();
+        // if ($isAdmin) {
+        // } elseif ($isTeamLeader) {
+        //     $department = $user->employee->department ?? null;
+        //     if ($department) {
+        //         $employees = \App\Models\Employee::active()->where('department', $department)->get();
+        //     } else {
+        //         $employees = collect();
+        //     }
+        // } else {
+        //     $employees = \App\Models\Employee::active()->where('id', $user->employee_id)->get();
+        // }
 
         $departments = \App\Models\Department::all();
         return view('projects.create', compact('employees', 'departments'));
