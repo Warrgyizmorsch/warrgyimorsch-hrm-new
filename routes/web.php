@@ -185,7 +185,7 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     Route::post('/projects/bulk-delete', [ProjectController::class, 'bulkDelete'])->name('projects.bulk-delete');
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
     Route::get('/projects/{project}/tasks-summary', [ProjectController::class, 'tasksSummary'])->name('projects.tasks-summary');
-
+    Route::get('/payroll/attendance/details', [PayrollController::class, 'getAttendanceDetails'])->name('payroll.attendance.details');
     Route::get('/job-vacancy', [VacancyController::class, 'show'])->name('vacancy.show');
     Route::post('/job-vacancy/store', [VacancyController::class, 'store'])->name('job.store');
     Route::post('/job-applications/update-status/{id}', [VacancyController::class, 'updateStatus']);
