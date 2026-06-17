@@ -30,7 +30,7 @@ Route::get('/sync-attendance', [ZKTController::class, 'syncAttendance'])
     ->name('sync.attendance');
 
 Route::get('/payroll/attendance', [PayrollController::class, 'attendance'])
-            ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,hr_intern,business_operation_head'])
+            ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,hr_intern,business_operation_head,team_leader'])
             ->name('payroll.attendance');
 
 
