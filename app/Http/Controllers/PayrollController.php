@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payroll;
 use App\Models\Attendance;
 use App\Models\LeaveApplication;
+use App\Models\LeaveAllotment;
 use App\Models\Employee;
 use App\Models\Holiday;
 use Illuminate\Http\Request;
@@ -402,14 +403,9 @@ class PayrollController extends Controller
                 ->whereMonth('attendance_date', $monthNum)
                 ->get();
 
-            $leaves = LeaveApplication::where('employee_id', $employeeId)
-                ->where('status', 'approved')
-                ->where('leave_category', 'NOT LIKE', '%WFH%') // Exclude WFH from leave count
-                ->where(function ($q) use ($year, $monthNum) {
-                    $q->whereMonth('start_date', $monthNum)
-                        ->orWhereMonth('end_date', $monthNum);
-                })
-                ->get();
+            $leaveSummary = $this->getPayrollLeaveSummary($employee, $date);
+            $leaveDays = $leaveSummary['paid_leave_days'];
+            $leaves = collect();
 
             $leaveDays = 0;
             foreach ($leaves as $leave) {
@@ -429,6 +425,7 @@ class PayrollController extends Controller
             $overtimeMinutes = 0;
             $overtimeDays = 0;
             $overtimeHours = 0;
+            $shiftMinutes = $this->getEmployeeShiftMinutes($employee);
             foreach ($records as $r) {
 
                 switch ($r->status) {
@@ -436,7 +433,6 @@ class PayrollController extends Controller
                     case 'present':
                     case 'wfh':
                     case 'late':
-                    case 'leave':
                     case 'missing_punch':
                     case 'missing_punch':
                     case 'early_leave':
@@ -445,7 +441,6 @@ class PayrollController extends Controller
                         break;
 
                     case 'half_day':
-                    case 'half_day_leave':
                         $attendanceDays += 0.5;
                         break;
 
@@ -457,8 +452,6 @@ class PayrollController extends Controller
                         break;
                 }
                 // 🔥 OVERTIME LOGIC
-
-                $shiftMinutes = 8 * 60 + 30; // 510 min
 
                 if ($r->total_hours > 0) {
                     $workedMinutes = $r->total_hours * 60;
@@ -473,7 +466,7 @@ class PayrollController extends Controller
             $overtimeHours = $overtimeMinutes / 60;
 
             // Convert to days (for reference)
-            $overtimeDays = $overtimeMinutes / (8 * 60 + 30);
+            $overtimeDays = $overtimeMinutes / $shiftMinutes;
 
 
             // Leaves
@@ -483,6 +476,8 @@ class PayrollController extends Controller
                 $leaveDays += $leave->total_days ??
                     ($leave->start_date->diffInDays($leave->end_date) + 1);
             }
+
+            $leaveDays = $leaveSummary['paid_leave_days'];
 
             // Final
             $payableDays = min($attendanceDays + $leaveDays, $totalDays);
@@ -552,6 +547,9 @@ class PayrollController extends Controller
                 // Attendance
                 'payable_days' => $payableDays,
                 'unpaid_days' => round($unpaidDays, 2),
+                'paid_leave_days' => round($leaveSummary['paid_leave_days'], 2),
+                'unpaid_leave_days' => round($leaveSummary['unpaid_leave_days'], 2),
+                'leave_balance_before_payroll' => round($leaveSummary['available_balance'], 2),
 
                 //  ORIGINAL MONTHLY SALARY (IMPORTANT)
                 'basic_salary' => $employee->basic_salary,
@@ -687,6 +685,11 @@ class PayrollController extends Controller
                 ['employee_id' => $data['employee_id'], 'month' => $data['month']],
                 $data
             );
+
+            $employee = Employee::find($data['employee_id']);
+            if ($employee && !empty($data['month'])) {
+                $this->adjustLeaveAttendanceAfterPayroll($employee, Carbon::createFromFormat('Y-m', $data['month'])->startOfMonth());
+            }
 
             return response()->json([
                 'success' => true,
@@ -1700,5 +1703,220 @@ class PayrollController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    private function getEmployeeShiftMinutes(Employee $employee): int
+    {
+        $timeIn = $employee->time_in ?? '09:30:00';
+        $timeOut = $employee->time_out ?? '18:00:00';
+
+        try {
+            $shiftStart = Carbon::parse($timeIn);
+            $shiftEnd = Carbon::parse($timeOut);
+
+            if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
+                $shiftEnd->addDay();
+            }
+
+            return max($shiftStart->diffInMinutes($shiftEnd), 1);
+        } catch (\Exception $e) {
+            return 8 * 60 + 30;
+        }
+    }
+
+    private function getPayrollLeaveSummary(Employee $employee, Carbon $monthDate): array
+    {
+        $monthStart = $monthDate->copy()->startOfMonth();
+        $monthEnd = $monthDate->copy()->endOfMonth();
+        $availableBalance = $this->getAvailableLeaveBalanceForMonth($employee, $monthDate);
+        $currentMonthLeaveDays = $this->getDeductibleLeaveDaysBetween($employee, $monthStart, $monthEnd);
+        $paidLeaveDays = min($currentMonthLeaveDays, $availableBalance);
+
+        return [
+            'available_balance' => $availableBalance,
+            'current_month_leave_days' => $currentMonthLeaveDays,
+            'paid_leave_days' => $paidLeaveDays,
+            'unpaid_leave_days' => max(0, $currentMonthLeaveDays - $paidLeaveDays),
+        ];
+    }
+
+    private function adjustLeaveAttendanceAfterPayroll(Employee $employee, Carbon $monthDate): void
+    {
+        $leaveSummary = $this->getPayrollLeaveSummary($employee, $monthDate);
+        $paidRemaining = $leaveSummary['paid_leave_days'];
+        $leaveDates = $this->getDeductibleLeaveDatesBetween(
+            $employee,
+            $monthDate->copy()->startOfMonth(),
+            $monthDate->copy()->endOfMonth()
+        );
+
+        foreach ($leaveDates as $date => $days) {
+            if ($paidRemaining >= $days) {
+                $paidRemaining -= $days;
+                continue;
+            }
+
+            Attendance::where('employee_id', $employee->id)
+                ->whereDate('attendance_date', $date)
+                ->whereIn('status', ['leave', 'half_day_leave', 'half_day'])
+                ->update([
+                    'status' => 'unpaid_leave',
+                    'total_hours' => 0,
+                ]);
+        }
+    }
+
+    private function getLeaveAllottedUntil(Employee $employee, Carbon $monthDate): float
+    {
+        return (float) LeaveAllotment::where('employee_id', $employee->id)
+            ->get()
+            ->filter(function ($allotment) use ($monthDate) {
+                return Carbon::createFromDate((int) $allotment->year, (int) $allotment->month, 1)
+                    ->startOfMonth()
+                    ->lessThanOrEqualTo($monthDate->copy()->startOfMonth());
+            })
+            ->sum('leave_count');
+    }
+
+    private function getAvailableLeaveBalanceForMonth(Employee $employee, Carbon $monthDate): float
+    {
+        $targetMonth = $monthDate->copy()->startOfMonth();
+        $cursor = $this->getFirstLeaveBalanceMonth($employee, $targetMonth);
+        $balance = 0.0;
+
+        while ($cursor->lt($targetMonth)) {
+            $balance += $this->getLeaveAllottedForMonth($employee, $cursor);
+
+            $leaveDays = $this->getDeductibleLeaveDaysBetween(
+                $employee,
+                $cursor->copy()->startOfMonth(),
+                $cursor->copy()->endOfMonth()
+            );
+
+            $balance -= min($leaveDays, $balance);
+            $cursor->addMonth();
+        }
+
+        return $balance + $this->getLeaveAllottedForMonth($employee, $targetMonth);
+    }
+
+    private function getFirstLeaveBalanceMonth(Employee $employee, Carbon $fallbackMonth): Carbon
+    {
+        $firstAllotment = LeaveAllotment::where('employee_id', $employee->id)
+            ->orderBy('year')
+            ->orderBy('month')
+            ->first();
+
+        $firstLeaveDate = LeaveApplication::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->orderBy('start_date')
+            ->value('start_date');
+
+        $dates = [$fallbackMonth->copy()->startOfMonth()];
+
+        if ($firstAllotment) {
+            $dates[] = Carbon::createFromDate((int) $firstAllotment->year, (int) $firstAllotment->month, 1)->startOfMonth();
+        }
+
+        if ($firstLeaveDate) {
+            $dates[] = Carbon::parse($firstLeaveDate)->startOfMonth();
+        }
+
+        return collect($dates)->sortBy(fn ($date) => $date->timestamp)->first();
+    }
+
+    private function getLeaveAllottedForMonth(Employee $employee, Carbon $monthDate): float
+    {
+        return (float) LeaveAllotment::where('employee_id', $employee->id)
+            ->where('year', $monthDate->format('Y'))
+            ->whereIn('month', [$monthDate->format('m'), (string) (int) $monthDate->format('m')])
+            ->sum('leave_count');
+    }
+
+    private function getDeductibleLeaveDaysUntil(Employee $employee, Carbon $endDate): float
+    {
+        if ($endDate->lt(Carbon::create(1900, 1, 1))) {
+            return 0;
+        }
+
+        return $this->getDeductibleLeaveDaysBetween($employee, Carbon::create(1900, 1, 1), $endDate);
+    }
+
+    private function getDeductibleLeaveDaysBetween(Employee $employee, Carbon $startDate, Carbon $endDate): float
+    {
+        return array_sum($this->getDeductibleLeaveDatesBetween($employee, $startDate, $endDate));
+    }
+
+    private function getDeductibleLeaveDatesBetween(Employee $employee, Carbon $startDate, Carbon $endDate): array
+    {
+        $leaveDates = [];
+
+        $leaves = LeaveApplication::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $endDate->toDateString())
+            ->where(function ($query) use ($startDate) {
+                $query->whereDate('end_date', '>=', $startDate->toDateString())
+                    ->orWhereNull('end_date');
+            })
+            ->orderBy('start_date')
+            ->get();
+
+        foreach ($leaves as $leave) {
+            if (!$this->isDeductibleLeave($leave)) {
+                continue;
+            }
+
+            $leaveStart = Carbon::parse($leave->start_date)->startOfDay()->max($startDate->copy()->startOfDay());
+            $leaveEnd = Carbon::parse($leave->end_date ?: $leave->start_date)->startOfDay()->min($endDate->copy()->startOfDay());
+
+            if ($leaveEnd->lt($leaveStart)) {
+                continue;
+            }
+
+            if ($this->isHalfDayLeave($leave)) {
+                $leaveDates[$leaveStart->toDateString()] = ($leaveDates[$leaveStart->toDateString()] ?? 0) + 0.5;
+                continue;
+            }
+
+            $holidayDates = Holiday::whereBetween('date', [$leaveStart->toDateString(), $leaveEnd->toDateString()])
+                ->pluck('date')
+                ->map(fn ($date) => Carbon::parse($date)->toDateString())
+                ->all();
+
+            for ($date = $leaveStart->copy(); $date->lte($leaveEnd); $date->addDay()) {
+                if ($date->isSunday() || in_array($date->toDateString(), $holidayDates, true)) {
+                    continue;
+                }
+
+                $leaveDates[$date->toDateString()] = ($leaveDates[$date->toDateString()] ?? 0) + 1;
+            }
+        }
+
+        ksort($leaveDates);
+
+        return $leaveDates;
+    }
+
+    private function isDeductibleLeave(LeaveApplication $leave): bool
+    {
+        $category = strtolower($leave->leave_category ?? '');
+        $type = strtolower($leave->leave_type ?? '');
+
+        return !str_contains($category, 'wfh')
+            && !str_contains($type, 'wfh')
+            && !str_contains($category, 'gatepass')
+            && !str_contains($type, 'gatepass')
+            && !str_contains($category, 'early')
+            && !str_contains($type, 'early');
+    }
+
+    private function isHalfDayLeave(LeaveApplication $leave): bool
+    {
+        $category = strtolower($leave->leave_category ?? '');
+        $type = strtolower($leave->leave_type ?? '');
+
+        return str_contains($category, 'half')
+            || str_contains($type, 'half')
+            || (float) $leave->total_days === 0.5;
     }
 }

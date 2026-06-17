@@ -54,6 +54,7 @@ class PyAttendanceService
             $key = $employee->id . '_' . $attendanceDate;
 
             $data[$key]['employee_id'] = $employee->id;
+            $data[$key]['employee'] = $employee;
             $data[$key]['attendance_date'] = $attendanceDate;
             $data[$key]['punches'][] = $dateTime;
         }
@@ -61,6 +62,7 @@ class PyAttendanceService
         foreach ($data as $entry) {
 
             $employeeId = $entry['employee_id'];
+            $employee = $entry['employee'];
             $punches = $entry['punches'];
 
             usort($punches, function ($a, $b) {
@@ -69,16 +71,17 @@ class PyAttendanceService
 
             $first = $punches[0];
             $last  = count($punches) > 1 ? $punches[count($punches) - 1] : null;
+            $shiftMinutes = $this->getShiftMinutes($employee);
 
             if (!$last) {
-                $hours = 0;
+                $workedMinutes = 0;
                 $status = 'missing_punch';
             } else {
-                $hours = $first->diffInMinutes($last) / 60;
+                $workedMinutes = $first->diffInMinutes($last);
 
-                if ($hours >= 8) {
+                if ($workedMinutes >= $shiftMinutes) {
                     $status = 'present';
-                } elseif ($hours >= 4 && $hours <= 7.99){
+                } elseif ($workedMinutes >= 4 * 60) {
                     $status = 'half_day';
                 } else {
                     $status = 'absent';
@@ -93,7 +96,7 @@ class PyAttendanceService
                 [
                     'check_in'    => $first->format('H:i:s'),
                     'check_out'   => $last ? $last->format('H:i:s') : null,
-                    'total_hours' => round($hours, 2),
+                    'total_hours' => round($workedMinutes / 60, 2),
                     'status'      => $status,
                 ]
             );
@@ -172,6 +175,25 @@ class PyAttendanceService
                     'status'          => $status,
                 ]);
             }
+        }
+    }
+
+    private function getShiftMinutes(Employee $employee): int
+    {
+        $timeIn = $employee->time_in ?? '09:30:00';
+        $timeOut = $employee->time_out ?? '18:00:00';
+
+        try {
+            $shiftStart = Carbon::parse($timeIn);
+            $shiftEnd = Carbon::parse($timeOut);
+
+            if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
+                $shiftEnd->addDay();
+            }
+
+            return max($shiftStart->diffInMinutes($shiftEnd), 1);
+        } catch (\Exception $e) {
+            return 8 * 60 + 30;
         }
     }
 }
