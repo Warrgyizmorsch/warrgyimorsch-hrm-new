@@ -15,6 +15,7 @@ public function syncAttendance(PyAttendanceService $service)
 {
     $python = "C:\\Users\\ranji\\AppData\\Local\\Programs\\Python\\Python314\\python.exe";
     $pythonScript = "C:\\xampp new\\htdocs\\python\\zk_attendance.py";
+    // $pythonScript = "C:\\xampp new\\htdocs\\python\\individual.py";
     $command = "\"$python\" \"$pythonScript\"";
     $output = shell_exec($command);
 
