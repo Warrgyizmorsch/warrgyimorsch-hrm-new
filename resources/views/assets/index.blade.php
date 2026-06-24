@@ -276,7 +276,8 @@
                                     <div class="col-md-6">
                                         <label class="fw-semibold small mb-1">Asset Type <span class="text-danger">*</span></label>
                                         <select class="form-select" name="assets[0][type]" required style="border-radius: 8px;">
-                                            <option value="Laptop">Laptop</option>
+                                         <option value="PC">PC</option>    
+                                        <option value="Laptop">Laptop</option>
                                             <option value="Keyboard">Keyboard</option>
                                             <option value="Mouse">Mouse</option>
                                             <option value="Monitor">Monitor</option>
@@ -337,6 +338,7 @@
                         <div class="mb-3">
                             <label class="fw-semibold mb-2">Asset Type <span class="text-danger">*</span></label>
                             <select class="form-select" name="type" id="edit-type" required>
+                                  <option value="PC">PC</option>    
                                 <option value="Laptop">Laptop</option>
                                 <option value="Keyboard">Keyboard</option>
                                 <option value="Mouse">Mouse</option>

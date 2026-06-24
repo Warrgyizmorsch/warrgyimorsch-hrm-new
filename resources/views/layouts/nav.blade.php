@@ -310,14 +310,14 @@
                         <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
-                        @if($isAdmin)
+                        
                             <li class="nxl-item">
                                 <a href="{{ route('assets.index') }}" class="nxl-link">
                                     <span class="nxl-micon"><i class="feather-list"></i></span>
                                     <span class="nxl-mtext">Manage Assets</span>
                                 </a>
                             </li>
-                        @endif
+                       
                         <li class="nxl-item">
                             <a href="{{ route('assets.employee') }}" class="nxl-link">
                                 <span class="nxl-micon"><i class="feather-user"></i></span>
