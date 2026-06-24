@@ -15,8 +15,10 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\VacancyController;
 use App\Http\Controllers\ZKTController;
+use App\Http\Controllers\AssetController;
 
 $adminRoles = 'super_admin,manager,hr_executive,hr_intern,business_operation_head';
 $TeamLeaderRoles = 'super_admin,manager,hr_executive,hr_intern,business_operation_head,team_leader';
@@ -78,6 +80,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/celebrations', [EmployeeController::class, 'employeeDays'])->name('employees.employeeDays');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+
+    Route::post('/tickets/store', [TicketController::class, 'store'])->name('tickets.store');
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    Route::post('/tickets/update-status/{id}', [TicketController::class, 'updateStatus'])->name('tickets.updateStatus');
+    Route::get('/ticket-history/{id}', [TicketController::class, 'history'])->name('tickets.history');
+
+    // Asset Management - Employee Routes
+    Route::get('/my-assets', [AssetController::class, 'employeeView'])->name('assets.employee');
+    Route::post('/my-assets/request', [AssetController::class, 'requestAsset'])->name('assets.request');
 
     Route::get('/help', fn () => view('pages.help'))->name('help');
     Route::get('/terms', fn () => view('pages.terms'))->name('terms');
@@ -170,6 +181,15 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/payroll/attendance/employee-wise-details', [PayrollController::class, 'employeeWiseDetails'])->name('payroll.attendance.employee.details');
     Route::get('/payroll/attendace/employee/{employee_id}/edit', [PayrollController::class, 'editByName'])->name('payroll.attendance.employee.editByName');
     Route::put('/payroll/attendance/employee/{employee_id}/update', [PayrollController::class, 'updateByName'])->name('payroll.attendance.employee.updateByName');
+
+    Route::get('/asset-management', [AssetController::class, 'index'])->name('assets.index');
+    Route::post('/asset-management/store', [AssetController::class, 'store'])->name('assets.store');
+    Route::put('/asset-management/{id}', [AssetController::class, 'update'])->name('assets.update');
+    Route::delete('/asset-management/{id}', [AssetController::class, 'destroy'])->name('assets.destroy');
+    Route::post('/asset-requests/{id}/allocate', [AssetController::class, 'allocate'])->name('assets.allocate');
+    Route::post('/asset-requests/{id}/reject', [AssetController::class, 'reject'])->name('assets.reject');
+    Route::post('/asset-requests/{id}/return', [AssetController::class, 'markReturned'])->name('assets.markReturned');
+    Route::post('/asset-management/{id}/allocate-manual', [AssetController::class, 'allocateManual'])->name('assets.allocateManual');
 });
 
 Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
