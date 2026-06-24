@@ -85,4 +85,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Broadcast::class)->withPivot('read_at');
     }
+
+    public function tickets() {
+        $this->hasMany(Ticket::class);
+    }
 }

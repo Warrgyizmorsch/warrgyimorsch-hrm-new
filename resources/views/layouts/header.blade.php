@@ -26,6 +26,13 @@
         <!--! [Start] Header Right !-->
         <div class="header-right ms-auto">
             <div class="d-flex align-items-center">
+                <button
+                    class="btn btn-primary rounded-3"
+                    data-bs-toggle="modal"
+                    data-bs-target="#ticketModal">
+
+                    Raise Ticket
+                </button>
                 <div class="nxl-h-item dark-light-theme">
                     <a href="javascript:void(0);" class="nxl-head-link me-0 dark-button">
                         <i class="feather-moon"></i>
@@ -263,6 +270,62 @@
         <!--! [End] Header Right !-->
     </div>
 </header>
+
+<div class="modal fade" id="ticketModal">
+
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <form action="{{ url('/tickets/store') }}" method="POST">
+
+                @csrf
+
+                <div class="modal-header">
+                    <h5>Raise Ticket</h5>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label>Type</label>
+
+                        <select name="type" class="form-control">
+
+                            <option value="">Select Type</option>
+
+                            <option value="HR">HR</option>
+                            <option value="Payroll">Payroll</option>
+                            <option value="Attendance">Attendance</option>
+                            <option value="Leave">Leave</option>
+                            <option value="IT Support">IT Support</option>
+                            <option value="Other">Other</option>
+
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Description</label>
+
+                        <textarea name="description" rows="5" class="form-control"></textarea>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="submit"
+                        class="btn btn-primary">
+                        Submit
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
 
 <!-- <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasAttendanceHistory"
     aria-labelledby="offcanvasAttendanceHistoryLabel" style="width: 800px;">
