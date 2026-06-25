@@ -305,7 +305,7 @@
 
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
-                        <span class="nxl-micon"><i class="feather-star"></i></span>
+                        <span class="nxl-micon"><i class="fas fa-laptop-house"></i></span>
                         <span class="nxl-mtext">Asset Management</span>
                         <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
@@ -313,14 +313,14 @@
                         
                             <li class="nxl-item">
                                 <a href="{{ route('assets.index') }}" class="nxl-link">
-                                    <span class="nxl-micon"><i class="feather-list"></i></span>
+                                    <span class="nxl-micon"><i class="fas fa-clipboard-list"></i></span>
                                     <span class="nxl-mtext">Manage Assets</span>
                                 </a>
                             </li>
                        
                         <li class="nxl-item">
                             <a href="{{ route('assets.employee') }}" class="nxl-link">
-                                <span class="nxl-micon"><i class="feather-user"></i></span>
+                                <span class="nxl-micon"><i class="fas fa-user-tag"></i></span>
                                 <span class="nxl-mtext">My Assets</span>
                             </a>
                         </li>

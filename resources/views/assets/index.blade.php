@@ -27,15 +27,24 @@
     <div class="main-content pt-4" style="font-family: 'Inter', sans-serif;">
         <!-- Switcher Tabs -->
         <div class="d-flex justify-content-start mb-4">
-            <div class="tickets-switcher" style="display: inline-flex; background: #f1f5f9; padding: 5px; border-radius: 30px; gap: 4px; border: 1px solid #e2e8f0;">
-                <button class="switcher-btn active" id="tab-inventory-btn" onclick="switchAssetTab('inventory')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s;">
+            <div class="tickets-switcher" style="display: inline-flex; background: #f1f5f9; padding: 5px; border-radius: 30px; gap: 4px; border: 1px solid #e2e8f0; overflow-x: auto; max-width: 100%;">
+                <button class="switcher-btn active" id="tab-inventory-btn" onclick="switchAssetTab('inventory')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s; white-space: nowrap;">
                     Asset Inventory
                 </button>
-                <button class="switcher-btn" id="tab-requests-btn" onclick="switchAssetTab('requests')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s;">
+                <button class="switcher-btn" id="tab-requests-btn" onclick="switchAssetTab('requests')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s; white-space: nowrap;">
                     Asset Requests 
                     @if($requests->where('status', 'Pending')->count() > 0)
                         <span class="badge bg-danger ms-1" style="font-size: 10px;">{{ $requests->where('status', 'Pending')->count() }}</span>
                     @endif
+                </button>
+                <button class="switcher-btn" id="tab-allocated-btn" onclick="switchAssetTab('allocated')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s; white-space: nowrap;">
+                    Allocated Assets
+                    @if($requests->where('status', 'Allocated')->count() > 0)
+                        <span class="badge bg-success ms-1" style="font-size: 10px; background: #22c55e !important;">{{ $requests->where('status', 'Allocated')->count() }}</span>
+                    @endif
+                </button>
+                <button class="switcher-btn" id="tab-returned-btn" onclick="switchAssetTab('returned')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s; white-space: nowrap;">
+                    Returned Assets
                 </button>
             </div>
         </div>
@@ -85,9 +94,24 @@
                                     @endphp
                                     <tr class="asset-row-item" data-status="{{ $asset->status }}" style="height: 75px; border-bottom: 1px solid #f1f5f9;">
                                         <td class="ps-4">
-                                            <div class="d-flex flex-column">
-                                                <span class="fw-bold text-dark fs-6">{{ $asset->name }}</span>
-                                                <span class="badge bg-soft-primary text-primary mt-1 align-self-start" style="font-size: 10px; font-weight: 700; text-transform: uppercase;">{{ $asset->type }}</span>
+                                            @php
+                                                $typeLower = strtolower($asset->type ?? '');
+                                                $iconClass = 'feather-package';
+                                                if ($typeLower === 'pc') $iconClass = 'feather-monitor';
+                                                elseif ($typeLower === 'laptop') $iconClass = 'bi bi-laptop';
+                                                elseif ($typeLower === 'keyboard') $iconClass = 'feather-type';
+                                                elseif ($typeLower === 'mouse') $iconClass = 'feather-mouse-pointer';
+                                                elseif ($typeLower === 'monitor') $iconClass = 'feather-tv';
+                                                elseif ($typeLower === 'charger') $iconClass = 'feather-zap';
+                                            @endphp
+                                            <div class="d-flex align-items-center">
+                                                <div style="width: 32px; height: 32px; background: rgba(56, 88, 249, 0.08); color: #3858f9; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" class="me-2">
+                                                    <i class="{{ $iconClass }}" style="font-size: 15px;"></i>
+                                                </div>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-bold text-dark fs-6">{{ $asset->name }}</span>
+                                                    <span class="badge bg-soft-primary text-primary mt-1 align-self-start" style="font-size: 10px; font-weight: 700; text-transform: uppercase;">{{ $asset->type }}</span>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="fw-semibold text-muted">{{ $asset->serial_number ?: 'N/A' }}</td>
@@ -157,18 +181,18 @@
                                     <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 150px; color: white">Asset Type</th>
                                     <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white">Reason</th>
                                     <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Request Date</th>
-                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 150px; color: white">Allocated Asset</th>
                                     <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Status</th>
                                     <th class="pe-4 text-center" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 220px; color: white">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($requests as $req)
+                                @php
+                                    $activeRequests = $requests->whereIn('status', ['Pending', 'Rejected']);
+                                @endphp
+                                @forelse($activeRequests as $req)
                                     @php
                                         $reqStatusClass = 'status-pending';
-                                        if($req->status == 'Allocated' || $req->status == 'Approved') $reqStatusClass = 'status-completed';
-                                        elseif($req->status == 'Rejected') $reqStatusClass = 'status-rework';
-                                        elseif($req->status == 'Returned') $reqStatusClass = 'status-pending';
+                                        if($req->status == 'Rejected') $reqStatusClass = 'status-rework';
                                     @endphp
                                     <tr style="height: 75px; border-bottom: 1px solid #f1f5f9;">
                                         <td class="ps-4">
@@ -184,27 +208,30 @@
                                                 </div>
                                                 <div class="d-flex flex-column">
                                                     <span class="fw-bold text-dark fs-6">{{ $req->user->name ?? 'Unknown User' }}</span>
-                                                    <span class="text-muted small" style="font-size: 11px;">{{ $req->user->role ?? '' }}</span>
+                                                    <span class="text-muted small" style="font-size: 11px;">{{ $req->user->employee->department ?? $req->user->role ?? '' }}</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="badge bg-soft-primary text-primary" style="font-weight: 700; text-transform: uppercase;">{{ $req->asset_type }}</span>
+                                            @php
+                                                $typeLower = strtolower($req->asset_type ?? '');
+                                                $iconClass = 'feather-package';
+                                                if ($typeLower === 'pc') $iconClass = 'feather-monitor';
+                                                elseif ($typeLower === 'laptop') $iconClass = 'feather-tablet';
+                                                elseif ($typeLower === 'keyboard') $iconClass = 'feather-type';
+                                                elseif ($typeLower === 'mouse') $iconClass = 'feather-mouse-pointer';
+                                                elseif ($typeLower === 'monitor') $iconClass = 'feather-tv';
+                                                elseif ($typeLower === 'charger') $iconClass = 'feather-zap';
+                                            @endphp
+                                            <span class="badge bg-soft-primary text-primary d-inline-flex align-items-center gap-1" style="font-size: 11px; padding: 6px 12px; border-radius: 30px; font-weight: 700; text-transform: uppercase;">
+                                                <i class="{{ $iconClass }}" style="font-size: 11px;"></i>
+                                                {{ $req->asset_type }}
+                                            </span>
                                         </td>
                                         <td style="max-width: 250px; white-space: normal; word-break: break-word;">
                                             <div class="text-muted small">{{ $req->reason }}</div>
                                         </td>
                                         <td class="text-muted small">{{ $req->created_at->format('d M, Y') }}</td>
-                                        <td>
-                                            @if($req->asset)
-                                                <div class="d-flex flex-column">
-                                                    <span class="fw-bold text-dark small">{{ $req->asset->name }}</span>
-                                                    <span class="text-muted small" style="font-size: 10px;">SN: {{ $req->asset->serial_number ?: 'N/A' }}</span>
-                                                </div>
-                                            @else
-                                                <span class="text-muted small">-</span>
-                                            @endif
-                                        </td>
                                         <td>
                                             <span class="badge {{ $reqStatusClass }}" style="font-size: 11px; padding: 6px 12px; border-radius: 30px; font-weight: 600; text-transform: uppercase;">
                                                 {{ $req->status }}
@@ -223,10 +250,6 @@
                                                         </button>
                                                     </form>
                                                 </div>
-                                            @elseif($req->status == 'Allocated')
-                                                <button type="button" class="btn btn-sm btn-soft-secondary fw-bold d-flex align-items-center gap-1 mx-auto" style="border-radius: 8px;" onclick="openReturnModal({{ $req->id }}, '{{ $req->asset ? $req->asset->name : 'Device' }}')">
-                                                    <i class="feather-corner-down-left"></i> Mark Returned
-                                                </button>
                                             @else
                                                 <span class="text-muted small">No action required</span>
                                             @endif
@@ -239,6 +262,252 @@
                                                 <div style="font-size: 40px;">📝</div>
                                                 <h4 class="text-muted mt-3">No Asset Requests</h4>
                                                 <p class="text-muted small">Employees' device request letters will show up here.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Allocated Assets Tab Section -->
+        <div id="section-allocated" class="asset-tab-section d-none">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; background: white; overflow: hidden; border: 1px solid #e2e8f0 !important;">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead style="background: #3858f9; color: white;">
+                                <tr style="height: 60px; vertical-align: middle;">
+                                    <th class="ps-4" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 220px; color: white">Employee</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Assigned Date</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white">Assigned Assets</th>
+                                    <th class="pe-4 text-center" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 200px; color: white">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $allocatedRequests = $requests->where('status', 'Allocated');
+                                    $allocatedByUser = $allocatedRequests->groupBy('user_id');
+                                @endphp
+                                @forelse($allocatedByUser as $userId => $userAllocations)
+                                    @php
+                                        $firstAlloc = $userAllocations->first();
+                                        $user = $firstAlloc->user;
+                                        $dept = $user->employee->department ?? $user->role ?? 'N/A';
+                                        $assignedDate = $firstAlloc->allocated_at ? $firstAlloc->allocated_at->format('d M, Y') : $firstAlloc->updated_at->format('d M, Y');
+                                        
+                                        $jsAllocations = $userAllocations->map(function($a) {
+                                            return [
+                                                'id' => $a->id,
+                                                'name' => $a->asset->name ?? 'Unknown Asset',
+                                                'type' => $a->asset->type ?? 'Other',
+                                                'serial_number' => $a->asset->serial_number ?? 'N/A',
+                                                'allocated_at' => $a->allocated_at ? $a->allocated_at->format('d M, Y') : $a->updated_at->format('d M, Y'),
+                                                'system_configuration' => $a->asset->system_configuration ?? '-'
+                                            ];
+                                        })->values()->all();
+                                    @endphp
+                                    <tr style="height: 75px; border-bottom: 1px solid #f1f5f9;">
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="user-avatar-wrapper" style="width: 32px; height: 32px; flex-shrink: 0; display: inline-block;">
+                                                    @if($user && $user->photo)
+                                                        <img src="{{ asset('storage/' . $user->photo) }}" alt="{{ $user->name }}" class="user-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                                                    @else
+                                                        <div class="user-avatar-initials" style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3858f9 0%, #8b5cf6 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">
+                                                            {{ substr($user->name ?? 'U', 0, 1) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-bold text-dark fs-6">{{ $user->name ?? 'Unknown User' }}</span>
+                                                    <span class="text-muted small" style="font-size: 11px;">{{ $dept }}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-muted small">{{ $assignedDate }}</td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                                @foreach($userAllocations->take(2) as $alloc)
+                                                    @if($alloc->asset)
+                                                        @php
+                                                            $typeLower = strtolower($alloc->asset->type ?? '');
+                                                            $iconClass = 'feather-package';
+                                                            if ($typeLower === 'pc') $iconClass = 'feather-monitor';
+                                                            elseif ($typeLower === 'laptop') $iconClass = 'feather-tablet';
+                                                            elseif ($typeLower === 'keyboard') $iconClass = 'feather-type';
+                                                            elseif ($typeLower === 'mouse') $iconClass = 'feather-mouse-pointer';
+                                                            elseif ($typeLower === 'monitor') $iconClass = 'feather-tv';
+                                                            elseif ($typeLower === 'charger') $iconClass = 'feather-zap';
+                                                        @endphp
+                                                        <div class="d-flex align-items-center justify-content-between p-2 border rounded-3 bg-white" style="border-color: #e2e8f0 !important; min-width: 220px; max-width: 260px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                                            <div class="d-flex align-items-center me-2" style="max-width: 180px;">
+                                                                <div style="width: 32px; height: 32px; background: rgba(56, 88, 249, 0.08); color: #3858f9; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" class="me-2">
+                                                                    <i class="{{ $iconClass }}" style="font-size: 15px;"></i>
+                                                                </div>
+                                                                <div class="d-flex flex-column text-start">
+                                                                    <span class="fw-bold text-dark text-truncate" style="font-size: 12px; line-height: 1.2; max-width: 130px;" title="{{ $alloc->asset->name }}">{{ $alloc->asset->name }}</span>
+                                                                    <span class="text-muted" style="font-size: 10px;">SN: <b class="text-dark d-inline-block" style="max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">{{ $alloc->asset->serial_number ?: 'N/A' }}</b></span>
+                                                                </div>
+                                                            </div>
+                                                            <!-- 3-dots action menu -->
+                                                            <div class="dropdown">
+                                                                <button class="btn p-0 border-0 bg-transparent text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 14px; line-height: 1;">
+                                                                    <i class="feather-more-vertical"></i>
+                                                                </button>
+                                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px; padding: 4px 0; min-width: 120px;">
+                                                                    <li>
+                                                                        <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger" href="javascript:void(0);" onclick="openReturnModal({{ $alloc->id }}, '{{ addslashes($alloc->asset->name) }}')">
+                                                                            <i class="feather-corner-down-left" style="font-size: 12px;"></i> Return Asset
+                                                                        </a>
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                @endforeach
+                                                
+                                                @if($userAllocations->count() > 2)
+                                                    <a href="javascript:void(0);" 
+                                                       class="d-flex align-items-center justify-content-center px-3 border border-info border-opacity-10 bg-soft-info text-info fw-bold py-2 rounded-3 text-decoration-none" 
+                                                       style="font-size: 11px; min-width: 80px; height: 46px;" 
+                                                       data-assets="{{ json_encode($jsAllocations) }}" 
+                                                       data-employee="{{ $user->name ?? 'Employee' }}"
+                                                       onclick="openAllocatedAssetsOffcanvas(this)">
+                                                        +{{ $userAllocations->count() - 2 }} more
+                                                    </a>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="pe-4 text-center">
+                                            <button class="btn btn-sm btn-soft-primary fw-bold" 
+                                                    style="border-radius: 8px;" 
+                                                    data-assets="{{ json_encode($jsAllocations) }}" 
+                                                    data-employee="{{ $user->name ?? 'Employee' }}"
+                                                    onclick="openAllocatedAssetsOffcanvas(this)">
+                                                <i class="feather-eye"></i> Manage Assets
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5">
+                                            <div class="py-4">
+                                                <div style="font-size: 40px;">🖥️</div>
+                                                <h4 class="text-muted mt-3">No Allocated Assets</h4>
+                                                <p class="text-muted small">Devices currently assigned to employees will be listed here.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Returned Assets Tab Section -->
+        <div id="section-returned" class="asset-tab-section d-none">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; background: white; overflow: hidden; border: 1px solid #e2e8f0 !important;">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead style="background: #3858f9; color: white;">
+                                <tr style="height: 60px; vertical-align: middle;">
+                                    <th class="ps-4" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 220px; color: white">Employee</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 200px; color: white">Returned Asset</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Asset Type</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Assigned Date</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Return Date</th>
+                                    <th class="pe-4 text-center" style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $returnedRequests = $requests->where('status', 'Returned');
+                                @endphp
+                                @forelse($returnedRequests as $req)
+                                    @php
+                                        $dept = $req->user->employee->department ?? $req->user->role ?? 'N/A';
+                                    @endphp
+                                    <tr style="height: 75px; border-bottom: 1px solid #f1f5f9;">
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="user-avatar-wrapper" style="width: 32px; height: 32px; flex-shrink: 0; display: inline-block;">
+                                                    @if($req->user && $req->user->photo)
+                                                        <img src="{{ asset('storage/' . $req->user->photo) }}" alt="{{ $req->user->name }}" class="user-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                                                    @else
+                                                        <div class="user-avatar-initials" style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3858f9 0%, #8b5cf6 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">
+                                                            {{ substr($req->user->name ?? 'U', 0, 1) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-bold text-dark fs-6">{{ $req->user->name ?? 'Unknown User' }}</span>
+                                                    <span class="text-muted small" style="font-size: 11px;">{{ $dept }}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if($req->asset)
+                                                @php
+                                                    $typeLower = strtolower($req->asset->type ?? '');
+                                                    $iconClass = 'feather-package';
+                                                    if ($typeLower === 'pc') $iconClass = 'feather-monitor';
+                                                    elseif ($typeLower === 'laptop') $iconClass = 'feather-tablet';
+                                                    elseif ($typeLower === 'keyboard') $iconClass = 'feather-type';
+                                                    elseif ($typeLower === 'mouse') $iconClass = 'feather-mouse-pointer';
+                                                    elseif ($typeLower === 'monitor') $iconClass = 'feather-tv';
+                                                    elseif ($typeLower === 'charger') $iconClass = 'feather-zap';
+                                                @endphp
+                                                <div class="d-flex align-items-center">
+                                                    <div style="width: 32px; height: 32px; background: rgba(56, 88, 249, 0.08); color: #3858f9; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" class="me-2">
+                                                        <i class="{{ $iconClass }}" style="font-size: 15px;"></i>
+                                                    </div>
+                                                    <div class="d-flex flex-column">
+                                                        <span class="fw-bold text-dark small" style="font-size: 13px;">{{ $req->asset->name }}</span>
+                                                        <span class="text-muted small" style="font-size: 10px;">SN: {{ $req->asset->serial_number ?: 'N/A' }}</span>
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <span class="text-muted small">-</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @php
+                                                $typeLower = strtolower($req->asset_type ?? '');
+                                                $iconClass = 'feather-package';
+                                                if ($typeLower === 'pc') $iconClass = 'feather-monitor';
+                                                elseif ($typeLower === 'laptop') $iconClass = 'feather-tablet';
+                                                elseif ($typeLower === 'keyboard') $iconClass = 'feather-type';
+                                                elseif ($typeLower === 'mouse') $iconClass = 'feather-mouse-pointer';
+                                                elseif ($typeLower === 'monitor') $iconClass = 'feather-tv';
+                                                elseif ($typeLower === 'charger') $iconClass = 'feather-zap';
+                                            @endphp
+                                            <span class="badge bg-soft-primary text-primary d-inline-flex align-items-center gap-1" style="font-size: 11px; padding: 6px 12px; border-radius: 30px; font-weight: 700; text-transform: uppercase;">
+                                                <i class="{{ $iconClass }}" style="font-size: 11px;"></i>
+                                                {{ $req->asset_type }}
+                                            </span>
+                                        </td>
+                                        <td class="text-muted small">{{ $req->allocated_at ? $req->allocated_at->format('d M, Y') : $req->updated_at->format('d M, Y') }}</td>
+                                        <td class="text-muted small">{{ $req->returned_at ? $req->returned_at->format('d M, Y') : '-' }}</td>
+                                        <td class="pe-4 text-center">
+                                            <span class="badge bg-soft-secondary text-secondary" style="font-size: 11px; padding: 6px 12px; border-radius: 30px; font-weight: 600; text-transform: uppercase;">
+                                                Returned
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5">
+                                            <div class="py-4">
+                                                <div style="font-size: 40px;">🔄</div>
+                                                <h4 class="text-muted mt-3">No Returned Assets</h4>
+                                                <p class="text-muted small">Historically returned company devices will appear here.</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -434,6 +703,22 @@
             </div>
         </div>
     </div>
+@push('modals')
+    <!-- Allocated Assets Offcanvas -->
+    <div class="offcanvas offcanvas-end premium-offcanvas" tabindex="-1" id="allocatedAssetsOffcanvas" aria-labelledby="allocatedAssetsOffcanvasLabel" style="width: 460px; border-left: 1px solid #e2e8f0; background: #f8fafc; z-index: 1055;">
+        <div class="offcanvas-header border-bottom bg-white p-4" style="height: 70px;">
+            <div class="d-flex flex-column">
+                <h5 class="offcanvas-title fw-bold text-dark fs-5" id="allocatedAssetsOffcanvasLabel">Allocated Devices</h5>
+                <span class="text-muted small" id="offcanvas-employee-name" style="font-size: 12px; font-weight: 500;">Employee Name</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-4" id="offcanvas-body-content" style="overflow-y: auto;">
+            <!-- Dynamically populated via JS -->
+        </div>
+    </div>
+@endpush
+
     <!-- Return Asset Modal -->
     <div class="modal fade" id="returnModal" tabindex="-1" aria-labelledby="returnModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -490,6 +775,9 @@
             color: #ffffff !important;
             box-shadow: 0 4px 6px -1px rgba(56, 88, 249, 0.2), 0 2px 4px -1px rgba(56, 88, 249, 0.1);
         }
+        .table tr td.asset-type-col {
+            padding-left: 15px !important;
+        }
     </style>
 
     <script>
@@ -497,6 +785,7 @@
         let allocateModal;
         let manualAllocateModal;
         let returnModal;
+        let allocatedAssetsOffcanvas;
         let assetRowIndex = 1;
         const allAvailableAssets = @json($availableAssets);
 
@@ -505,6 +794,7 @@
             allocateModal = new bootstrap.Modal(document.getElementById('allocateModal'));
             manualAllocateModal = new bootstrap.Modal(document.getElementById('manualAllocateModal'));
             returnModal = new bootstrap.Modal(document.getElementById('returnModal'));
+            allocatedAssetsOffcanvas = new bootstrap.Offcanvas(document.getElementById('allocatedAssetsOffcanvas'));
 
             // Add Asset Row cloning listener
             const addBtn = document.getElementById('add-asset-row-btn');
@@ -627,10 +917,95 @@
             if (tab === 'inventory') {
                 document.getElementById('tab-inventory-btn').classList.add('active');
                 document.getElementById('section-inventory').classList.remove('d-none');
-            } else {
+            } else if (tab === 'requests') {
                 document.getElementById('tab-requests-btn').classList.add('active');
                 document.getElementById('section-requests').classList.remove('d-none');
+            } else if (tab === 'allocated') {
+                document.getElementById('tab-allocated-btn').classList.add('active');
+                document.getElementById('section-allocated').classList.remove('d-none');
+            } else if (tab === 'returned') {
+                document.getElementById('tab-returned-btn').classList.add('active');
+                document.getElementById('section-returned').classList.remove('d-none');
             }
+        }
+
+        function openAllocatedAssetsOffcanvas(element, employeeName) {
+            let assets = [];
+            let name = employeeName || 'Employee';
+            
+            if (element && element.getAttribute) {
+                const rawAssets = element.getAttribute('data-assets');
+                assets = JSON.parse(rawAssets || '[]');
+                name = element.getAttribute('data-employee') || employeeName || 'Employee';
+            } else if (typeof element === 'string') {
+                assets = JSON.parse(element);
+            } else {
+                assets = element || [];
+            }
+            
+            document.getElementById('offcanvas-employee-name').innerText = name;
+            
+            let html = '';
+            if (!assets || assets.length === 0) {
+                html = `
+                    <div class="text-center py-5">
+                        <p class="text-muted small">No active allocations found for this employee.</p>
+                    </div>
+                `;
+            } else {
+                assets.forEach(asset => {
+                    let iconClass = 'feather-package';
+                    const typeLower = (asset.type || '').toLowerCase();
+                    if (typeLower === 'pc') iconClass = 'feather-monitor';
+                    else if (typeLower === 'laptop') iconClass = 'feather-tablet';
+                    else if (typeLower === 'keyboard') iconClass = 'feather-type';
+                    else if (typeLower === 'mouse') iconClass = 'feather-mouse-pointer';
+                    else if (typeLower === 'monitor') iconClass = 'feather-tv';
+                    else if (typeLower === 'charger') iconClass = 'feather-zap';
+
+                    html += `
+                        <div class="card border-0 shadow-sm mb-3 rounded-3" style="border: 1px solid #e2e8f0 !important; background: white;">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge bg-soft-primary text-primary" style="font-size: 10px; padding: 4px 8px; border-radius: 6px; font-weight: 700; text-transform: uppercase;">
+                                        ${asset.type}
+                                    </span>
+                                    <span class="text-muted small" style="font-size: 11px;">Assigned: ${asset.allocated_at}</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div style="width: 32px; height: 32px; background: rgba(56, 88, 249, 0.08); color: #3858f9; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" class="me-2">
+                                        <i class="${iconClass}" style="font-size: 15px;"></i>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-0 fs-6">${asset.name}</h6>
+                                </div>
+                                <p class="text-muted small mb-2" style="font-size: 11px;">SN: <b class="text-dark d-inline-block" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">${asset.serial_number}</b></p>                                
+                                <div class="mb-3">
+                                    <span class="small fw-semibold text-muted text-uppercase d-block mb-1" style="font-size: 10px;">Configuration:</span>
+                                    <div class="bg-light p-2 rounded-2 text-muted small" style="font-size: 11px; min-height: 40px; font-weight: 500;">
+                                        ${asset.system_configuration || 'No configuration details.'}
+                                    </div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-sm btn-soft-secondary fw-bold w-100 d-flex align-items-center justify-content-center gap-1" style="border-radius: 8px; height: 36px;" data-id="${asset.id}" data-name="${escapeHtml(asset.name)}" onclick="triggerReturnFromOffcanvas(this)">
+                                    <i class="feather-corner-down-left" style="font-size: 12px;"></i> Mark Returned
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            document.getElementById('offcanvas-body-content').innerHTML = html;
+            allocatedAssetsOffcanvas.show();
+        }
+
+        function triggerReturnFromOffcanvas(button) {
+            const requestId = button.getAttribute('data-id');
+            const assetName = button.getAttribute('data-name');
+            allocatedAssetsOffcanvas.hide();
+            setTimeout(() => {
+                openReturnModal(requestId, assetName);
+            }, 300);
         }
 
         function editAsset(asset) {

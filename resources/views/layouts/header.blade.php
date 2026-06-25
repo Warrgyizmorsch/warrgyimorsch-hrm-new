@@ -56,7 +56,7 @@
                             ->map(function($emp) use ($today) {
                                 $isBirthday = \Carbon\Carbon::parse($emp->date_of_birth)->format('m-d') == $today;
                                 $type = $isBirthday ? 'Birthday' : 'Work Anniversary';
-                                $years = \Carbon\Carbon::parse($emp->date_of_joining)->diffInYears(now());
+                                $years = (int) \Carbon\Carbon::parse($emp->date_of_joining)->diffInYears(now());
                                 
                                 return (object)[
                                     'id' => 'celebration-' . $emp->id,
