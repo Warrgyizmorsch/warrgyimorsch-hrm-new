@@ -16,7 +16,7 @@ class DailyTaskController extends Controller
 {
     public function index(Request $request)
     {
-        $query = DailyTask::with(['project', 'employee', 'creator', 'followUps']);
+        $query = DailyTask::with(['project', 'employee', 'creator', 'followUps'])->orderBy('start_date', 'desc');
 
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
         $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
