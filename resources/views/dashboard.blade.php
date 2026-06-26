@@ -870,15 +870,15 @@
                             <h5 class="card-title">Late Arrivals</h5>
                             <div class="card-header-action hrm-resp-card-header-action">
                                 <!-- <div class="card-header-btn">
-                                                <div data-bs-toggle="tooltip" title="Delete">
-                                                    <a href="javascript:void(0);" class="avatar-text avatar-xs bg-danger" data-bs-toggle="remove"></a>
-                                                </div>
-                                                <div data-bs-toggle="tooltip" title="Refresh">
-                                                    <a href="javascript:void(0);" class="avatar-text avatar-xs bg-warning" data-bs-toggle="refresh"></a>
-                                                </div>
-                                                <div data-bs-toggle="tooltip" title="Maximize/Minimize">
-                                                    <a href="javascript:void(0);" class="avatar-text avatar-xs bg-success" data-bs-toggle="expand"></a>
-                                                </div> -->
+                                    <div data-bs-toggle="tooltip" title="Delete">
+                                        <a href="javascript:void(0);" class="avatar-text avatar-xs bg-danger" data-bs-toggle="remove"></a>
+                                    </div>
+                                    <div data-bs-toggle="tooltip" title="Refresh">
+                                        <a href="javascript:void(0);" class="avatar-text avatar-xs bg-warning" data-bs-toggle="refresh"></a>
+                                    </div>
+                                    <div data-bs-toggle="tooltip" title="Maximize/Minimize">
+                                        <a href="javascript:void(0);" class="avatar-text avatar-xs bg-success" data-bs-toggle="expand"></a>
+                                </div> -->
                                 <!-- Filters (Below Heading, Above List) -->
                                 <div class="d-flex flex-wrap gap-2" id="lateFilterContainerUnique">
 

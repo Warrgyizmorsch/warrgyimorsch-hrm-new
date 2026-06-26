@@ -8,6 +8,7 @@ use App\Models\LeaveApplication;
 use App\Models\LeaveAllotment;
 use App\Models\Employee;
 use App\Models\Holiday;
+use App\Services\LeaveBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -19,6 +20,10 @@ use Illuminate\Support\Facades\Validator;
 
 class PayrollController extends Controller
 {
+    public function __construct(private LeaveBalanceService $leaveBalanceService)
+    {
+    }
+
     /**
      * Display Attendance List
      */
@@ -681,9 +686,12 @@ class PayrollController extends Controller
     {
         try {
             $data = $request->all();
+            $payrollModel = new Payroll();
+            $payrollData = array_intersect_key($data, array_flip($payrollModel->getFillable()));
+
             $payroll = Payroll::updateOrCreate(
                 ['employee_id' => $data['employee_id'], 'month' => $data['month']],
-                $data
+                $payrollData
             );
 
             $employee = Employee::find($data['employee_id']);
@@ -1726,25 +1734,14 @@ class PayrollController extends Controller
 
     private function getPayrollLeaveSummary(Employee $employee, Carbon $monthDate): array
     {
-        $monthStart = $monthDate->copy()->startOfMonth();
-        $monthEnd = $monthDate->copy()->endOfMonth();
-        $availableBalance = $this->getAvailableLeaveBalanceForMonth($employee, $monthDate);
-        $currentMonthLeaveDays = $this->getDeductibleLeaveDaysBetween($employee, $monthStart, $monthEnd);
-        $paidLeaveDays = min($currentMonthLeaveDays, $availableBalance);
-
-        return [
-            'available_balance' => $availableBalance,
-            'current_month_leave_days' => $currentMonthLeaveDays,
-            'paid_leave_days' => $paidLeaveDays,
-            'unpaid_leave_days' => max(0, $currentMonthLeaveDays - $paidLeaveDays),
-        ];
+        return $this->leaveBalanceService->getPayrollLeaveSummary($employee, $monthDate);
     }
 
     private function adjustLeaveAttendanceAfterPayroll(Employee $employee, Carbon $monthDate): void
     {
         $leaveSummary = $this->getPayrollLeaveSummary($employee, $monthDate);
         $paidRemaining = $leaveSummary['paid_leave_days'];
-        $leaveDates = $this->getDeductibleLeaveDatesBetween(
+        $leaveDates = $this->leaveBalanceService->getDeductibleLeaveDatesBetween(
             $employee,
             $monthDate->copy()->startOfMonth(),
             $monthDate->copy()->endOfMonth()

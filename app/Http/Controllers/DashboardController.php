@@ -846,32 +846,19 @@ class DashboardController extends Controller
                 $q->where('employee_id', $employeeFilter);
             })
             ->get()
-            ->filter(function ($item) {
-                if (!$item->employee || !$item->check_in) {
-                    return false;
-                }
+            ->map(function ($item) {
+                $item->late_minutes = $this->getAttendanceLateMinutes($item);
 
-                $checkIn = Carbon::parse($item->check_in);
-
-                $shiftStart = $item->employee->time_in
-                    ? Carbon::parse($item->employee->time_in)
-                    : Carbon::createFromTime(9, 30, 0); // fallback
-    
-                return $checkIn->gt($shiftStart);
-            });
+                return $item;
+            })
+            ->filter(fn ($item) => $item->late_minutes > 0);
 
         return $lateRecords->groupBy('employee_id')->map(function ($records) {
 
             $totalLateMinutes = 0;
 
             foreach ($records as $item) {
-                $checkIn = Carbon::parse($item->check_in);
-
-                $shiftStart = $item->employee->time_in
-                    ? Carbon::parse($item->employee->time_in)
-                    : Carbon::createFromTime(9, 30, 0);
-
-                $totalLateMinutes += $shiftStart->diffInMinutes($checkIn);
+                $totalLateMinutes += $item->late_minutes;
             }
 
             $employee = $records->first()->employee;
@@ -887,6 +874,41 @@ class DashboardController extends Controller
                 'late_days' => $records->count(), // ✅ optional but useful
             ];
         });
+    }
+
+    private function getAttendanceLateMinutes(Attendance $attendance): int
+    {
+        if (!$attendance->employee || !$attendance->check_in || !$attendance->check_out) {
+            return 0;
+        }
+
+        $checkIn = $this->parseAttendancePunch($attendance, $attendance->check_in);
+        $checkOut = $this->parseAttendancePunch($attendance, $attendance->check_out);
+
+        if ($checkOut->lessThanOrEqualTo($checkIn)) {
+            $checkOut->addDay();
+        }
+
+        $workedMinutes = $checkIn->diffInMinutes($checkOut);
+        $requiredMinutes = $this->getRequiredLateWorkMinutes($attendance);
+
+        return max($requiredMinutes - $workedMinutes, 0);
+    }
+
+    private function parseAttendancePunch(Attendance $attendance, $time): Carbon
+    {
+        $date = Carbon::parse($attendance->attendance_date)->toDateString();
+
+        return Carbon::parse($date . ' ' . Carbon::parse($time)->format('H:i:s'));
+    }
+
+    private function getRequiredLateWorkMinutes(Attendance $attendance): int
+    {
+        $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
+
+        return str_contains($status, 'half_day')
+            ? 4 * 60
+            : 8 * 60 + 30;
     }
 
     /* private function getLateEmployeesData()
