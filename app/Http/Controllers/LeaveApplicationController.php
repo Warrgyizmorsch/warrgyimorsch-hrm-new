@@ -6,8 +6,8 @@ use App\Models\Employee;
 use App\Models\LeaveApplication;
 use App\Models\Attendance;
 use App\Models\Holiday;
-use App\Models\LeaveAllotment;
 use App\Exports\LeaveApplicationsExport;
+use App\Services\LeaveBalanceService;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -18,47 +18,8 @@ use Illuminate\Support\Facades\Mail;
 
 class LeaveApplicationController extends Controller
 {
-    private function getEmployeeBalanceSummary(int $employeeId): array
+    public function __construct(private LeaveBalanceService $leaveBalanceService)
     {
-        $totalAllotted = LeaveAllotment::where('employee_id', $employeeId)->sum('leave_count');
-
-        $approvedLeaves = LeaveApplication::where('employee_id', $employeeId)
-            ->where('status', 'approved')
-            ->get();
-
-        $totalTaken = 0;
-
-        foreach ($approvedLeaves as $leave) {
-            $category = strtolower($leave->leave_category ?? '');
-            $type = strtolower($leave->leave_type ?? '');
-
-            if (str_contains($category, 'gatepass') || str_contains($category, 'wfh')) {
-                continue;
-            }
-
-            if (str_contains($category, 'half') || str_contains($type, 'half')) {
-                $totalTaken += 0.5;
-                continue;
-            }
-
-            if ($leave->total_days !== null) {
-                $totalTaken += (float) $leave->total_days;
-                continue;
-            }
-
-            $startDate = Carbon::parse($leave->start_date);
-            $endDate = $leave->end_date ? Carbon::parse($leave->end_date) : $startDate->copy();
-
-            $totalTaken += $startDate->equalTo($endDate)
-                ? 1
-                : $startDate->diffInDays($endDate);
-        }
-
-        return [
-            'total_allotted' => $totalAllotted,
-            'total_taken' => $totalTaken,
-            'balance' => $totalAllotted - $totalTaken,
-        ];
     }
 
     private function getHolidayDatesBetween(Carbon $startDate, Carbon $endDate): array
@@ -405,7 +366,7 @@ class LeaveApplicationController extends Controller
         $leave = LeaveApplication::with('employee')->findOrFail($id);
         return response()->json(array_merge(
             $leave->toArray(),
-            $this->getEmployeeBalanceSummary((int) $leave->employee_id)
+            $this->leaveBalanceService->getEmployeeBalanceSummary((int) $leave->employee_id)
         ));
     }
 

@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\LeaveAllotment;
 // use App\Models\Attendance;
 use App\Exports\LeaveBalancesExport;
+use App\Services\LeaveBalanceService;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class LeaveController extends Controller
 {
+    public function __construct(private LeaveBalanceService $leaveBalanceService)
+    {
+    }
+
     public function index()
     {
         return redirect()->route('leave.allotment');
@@ -175,41 +180,7 @@ class LeaveController extends Controller
 
         foreach ($employees as $employee) {
             $totalAllotted = LeaveAllotment::where('employee_id', $employee->id)->sum('leave_count');
-
-            // Count ONLY from approved leave applications (NOT from Attendance table)
-            $approvedLeaves = \App\Models\LeaveApplication::where('employee_id', $employee->id)
-                ->where('status', 'approved')
-                ->get();
-
-            $totalTaken = 0;
-            foreach ($approvedLeaves as $leave) {
-                $cat = strtolower($leave->leave_category ?? '');
-                $type = strtolower($leave->leave_type ?? '');
-
-                if (str_contains($cat, 'gatepass') || str_contains($cat, 'wfh')) {
-                    continue;
-                }
-
-                if (str_contains($cat, 'half') || str_contains($type, 'half')) {
-                    $totalTaken += 0.5;
-                    continue;
-                }
-
-                if ($leave->total_days !== null) {
-                    $totalTaken += (float) $leave->total_days;
-                    continue;
-                }
-
-                // Full Day - calculate number of days (end date exclusive)
-                $startDate = Carbon::parse($leave->start_date);
-                $endDate = $leave->end_date ? Carbon::parse($leave->end_date) : $startDate->copy();
-
-                if ($startDate->equalTo($endDate)) {
-                    $totalTaken += 1;
-                } else {
-                    $totalTaken += $startDate->diffInDays($endDate);
-                }
-            }
+            $totalTaken = $this->leaveBalanceService->getDeductibleLeaveDaysForEmployee($employee->id);
 
             $balances[] = (object) [
                 'id' => $employee->id,
