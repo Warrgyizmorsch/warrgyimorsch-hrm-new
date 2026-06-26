@@ -884,13 +884,24 @@ class DashboardController extends Controller
 
         $checkIn = $this->parseAttendancePunch($attendance, $attendance->check_in);
         $checkOut = $this->parseAttendancePunch($attendance, $attendance->check_out);
+        [$shiftStart, $shiftEnd] = $this->getAttendanceShiftWindow($attendance);
 
         if ($checkOut->lessThanOrEqualTo($checkIn)) {
             $checkOut->addDay();
         }
 
+        $expectedStart = $this->isHalfDayAttendance($attendance)
+            ? $this->getHalfDayStartForPunch($checkIn, $shiftStart)
+            : $shiftStart;
+
+        if (!$checkIn->gt($expectedStart)) {
+            return 0;
+        }
+
         $workedMinutes = $checkIn->diffInMinutes($checkOut);
-        $requiredMinutes = $this->getRequiredLateWorkMinutes($attendance);
+        $requiredMinutes = $this->isHalfDayAttendance($attendance)
+            ? 4 * 60
+            : $shiftStart->diffInMinutes($shiftEnd);
 
         return max($requiredMinutes - $workedMinutes, 0);
     }
@@ -902,13 +913,41 @@ class DashboardController extends Controller
         return Carbon::parse($date . ' ' . Carbon::parse($time)->format('H:i:s'));
     }
 
-    private function getRequiredLateWorkMinutes(Attendance $attendance): int
+    private function getAttendanceShiftWindow(Attendance $attendance): array
+    {
+        $date = Carbon::parse($attendance->attendance_date)->toDateString();
+        $timeIn = $attendance->employee->time_in ?? '09:30:00';
+        $timeOut = $attendance->employee->time_out ?? '18:00:00';
+
+        try {
+            $shiftStart = Carbon::parse($date . ' ' . Carbon::parse($timeIn)->format('H:i:s'));
+            $shiftEnd = Carbon::parse($date . ' ' . Carbon::parse($timeOut)->format('H:i:s'));
+        } catch (\Exception $e) {
+            $shiftStart = Carbon::parse($date . ' 09:30:00');
+            $shiftEnd = Carbon::parse($date . ' 18:00:00');
+        }
+
+        if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
+            $shiftEnd->addDay();
+        }
+
+        return [$shiftStart, $shiftEnd];
+    }
+
+    private function getHalfDayStartForPunch(Carbon $checkIn, Carbon $shiftStart): Carbon
+    {
+        $secondHalfStart = $shiftStart->copy()->addHours(4)->addMinutes(30);
+
+        return $checkIn->lt($secondHalfStart)
+            ? $shiftStart
+            : $secondHalfStart;
+    }
+
+    private function isHalfDayAttendance(Attendance $attendance): bool
     {
         $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
 
-        return str_contains($status, 'half_day')
-            ? 4 * 60
-            : 8 * 60 + 30;
+        return str_contains($status, 'half_day');
     }
 
     /* private function getLateEmployeesData()
