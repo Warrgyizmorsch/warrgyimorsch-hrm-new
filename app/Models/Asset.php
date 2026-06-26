@@ -22,4 +22,11 @@ class Asset extends Model
     {
         return $this->hasMany(AssetRequest::class, 'asset_id');
     }
+
+    public function activeAllocation()
+    {
+        return $this->hasOne(AssetRequest::class, 'asset_id')
+            ->where('status', 'Allocated')
+            ->latestOfMany();
+    }
 }

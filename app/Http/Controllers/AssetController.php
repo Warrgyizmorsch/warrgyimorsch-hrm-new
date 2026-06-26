@@ -5,12 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\AssetRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AssetController extends Controller
 {
     public function index()
     {
-        $assets = Asset::latest()->get();
+        $assets = Asset::with('activeAllocation.user')
+            ->get()
+            ->sortBy([
+                fn ($asset) => $asset->activeAllocation ? 0 : 1,
+                fn ($asset) => strtolower($asset->activeAllocation->user->name ?? ''),
+                fn ($asset) => strtolower($asset->name ?? ''),
+            ])
+            ->values();
         $requests = AssetRequest::with(['user', 'asset'])->latest()->get();
         $availableAssets = Asset::where('status', 'Available')->get();
         $users = \App\Models\User::orderBy('name')->get();
@@ -24,14 +32,41 @@ class AssetController extends Controller
             'assets' => 'required|array',
             'assets.*.name' => 'required|string',
             'assets.*.type' => 'required|string',
-            'assets.*.serial_number' => 'nullable|string|unique:assets,serial_number',
+            'assets.*.serial_number' => 'nullable|string|distinct|unique:assets,serial_number',
             'assets.*.system_configuration' => 'nullable|string',
             'assets.*.status' => 'required|in:Available,Allocated,Maintenance,Faulty',
+            'assign_user_id' => 'nullable|exists:users,id',
         ]);
 
-        foreach ($request->assets as $assetData) {
-            Asset::create($assetData);
+        if (
+            !$request->filled('assign_user_id') &&
+            collect($request->assets)->contains(fn ($asset) => ($asset['status'] ?? null) === 'Allocated')
+        ) {
+            return back()
+                ->withInput()
+                ->with('error', 'Please select one employee at the top before adding assets as Allocated.');
         }
+
+        DB::transaction(function () use ($request) {
+            foreach ($request->assets as $assetData) {
+                if ($request->filled('assign_user_id')) {
+                    $assetData['status'] = 'Allocated';
+                }
+
+                $asset = Asset::create($assetData);
+
+                if ($request->filled('assign_user_id')) {
+                    AssetRequest::create([
+                        'user_id' => $request->assign_user_id,
+                        'asset_id' => $asset->id,
+                        'asset_type' => $asset->type,
+                        'reason' => 'Allocated while adding inventory',
+                        'status' => 'Allocated',
+                        'allocated_at' => now(),
+                    ]);
+                }
+            }
+        });
 
         return back()->with('success', 'Assets added successfully.');
     }

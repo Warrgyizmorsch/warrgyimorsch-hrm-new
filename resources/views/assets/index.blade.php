@@ -78,19 +78,47 @@
                                 <tr style="height: 60px; vertical-align: middle;">
                                     <th class="ps-4" style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">Asset Name / Type</th>
                                     <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">Serial Number</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">Assigned Employee</th>
                                     <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">Configuration</th>
                                     <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">Status</th>
                                     <th class="pe-4 text-center" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 180px; color: white;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($assets as $asset)
+                                @php
+                                    $inventoryRows = $assets
+                                        ->groupBy(fn($asset) => $asset->activeAllocation ? 'user_' . $asset->activeAllocation->user_id : 'asset_' . $asset->id)
+                                        ->sortBy(function($group) {
+                                            $asset = $group->first();
+                                            return strtolower($asset->activeAllocation->user->name ?? $asset->name ?? '');
+                                        });
+                                @endphp
+                                @forelse($inventoryRows as $inventoryGroup)
                                     @php
+                                        $asset = $inventoryGroup->first();
+                                        $isAssignedGroup = $asset->activeAllocation && $inventoryGroup->count() > 1;
                                         $statusClass = 'status-pending';
                                         if($asset->status == 'Available') $statusClass = 'status-completed';
                                         elseif($asset->status == 'Allocated') $statusClass = 'status-in-process';
                                         elseif($asset->status == 'Maintenance') $statusClass = 'status-on-hold';
                                         elseif($asset->status == 'Faulty') $statusClass = 'status-rework';
+
+                                        $assignedUser = $asset->activeAllocation->user ?? null;
+                                        $assignedDept = $assignedUser->employee->department ?? $assignedUser->role ?? '';
+                                        $assetSummary = $inventoryGroup->map(function($item) {
+                                            $serial = $item->serial_number ? ' - SN: ' . $item->serial_number : '';
+                                            return $item->name . $serial;
+                                        })->implode(', ');
+                                        $jsAllocations = $inventoryGroup->filter(fn($item) => $item->activeAllocation)->map(function($item) {
+                                            return [
+                                                'id' => $item->activeAllocation->id,
+                                                'name' => $item->name ?? 'Unknown Asset',
+                                                'type' => $item->type ?? 'Other',
+                                                'serial_number' => $item->serial_number ?? 'N/A',
+                                                'allocated_at' => $item->activeAllocation->allocated_at ? $item->activeAllocation->allocated_at->format('d M, Y') : $item->activeAllocation->updated_at->format('d M, Y'),
+                                                'system_configuration' => $item->system_configuration ?? '-',
+                                            ];
+                                        })->values()->all();
                                     @endphp
                                     <tr class="asset-row-item" data-status="{{ $asset->status }}" style="height: 75px; border-bottom: 1px solid #f1f5f9;">
                                         <td class="ps-4">
@@ -109,16 +137,52 @@
                                                     <i class="{{ $iconClass }}" style="font-size: 15px;"></i>
                                                 </div>
                                                 <div class="d-flex flex-column">
-                                                    <span class="fw-bold text-dark fs-6">{{ $asset->name }}</span>
-                                                    <span class="badge bg-soft-primary text-primary mt-1 align-self-start" style="font-size: 10px; font-weight: 700; text-transform: uppercase;">{{ $asset->type }}</span>
+                                                    <span class="fw-bold text-dark fs-6">
+                                                        {{ $isAssignedGroup ? ($assignedUser->name ?? 'Assigned Employee') : $asset->name }}
+                                                    </span>
+                                                    <span class="badge bg-soft-primary text-primary mt-1 align-self-start" style="font-size: 10px; font-weight: 700; text-transform: uppercase;">
+                                                        {{ $isAssignedGroup ? $inventoryGroup->count() . ' ASSETS' : $asset->type }}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="fw-semibold text-muted">{{ $asset->serial_number ?: 'N/A' }}</td>
+                                        <td class="fw-semibold text-muted">
+                                            {{ $isAssignedGroup ? $inventoryGroup->count() . ' assigned' : ($asset->serial_number ?: 'N/A') }}
+                                        </td>
+                                        <td>
+                                            @if($assignedUser)
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="user-avatar-wrapper" style="width: 30px; height: 30px; flex-shrink: 0;">
+                                                        @if($assignedUser->photo)
+                                                            <img src="{{ asset('storage/' . $assignedUser->photo) }}" alt="{{ $assignedUser->name }}" class="user-avatar-img" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                                                        @else
+                                                            <div class="user-avatar-initials" style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #3858f9 0%, #8b5cf6 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">
+                                                                {{ substr($assignedUser->name ?? 'U', 0, 1) }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                    <div class="d-flex flex-column">
+                                                        <span class="fw-bold text-dark small">{{ $assignedUser->name }}</span>
+                                                        <span class="text-muted" style="font-size: 10px;">{{ $assignedDept }}</span>
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <span class="badge bg-soft-secondary text-secondary" style="font-size: 10px; padding: 6px 10px; border-radius: 30px; font-weight: 700;">Unassigned</span>
+                                            @endif
+                                        </td>
                                         <td style="max-width: 300px; white-space: normal; word-break: break-word;">
-                                            <div class="text-muted small" style="line-height: 1.4;">
-                                                {!! nl2br(e($asset->system_configuration)) ?: '<span class="text-light">-</span>' !!}
-                                            </div>
+                                            @if($isAssignedGroup)
+                                                <div class="fw-semibold text-dark text-truncate" style="max-width: 420px;" title="{{ $assetSummary }}">
+                                                    {{ $assetSummary }}
+                                                </div>
+                                                <div class="text-muted small mt-1" style="font-size: 11px;">
+                                                    {{ $inventoryGroup->pluck('type')->filter()->unique()->implode(', ') ?: 'Asset details' }}
+                                                </div>
+                                            @else
+                                                <div class="text-muted small" style="line-height: 1.4;">
+                                                    {!! nl2br(e($asset->system_configuration)) ?: '<span class="text-light">-</span>' !!}
+                                                </div>
+                                            @endif
                                         </td>
                                         <td>
                                             <span class="badge {{ $statusClass }}" style="font-size: 11px; padding: 6px 12px; border-radius: 30px; font-weight: 600; text-transform: uppercase;">
@@ -127,6 +191,15 @@
                                         </td>
                                         <td class="pe-4 text-center">
                                             <div class="d-flex justify-content-center gap-2">
+                                                @if($isAssignedGroup)
+                                                    <button class="btn btn-sm btn-soft-primary fw-bold"
+                                                            style="border-radius: 8px;"
+                                                            data-assets='@json($jsAllocations)'
+                                                            data-employee="{{ $assignedUser->name ?? 'Employee' }}"
+                                                            onclick="openAllocatedAssetsOffcanvas(this)">
+                                                        <i class="feather-eye"></i> Manage Assets
+                                                    </button>
+                                                @else
                                                 @if($asset->status == 'Available')
                                                     <a href="javascript:void(0);" 
                                                         class="avatar-text avatar-md bg-soft-success text-success rounded" 
@@ -148,12 +221,13 @@
                                                         <i class="feather-trash-2"></i>
                                                     </button>
                                                 </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr id="inventory-empty-row-initial">
-                                        <td colspan="5" class="text-center py-5">
+                                        <td colspan="6" class="text-center py-5">
                                             <div class="py-4">
                                                 <div style="font-size: 40px;">📦</div>
                                                 <h4 class="text-muted mt-3">No Assets Registered</h4>
@@ -282,22 +356,31 @@
                             <thead style="background: #3858f9; color: white;">
                                 <tr style="height: 60px; vertical-align: middle;">
                                     <th class="ps-4" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 220px; color: white">Employee</th>
-                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Assigned Date</th>
-                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white">Assigned Assets</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 120px; color: white">Assets Count</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white">Asset Details</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Latest Assigned</th>
                                     <th class="pe-4 text-center" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 200px; color: white">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @php
                                     $allocatedRequests = $requests->where('status', 'Allocated');
-                                    $allocatedByUser = $allocatedRequests->groupBy('user_id');
+                                    $allocatedByUser = $allocatedRequests
+                                        ->groupBy('user_id')
+                                        ->sortBy(fn($userAllocations) => strtolower($userAllocations->first()->user->name ?? ''));
                                 @endphp
                                 @forelse($allocatedByUser as $userId => $userAllocations)
                                     @php
                                         $firstAlloc = $userAllocations->first();
                                         $user = $firstAlloc->user;
                                         $dept = $user->employee->department ?? $user->role ?? 'N/A';
-                                        $assignedDate = $firstAlloc->allocated_at ? $firstAlloc->allocated_at->format('d M, Y') : $firstAlloc->updated_at->format('d M, Y');
+                                        $latestAlloc = $userAllocations->sortByDesc(fn($a) => $a->allocated_at ?? $a->updated_at)->first();
+                                        $assignedDate = $latestAlloc->allocated_at ? $latestAlloc->allocated_at->format('d M, Y') : $latestAlloc->updated_at->format('d M, Y');
+                                        $assetSummary = $userAllocations->map(function($a) {
+                                            $assetName = $a->asset->name ?? 'Unknown Asset';
+                                            $serial = $a->asset && $a->asset->serial_number ? ' - SN: ' . $a->asset->serial_number : '';
+                                            return $assetName . $serial;
+                                        })->implode(', ');
                                         
                                         $jsAllocations = $userAllocations->map(function($a) {
                                             return [
@@ -328,64 +411,24 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="text-muted small">{{ $assignedDate }}</td>
                                         <td>
-                                            <div class="d-flex flex-wrap gap-2 align-items-center">
-                                                @foreach($userAllocations->take(2) as $alloc)
-                                                    @if($alloc->asset)
-                                                        @php
-                                                            $typeLower = strtolower($alloc->asset->type ?? '');
-                                                            $iconClass = 'feather-package';
-                                                            if ($typeLower === 'pc') $iconClass = 'feather-monitor';
-                                                            elseif ($typeLower === 'laptop') $iconClass = 'feather-tablet';
-                                                            elseif ($typeLower === 'keyboard') $iconClass = 'feather-type';
-                                                            elseif ($typeLower === 'mouse') $iconClass = 'feather-mouse-pointer';
-                                                            elseif ($typeLower === 'monitor') $iconClass = 'feather-tv';
-                                                            elseif ($typeLower === 'charger') $iconClass = 'feather-zap';
-                                                        @endphp
-                                                        <div class="d-flex align-items-center justify-content-between p-2 border rounded-3 bg-white" style="border-color: #e2e8f0 !important; min-width: 220px; max-width: 260px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                                            <div class="d-flex align-items-center me-2" style="max-width: 180px;">
-                                                                <div style="width: 32px; height: 32px; background: rgba(56, 88, 249, 0.08); color: #3858f9; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" class="me-2">
-                                                                    <i class="{{ $iconClass }}" style="font-size: 15px;"></i>
-                                                                </div>
-                                                                <div class="d-flex flex-column text-start">
-                                                                    <span class="fw-bold text-dark text-truncate" style="font-size: 12px; line-height: 1.2; max-width: 130px;" title="{{ $alloc->asset->name }}">{{ $alloc->asset->name }}</span>
-                                                                    <span class="text-muted" style="font-size: 10px;">SN: <b class="text-dark d-inline-block" style="max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">{{ $alloc->asset->serial_number ?: 'N/A' }}</b></span>
-                                                                </div>
-                                                            </div>
-                                                            <!-- 3-dots action menu -->
-                                                            <div class="dropdown">
-                                                                <button class="btn p-0 border-0 bg-transparent text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 14px; line-height: 1;">
-                                                                    <i class="feather-more-vertical"></i>
-                                                                </button>
-                                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px; padding: 4px 0; min-width: 120px;">
-                                                                    <li>
-                                                                        <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger" href="javascript:void(0);" onclick="openReturnModal({{ $alloc->id }}, '{{ addslashes($alloc->asset->name) }}')">
-                                                                            <i class="feather-corner-down-left" style="font-size: 12px;"></i> Return Asset
-                                                                        </a>
-                                                                    </li>
-                                                                </ul>
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                @endforeach
-                                                
-                                                @if($userAllocations->count() > 2)
-                                                    <a href="javascript:void(0);" 
-                                                       class="d-flex align-items-center justify-content-center px-3 border border-info border-opacity-10 bg-soft-info text-info fw-bold py-2 rounded-3 text-decoration-none" 
-                                                       style="font-size: 11px; min-width: 80px; height: 46px;" 
-                                                       data-assets="{{ json_encode($jsAllocations) }}" 
-                                                       data-employee="{{ $user->name ?? 'Employee' }}"
-                                                       onclick="openAllocatedAssetsOffcanvas(this)">
-                                                        +{{ $userAllocations->count() - 2 }} more
-                                                    </a>
-                                                @endif
+                                            <span class="badge bg-soft-success text-success" style="font-size: 12px; padding: 8px 12px; border-radius: 30px; font-weight: 700;">
+                                                {{ $userAllocations->count() }} {{ \Illuminate\Support\Str::plural('asset', $userAllocations->count()) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold text-dark text-truncate" style="max-width: 520px;" title="{{ $assetSummary }}">
+                                                {{ $assetSummary }}
+                                            </div>
+                                            <div class="text-muted small mt-1" style="font-size: 11px;">
+                                                {{ $userAllocations->pluck('asset.type')->filter()->unique()->implode(', ') ?: 'Asset details' }}
                                             </div>
                                         </td>
+                                        <td class="text-muted small">{{ $assignedDate }}</td>
                                         <td class="pe-4 text-center">
                                             <button class="btn btn-sm btn-soft-primary fw-bold" 
                                                     style="border-radius: 8px;" 
-                                                    data-assets="{{ json_encode($jsAllocations) }}" 
+                                                    data-assets='@json($jsAllocations)' 
                                                     data-employee="{{ $user->name ?? 'Employee' }}"
                                                     onclick="openAllocatedAssetsOffcanvas(this)">
                                                 <i class="feather-eye"></i> Manage Assets
@@ -394,7 +437,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center py-5">
+                                        <td colspan="5" class="text-center py-5">
                                             <div class="py-4">
                                                 <div style="font-size: 40px;">🖥️</div>
                                                 <h4 class="text-muted mt-3">No Allocated Assets</h4>
@@ -531,6 +574,16 @@
                 <form action="{{ route('assets.store') }}" method="POST">
                     @csrf
                     <div class="modal-body p-4" style="max-height: 60vh; overflow-y: auto;">
+                        <div class="p-3 mb-3 border rounded-3" style="background: #eef4ff; border-color: #dbeafe !important;">
+                            <label class="fw-semibold small mb-1">Assign all new assets to employee</label>
+                            <select class="form-select" name="assign_user_id" id="batch-assign-user" style="height: 44px; border-radius: 8px;">
+                                <option value="">Keep as stock inventory</option>
+                                @foreach($users as $u)
+                                    <option value="{{ $u->id }}">{{ $u->name }} ({{ str_replace('_', ' ', ucwords($u->role)) }})</option>
+                                @endforeach
+                            </select>
+                            <div class="text-muted small mt-2" style="font-size: 11px;">When an employee is selected here, every asset in this popup is assigned to that employee.</div>
+                        </div>
                         <div id="assets-container">
                             <div class="asset-entry-row p-3 mb-3 border rounded-3 position-relative" style="background: #f8fafc; border-color: #e2e8f0 !important;">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -551,6 +604,9 @@
                                             <option value="Mouse">Mouse</option>
                                             <option value="Monitor">Monitor</option>
                                             <option value="Charger">Charger</option>
+                                            <option value="Headphone">Headphone</option>
+                                            <option value="Earphone">Earphone</option>
+                                            <option value="Pendrive/Hard disk">Pendrive/Hard disk</option>
                                             <option value="Other">Other</option>
                                         </select>
                                     </div>
@@ -834,6 +890,7 @@
         <div class="col-md-6">
             <label class="fw-semibold small mb-1">Asset Type <span class="text-danger">*</span></label>
             <select class="form-select" name="assets[${nextIndex}][type]" required style="border-radius: 8px;">
+                <option value="PC" ${typeVal === 'PC' ? 'selected' : ''}>PC</option>
                 <option value="Laptop" ${typeVal === 'Laptop' ? 'selected' : ''}>Laptop</option>
                 <option value="Keyboard" ${typeVal === 'Keyboard' ? 'selected' : ''}>Keyboard</option>
                 <option value="Mouse" ${typeVal === 'Mouse' ? 'selected' : ''}>Mouse</option>
@@ -863,7 +920,13 @@
 </div>`;
                     container.insertAdjacentHTML('beforeend', rowTemplate);
                     renumberAssetRows();
+                    syncBatchAssignStatus();
                 });
+            }
+
+            const batchAssignSelect = document.getElementById('batch-assign-user');
+            if (batchAssignSelect) {
+                batchAssignSelect.addEventListener('change', syncBatchAssignStatus);
             }
         });
 
@@ -908,6 +971,19 @@
             const row = button.closest('.asset-entry-row');
             row.remove();
             renumberAssetRows();
+        }
+
+        function syncBatchAssignStatus() {
+            const batchAssignSelect = document.getElementById('batch-assign-user');
+            const shouldAllocate = batchAssignSelect && batchAssignSelect.value;
+
+            document.querySelectorAll('#assets-container select[name*="[status]"]').forEach(select => {
+                if (shouldAllocate) {
+                    select.value = 'Allocated';
+                } else if (select.value === 'Allocated') {
+                    select.value = 'Available';
+                }
+            });
         }
 
         function switchAssetTab(tab) {
@@ -1098,7 +1174,7 @@
                     if (tbody) {
                         tbody.insertAdjacentHTML('beforeend', `
                             <tr id="inventory-empty-row">
-                                <td colspan="5" class="text-center py-5">
+                                <td colspan="6" class="text-center py-5">
                                     <div class="py-4">
                                         <div style="font-size: 40px;">📦</div>
                                         <h4 class="text-muted mt-3">No Assets Found</h4>
