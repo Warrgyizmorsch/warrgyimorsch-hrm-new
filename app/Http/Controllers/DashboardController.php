@@ -890,16 +890,8 @@ class DashboardController extends Controller
             $checkOut->addDay();
         }
 
-        $expectedStart = $this->isHalfDayAttendance($attendance)
-            ? $this->getHalfDayStartForPunch($checkIn, $shiftStart)
-            : $shiftStart;
-
-        if (!$checkIn->gt($expectedStart)) {
-            return 0;
-        }
-
         $workedMinutes = $checkIn->diffInMinutes($checkOut);
-        $requiredMinutes = $this->isHalfDayAttendance($attendance)
+        $requiredMinutes = $this->isApprovedHalfDayAttendance($attendance)
             ? 4 * 60
             : $shiftStart->diffInMinutes($shiftEnd);
 
@@ -934,20 +926,30 @@ class DashboardController extends Controller
         return [$shiftStart, $shiftEnd];
     }
 
-    private function getHalfDayStartForPunch(Carbon $checkIn, Carbon $shiftStart): Carbon
-    {
-        $secondHalfStart = $shiftStart->copy()->addHours(4)->addMinutes(30);
-
-        return $checkIn->lt($secondHalfStart)
-            ? $shiftStart
-            : $secondHalfStart;
-    }
-
-    private function isHalfDayAttendance(Attendance $attendance): bool
+    private function isApprovedHalfDayAttendance(Attendance $attendance): bool
     {
         $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
 
-        return str_contains($status, 'half_day');
+        if ($status === 'half_day_leave') {
+            return true;
+        }
+
+        return LeaveApplication::where('employee_id', $attendance->employee_id)
+            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
+            ->whereDate('start_date', '<=', $attendance->attendance_date)
+            ->where(function ($query) use ($attendance) {
+                $query->whereDate('end_date', '>=', $attendance->attendance_date)
+                    ->orWhere(function ($sub) use ($attendance) {
+                        $sub->whereNull('end_date')
+                            ->whereDate('start_date', $attendance->attendance_date);
+                    });
+            })
+            ->where(function ($query) {
+                $query->whereRaw('LOWER(leave_category) LIKE ?', ['%half%'])
+                    ->orWhereRaw('LOWER(leave_type) LIKE ?', ['%half%'])
+                    ->orWhere('total_days', 0.5);
+            })
+            ->exists();
     }
 
     /* private function getLateEmployeesData()

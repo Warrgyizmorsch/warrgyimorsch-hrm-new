@@ -1011,6 +1011,9 @@
                                                 <div class="fs-11 text-muted">
                                                     Late by {{ $lateEmp['late_duration'] }}
                                                 </div>
+                                                <span class="badge bg-soft-danger text-danger">
+                                                     {{ $lateEmp['late_days'] }} Times Late
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
