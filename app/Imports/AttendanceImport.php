@@ -86,9 +86,9 @@ class AttendanceImport implements ToCollection
             } else {
                 $hours = $first->diffInMinutes($last) / 60;
 
-                if ($hours >= 8) {
+                if ($hours >= 8.5) {
                     $status = 'present';
-                } elseif ($hours >= 3.90) {
+                } elseif ($hours >= 4) {
                     $status = 'half_day';
                 } else {
                     $status = 'absent';

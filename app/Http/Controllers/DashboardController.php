@@ -81,7 +81,19 @@ class DashboardController extends Controller
             SUM(IF(status = 'wfh', 1, 0)) as wfh_count,
             SUM(IF(status = 'half_day', 1, 0)) as halfDay_count,
             SUM(IF(status = 'leave', 1, 0)) as leave_count,
-            SUM(IF(status = 'late' OR (check_in IS NOT NULL AND TIME(check_in) > '09:30:00'), 1, 0)) as late_count,
+            SUM(IF(
+                status = 'late'
+                OR (
+                    check_in IS NOT NULL
+                    AND check_out IS NOT NULL
+                    AND (
+                        (status IN ('half_day', 'half_day_leave') AND total_hours < 4)
+                        OR (status NOT IN ('half_day', 'half_day_leave', 'leave', 'wfh', 'absent', 'missing_punch', 'unpaid_leave', 'unauthorised') AND total_hours < 8.5)
+                    )
+                ),
+                1,
+                0
+            )) as late_count,
             SUM(IF(status = 'early_leave', 1, 0)) as early_count,
             SUM(IF(status = 'absent', 1, 0)) as absent_count
         ")->first();
@@ -898,7 +910,7 @@ class DashboardController extends Controller
         $isApprovedHalfDay = $this->isApprovedHalfDayAttendance($attendance);
         $requiredMinutes = $isApprovedHalfDay
             ? 4 * 60
-            : $shiftStart->diffInMinutes($shiftEnd);
+            : 8 * 60 + 30;
 
         if (!$isApprovedHalfDay && $this->hasOneHourEarlyOutAllowance($attendance, $activityDates)) {
             $requiredMinutes = max($requiredMinutes - 60, 0);
@@ -957,7 +969,7 @@ class DashboardController extends Controller
                 $totalPresent++;
                 $punchTime = Carbon::parse($attendance->check_out)->format('H:i');
 
-                if ($punchTime >= '15:00' && $punchTime < '17:30') {
+                if ($punchTime >= '16:50' && $punchTime < '17:30') {
                     $earlyOuts++;
                 }
             }

@@ -348,13 +348,9 @@ class PayrollController extends Controller
 
                     $totalHours = round($diffMinutes / 60, 2);
                     // ✅ Apply your attendance logic
-                    $fullDay = 8.5;
-                    $graceMinutes = 15;
-                    $minFullDay = $fullDay - ($graceMinutes / 60);
-
-                    if ($totalHours >= $minFullDay) {
+                    if ($totalHours >= 8.5) {
                         $status = 'present';
-                    } elseif ($totalHours >= 3.90) {
+                    } elseif ($totalHours >= 4) {
                         $status = 'half_day';
                     } else {
                         $status = 'absent';

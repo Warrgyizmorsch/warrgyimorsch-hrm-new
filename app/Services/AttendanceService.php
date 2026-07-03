@@ -49,7 +49,7 @@ class AttendanceService
 
                 $hours = $first->diffInMinutes($last) / 60;
 
-                if ($hours >= 8.25) {
+                if ($hours >= 8.5) {
                     $status = 'present';
                 } elseif ($hours >= 4) {
                     $status = 'half_day';

@@ -4,12 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Department;
 use Illuminate\Http\Request;
+use App\Models\Attendance;
+use App\Models\DailyTask;
 use App\Models\EmployeeReviewDetail;
 use App\Models\EmployeeReview;
 use App\Models\Employee;
+use App\Models\LeaveApplication;
+use App\Models\TaskFollowUp;
 use App\Models\TechnicalReview;
 use App\Models\TechnicalReviewDetail;
 use App\Models\TechnicalReviewEvaluation;
+use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class ReviewController extends Controller
@@ -61,25 +67,22 @@ class ReviewController extends Controller
         
         $query = EmployeeReview::with(['employee', 'details']);
         
-        if ($isAdmin) {
-            // Admin sees everything
-            $query->latest();
-        } elseif ($isTeamLeader) {
+        if ($isTeamLeader && !$isAdmin) {
             // Team leader sees their department's employees
             $userDepartment = $employeeRecord->department ?? null;
             
             if ($userDepartment) {
                 $employeeIds = Employee::active()->where('department', $userDepartment)->pluck('id');
-                $query->whereIn('employee_id', $employeeIds)->latest();
+                $query->whereIn('employee_id', $employeeIds);
             } else {
                 // Fallback: if no department found, show only their own reviews
                 $empId = $employeeRecord ? $employeeRecord->id : 0;
-                $query->where('employee_id', $empId)->latest();
+                $query->where('employee_id', $empId);
             }
-        } else {
+        } elseif (!$isAdmin) {
             // Regular employees only see their own reviews matching their employee profile ID
             $empId = $employeeRecord ? $employeeRecord->id : 0;
-            $query->where('employee_id', $empId)->latest();
+            $query->where('employee_id', $empId);
         }
         
         $employees = $isTeamLeader && !$isAdmin && $employeeRecord
@@ -92,8 +95,327 @@ class ReviewController extends Controller
         if (!in_array($perPage, $allowedPerPage, true)) {
             $perPage = 20;
         }
-        $reviews = $query->paginate($perPage);
-        return view('review.review', compact('reviews', 'isAdmin', 'isTeamLeader', 'employees', 'perPage'));
+        $monthOrder = array_flip([
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December',
+        ]);
+
+        $groupedReviews = $query->get()
+            ->groupBy(fn ($review) => $review->employee_id . '|' . $review->month)
+            ->map(function ($group) {
+                $effectiveTotal = function ($review): float {
+                    if (!$review) {
+                        return 0;
+                    }
+
+                    $adminTotal = (float) $review->admin_total;
+                    $authorTotal = (float) $review->author_total;
+
+                    if ($adminTotal > 0) {
+                        return $adminTotal;
+                    }
+
+                    if ($authorTotal > 0) {
+                        return $authorTotal;
+                    }
+
+                    return (float) $review->self_total;
+                };
+
+                $firstHalf = $group->first(fn ($review) => strcasecmp($review->period, 'First Half') === 0);
+                $secondHalf = $group->first(fn ($review) => strcasecmp($review->period, 'Second Half') === 0);
+                $firstReview = $group->first();
+
+                return (object) [
+                    'employee' => $firstReview->employee,
+                    'employee_name' => $firstReview->employee->name ?? 'N/A',
+                    'month' => $firstReview->month,
+                    'firstHalf' => $firstHalf,
+                    'secondHalf' => $secondHalf,
+                    'combined_total' => $effectiveTotal($firstHalf) + $effectiveTotal($secondHalf),
+                ];
+            })
+            ->map(function ($group) {
+                $group->objective = $this->buildObjectiveReviewResult(
+                    (int) ($group->employee->id ?? 0),
+                    $group->month,
+                    (float) $group->combined_total
+                );
+
+                return $group;
+            });
+
+        $rankedReviews = $groupedReviews
+            ->sortByDesc(fn ($group) => $group->objective['score'])
+            ->values()
+            ->each(fn ($group, $index) => $group->objective['rank'] = $index + 1);
+
+        $groupedReviews = $rankedReviews
+            ->sortBy([
+                fn ($a, $b) => strcasecmp($a->employee_name, $b->employee_name),
+                fn ($a, $b) => ($monthOrder[$a->month] ?? 99) <=> ($monthOrder[$b->month] ?? 99),
+            ])
+            ->values();
+
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $reviews = new LengthAwarePaginator(
+            $groupedReviews->forPage($page, $perPage)->values(),
+            $groupedReviews->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
+        $modalReviews = $reviews->getCollection()
+            ->flatMap(fn ($reviewGroup) => collect([$reviewGroup->firstHalf, $reviewGroup->secondHalf])->filter())
+            ->values();
+            
+
+        return view('review.review', compact('reviews', 'modalReviews', 'isAdmin', 'isTeamLeader', 'employees', 'perPage'));
+    }
+
+    private function buildObjectiveReviewResult(int $employeeId, string $month, float $reviewTotal): array
+    {
+        if (!$employeeId) {
+            return [
+                'score' => max(0, min(100, round($reviewTotal, 1))),
+                'rank' => null,
+                'late_days' => 0,
+                'late_minutes' => 0,
+                'missed_reports' => 0,
+                'report_days' => 0,
+                'completed_tasks' => 0,
+                'pending_tasks' => 0,
+                'penalty' => 0,
+                'bonus' => 0,
+            ];
+        }
+
+        [$startDate, $endDate] = $this->getReviewMonthDateRange($month);
+
+        $attendanceRecords = Attendance::with('employee')
+            ->where('employee_id', $employeeId)
+            ->whereBetween('attendance_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->get();
+
+        $activityDates = $this->getAttendanceActivityDates($attendanceRecords);
+        $lateMinutes = 0;
+        $lateDays = 0;
+        $reportDates = [];
+
+        foreach ($attendanceRecords as $attendance) {
+            $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
+
+            if (in_array($status, ['present', 'late', 'half_day', 'early_out', 'early_leave', 'wfh']) || $attendance->check_in) {
+                $reportDates[Carbon::parse($attendance->attendance_date)->toDateString()] = true;
+            }
+
+            $minutes = $this->getAttendanceLateMinutes($attendance, $activityDates);
+            if ($minutes > 0) {
+                $lateDays++;
+                $lateMinutes += $minutes;
+            }
+        }
+
+        $submittedReportDates = TaskFollowUp::query()
+            ->join('daily_tasks', 'daily_tasks.id', '=', 'task_follow_ups.daily_task_id')
+            ->where('daily_tasks.employee_id', $employeeId)
+            ->whereBetween('task_follow_ups.created_at', [
+                $startDate->copy()->startOfDay(),
+                $endDate->copy()->endOfDay(),
+            ])
+            ->selectRaw('DATE(task_follow_ups.created_at) as report_date')
+            ->pluck('report_date')
+            ->map(fn ($date) => Carbon::parse($date)->toDateString())
+            ->unique()
+            ->flip()
+            ->all();
+
+        $missedReports = collect(array_keys($reportDates))
+            ->reject(fn ($date) => isset($submittedReportDates[$date]))
+            ->count();
+
+        $completedTasks = DailyTask::where('employee_id', $employeeId)
+            ->whereIn('status', ['Completed', 'Review'])
+            ->where(function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('status_changed_at', [
+                    $startDate->copy()->startOfDay(),
+                    $endDate->copy()->endOfDay(),
+                ])->orWhere(function ($fallback) use ($startDate, $endDate) {
+                    $fallback->whereNull('status_changed_at')
+                        ->whereBetween('updated_at', [
+                            $startDate->copy()->startOfDay(),
+                            $endDate->copy()->endOfDay(),
+                        ]);
+                });
+            })
+            ->count();
+
+        $pendingTasks = DailyTask::where('employee_id', $employeeId)
+            ->whereNotIn('status', ['Completed', 'Review'])
+            ->whereDate('end_date', '<=', $endDate->toDateString())
+            ->whereDate('end_date', '>=', $startDate->toDateString())
+            ->count();
+
+        $latePenalty = min($lateDays * 1.5, 15);
+        $reportPenalty = min($missedReports * 2, 20);
+        $pendingPenalty = min($pendingTasks * 1, 10);
+        $taskBonus = min($completedTasks * 0.75, 10);
+        $penalty = $latePenalty + $reportPenalty + $pendingPenalty;
+        $score = max(0, min(100, $reviewTotal - $penalty + $taskBonus));
+
+        return [
+            'score' => round($score, 1),
+            'rank' => null,
+            'late_days' => $lateDays,
+            'late_minutes' => $lateMinutes,
+            'missed_reports' => $missedReports,
+            'report_days' => count($reportDates),
+            'completed_tasks' => $completedTasks,
+            'pending_tasks' => $pendingTasks,
+            'penalty' => round($penalty, 1),
+            'bonus' => round($taskBonus, 1),
+        ];
+    }
+
+    private function getReviewMonthDateRange(string $month): array
+    {
+        try {
+            $startDate = Carbon::createFromFormat('F Y', trim($month) . ' ' . now()->year)->startOfMonth();
+        } catch (\Exception $e) {
+            $startDate = now()->startOfMonth();
+        }
+
+        return [$startDate, $startDate->copy()->endOfMonth()];
+    }
+
+    private function getAttendanceLateMinutes(Attendance $attendance, array $activityDates = []): int
+    {
+        if (!$attendance->employee || !$attendance->check_in || !$attendance->check_out) {
+            return 0;
+        }
+
+        $checkIn = $this->parseAttendancePunch($attendance, $attendance->check_in);
+        $checkOut = $this->parseAttendancePunch($attendance, $attendance->check_out);
+
+        if ($checkOut->lessThanOrEqualTo($checkIn)) {
+            $checkOut->addDay();
+        }
+
+        $workedMinutes = $checkIn->diffInMinutes($checkOut);
+        $isApprovedHalfDay = $this->isApprovedHalfDayAttendance($attendance);
+        $requiredMinutes = $isApprovedHalfDay ? 4 * 60 : 8 * 60 + 30;
+
+        if (!$isApprovedHalfDay && $this->hasOneHourEarlyOutAllowance($attendance, $activityDates)) {
+            $requiredMinutes = max($requiredMinutes - 60, 0);
+        }
+
+        return max($requiredMinutes - $workedMinutes, 0);
+    }
+
+    private function parseAttendancePunch(Attendance $attendance, $time): Carbon
+    {
+        $date = Carbon::parse($attendance->attendance_date)->toDateString();
+
+        return Carbon::parse($date . ' ' . Carbon::parse($time)->format('H:i:s'));
+    }
+
+    private function getAttendanceActivityDates($attendanceRecords): array
+    {
+        $activityDates = [];
+
+        foreach ($attendanceRecords->groupBy(fn ($attendance) => Carbon::parse($attendance->attendance_date)->toDateString()) as $date => $dailyAttendances) {
+            $earlyOuts = 0;
+            $totalPresent = 0;
+
+            foreach ($dailyAttendances as $attendance) {
+                $status = strtolower($attendance->status ?? '');
+
+                if (!in_array($status, ['present', 'late', 'half_day', 'early_out', 'early_leave'])) {
+                    continue;
+                }
+
+                if (!$attendance->check_out || !$attendance->employee || !$attendance->employee->time_out) {
+                    continue;
+                }
+
+                $totalPresent++;
+                $punchTime = Carbon::parse($attendance->check_out)->format('H:i');
+
+                if ($punchTime >= '16:50' && $punchTime < '17:30') {
+                    $earlyOuts++;
+                }
+            }
+
+            if ($totalPresent > 2 && ($earlyOuts / $totalPresent) >= 0.7) {
+                $activityDates[$date] = true;
+            }
+        }
+
+        return $activityDates;
+    }
+
+    private function hasOneHourEarlyOutAllowance(Attendance $attendance, array $activityDates): bool
+    {
+        $date = Carbon::parse($attendance->attendance_date)->toDateString();
+
+        return isset($activityDates[$date]) || $this->isEarlyLeaveAttendance($attendance);
+    }
+
+    private function isEarlyLeaveAttendance(Attendance $attendance): bool
+    {
+        $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
+
+        if (in_array($status, ['early_leave', 'early_out'])) {
+            return true;
+        }
+
+        return LeaveApplication::where('employee_id', $attendance->employee_id)
+            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
+            ->whereDate('start_date', '<=', $attendance->attendance_date)
+            ->where(function ($query) use ($attendance) {
+                $query->whereDate('end_date', '>=', $attendance->attendance_date)
+                    ->orWhere(function ($sub) use ($attendance) {
+                        $sub->whereNull('end_date')
+                            ->whereDate('start_date', $attendance->attendance_date);
+                    });
+            })
+            ->where(function ($query) {
+                $query->whereRaw('LOWER(leave_category) LIKE ?', ['%gatepass%'])
+                    ->orWhereRaw('LOWER(leave_type) LIKE ?', ['%gatepass%'])
+                    ->orWhereRaw('LOWER(leave_category) LIKE ?', ['%early leave%'])
+                    ->orWhereRaw('LOWER(leave_type) LIKE ?', ['%early leave%']);
+            })
+            ->exists();
+    }
+
+    private function isApprovedHalfDayAttendance(Attendance $attendance): bool
+    {
+        $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
+
+        if ($status === 'half_day_leave') {
+            return true;
+        }
+
+        return LeaveApplication::where('employee_id', $attendance->employee_id)
+            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
+            ->whereDate('start_date', '<=', $attendance->attendance_date)
+            ->where(function ($query) use ($attendance) {
+                $query->whereDate('end_date', '>=', $attendance->attendance_date)
+                    ->orWhere(function ($sub) use ($attendance) {
+                        $sub->whereNull('end_date')
+                            ->whereDate('start_date', $attendance->attendance_date);
+                    });
+            })
+            ->where(function ($query) {
+                $query->whereRaw('LOWER(leave_category) LIKE ?', ['%half%'])
+                    ->orWhereRaw('LOWER(leave_type) LIKE ?', ['%half%'])
+                    ->orWhere('total_days', 0.5);
+            })
+            ->exists();
     }
 
     public function store(Request $request) {

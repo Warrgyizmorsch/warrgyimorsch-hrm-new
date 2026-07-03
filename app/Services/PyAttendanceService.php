@@ -71,7 +71,7 @@ class PyAttendanceService
 
             $first = $punches[0];
             $last  = count($punches) > 1 ? $punches[count($punches) - 1] : null;
-            $shiftMinutes = $this->getShiftMinutes($employee);
+            $fullDayMinutes = 8 * 60 + 30;
 
             if (!$last) {
                 $workedMinutes = 0;
@@ -79,7 +79,7 @@ class PyAttendanceService
             } else {
                 $workedMinutes = $first->diffInMinutes($last);
 
-                if ($workedMinutes >= $shiftMinutes) {
+                if ($workedMinutes >= $fullDayMinutes) {
                     $status = 'present';
                 } elseif ($workedMinutes >= 4 * 60) {
                     $status = 'half_day';
@@ -178,22 +178,4 @@ class PyAttendanceService
         }
     }
 
-    private function getShiftMinutes(Employee $employee): int
-    {
-        $timeIn = $employee->time_in ?? '09:30:00';
-        $timeOut = $employee->time_out ?? '18:00:00';
-
-        try {
-            $shiftStart = Carbon::parse($timeIn);
-            $shiftEnd = Carbon::parse($timeOut);
-
-            if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
-                $shiftEnd->addDay();
-            }
-
-            return max($shiftStart->diffInMinutes($shiftEnd), 1);
-        } catch (\Exception $e) {
-            return 8 * 60 + 30;
-        }
-    }
 }

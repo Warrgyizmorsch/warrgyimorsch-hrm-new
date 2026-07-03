@@ -285,50 +285,131 @@
             <span class="text-muted small fw-bold text-uppercase">entries</span>
         </div>
 
+        @php
+            $scoreText = fn ($value) => rtrim(rtrim(number_format((float) $value, 1), '0'), '.');
+            $reviewScore = function ($review) {
+                if (!$review) {
+                    return null;
+                }
+
+                if ((float) $review->admin_total > 0) {
+                    return $review->admin_total;
+                }
+
+                if ((float) $review->author_total > 0) {
+                    return $review->author_total;
+                }
+
+                return $review->self_total;
+            };
+        @endphp
+
         <!-- <h4 class="">Reviews</h4> -->
         <table class="table table-striped mt-2">
             <thead class="bg-primary text-white" style="height: 50px;">
                 <tr>
                     <th>Sr</th>
-                    <th>Month</th>
+                    <th>Rank</th>
                     <th>Employee</th>
-                    <th>Self Review</th>
-                    <th>Team Leader Review</th>
-                    <th>Admin Review</th>
+                    <th>Month</th>
+                    <th>1-15 Review</th>
+                    <th>16-30 Review</th>
+                    <th>Combined Result</th>
+                    <th>System Result</th>
+                    <th>Real Checks</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach($reviews as $review)
+                @forelse($reviews as $reviewGroup)
                     <tr style="height: 50px;">
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $review->month }} ({{ $review->period }})</td>
-                        <td>{{ $review->employee->name ?? 'N/A' }}</td>
-                        <td>{{ $review->self_total }}</td>
-                        <td>{{ $review->author_total }}</td>
-                        <td>{{ $review->admin_total }}</td>
-                        <td class="d-flex" style="height: 50px;">
-                            <button class="btn btn-primary" data-bs-toggle="modal" style="height: 20px; width:20px" data-bs-target="#reviewModal{{ $review->id }}">
-                                <i class="fa fa-eye"></i>
-                            </button>
-                            @if($isAdmin || $isTeamLeader)
-                                <button
-                                    class="btn btn-success edit-review-btn ms-1"
-                                    style="height: 20px; width:20px"
-                                    data-mode="edit"
-                                    data-review-id="{{ $review->id }}"
-                                    data-month="{{ $review->month }}"
-                                    data-period="{{ $review->period }}"
-                                    data-user-id="{{ $review->employee->id ?? '' }}"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#createReviewModal"
-                                >
-                                    <i class="fa fa-edit"></i>
-                                </button>
+                        <td>
+                            <span class="badge {{ ($reviewGroup->objective['rank'] ?? 0) === 1 ? 'bg-success' : 'bg-secondary' }}">
+                                #{{ $reviewGroup->objective['rank'] ?? '-' }}
+                            </span>
+                        </td>
+                        <td>{{ $reviewGroup->employee_name }}</td>
+                        <td>{{ $reviewGroup->month }}</td>
+                        <td>
+                            @if($reviewGroup->firstHalf)
+                                <div class="fw-bold">{{ $scoreText($reviewScore($reviewGroup->firstHalf)) }} / 50</div>
+                                <small class="text-muted">
+                                    Self: {{ $scoreText($reviewGroup->firstHalf->self_total) }},
+                                    TL: {{ $scoreText($reviewGroup->firstHalf->author_total) }},
+                                    Admin: {{ $scoreText($reviewGroup->firstHalf->admin_total) }}
+                                </small>
+                            @else
+                                <span class="text-muted">Pending</span>
                             @endif
                         </td>
+                        <td>
+                            @if($reviewGroup->secondHalf)
+                                <div class="fw-bold">{{ $scoreText($reviewScore($reviewGroup->secondHalf)) }} / 50</div>
+                                <small class="text-muted">
+                                    Self: {{ $scoreText($reviewGroup->secondHalf->self_total) }},
+                                    TL: {{ $scoreText($reviewGroup->secondHalf->author_total) }},
+                                    Admin: {{ $scoreText($reviewGroup->secondHalf->admin_total) }}
+                                </small>
+                            @else
+                                <span class="text-muted">Pending</span>
+                            @endif
+                        </td>
+                        <td class="fw-bold">{{ $scoreText($reviewGroup->combined_total) }} / 100</td>
+                        <td class="fw-bold text-primary">
+                            {{ $scoreText($reviewGroup->objective['score'] ?? 0) }} / 100
+                        </td>
+                        <td>
+                            <small class="d-block text-muted">
+                                Late: {{ $reviewGroup->objective['late_days'] ?? 0 }} days
+                                @if(($reviewGroup->objective['late_minutes'] ?? 0) > 0)
+                                    ({{ intdiv($reviewGroup->objective['late_minutes'], 60) }}h {{ $reviewGroup->objective['late_minutes'] % 60 }}m)
+                                @endif
+                            </small>
+                            <small class="d-block text-muted">
+                                Missed reports: {{ $reviewGroup->objective['missed_reports'] ?? 0 }} / {{ $reviewGroup->objective['report_days'] ?? 0 }}
+                            </small>
+                            <small class="d-block text-muted">
+                                Tasks: {{ $reviewGroup->objective['completed_tasks'] ?? 0 }} done, {{ $reviewGroup->objective['pending_tasks'] ?? 0 }} pending
+                            </small>
+                            <small class="d-block text-muted">
+                                Penalty: -{{ $scoreText($reviewGroup->objective['penalty'] ?? 0) }},
+                                Bonus: +{{ $scoreText($reviewGroup->objective['bonus'] ?? 0) }}
+                            </small>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1" style="height: 50px;">
+                                @foreach([$reviewGroup->firstHalf, $reviewGroup->secondHalf] as $review)
+                                    @if($review)
+                                        <button class="btn btn-primary" data-bs-toggle="modal" style="height: 20px; width:20px" title="{{ $review->period }}" data-bs-target="#reviewModal{{ $review->id }}">
+                                            <i class="fa fa-eye"></i>
+                                        </button>
+                                        @if($isAdmin || $isTeamLeader)
+                                            <button
+                                                class="btn btn-success edit-review-btn"
+                                                style="height: 20px; width:20px"
+                                                title="Edit {{ $review->period }}"
+                                                data-mode="edit"
+                                                data-review-id="{{ $review->id }}"
+                                                data-month="{{ $review->month }}"
+                                                data-period="{{ $review->period }}"
+                                                data-user-id="{{ $review->employee->id ?? '' }}"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#createReviewModal"
+                                            >
+                                                <i class="fa fa-edit"></i>
+                                            </button>
+                                        @endif
+                                    @endif
+                                @endforeach
+                            </div>
+                        </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="10" class="text-center text-muted">No reviews found.</td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
 
@@ -344,7 +425,7 @@
         </div>
     </div>
 
-    @foreach($reviews as $review)
+    @foreach($modalReviews as $review)
         <div class="modal fade" id="reviewModal{{ $review->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
