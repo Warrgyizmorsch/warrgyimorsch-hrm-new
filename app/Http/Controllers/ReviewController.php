@@ -214,6 +214,11 @@ class ReviewController extends Controller
                 'completed_tasks' => 0,
                 'completed_report_days' => 0,
                 'pending_tasks' => 0,
+                'technical_score' => 0,
+                'technical_bonus' => 0,
+                'leave_days' => 0,
+                'leave_penalty' => 0,
+                'no_leave_bonus' => 0,
                 'penalty' => 0,
                 'bonus' => 0,
             ];
@@ -288,12 +293,42 @@ class ReviewController extends Controller
             ->whereDate('end_date', '>=', $startDate->toDateString())
             ->count();
 
-        $latePenalty = min($lateDays * 1.5, 15);
-        $reportPenalty = min($missedReports * 2, 20);
-        $pendingPenalty = min($pendingTasks * 1, 10);
-        $taskBonus = min($completedTasks * 0.75, 10);
-        $penalty = $latePenalty + $reportPenalty + $pendingPenalty;
-        $score = max(0, min(100, $reviewTotal - $penalty + $taskBonus));
+        $technicalReview = TechnicalReview::where('employee_id', $employeeId)
+            ->where('month', $month)
+            ->first();
+
+        $technicalScore = 0;
+        if ($technicalReview) {
+            $technicalScore = (float) $technicalReview->admin_total > 0
+                ? (float) $technicalReview->admin_total
+                : ((float) $technicalReview->author_total > 0
+                    ? (float) $technicalReview->author_total
+                    : (float) $technicalReview->self_total);
+        }
+
+        $leaveDays = LeaveApplication::where('employee_id', $employeeId)
+            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
+            ->where('leave_category', 'NOT LIKE', '%WFH%')
+            ->whereDate('start_date', '<=', $endDate->toDateString())
+            ->where(function ($query) use ($startDate) {
+                $query->whereDate('end_date', '>=', $startDate->toDateString())
+                    ->orWhereNull('end_date');
+            })
+            ->get()
+            ->sum(function ($leave) {
+                return (float) ($leave->total_days ?? 0);
+            });
+
+        $latePenalty = min($lateDays * 2.5, 25);
+        $reportPenalty = min($missedReports * 3, 30);
+        $pendingPenalty = min($pendingTasks * 2, 20);
+        $leavePenalty = min($leaveDays * 3, 20);
+        $taskBonus = min($completedTasks * 1, 15);
+        $technicalBonus = 0;
+        $noLeaveBonus = $leaveDays <= 0 ? 10 : 0;
+        $penalty = $latePenalty + $reportPenalty + $pendingPenalty + $leavePenalty;
+        $totalBonus = $taskBonus + $technicalBonus + $noLeaveBonus;
+        $score = max(0, min(100, $reviewTotal - $penalty + $totalBonus));
 
         return [
             'score' => round($score, 1),
@@ -305,8 +340,13 @@ class ReviewController extends Controller
             'completed_report_days' => count($completedReportDates),
             'completed_tasks' => $completedTasks,
             'pending_tasks' => $pendingTasks,
+            'technical_score' => round($technicalScore, 1),
+            'technical_bonus' => round($technicalBonus, 1),
+            'leave_days' => round($leaveDays, 2),
+            'leave_penalty' => round($leavePenalty, 1),
+            'no_leave_bonus' => round($noLeaveBonus, 1),
             'penalty' => round($penalty, 1),
-            'bonus' => round($taskBonus, 1),
+            'bonus' => round($totalBonus, 1),
         ];
     }
 

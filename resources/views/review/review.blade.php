@@ -353,7 +353,7 @@
                         <th><button type="button" class="review-sort-btn" data-sort-column="7" data-sort-type="number" data-sort-default="desc">Combined Result <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="8" data-sort-type="number" data-sort-default="desc">System Result <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="9" data-sort-type="number" data-sort-default="asc">Real Checks <i class="fa fa-sort"></i></button></th>
-                    @else
+                        @else
                         <th><button type="button" class="review-sort-btn" data-sort-column="1" data-sort-type="text" data-sort-default="asc">Employee <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="2" data-sort-type="text" data-sort-default="asc">Department <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="3" data-sort-type="month" data-sort-default="asc">Month <i class="fa fa-sort"></i></button></th>
@@ -435,6 +435,21 @@
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['pending_tasks'] ?? 0) > 0 ? 'review-metric-chip-warning' : 'review-metric-chip-success' }}">
                                         <b>pending</b> {{ $reviewGroup->objective['pending_tasks'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip review-metric-chip-primary">
+                                        <b>tech score</b> {{ $scoreText($reviewGroup->objective['technical_score'] ?? 0) }}
+                                    </span>
+                                    <span class="review-metric-chip">
+                                        <b>tech bonus</b> +{{ $scoreText($reviewGroup->objective['technical_bonus'] ?? 0) }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['leave_days'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                        <b>leave days</b> {{ $scoreText($reviewGroup->objective['leave_days'] ?? 0) }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['leave_penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                        <b>leave penalty</b> -{{ $scoreText($reviewGroup->objective['leave_penalty'] ?? 0) }}
+                                    </span>
+                                    <span class="review-metric-chip review-metric-chip-success">
+                                        <b>no leave bonus</b> +{{ $scoreText($reviewGroup->objective['no_leave_bonus'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
                                         <b>penalty</b> -{{ $scoreText($reviewGroup->objective['penalty'] ?? 0) }}
@@ -527,6 +542,11 @@
                 ['label' => '8h+ Report Days', 'value' => $objective['completed_report_days'] ?? 0],
                 ['label' => 'Completed Tasks', 'value' => $objective['completed_tasks'] ?? 0],
                 ['label' => 'Pending Tasks', 'value' => $objective['pending_tasks'] ?? 0],
+                ['label' => 'Technical Score', 'value' => $scoreText($objective['technical_score'] ?? 0)],
+                ['label' => 'Technical Bonus', 'value' => '+' . $scoreText($objective['technical_bonus'] ?? 0) . ' (reference only)'],
+                ['label' => 'Leave Days', 'value' => $scoreText($objective['leave_days'] ?? 0)],
+                ['label' => 'Leave Penalty', 'value' => '-' . $scoreText($objective['leave_penalty'] ?? 0)],
+                ['label' => 'No Leave Bonus', 'value' => '+' . $scoreText($objective['no_leave_bonus'] ?? 0)],
                 ['label' => 'Penalty', 'value' => '-' . $scoreText($objective['penalty'] ?? 0)],
                 ['label' => 'Bonus', 'value' => '+' . $scoreText($objective['bonus'] ?? 0)],
                 ];
