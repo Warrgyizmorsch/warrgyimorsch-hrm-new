@@ -10,7 +10,6 @@ class ZKTController extends Controller
 {
 
 
-
 public function syncAttendance(PyAttendanceService $service)
 {
     $python = "C:\\Users\\ranji\\AppData\\Local\\Programs\\Python\\Python314\\python.exe";
