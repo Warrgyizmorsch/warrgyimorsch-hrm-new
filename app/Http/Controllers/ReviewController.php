@@ -116,20 +116,9 @@ class ReviewController extends Controller
         $groupedReviews = $query->get()
             ->groupBy(fn ($review) => $review->employee_id . '|' . $review->month)
             ->map(function ($group) {
-                $effectiveTotal = function ($review): float {
+                $selfAssessmentTotal = function ($review): float {
                     if (!$review) {
                         return 0;
-                    }
-
-                    $adminTotal = (float) $review->admin_total;
-                    $authorTotal = (float) $review->author_total;
-
-                    if ($adminTotal > 0) {
-                        return $adminTotal;
-                    }
-
-                    if ($authorTotal > 0) {
-                        return $authorTotal;
                     }
 
                     return (float) $review->self_total;
@@ -145,7 +134,7 @@ class ReviewController extends Controller
                     'month' => $firstReview->month,
                     'firstHalf' => $firstHalf,
                     'secondHalf' => $secondHalf,
-                    'combined_total' => $effectiveTotal($firstHalf) + $effectiveTotal($secondHalf),
+                    'combined_total' => $selfAssessmentTotal($firstHalf) + $selfAssessmentTotal($secondHalf),
                 ];
             })
             ->map(function ($group) {
@@ -218,6 +207,10 @@ class ReviewController extends Controller
                 'technical_bonus' => 0,
                 'leave_days' => 0,
                 'leave_penalty' => 0,
+                'late_penalty' => 0,
+                'report_penalty' => 0,
+                'pending_penalty' => 0,
+                'task_bonus' => 0,
                 'no_leave_bonus' => 0,
                 'penalty' => 0,
                 'bonus' => 0,
@@ -231,43 +224,70 @@ class ReviewController extends Controller
             ->whereBetween('attendance_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->get();
 
+        $leaveApplications = LeaveApplication::where('employee_id', $employeeId)
+            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
+            ->where('leave_category', 'NOT LIKE', '%WFH%')
+            ->whereDate('start_date', '<=', $endDate->toDateString())
+            ->where(function ($query) use ($startDate) {
+                $query->whereDate('end_date', '>=', $startDate->toDateString())
+                    ->orWhereNull('end_date');
+            })
+            ->get();
+
+        $leaveDateMap = [];
+        foreach ($leaveApplications as $leave) {
+            $leaveStart = Carbon::parse($leave->start_date)->greaterThan($startDate)
+                ? Carbon::parse($leave->start_date)
+                : $startDate->copy();
+            $leaveEnd = $leave->end_date
+                ? Carbon::parse($leave->end_date)
+                : Carbon::parse($leave->start_date);
+            $leaveEnd = $leaveEnd->lessThan($endDate) ? $leaveEnd : $endDate->copy();
+
+            for ($date = $leaveStart->copy(); $date->lte($leaveEnd); $date->addDay()) {
+                $leaveDateMap[$date->toDateString()] = true;
+            }
+        }
+
         $activityDates = $this->getAttendanceActivityDates($attendanceRecords);
         $lateMinutes = 0;
         $lateDays = 0;
         $reportDates = [];
+        $attendanceByDate = $attendanceRecords->keyBy(fn ($attendance) => Carbon::parse($attendance->attendance_date)->toDateString());
+        $nonReportingStatuses = [
+            'absent',
+            'leave',
+            'unpaid_leave',
+            'unauthorised',
+            'missing_punch',
+            'holiday',
+            'week_off',
+            'weekly_off',
+        ];
 
         foreach ($attendanceRecords as $attendance) {
             $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
             $attendanceDate = Carbon::parse($attendance->attendance_date);
-            $isNonReportingStatus = in_array($status, [
-                'absent',
-                'leave',
-                'unpaid_leave',
-                'unauthorised',
-                'missing_punch',
-                'holiday',
-                'week_off',
-                'weekly_off',
-            ], true);
-            $isWorkingStatus = in_array($status, [
-                'present',
-                'late',
-                'half_day',
-                'half_day_leave',
-                'early_out',
-                'early_leave',
-                'wfh',
-            ], true);
-
-            if (!$attendanceDate->isSunday() && !$isNonReportingStatus && ($isWorkingStatus || $attendance->check_in)) {
-                $reportDates[$attendanceDate->toDateString()] = true;
-            }
 
             $minutes = $this->getAttendanceLateMinutes($attendance, $activityDates);
             if ($minutes > 0) {
                 $lateDays++;
                 $lateMinutes += $minutes;
             }
+        }
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            $dateKey = $date->toDateString();
+            $attendance = $attendanceByDate->get($dateKey);
+            $status = $attendance
+                ? strtolower(str_replace(' ', '_', $attendance->status ?? ''))
+                : '';
+
+            if ($date->isSunday() || isset($leaveDateMap[$dateKey]) || in_array($status, $nonReportingStatuses, true)) {
+                continue;
+            }
+
+            $reportDates[$dateKey] = true;
         }
 
         $completedReportDates = TaskFollowUp::query()
@@ -326,15 +346,7 @@ class ReviewController extends Controller
                     : (float) $technicalReview->self_total);
         }
 
-        $leaveDays = LeaveApplication::where('employee_id', $employeeId)
-            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
-            ->where('leave_category', 'NOT LIKE', '%WFH%')
-            ->whereDate('start_date', '<=', $endDate->toDateString())
-            ->where(function ($query) use ($startDate) {
-                $query->whereDate('end_date', '>=', $startDate->toDateString())
-                    ->orWhereNull('end_date');
-            })
-            ->get()
+        $leaveDays = $leaveApplications
             ->sum(function ($leave) {
                 return (float) ($leave->total_days ?? 0);
             });
@@ -364,6 +376,10 @@ class ReviewController extends Controller
             'technical_bonus' => round($technicalBonus, 1),
             'leave_days' => round($leaveDays, 2),
             'leave_penalty' => round($leavePenalty, 1),
+            'late_penalty' => round($latePenalty, 1),
+            'report_penalty' => round($reportPenalty, 1),
+            'pending_penalty' => round($pendingPenalty, 1),
+            'task_bonus' => round($taskBonus, 1),
             'no_leave_bonus' => round($noLeaveBonus, 1),
             'penalty' => round($penalty, 1),
             'bonus' => round($totalBonus, 1),

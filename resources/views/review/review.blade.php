@@ -348,18 +348,18 @@
                         <th><button type="button" class="review-sort-btn" data-sort-column="2" data-sort-type="text" data-sort-default="asc">Employee <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="3" data-sort-type="text" data-sort-default="asc">Department <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="4" data-sort-type="month" data-sort-default="asc">Month <i class="fa fa-sort"></i></button></th>
-                        <th><button type="button" class="review-sort-btn" data-sort-column="5" data-sort-type="number" data-sort-default="desc">1-15 Review <i class="fa fa-sort"></i></button></th>
-                        <th><button type="button" class="review-sort-btn" data-sort-column="6" data-sort-type="number" data-sort-default="desc">16-30 Review <i class="fa fa-sort"></i></button></th>
-                        <th><button type="button" class="review-sort-btn" data-sort-column="7" data-sort-type="number" data-sort-default="desc">Combined Result <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="5" data-sort-type="number" data-sort-default="desc">1-15 Self <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="6" data-sort-type="number" data-sort-default="desc">16-30 Self <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="7" data-sort-type="number" data-sort-default="desc">Self Assessment <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="8" data-sort-type="number" data-sort-default="desc">System Result <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="9" data-sort-type="number" data-sort-default="asc">Real Checks <i class="fa fa-sort"></i></button></th>
                         @else
                         <th><button type="button" class="review-sort-btn" data-sort-column="1" data-sort-type="text" data-sort-default="asc">Employee <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="2" data-sort-type="text" data-sort-default="asc">Department <i class="fa fa-sort"></i></button></th>
                         <th><button type="button" class="review-sort-btn" data-sort-column="3" data-sort-type="month" data-sort-default="asc">Month <i class="fa fa-sort"></i></button></th>
-                        <th><button type="button" class="review-sort-btn" data-sort-column="4" data-sort-type="number" data-sort-default="desc">1-15 Review <i class="fa fa-sort"></i></button></th>
-                        <th><button type="button" class="review-sort-btn" data-sort-column="5" data-sort-type="number" data-sort-default="desc">16-30 Review <i class="fa fa-sort"></i></button></th>
-                        <th><button type="button" class="review-sort-btn" data-sort-column="6" data-sort-type="number" data-sort-default="desc">Combined Result <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="4" data-sort-type="number" data-sort-default="desc">1-15 Self <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="5" data-sort-type="number" data-sort-default="desc">16-30 Self <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="6" data-sort-type="number" data-sort-default="desc">Self Assessment <i class="fa fa-sort"></i></button></th>
                     @endif
                     <th>Action</th>
                 </tr>
@@ -378,9 +378,9 @@
                         <td data-sort-value="{{ strtolower($reviewGroup->employee_name) }}">{{ $reviewGroup->employee_name }}</td>
                         <td data-sort-value="{{ strtolower($reviewGroup->employee->department ?? 'N/A') }}">{{ $reviewGroup->employee->department ?? 'N/A' }}</td>
                         <td data-sort-value="{{ $reviewGroup->month }}">{{ $reviewGroup->month }}</td>
-                        <td data-sort-value="{{ $reviewGroup->firstHalf ? $scoreText($reviewScore($reviewGroup->firstHalf)) : -1 }}">
+                        <td data-sort-value="{{ $reviewGroup->firstHalf ? $scoreText($reviewGroup->firstHalf->self_total) : -1 }}">
                             @if($reviewGroup->firstHalf)
-                                <div class="fw-bold">{{ $scoreText($reviewScore($reviewGroup->firstHalf)) }} / 50</div>
+                                <div class="fw-bold">{{ $scoreText($reviewGroup->firstHalf->self_total) }} / 50</div>
                                 <small class="text-muted">
                                     Self: {{ $scoreText($reviewGroup->firstHalf->self_total) }},
                                     TL: {{ $scoreText($reviewGroup->firstHalf->author_total) }},
@@ -390,9 +390,9 @@
                                 <span class="text-muted">Pending</span>
                             @endif
                         </td>
-                        <td data-sort-value="{{ $reviewGroup->secondHalf ? $scoreText($reviewScore($reviewGroup->secondHalf)) : -1 }}">
+                        <td data-sort-value="{{ $reviewGroup->secondHalf ? $scoreText($reviewGroup->secondHalf->self_total) : -1 }}">
                             @if($reviewGroup->secondHalf)
-                                <div class="fw-bold">{{ $scoreText($reviewScore($reviewGroup->secondHalf)) }} / 50</div>
+                                <div class="fw-bold">{{ $scoreText($reviewGroup->secondHalf->self_total) }} / 50</div>
                                 <small class="text-muted">
                                     Self: {{ $scoreText($reviewGroup->secondHalf->self_total) }},
                                     TL: {{ $scoreText($reviewGroup->secondHalf->author_total) }},
@@ -421,8 +421,14 @@
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['late_minutes'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
                                         <b>late min</b> {{ $reviewGroup->objective['late_minutes'] ?? 0 }}
                                     </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['late_penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                        <b>late penalty</b> -{{ $scoreText($reviewGroup->objective['late_penalty'] ?? 0) }}
+                                    </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['missed_reports'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
                                         <b>missed reports</b> {{ $reviewGroup->objective['missed_reports'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['report_penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                        <b>report penalty</b> -{{ $scoreText($reviewGroup->objective['report_penalty'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip">
                                         <b>report days</b> {{ $reviewGroup->objective['report_days'] ?? 0 }}
@@ -435,6 +441,12 @@
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['pending_tasks'] ?? 0) > 0 ? 'review-metric-chip-warning' : 'review-metric-chip-success' }}">
                                         <b>pending</b> {{ $reviewGroup->objective['pending_tasks'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['pending_penalty'] ?? 0) > 0 ? 'review-metric-chip-warning' : 'review-metric-chip-success' }}">
+                                        <b>pending penalty</b> -{{ $scoreText($reviewGroup->objective['pending_penalty'] ?? 0) }}
+                                    </span>
+                                    <span class="review-metric-chip review-metric-chip-success">
+                                        <b>task bonus</b> +{{ $scoreText($reviewGroup->objective['task_bonus'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip review-metric-chip-primary">
                                         <b>tech score</b> {{ $scoreText($reviewGroup->objective['technical_score'] ?? 0) }}
@@ -537,11 +549,15 @@
                 ['label' => 'Rank', 'value' => '#' . ($objective['rank'] ?? '-')],
                 ['label' => 'Late Days', 'value' => $objective['late_days'] ?? 0],
                 ['label' => 'Late Minutes', 'value' => $objective['late_minutes'] ?? 0],
+                ['label' => 'Late Penalty', 'value' => '-' . $scoreText($objective['late_penalty'] ?? 0)],
                 ['label' => 'Missed Reports', 'value' => $objective['missed_reports'] ?? 0],
+                ['label' => 'Report Penalty', 'value' => '-' . $scoreText($objective['report_penalty'] ?? 0)],
                 ['label' => 'Report Days', 'value' => $objective['report_days'] ?? 0],
                 ['label' => '8h+ Report Days', 'value' => $objective['completed_report_days'] ?? 0],
                 ['label' => 'Completed Tasks', 'value' => $objective['completed_tasks'] ?? 0],
                 ['label' => 'Pending Tasks', 'value' => $objective['pending_tasks'] ?? 0],
+                ['label' => 'Pending Task Penalty', 'value' => '-' . $scoreText($objective['pending_penalty'] ?? 0)],
+                ['label' => 'Task Completion Bonus', 'value' => '+' . $scoreText($objective['task_bonus'] ?? 0)],
                 ['label' => 'Technical Score', 'value' => $scoreText($objective['technical_score'] ?? 0)],
                 ['label' => 'Technical Bonus', 'value' => '+' . $scoreText($objective['technical_bonus'] ?? 0) . ' (reference only)'],
                 ['label' => 'Leave Days', 'value' => $scoreText($objective['leave_days'] ?? 0)],
@@ -552,8 +568,8 @@
                 ];
                 $breakdownRows = [
                     [
-                        'criteria' => 'Combined personal review',
-                        'basis' => '1-15 effective review + 16-30 effective review',
+                        'criteria' => 'Monthly self-assessment',
+                        'basis' => '1-15 self score + 16-30 self score',
                         'raw' => $scoreText($reviewGroup->combined_total),
                         'cap' => '100',
                         'marks' => '+' . $scoreText($reviewGroup->combined_total),
@@ -563,21 +579,21 @@
                         'basis' => 'late days x 2.5',
                         'raw' => ($objective['late_days'] ?? 0) . ' days / ' . ($objective['late_minutes'] ?? 0) . ' min',
                         'cap' => 'max -25',
-                        'marks' => '-' . $scoreText(min(($objective['late_days'] ?? 0) * 2.5, 25)),
+                        'marks' => '-' . $scoreText($objective['late_penalty'] ?? 0),
                     ],
                     [
                         'criteria' => '8h reporting',
                         'basis' => 'missed reports x 3',
                         'raw' => ($objective['completed_report_days'] ?? 0) . ' completed of ' . ($objective['report_days'] ?? 0) . ' expected',
                         'cap' => 'max -30',
-                        'marks' => '-' . $scoreText(min(($objective['missed_reports'] ?? 0) * 3, 30)),
+                        'marks' => '-' . $scoreText($objective['report_penalty'] ?? 0),
                     ],
                     [
                         'criteria' => 'Task completion',
                         'basis' => 'pending tasks x 2, completed tasks x 1',
                         'raw' => ($objective['completed_tasks'] ?? 0) . ' done / ' . ($objective['pending_tasks'] ?? 0) . ' pending',
                         'cap' => 'pending max -20, bonus max +15',
-                        'marks' => '-' . $scoreText(min(($objective['pending_tasks'] ?? 0) * 2, 20)) . ' / +' . $scoreText(min(($objective['completed_tasks'] ?? 0) * 1, 15)),
+                        'marks' => '-' . $scoreText($objective['pending_penalty'] ?? 0) . ' / +' . $scoreText($objective['task_bonus'] ?? 0),
                     ],
                     [
                         'criteria' => 'Leave history',
@@ -595,7 +611,7 @@
                     ],
                     [
                         'criteria' => 'Final system result',
-                        'basis' => 'combined review - total penalties + total bonuses',
+                        'basis' => 'self-assessment - total penalties + total bonuses',
                         'raw' => $scoreText($reviewGroup->combined_total) . ' - ' . $scoreText($objective['penalty'] ?? 0) . ' + ' . $scoreText($objective['bonus'] ?? 0),
                         'cap' => '0 to 100',
                         'marks' => $scoreText($objective['score'] ?? 0) . ' / 100',
@@ -626,7 +642,7 @@
                                 <div><b>Employee</b><span>{{ $reviewGroup->employee_name }}</span></div>
                                 <div><b>Department</b><span>{{ $reviewGroup->employee->department ?? 'N/A' }}</span></div>
                                 <div><b>Rank</b><span>#{{ $objective['rank'] ?? '-' }}</span></div>
-                                <div><b>Combined Review</b><span>{{ $scoreText($reviewGroup->combined_total) }}/100</span></div>
+                                <div><b>Self Assessment</b><span>{{ $scoreText($reviewGroup->combined_total) }}/100</span></div>
                             </div>
 
                             <h6 class="review-report-section-title">Objective Parameters</h6>
@@ -666,8 +682,8 @@
                             </div>
 
                             @foreach([
-                                '1-15 Review' => $reviewGroup->firstHalf,
-                                '16-30 Review' => $reviewGroup->secondHalf,
+                                '1-15 Self Assessment' => $reviewGroup->firstHalf,
+                                '16-30 Self Assessment' => $reviewGroup->secondHalf,
                             ] as $periodLabel => $review)
                                 <h6 class="review-report-section-title">{{ $periodLabel }}</h6>
                                 @if($review)
@@ -675,7 +691,7 @@
                                         <div><b>Self Total</b><span>{{ $scoreText($review->self_total) }}/50</span></div>
                                         <div><b>Team Leader Total</b><span>{{ $scoreText($review->author_total) }}/50</span></div>
                                         <div><b>Admin Total</b><span>{{ $scoreText($review->admin_total) }}/50</span></div>
-                                        <div><b>Effective Score</b><span>{{ $scoreText($reviewScore($review)) }}/50</span></div>
+                                        <div><b>Self Assessment</b><span>{{ $scoreText($review->self_total) }}/50</span></div>
                                     </div>
                                     <div class="table-responsive">
                                         <table class="table table-bordered review-report-table">
