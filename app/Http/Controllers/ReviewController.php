@@ -32,6 +32,13 @@ class ReviewController extends Controller
         ];
     }
 
+    protected function canManageEmployeeReviews($user): bool
+    {
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+
+        return in_array($role, ['super_admin', 'manager'], true);
+    }
+
     protected function resolveEmployeeRecord($user): ?Employee
     {
         if (!$user) {
@@ -61,33 +68,22 @@ class ReviewController extends Controller
 
     public function index(Request $request) {
         $user = auth()->user();
-        ['isAdmin' => $isAdmin, 'isTeamLeader' => $isTeamLeader] = $this->resolveRoleFlags($user);
+        $canViewReviewAnalytics = $this->canManageEmployeeReviews($user);
+        $isAdmin = $canViewReviewAnalytics;
+        $isTeamLeader = false;
 
         $employeeRecord = $this->resolveEmployeeRecord($user);
         
         $query = EmployeeReview::with(['employee', 'details']);
         
-        if ($isTeamLeader && !$isAdmin) {
-            // Team leader sees their department's employees
-            $userDepartment = $employeeRecord->department ?? null;
-            
-            if ($userDepartment) {
-                $employeeIds = Employee::active()->where('department', $userDepartment)->pluck('id');
-                $query->whereIn('employee_id', $employeeIds);
-            } else {
-                // Fallback: if no department found, show only their own reviews
-                $empId = $employeeRecord ? $employeeRecord->id : 0;
-                $query->where('employee_id', $empId);
-            }
-        } elseif (!$isAdmin) {
-            // Regular employees only see their own reviews matching their employee profile ID
+        if (!$canViewReviewAnalytics) {
             $empId = $employeeRecord ? $employeeRecord->id : 0;
             $query->where('employee_id', $empId);
         }
         
-        $employees = $isTeamLeader && !$isAdmin && $employeeRecord
-            ? Employee::active()->where('department', $employeeRecord->department)->orderBy('name')->get()
-            : Employee::active()->orderBy('name')->get();
+        $employees = $canViewReviewAnalytics
+            ? Employee::active()->orderBy('name')->get()
+            : Employee::active()->where('id', $employeeRecord?->id ?? 0)->orderBy('name')->get();
         
         $perPage = (int) $request->query('per_page', 20);
         $allowedPerPage = [20, 50, 100];
@@ -194,7 +190,8 @@ class ReviewController extends Controller
             'perPage',
             'reviewMonths',
             'selectedReviewMonth',
-            'showAllReviewMonths'
+            'showAllReviewMonths',
+            'canViewReviewAnalytics'
         ));
     }
 
@@ -446,7 +443,9 @@ class ReviewController extends Controller
 
     public function store(Request $request) {
         $user = auth()->user();
-        ['isAdmin' => $isAdmin, 'isTeamLeader' => $isTeamLeader] = $this->resolveRoleFlags($user);
+        $canManageEmployeeReviews = $this->canManageEmployeeReviews($user);
+        $isAdmin = $canManageEmployeeReviews;
+        $isTeamLeader = false;
         $employeeRecord = $this->resolveEmployeeRecord($user);
         
         if (!$employeeRecord) {
@@ -467,7 +466,7 @@ class ReviewController extends Controller
             'admin_review.*' => 'nullable|numeric|min:0',
         ]);
 
-        if (($isAdmin || $isTeamLeader) && !empty($validated['user_id'])) {
+        if ($canManageEmployeeReviews && !empty($validated['user_id'])) {
             $employeeRecord = Employee::active()->find($validated['user_id']);
         } else {
             $employeeRecord = $this->resolveEmployeeRecord($user);
@@ -518,9 +517,11 @@ class ReviewController extends Controller
 
     public function update(Request $request, $id) {
         $user = auth()->user();
-        ['isAdmin' => $isAdmin, 'isTeamLeader' => $isTeamLeader] = $this->resolveRoleFlags($user);
+        $canManageEmployeeReviews = $this->canManageEmployeeReviews($user);
+        $isAdmin = $canManageEmployeeReviews;
+        $isTeamLeader = false;
 
-        if (!($isAdmin || $isTeamLeader)) {
+        if (!$canManageEmployeeReviews) {
             return back()->withErrors('You are not authorized to update this review.');
         }
 
@@ -567,6 +568,13 @@ class ReviewController extends Controller
     }
 
     public function details($id) {
+        $review = EmployeeReview::findOrFail($id);
+        $employeeRecord = $this->resolveEmployeeRecord(auth()->user());
+
+        if (!$this->canManageEmployeeReviews(auth()->user()) && (int) $review->employee_id !== (int) ($employeeRecord?->id ?? 0)) {
+            abort(403, 'Unauthorized access');
+        }
+
         return response()->json(EmployeeReviewDetail::where('review_id', $id)->get());
     }
 

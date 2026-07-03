@@ -296,7 +296,11 @@
                     </div>
                 </div>
                 <span class="badge bg-soft-primary text-primary">
-                    {{ $showAllReviewMonths ? 'All months included' : 'Employee of the month' }}
+                    @if($canViewReviewAnalytics)
+                        {{ $showAllReviewMonths ? 'All months included' : 'Employee of the month' }}
+                    @else
+                        {{ $showAllReviewMonths ? 'My all-time reviews' : 'My monthly reviews' }}
+                    @endif
                 </span>
             </div>
 
@@ -342,15 +346,24 @@
             <thead class="bg-primary text-white" style="height: 50px;">
                 <tr>
                     <th>Sr</th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="1" data-sort-type="number" data-sort-default="asc">Rank <i class="fa fa-sort"></i></button></th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="2" data-sort-type="text" data-sort-default="asc">Employee <i class="fa fa-sort"></i></button></th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="3" data-sort-type="text" data-sort-default="asc">Department <i class="fa fa-sort"></i></button></th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="4" data-sort-type="month" data-sort-default="asc">Month <i class="fa fa-sort"></i></button></th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="5" data-sort-type="number" data-sort-default="desc">1-15 Review <i class="fa fa-sort"></i></button></th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="6" data-sort-type="number" data-sort-default="desc">16-30 Review <i class="fa fa-sort"></i></button></th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="7" data-sort-type="number" data-sort-default="desc">Combined Result <i class="fa fa-sort"></i></button></th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="8" data-sort-type="number" data-sort-default="desc">System Result <i class="fa fa-sort"></i></button></th>
-                    <th><button type="button" class="review-sort-btn" data-sort-column="9" data-sort-type="number" data-sort-default="asc">Real Checks <i class="fa fa-sort"></i></button></th>
+                    @if($canViewReviewAnalytics)
+                        <th><button type="button" class="review-sort-btn" data-sort-column="1" data-sort-type="number" data-sort-default="asc">Rank <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="2" data-sort-type="text" data-sort-default="asc">Employee <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="3" data-sort-type="text" data-sort-default="asc">Department <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="4" data-sort-type="month" data-sort-default="asc">Month <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="5" data-sort-type="number" data-sort-default="desc">1-15 Review <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="6" data-sort-type="number" data-sort-default="desc">16-30 Review <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="7" data-sort-type="number" data-sort-default="desc">Combined Result <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="8" data-sort-type="number" data-sort-default="desc">System Result <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="9" data-sort-type="number" data-sort-default="asc">Real Checks <i class="fa fa-sort"></i></button></th>
+                    @else
+                        <th><button type="button" class="review-sort-btn" data-sort-column="1" data-sort-type="text" data-sort-default="asc">Employee <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="2" data-sort-type="text" data-sort-default="asc">Department <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="3" data-sort-type="month" data-sort-default="asc">Month <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="4" data-sort-type="number" data-sort-default="desc">1-15 Review <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="5" data-sort-type="number" data-sort-default="desc">16-30 Review <i class="fa fa-sort"></i></button></th>
+                        <th><button type="button" class="review-sort-btn" data-sort-column="6" data-sort-type="number" data-sort-default="desc">Combined Result <i class="fa fa-sort"></i></button></th>
+                    @endif
                     <th>Action</th>
                 </tr>
             </thead>
@@ -358,11 +371,13 @@
                 @forelse($reviews as $reviewGroup)
                     <tr style="height: 50px;">
                         <td data-sort-value="{{ $loop->iteration }}">{{ $loop->iteration }}</td>
-                        <td data-sort-value="{{ $reviewGroup->objective['rank'] ?? 9999 }}">
-                            <span class="badge {{ ($reviewGroup->objective['rank'] ?? 0) === 1 ? 'bg-success' : 'bg-secondary' }}">
-                                #{{ $reviewGroup->objective['rank'] ?? '-' }}
-                            </span>
-                        </td>
+                        @if($canViewReviewAnalytics)
+                            <td data-sort-value="{{ $reviewGroup->objective['rank'] ?? 9999 }}">
+                                <span class="badge {{ ($reviewGroup->objective['rank'] ?? 0) === 1 ? 'bg-success' : 'bg-secondary' }}">
+                                    #{{ $reviewGroup->objective['rank'] ?? '-' }}
+                                </span>
+                            </td>
+                        @endif
                         <td data-sort-value="{{ strtolower($reviewGroup->employee_name) }}">{{ $reviewGroup->employee_name }}</td>
                         <td data-sort-value="{{ strtolower($reviewGroup->employee->department ?? 'N/A') }}">{{ $reviewGroup->employee->department ?? 'N/A' }}</td>
                         <td data-sort-value="{{ $reviewGroup->month }}">{{ $reviewGroup->month }}</td>
@@ -391,65 +406,69 @@
                             @endif
                         </td>
                         <td class="fw-bold" data-sort-value="{{ $scoreText($reviewGroup->combined_total) }}">{{ $scoreText($reviewGroup->combined_total) }} / 100</td>
-                        <td class="fw-bold text-primary" data-sort-value="{{ $scoreText($reviewGroup->objective['score'] ?? 0) }}">
-                            {{ $scoreText($reviewGroup->objective['score'] ?? 0) }} / 100
-                        </td>
-                        <td data-sort-value="{{ $reviewGroup->objective['penalty'] ?? 0 }}">
-                            <div class="review-metric-grid">
-                                <span class="review-metric-chip review-metric-chip-primary">
-                                    <b>score</b> {{ $scoreText($reviewGroup->objective['score'] ?? 0) }}
-                                </span>
-                                <span class="review-metric-chip review-metric-chip-primary">
-                                    <b>rank</b> #{{ $reviewGroup->objective['rank'] ?? '-' }}
-                                </span>
-                                <span class="review-metric-chip {{ ($reviewGroup->objective['late_days'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                    <b>late days</b> {{ $reviewGroup->objective['late_days'] ?? 0 }}
-                                </span>
-                                <span class="review-metric-chip {{ ($reviewGroup->objective['late_minutes'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                    <b>late min</b> {{ $reviewGroup->objective['late_minutes'] ?? 0 }}
-                                </span>
-                                <span class="review-metric-chip {{ ($reviewGroup->objective['missed_reports'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                    <b>missed reports</b> {{ $reviewGroup->objective['missed_reports'] ?? 0 }}
-                                </span>
-                                <span class="review-metric-chip">
-                                    <b>report days</b> {{ $reviewGroup->objective['report_days'] ?? 0 }}
-                                </span>
-                                <span class="review-metric-chip review-metric-chip-success">
-                                    <b>8h+ reports</b> {{ $reviewGroup->objective['completed_report_days'] ?? 0 }}
-                                </span>
-                                <span class="review-metric-chip review-metric-chip-success">
-                                    <b>done tasks</b> {{ $reviewGroup->objective['completed_tasks'] ?? 0 }}
-                                </span>
-                                <span class="review-metric-chip {{ ($reviewGroup->objective['pending_tasks'] ?? 0) > 0 ? 'review-metric-chip-warning' : 'review-metric-chip-success' }}">
-                                    <b>pending</b> {{ $reviewGroup->objective['pending_tasks'] ?? 0 }}
-                                </span>
-                                <span class="review-metric-chip {{ ($reviewGroup->objective['penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                    <b>penalty</b> -{{ $scoreText($reviewGroup->objective['penalty'] ?? 0) }}
-                                </span>
-                                <span class="review-metric-chip review-metric-chip-success">
-                                    <b>bonus</b> +{{ $scoreText($reviewGroup->objective['bonus'] ?? 0) }}
-                                </span>
-                            </div>
-                        </td>
+                        @if($canViewReviewAnalytics)
+                            <td class="fw-bold text-primary" data-sort-value="{{ $scoreText($reviewGroup->objective['score'] ?? 0) }}">
+                                {{ $scoreText($reviewGroup->objective['score'] ?? 0) }} / 100
+                            </td>
+                            <td data-sort-value="{{ $reviewGroup->objective['penalty'] ?? 0 }}">
+                                <div class="review-metric-grid">
+                                    <span class="review-metric-chip review-metric-chip-primary">
+                                        <b>score</b> {{ $scoreText($reviewGroup->objective['score'] ?? 0) }}
+                                    </span>
+                                    <span class="review-metric-chip review-metric-chip-primary">
+                                        <b>rank</b> #{{ $reviewGroup->objective['rank'] ?? '-' }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['late_days'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                        <b>late days</b> {{ $reviewGroup->objective['late_days'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['late_minutes'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                        <b>late min</b> {{ $reviewGroup->objective['late_minutes'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['missed_reports'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                        <b>missed reports</b> {{ $reviewGroup->objective['missed_reports'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip">
+                                        <b>report days</b> {{ $reviewGroup->objective['report_days'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip review-metric-chip-success">
+                                        <b>8h+ reports</b> {{ $reviewGroup->objective['completed_report_days'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip review-metric-chip-success">
+                                        <b>done tasks</b> {{ $reviewGroup->objective['completed_tasks'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['pending_tasks'] ?? 0) > 0 ? 'review-metric-chip-warning' : 'review-metric-chip-success' }}">
+                                        <b>pending</b> {{ $reviewGroup->objective['pending_tasks'] ?? 0 }}
+                                    </span>
+                                    <span class="review-metric-chip {{ ($reviewGroup->objective['penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                        <b>penalty</b> -{{ $scoreText($reviewGroup->objective['penalty'] ?? 0) }}
+                                    </span>
+                                    <span class="review-metric-chip review-metric-chip-success">
+                                        <b>bonus</b> +{{ $scoreText($reviewGroup->objective['bonus'] ?? 0) }}
+                                    </span>
+                                </div>
+                            </td>
+                        @endif
                         <td>
                             <div class="d-flex gap-1" style="height: 50px;">
-                                @php
-                                    $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
-                                    $reportFileName = preg_replace('/[^A-Za-z0-9_-]+/', '_', ($reviewGroup->employee_name ?? 'employee') . '_' . $reviewGroup->month . '_review_report') . '.html';
-                                @endphp
-                                <button class="btn btn-info" data-bs-toggle="modal" style="height: 20px; width:20px" title="Report Card" data-bs-target="#{{ $reportCardId }}Modal">
-                                    <i class="fa fa-id-card"></i>
-                                </button>
-                                <button
-                                    type="button"
-                                    class="btn btn-dark download-report-card-btn"
-                                    style="height: 20px; width:20px"
-                                    title="Download Report Card"
-                                    data-report-target="{{ $reportCardId }}"
-                                    data-report-filename="{{ $reportFileName }}"
-                                >
-                                    <i class="fa fa-download"></i>
-                                </button>
+                                @if($canViewReviewAnalytics)
+                                    @php
+                                        $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
+                                        $reportFileName = preg_replace('/[^A-Za-z0-9_-]+/', '_', ($reviewGroup->employee_name ?? 'employee') . '_' . $reviewGroup->month . '_review_report') . '.html';
+                                    @endphp
+                                    <button class="btn btn-info" data-bs-toggle="modal" style="height: 20px; width:20px" title="Report Card" data-bs-target="#{{ $reportCardId }}Modal">
+                                        <i class="fa fa-id-card"></i>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-dark download-report-card-btn"
+                                        style="height: 20px; width:20px"
+                                        title="Download Report Card"
+                                        data-report-target="{{ $reportCardId }}"
+                                        data-report-filename="{{ $reportFileName }}"
+                                    >
+                                        <i class="fa fa-download"></i>
+                                    </button>
+                                @endif
                                 @foreach([$reviewGroup->firstHalf, $reviewGroup->secondHalf] as $review)
                                     @if($review)
                                         <button class="btn btn-primary" data-bs-toggle="modal" style="height: 20px; width:20px" title="{{ $review->period }}" data-bs-target="#reviewModal{{ $review->id }}">
@@ -478,7 +497,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center text-muted">No reviews found.</td>
+                        <td colspan="{{ $canViewReviewAnalytics ? 11 : 8 }}" class="text-center text-muted">No reviews found.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -496,11 +515,12 @@
         </div>
     </div>
 
-    @foreach($reviews as $reviewGroup)
-        @php
-            $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
-            $objective = $reviewGroup->objective ?? [];
-            $reportRows = [
+    @if($canViewReviewAnalytics)
+        @foreach($reviews as $reviewGroup)
+            @php
+                $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
+                $objective = $reviewGroup->objective ?? [];
+                $reportRows = [
                 ['label' => 'Score', 'value' => $scoreText($objective['score'] ?? 0) . ' / 100'],
                 ['label' => 'Rank', 'value' => '#' . ($objective['rank'] ?? '-')],
                 ['label' => 'Late Days', 'value' => $objective['late_days'] ?? 0],
@@ -512,9 +532,9 @@
                 ['label' => 'Pending Tasks', 'value' => $objective['pending_tasks'] ?? 0],
                 ['label' => 'Penalty', 'value' => '-' . $scoreText($objective['penalty'] ?? 0)],
                 ['label' => 'Bonus', 'value' => '+' . $scoreText($objective['bonus'] ?? 0)],
-            ];
-        @endphp
-        <div class="modal fade" id="{{ $reportCardId }}Modal" tabindex="-1" aria-hidden="true">
+                ];
+            @endphp
+            <div class="modal fade" id="{{ $reportCardId }}Modal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header bg-primary">
@@ -606,8 +626,9 @@
                     </div>
                 </div>
             </div>
-        </div>
-    @endforeach
+            </div>
+        @endforeach
+    @endif
 
     @foreach($modalReviews as $review)
         <div class="modal fade" id="reviewModal{{ $review->id }}" tabindex="-1" aria-hidden="true">
