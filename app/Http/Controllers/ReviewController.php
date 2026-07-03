@@ -152,12 +152,14 @@ class ReviewController extends Controller
             ->values()
             ->each(fn ($group, $index) => $group->objective['rank'] = $index + 1);
 
-        $groupedReviews = $rankedReviews
-            ->sortBy([
-                fn ($a, $b) => strcasecmp($a->employee_name, $b->employee_name),
-                fn ($a, $b) => ($monthOrder[$a->month] ?? 99) <=> ($monthOrder[$b->month] ?? 99),
-            ])
-            ->values();
+        $groupedReviews = $canViewReviewAnalytics
+            ? $rankedReviews->values()
+            : $rankedReviews
+                ->sortBy([
+                    fn ($a, $b) => strcasecmp($a->employee_name, $b->employee_name),
+                    fn ($a, $b) => ($monthOrder[$a->month] ?? 99) <=> ($monthOrder[$b->month] ?? 99),
+                ])
+                ->values();
 
         $page = LengthAwarePaginator::resolveCurrentPage();
         $reviews = new LengthAwarePaginator(
