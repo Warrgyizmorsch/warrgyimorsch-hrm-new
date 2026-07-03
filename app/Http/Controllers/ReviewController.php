@@ -95,10 +95,21 @@ class ReviewController extends Controller
         if (!in_array($perPage, $allowedPerPage, true)) {
             $perPage = 20;
         }
-        $monthOrder = array_flip([
+        $reviewMonths = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December',
-        ]);
+        ];
+        $monthOrder = array_flip($reviewMonths);
+        $selectedReviewMonth = $request->query('month_filter', now()->format('F'));
+        $showAllReviewMonths = $selectedReviewMonth === 'all';
+
+        if (!$showAllReviewMonths && !in_array($selectedReviewMonth, $reviewMonths, true)) {
+            $selectedReviewMonth = now()->format('F');
+        }
+
+        if (!$showAllReviewMonths) {
+            $query->where('month', $selectedReviewMonth);
+        }
 
         $groupedReviews = $query->get()
             ->groupBy(fn ($review) => $review->employee_id . '|' . $review->month)
@@ -174,7 +185,17 @@ class ReviewController extends Controller
             ->values();
             
 
-        return view('review.review', compact('reviews', 'modalReviews', 'isAdmin', 'isTeamLeader', 'employees', 'perPage'));
+        return view('review.review', compact(
+            'reviews',
+            'modalReviews',
+            'isAdmin',
+            'isTeamLeader',
+            'employees',
+            'perPage',
+            'reviewMonths',
+            'selectedReviewMonth',
+            'showAllReviewMonths'
+        ));
     }
 
     private function buildObjectiveReviewResult(int $employeeId, string $month, float $reviewTotal): array
@@ -188,6 +209,7 @@ class ReviewController extends Controller
                 'missed_reports' => 0,
                 'report_days' => 0,
                 'completed_tasks' => 0,
+                'completed_report_days' => 0,
                 'pending_tasks' => 0,
                 'penalty' => 0,
                 'bonus' => 0,
@@ -220,7 +242,7 @@ class ReviewController extends Controller
             }
         }
 
-        $submittedReportDates = TaskFollowUp::query()
+        $completedReportDates = TaskFollowUp::query()
             ->join('daily_tasks', 'daily_tasks.id', '=', 'task_follow_ups.daily_task_id')
             ->where('daily_tasks.employee_id', $employeeId)
             ->whereBetween('task_follow_ups.created_at', [
@@ -228,14 +250,17 @@ class ReviewController extends Controller
                 $endDate->copy()->endOfDay(),
             ])
             ->selectRaw('DATE(task_follow_ups.created_at) as report_date')
-            ->pluck('report_date')
+            ->selectRaw('SUM(CAST(task_follow_ups.time_taken AS DECIMAL(10,2))) as total_hours')
+            ->groupByRaw('DATE(task_follow_ups.created_at)')
+            ->havingRaw('SUM(CAST(task_follow_ups.time_taken AS DECIMAL(10,2))) >= 8')
+            ->pluck('total_hours', 'report_date')
+            ->keys()
             ->map(fn ($date) => Carbon::parse($date)->toDateString())
-            ->unique()
             ->flip()
             ->all();
 
         $missedReports = collect(array_keys($reportDates))
-            ->reject(fn ($date) => isset($submittedReportDates[$date]))
+            ->reject(fn ($date) => isset($completedReportDates[$date]))
             ->count();
 
         $completedTasks = DailyTask::where('employee_id', $employeeId)
@@ -274,6 +299,7 @@ class ReviewController extends Controller
             'late_minutes' => $lateMinutes,
             'missed_reports' => $missedReports,
             'report_days' => count($reportDates),
+            'completed_report_days' => count($completedReportDates),
             'completed_tasks' => $completedTasks,
             'pending_tasks' => $pendingTasks,
             'penalty' => round($penalty, 1),

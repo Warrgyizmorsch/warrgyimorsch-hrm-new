@@ -267,22 +267,55 @@
             </div>
         </div>
 
-        <!-- SHOW ENTRIES -->
-        <div class="d-flex align-items-center gap-2">
-            <span class="text-muted small fw-bold text-uppercase">Show</span>
-            <div class="dropdown">
-                <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
-                    data-bs-toggle="dropdown" id="showEntriesBtn"
-                    style="width: 80px; height: 44px; padding: 0 15px;">
-                    {{ $perPage ?? 20 }}
-                </button>
-                <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
-                    <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
-                    <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
-                    <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+        <!-- FILTERS -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted small fw-bold text-uppercase">Month</span>
+                <div class="dropdown">
+                    <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown"
+                        style="min-width: 160px; height: 44px; padding: 0 15px;">
+                        {{ $showAllReviewMonths ? 'All Time' : $selectedReviewMonth }}
+                    </button>
+                    <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 180px; border-radius: 12px;">
+                        @foreach($reviewMonths as $month)
+                            <a
+                                class="dropdown-item wghrm-custom-dropdown-item {{ (!$showAllReviewMonths && $selectedReviewMonth === $month) ? 'active' : '' }}"
+                                href="{{ request()->fullUrlWithQuery(['month_filter' => $month, 'page' => 1]) }}"
+                            >
+                                {{ $month }}
+                            </a>
+                        @endforeach
+                        <div class="dropdown-divider"></div>
+                        <a
+                            class="dropdown-item wghrm-custom-dropdown-item {{ $showAllReviewMonths ? 'active' : '' }}"
+                            href="{{ request()->fullUrlWithQuery(['month_filter' => 'all', 'page' => 1]) }}"
+                        >
+                            All Time
+                        </a>
+                    </div>
                 </div>
+                <span class="badge bg-soft-primary text-primary">
+                    {{ $showAllReviewMonths ? 'All months included' : 'Employee of the month' }}
+                </span>
             </div>
-            <span class="text-muted small fw-bold text-uppercase">entries</span>
+
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small fw-bold text-uppercase">Show</span>
+                <div class="dropdown">
+                    <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown" id="showEntriesBtn"
+                        style="width: 80px; height: 44px; padding: 0 15px;">
+                        {{ $perPage ?? 20 }}
+                    </button>
+                    <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
+                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                    </div>
+                </div>
+                <span class="text-muted small fw-bold text-uppercase">entries</span>
+            </div>
         </div>
 
         @php
@@ -305,33 +338,35 @@
         @endphp
 
         <!-- <h4 class="">Reviews</h4> -->
-        <table class="table table-striped mt-2">
+        <table class="table table-striped mt-2 review-sortable-table" id="employeeReviewTable">
             <thead class="bg-primary text-white" style="height: 50px;">
                 <tr>
                     <th>Sr</th>
-                    <th>Rank</th>
-                    <th>Employee</th>
-                    <th>Month</th>
-                    <th>1-15 Review</th>
-                    <th>16-30 Review</th>
-                    <th>Combined Result</th>
-                    <th>System Result</th>
-                    <th>Real Checks</th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="1" data-sort-type="number" data-sort-default="asc">Rank <i class="fa fa-sort"></i></button></th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="2" data-sort-type="text" data-sort-default="asc">Employee <i class="fa fa-sort"></i></button></th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="3" data-sort-type="text" data-sort-default="asc">Department <i class="fa fa-sort"></i></button></th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="4" data-sort-type="month" data-sort-default="asc">Month <i class="fa fa-sort"></i></button></th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="5" data-sort-type="number" data-sort-default="desc">1-15 Review <i class="fa fa-sort"></i></button></th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="6" data-sort-type="number" data-sort-default="desc">16-30 Review <i class="fa fa-sort"></i></button></th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="7" data-sort-type="number" data-sort-default="desc">Combined Result <i class="fa fa-sort"></i></button></th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="8" data-sort-type="number" data-sort-default="desc">System Result <i class="fa fa-sort"></i></button></th>
+                    <th><button type="button" class="review-sort-btn" data-sort-column="9" data-sort-type="number" data-sort-default="asc">Real Checks <i class="fa fa-sort"></i></button></th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($reviews as $reviewGroup)
                     <tr style="height: 50px;">
-                        <td>{{ $loop->iteration }}</td>
-                        <td>
+                        <td data-sort-value="{{ $loop->iteration }}">{{ $loop->iteration }}</td>
+                        <td data-sort-value="{{ $reviewGroup->objective['rank'] ?? 9999 }}">
                             <span class="badge {{ ($reviewGroup->objective['rank'] ?? 0) === 1 ? 'bg-success' : 'bg-secondary' }}">
                                 #{{ $reviewGroup->objective['rank'] ?? '-' }}
                             </span>
                         </td>
-                        <td>{{ $reviewGroup->employee_name }}</td>
-                        <td>{{ $reviewGroup->month }}</td>
-                        <td>
+                        <td data-sort-value="{{ strtolower($reviewGroup->employee_name) }}">{{ $reviewGroup->employee_name }}</td>
+                        <td data-sort-value="{{ strtolower($reviewGroup->employee->department ?? 'N/A') }}">{{ $reviewGroup->employee->department ?? 'N/A' }}</td>
+                        <td data-sort-value="{{ $reviewGroup->month }}">{{ $reviewGroup->month }}</td>
+                        <td data-sort-value="{{ $reviewGroup->firstHalf ? $scoreText($reviewScore($reviewGroup->firstHalf)) : -1 }}">
                             @if($reviewGroup->firstHalf)
                                 <div class="fw-bold">{{ $scoreText($reviewScore($reviewGroup->firstHalf)) }} / 50</div>
                                 <small class="text-muted">
@@ -343,7 +378,7 @@
                                 <span class="text-muted">Pending</span>
                             @endif
                         </td>
-                        <td>
+                        <td data-sort-value="{{ $reviewGroup->secondHalf ? $scoreText($reviewScore($reviewGroup->secondHalf)) : -1 }}">
                             @if($reviewGroup->secondHalf)
                                 <div class="fw-bold">{{ $scoreText($reviewScore($reviewGroup->secondHalf)) }} / 50</div>
                                 <small class="text-muted">
@@ -355,30 +390,66 @@
                                 <span class="text-muted">Pending</span>
                             @endif
                         </td>
-                        <td class="fw-bold">{{ $scoreText($reviewGroup->combined_total) }} / 100</td>
-                        <td class="fw-bold text-primary">
+                        <td class="fw-bold" data-sort-value="{{ $scoreText($reviewGroup->combined_total) }}">{{ $scoreText($reviewGroup->combined_total) }} / 100</td>
+                        <td class="fw-bold text-primary" data-sort-value="{{ $scoreText($reviewGroup->objective['score'] ?? 0) }}">
                             {{ $scoreText($reviewGroup->objective['score'] ?? 0) }} / 100
                         </td>
-                        <td>
-                            <small class="d-block text-muted">
-                                Late: {{ $reviewGroup->objective['late_days'] ?? 0 }} days
-                                @if(($reviewGroup->objective['late_minutes'] ?? 0) > 0)
-                                    ({{ intdiv($reviewGroup->objective['late_minutes'], 60) }}h {{ $reviewGroup->objective['late_minutes'] % 60 }}m)
-                                @endif
-                            </small>
-                            <small class="d-block text-muted">
-                                Missed reports: {{ $reviewGroup->objective['missed_reports'] ?? 0 }} / {{ $reviewGroup->objective['report_days'] ?? 0 }}
-                            </small>
-                            <small class="d-block text-muted">
-                                Tasks: {{ $reviewGroup->objective['completed_tasks'] ?? 0 }} done, {{ $reviewGroup->objective['pending_tasks'] ?? 0 }} pending
-                            </small>
-                            <small class="d-block text-muted">
-                                Penalty: -{{ $scoreText($reviewGroup->objective['penalty'] ?? 0) }},
-                                Bonus: +{{ $scoreText($reviewGroup->objective['bonus'] ?? 0) }}
-                            </small>
+                        <td data-sort-value="{{ $reviewGroup->objective['penalty'] ?? 0 }}">
+                            <div class="review-metric-grid">
+                                <span class="review-metric-chip review-metric-chip-primary">
+                                    <b>score</b> {{ $scoreText($reviewGroup->objective['score'] ?? 0) }}
+                                </span>
+                                <span class="review-metric-chip review-metric-chip-primary">
+                                    <b>rank</b> #{{ $reviewGroup->objective['rank'] ?? '-' }}
+                                </span>
+                                <span class="review-metric-chip {{ ($reviewGroup->objective['late_days'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                    <b>late days</b> {{ $reviewGroup->objective['late_days'] ?? 0 }}
+                                </span>
+                                <span class="review-metric-chip {{ ($reviewGroup->objective['late_minutes'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                    <b>late min</b> {{ $reviewGroup->objective['late_minutes'] ?? 0 }}
+                                </span>
+                                <span class="review-metric-chip {{ ($reviewGroup->objective['missed_reports'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                    <b>missed reports</b> {{ $reviewGroup->objective['missed_reports'] ?? 0 }}
+                                </span>
+                                <span class="review-metric-chip">
+                                    <b>report days</b> {{ $reviewGroup->objective['report_days'] ?? 0 }}
+                                </span>
+                                <span class="review-metric-chip review-metric-chip-success">
+                                    <b>8h+ reports</b> {{ $reviewGroup->objective['completed_report_days'] ?? 0 }}
+                                </span>
+                                <span class="review-metric-chip review-metric-chip-success">
+                                    <b>done tasks</b> {{ $reviewGroup->objective['completed_tasks'] ?? 0 }}
+                                </span>
+                                <span class="review-metric-chip {{ ($reviewGroup->objective['pending_tasks'] ?? 0) > 0 ? 'review-metric-chip-warning' : 'review-metric-chip-success' }}">
+                                    <b>pending</b> {{ $reviewGroup->objective['pending_tasks'] ?? 0 }}
+                                </span>
+                                <span class="review-metric-chip {{ ($reviewGroup->objective['penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
+                                    <b>penalty</b> -{{ $scoreText($reviewGroup->objective['penalty'] ?? 0) }}
+                                </span>
+                                <span class="review-metric-chip review-metric-chip-success">
+                                    <b>bonus</b> +{{ $scoreText($reviewGroup->objective['bonus'] ?? 0) }}
+                                </span>
+                            </div>
                         </td>
                         <td>
                             <div class="d-flex gap-1" style="height: 50px;">
+                                @php
+                                    $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
+                                    $reportFileName = preg_replace('/[^A-Za-z0-9_-]+/', '_', ($reviewGroup->employee_name ?? 'employee') . '_' . $reviewGroup->month . '_review_report') . '.html';
+                                @endphp
+                                <button class="btn btn-info" data-bs-toggle="modal" style="height: 20px; width:20px" title="Report Card" data-bs-target="#{{ $reportCardId }}Modal">
+                                    <i class="fa fa-id-card"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-dark download-report-card-btn"
+                                    style="height: 20px; width:20px"
+                                    title="Download Report Card"
+                                    data-report-target="{{ $reportCardId }}"
+                                    data-report-filename="{{ $reportFileName }}"
+                                >
+                                    <i class="fa fa-download"></i>
+                                </button>
                                 @foreach([$reviewGroup->firstHalf, $reviewGroup->secondHalf] as $review)
                                     @if($review)
                                         <button class="btn btn-primary" data-bs-toggle="modal" style="height: 20px; width:20px" title="{{ $review->period }}" data-bs-target="#reviewModal{{ $review->id }}">
@@ -407,7 +478,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center text-muted">No reviews found.</td>
+                        <td colspan="11" class="text-center text-muted">No reviews found.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -424,6 +495,119 @@
             {{ $reviews->links() }}
         </div>
     </div>
+
+    @foreach($reviews as $reviewGroup)
+        @php
+            $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
+            $objective = $reviewGroup->objective ?? [];
+            $reportRows = [
+                ['label' => 'Score', 'value' => $scoreText($objective['score'] ?? 0) . ' / 100'],
+                ['label' => 'Rank', 'value' => '#' . ($objective['rank'] ?? '-')],
+                ['label' => 'Late Days', 'value' => $objective['late_days'] ?? 0],
+                ['label' => 'Late Minutes', 'value' => $objective['late_minutes'] ?? 0],
+                ['label' => 'Missed Reports', 'value' => $objective['missed_reports'] ?? 0],
+                ['label' => 'Report Days', 'value' => $objective['report_days'] ?? 0],
+                ['label' => '8h+ Report Days', 'value' => $objective['completed_report_days'] ?? 0],
+                ['label' => 'Completed Tasks', 'value' => $objective['completed_tasks'] ?? 0],
+                ['label' => 'Pending Tasks', 'value' => $objective['pending_tasks'] ?? 0],
+                ['label' => 'Penalty', 'value' => '-' . $scoreText($objective['penalty'] ?? 0)],
+                ['label' => 'Bonus', 'value' => '+' . $scoreText($objective['bonus'] ?? 0)],
+            ];
+        @endphp
+        <div class="modal fade" id="{{ $reportCardId }}Modal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary">
+                        <h5 class="modal-title text-white">Employee Review Report Card</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="review-report-card" id="{{ $reportCardId }}">
+                            <div class="review-report-header">
+                                <div>
+                                    <h4>Employee Review Report Card</h4>
+                                    <p>{{ $reviewGroup->month }} {{ now()->year }}</p>
+                                </div>
+                                <div class="review-report-score">
+                                    <span>System Result</span>
+                                    <strong>{{ $scoreText($objective['score'] ?? 0) }}/100</strong>
+                                </div>
+                            </div>
+
+                            <div class="review-report-summary">
+                                <div><b>Employee</b><span>{{ $reviewGroup->employee_name }}</span></div>
+                                <div><b>Department</b><span>{{ $reviewGroup->employee->department ?? 'N/A' }}</span></div>
+                                <div><b>Rank</b><span>#{{ $objective['rank'] ?? '-' }}</span></div>
+                                <div><b>Combined Review</b><span>{{ $scoreText($reviewGroup->combined_total) }}/100</span></div>
+                            </div>
+
+                            <h6 class="review-report-section-title">Objective Parameters</h6>
+                            <div class="review-report-parameters">
+                                @foreach($reportRows as $row)
+                                    <div>
+                                        <span>{{ $row['label'] }}</span>
+                                        <b>{{ $row['value'] }}</b>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            @foreach([
+                                '1-15 Review' => $reviewGroup->firstHalf,
+                                '16-30 Review' => $reviewGroup->secondHalf,
+                            ] as $periodLabel => $review)
+                                <h6 class="review-report-section-title">{{ $periodLabel }}</h6>
+                                @if($review)
+                                    <div class="review-report-summary review-report-period-summary">
+                                        <div><b>Self Total</b><span>{{ $scoreText($review->self_total) }}/50</span></div>
+                                        <div><b>Team Leader Total</b><span>{{ $scoreText($review->author_total) }}/50</span></div>
+                                        <div><b>Admin Total</b><span>{{ $scoreText($review->admin_total) }}/50</span></div>
+                                        <div><b>Effective Score</b><span>{{ $scoreText($reviewScore($review)) }}/50</span></div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered review-report-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Criteria</th>
+                                                    <th>Max</th>
+                                                    <th>Self</th>
+                                                    <th>Team Leader</th>
+                                                    <th>Admin</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($review->details as $detail)
+                                                    <tr>
+                                                        <td>{{ $detail->criteria_name }}</td>
+                                                        <td>{{ $scoreText($detail->criteria_point) }}</td>
+                                                        <td>{{ $scoreText($detail->self_review) }}</td>
+                                                        <td>{{ $scoreText($detail->author_review) }}</td>
+                                                        <td>{{ $scoreText($detail->admin_review) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="alert alert-light border">No {{ strtolower($periodLabel) }} submitted.</div>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button
+                            type="button"
+                            class="btn btn-primary download-report-card-btn"
+                            data-report-target="{{ $reportCardId }}"
+                            data-report-filename="{{ preg_replace('/[^A-Za-z0-9_-]+/', '_', ($reviewGroup->employee_name ?? 'employee') . '_' . $reviewGroup->month . '_review_report') }}.html"
+                        >
+                            <i class="fa fa-download me-1"></i> Download Report Card
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endforeach
 
     @foreach($modalReviews as $review)
         <div class="modal fade" id="reviewModal{{ $review->id }}" tabindex="-1" aria-hidden="true">
@@ -625,6 +809,186 @@
             display: none;
         }
 
+        .review-sortable-table th {
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .review-sort-btn {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            font-weight: 700;
+            padding: 0;
+            text-align: left;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .review-sort-btn i {
+            font-size: 12px;
+            opacity: 0.75;
+        }
+
+        .review-sort-btn.is-sorted i {
+            opacity: 1;
+        }
+
+        .review-metric-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-width: 360px;
+            max-width: 520px;
+        }
+
+        .review-metric-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid #dbe3f0;
+            border-radius: 6px;
+            background: #f8fafc;
+            color: #334155;
+            font-size: 11px;
+            line-height: 1.2;
+            padding: 5px 7px;
+            white-space: nowrap;
+        }
+
+        .review-metric-chip b {
+            color: inherit;
+            font-weight: 800;
+        }
+
+        .review-metric-chip-primary {
+            border-color: #bcd0ff;
+            background: #eef4ff;
+            color: #2447c6;
+        }
+
+        .review-metric-chip-success {
+            border-color: #b8e4c7;
+            background: #ecfdf3;
+            color: #137333;
+        }
+
+        .review-metric-chip-warning {
+            border-color: #f6d48a;
+            background: #fff8e6;
+            color: #8a5a00;
+        }
+
+        .review-metric-chip-danger {
+            border-color: #f2b8b5;
+            background: #fff0f0;
+            color: #b3261e;
+        }
+
+        .review-report-card {
+            background: #ffffff;
+            color: #1f2937;
+            padding: 24px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .review-report-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            border-bottom: 2px solid #dbe3f0;
+            padding-bottom: 16px;
+            margin-bottom: 18px;
+        }
+
+        .review-report-header h4 {
+            margin: 0 0 4px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .review-report-header p {
+            margin: 0;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .review-report-score {
+            min-width: 160px;
+            border: 1px solid #bcd0ff;
+            background: #eef4ff;
+            color: #2447c6;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .review-report-score span {
+            display: block;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .review-report-score strong {
+            display: block;
+            font-size: 28px;
+            line-height: 1.2;
+        }
+
+        .review-report-summary,
+        .review-report-parameters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .review-report-summary div,
+        .review-report-parameters div {
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .review-report-summary b,
+        .review-report-parameters span {
+            display: block;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .review-report-summary span,
+        .review-report-parameters b {
+            display: block;
+            color: #111827;
+            font-size: 15px;
+            font-weight: 800;
+            margin-top: 3px;
+        }
+
+        .review-report-section-title {
+            font-weight: 800;
+            color: #1e293b;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 8px;
+            margin: 20px 0 12px;
+        }
+
+        .review-report-table th {
+            background: #eef4ff;
+            color: #1f3fb5;
+        }
+
         @media (max-width: 767.98px) {
             .review-select-trigger {
                 min-height: 50px;
@@ -713,6 +1077,153 @@
                 if (!e.target.closest("[data-select]")) {
                     closeAllSelects();
                 }
+            });
+
+            const reviewTable = document.getElementById('employeeReviewTable');
+            const monthOrder = {
+                january: 1,
+                february: 2,
+                march: 3,
+                april: 4,
+                may: 5,
+                june: 6,
+                july: 7,
+                august: 8,
+                september: 9,
+                october: 10,
+                november: 11,
+                december: 12
+            };
+
+            function getSortableValue(row, columnIndex, sortType) {
+                const cell = row.children[columnIndex];
+                const rawValue = (cell?.dataset.sortValue || cell?.textContent || '').trim();
+
+                if (sortType === 'number') {
+                    const number = parseFloat(rawValue.replace(/[^0-9.-]/g, ''));
+                    return Number.isNaN(number) ? -Infinity : number;
+                }
+
+                if (sortType === 'month') {
+                    return monthOrder[rawValue.toLowerCase()] || 99;
+                }
+
+                return rawValue.toLowerCase();
+            }
+
+            function refreshSortIcons(activeButton, direction) {
+                document.querySelectorAll('.review-sort-btn').forEach(button => {
+                    const icon = button.querySelector('i');
+                    button.classList.toggle('is-sorted', button === activeButton);
+
+                    if (!icon) {
+                        return;
+                    }
+
+                    icon.className = button === activeButton
+                        ? `fa fa-sort-${direction === 'asc' ? 'up' : 'down'}`
+                        : 'fa fa-sort';
+                });
+            }
+
+            if (reviewTable) {
+                reviewTable.querySelectorAll('.review-sort-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const tbody = reviewTable.querySelector('tbody');
+                        const columnIndex = parseInt(this.dataset.sortColumn, 10);
+                        const sortType = this.dataset.sortType || 'text';
+                        const currentDirection = this.dataset.sortDirection;
+                        const defaultDirection = this.dataset.sortDefault || 'asc';
+                        const direction = currentDirection
+                            ? (currentDirection === 'asc' ? 'desc' : 'asc')
+                            : defaultDirection;
+
+                        const rows = Array.from(tbody.querySelectorAll('tr'))
+                            .filter(row => row.children.length > columnIndex && !row.querySelector('td[colspan]'));
+
+                        rows.sort((a, b) => {
+                            const aValue = getSortableValue(a, columnIndex, sortType);
+                            const bValue = getSortableValue(b, columnIndex, sortType);
+
+                            if (aValue < bValue) {
+                                return direction === 'asc' ? -1 : 1;
+                            }
+
+                            if (aValue > bValue) {
+                                return direction === 'asc' ? 1 : -1;
+                            }
+
+                            return 0;
+                        });
+
+                        rows.forEach((row, index) => {
+                            const srCell = row.children[0];
+                            if (srCell) {
+                                srCell.textContent = index + 1;
+                                srCell.dataset.sortValue = index + 1;
+                            }
+                            tbody.appendChild(row);
+                        });
+
+                        reviewTable.querySelectorAll('.review-sort-btn').forEach(item => {
+                            if (item !== this) {
+                                item.removeAttribute('data-sort-direction');
+                            }
+                        });
+                        this.dataset.sortDirection = direction;
+                        refreshSortIcons(this, direction);
+                    });
+                });
+            }
+
+            function downloadReportCard(targetId, filename) {
+                const reportCard = document.getElementById(targetId);
+                if (!reportCard) {
+                    return;
+                }
+
+                const styles = `
+                    body { font-family: Arial, sans-serif; color: #1f2937; margin: 24px; }
+                    .review-report-card { background: #ffffff; color: #1f2937; padding: 24px; border: 1px solid #e5e7eb; border-radius: 8px; }
+                    .review-report-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; border-bottom: 2px solid #dbe3f0; padding-bottom: 16px; margin-bottom: 18px; }
+                    .review-report-header h4 { margin: 0 0 4px; font-weight: 800; color: #111827; }
+                    .review-report-header p { margin: 0; color: #64748b; font-weight: 600; }
+                    .review-report-score { min-width: 160px; border: 1px solid #bcd0ff; background: #eef4ff; color: #2447c6; border-radius: 8px; padding: 12px; text-align: center; }
+                    .review-report-score span { display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+                    .review-report-score strong { display: block; font-size: 28px; line-height: 1.2; }
+                    .review-report-summary, .review-report-parameters { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 18px; }
+                    .review-report-summary div, .review-report-parameters div { border: 1px solid #e5e7eb; background: #f8fafc; border-radius: 6px; padding: 10px; }
+                    .review-report-summary b, .review-report-parameters span { display: block; color: #64748b; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+                    .review-report-summary span, .review-report-parameters b { display: block; color: #111827; font-size: 15px; font-weight: 800; margin-top: 3px; }
+                    .review-report-section-title { font-weight: 800; color: #1e293b; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin: 20px 0 12px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+                    th, td { border: 1px solid #dbe3f0; padding: 8px; text-align: left; }
+                    th { background: #eef4ff; color: #1f3fb5; }
+                `;
+                const safeFilename = filename || 'employee_review_report.html';
+                const html = `<!doctype html>
+                    <html>
+                        <head>
+                            <meta charset="utf-8">
+                            <title>${safeFilename.replace('.html', '')}</title>
+                            <style>${styles}</style>
+                        </head>
+                        <body>${reportCard.outerHTML}</body>
+                    </html>`;
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = safeFilename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+            }
+
+            document.querySelectorAll('.download-report-card-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    downloadReportCard(this.dataset.reportTarget, this.dataset.reportFilename);
+                });
             });
             
             function updateTotals() {

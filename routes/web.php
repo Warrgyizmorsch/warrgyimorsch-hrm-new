@@ -66,10 +66,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/daily-tasks/{taskId}/follow-ups', [DailyTaskController::class, 'getFollowUps']);
     Route::get('/daily-task-history/{task}', [DailyTaskController::class, 'statusHistory']);
 
-    Route::get('/employee-review', [ReviewController::class, 'index'])->name('employee.review');
-    Route::post('/employee-review/store', [ReviewController::class, 'store']);
-    Route::post('/employee-review/{id}/update', [ReviewController::class, 'update']);
-    Route::get('/review-details/{id}', [ReviewController::class, 'details'])->name('employee.review.details');
     Route::get('/technical-review', [ReviewController::class, 'technicalReview'])->name('technical.review');
     Route::post('/technical-review/store', [ReviewController::class, 'technicalReviewStore']);
     Route::post('/technical-review/{id}/update', [ReviewController::class, 'technicalReviewUpdate']);
@@ -103,6 +99,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/help', fn () => view('pages.help'))->name('help');
     Route::get('/terms', fn () => view('pages.terms'))->name('terms');
     Route::get('/privacy', fn () => view('pages.privacy'))->name('privacy');
+});
+
+Route::middleware(['auth', 'role.access:super_admin,manager'])->group(function () {
+    Route::get('/employee-review', [ReviewController::class, 'index'])->name('employee.review');
+    Route::post('/employee-review/store', [ReviewController::class, 'store']);
+    Route::post('/employee-review/{id}/update', [ReviewController::class, 'update']);
+    Route::get('/review-details/{id}', [ReviewController::class, 'details'])->name('employee.review.details');
 });
 
 Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
