@@ -238,9 +238,29 @@ class ReviewController extends Controller
 
         foreach ($attendanceRecords as $attendance) {
             $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
+            $attendanceDate = Carbon::parse($attendance->attendance_date);
+            $isNonReportingStatus = in_array($status, [
+                'absent',
+                'leave',
+                'unpaid_leave',
+                'unauthorised',
+                'missing_punch',
+                'holiday',
+                'week_off',
+                'weekly_off',
+            ], true);
+            $isWorkingStatus = in_array($status, [
+                'present',
+                'late',
+                'half_day',
+                'half_day_leave',
+                'early_out',
+                'early_leave',
+                'wfh',
+            ], true);
 
-            if (in_array($status, ['present', 'late', 'half_day', 'early_out', 'early_leave', 'wfh']) || $attendance->check_in) {
-                $reportDates[Carbon::parse($attendance->attendance_date)->toDateString()] = true;
+            if (!$attendanceDate->isSunday() && !$isNonReportingStatus && ($isWorkingStatus || $attendance->check_in)) {
+                $reportDates[$attendanceDate->toDateString()] = true;
             }
 
             $minutes = $this->getAttendanceLateMinutes($attendance, $activityDates);
