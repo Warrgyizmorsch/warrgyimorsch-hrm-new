@@ -1267,9 +1267,21 @@
                     if (!isNaN(val)) adminTotal += val;
                 });
 
-                document.getElementById("selfTotal").value = selfTotal % 1 === 0 ? selfTotal : selfTotal.toFixed(1);
-                document.getElementById("authorTotal").value = authorTotal % 1 === 0 ? authorTotal : authorTotal.toFixed(1);
-                document.getElementById("adminTotal").value = adminTotal % 1 === 0 ? adminTotal : adminTotal.toFixed(1);
+                const selfTotalInput = document.getElementById("selfTotal");
+                const authorTotalInput = document.getElementById("authorTotal");
+                const adminTotalInput = document.getElementById("adminTotal");
+
+                if (selfTotalInput) {
+                    selfTotalInput.value = selfTotal % 1 === 0 ? selfTotal : selfTotal.toFixed(1);
+                }
+
+                if (authorTotalInput) {
+                    authorTotalInput.value = authorTotal % 1 === 0 ? authorTotal : authorTotal.toFixed(1);
+                }
+
+                if (adminTotalInput) {
+                    adminTotalInput.value = adminTotal % 1 === 0 ? adminTotal : adminTotal.toFixed(1);
+                }
             }
 
             document.addEventListener("input", function(e) {
@@ -1329,7 +1341,7 @@
                 ['month', 'period', 'user_id'].forEach(name => {
                     const input = reviewForm.querySelector(`input[name="${name}"]`);
                     if (!input) return;
-                    input.value = '';
+                    input.value = name === 'period' ? 'First Half' : '';
                     const select = input.closest('.review-select');
                     if (select) {
                         const label = select.querySelector('[data-select-label]');
@@ -1353,13 +1365,13 @@
             document.querySelectorAll('.edit-review-btn').forEach(btn => {
                 btn.addEventListener('click', async function() {
                     const id = this.dataset.reviewId;
-                    reviewForm.action = `/employee-review/${id}/update`;
+                    reviewForm.action = `{{ url('/employee-review') }}/${id}/update`;
                     setSelectValueWithinForm('month', this.dataset.month);
                     setSelectValueWithinForm('period', this.dataset.period);
                     setSelectValueWithinForm('user_id', this.dataset.userId);
 
                     try {
-                        const res = await fetch(`/review-details/${id}`);
+                        const res = await fetch(`{{ url('/review-details') }}/${id}`);
                         if (!res.ok) throw new Error('Failed to fetch review details');
                         const details = await res.json();
 
