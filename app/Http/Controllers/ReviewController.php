@@ -22,8 +22,9 @@ class ReviewController extends Controller
 {
     protected function resolveRoleFlags($user): array
     {
+        $role = trim((string) ($user->role ?? ''));
         $roleId = DB::table('roles_master')
-            ->where('slug', $user->role)
+            ->where('slug', $role)
             ->value('id');
 
         return [
@@ -34,9 +35,14 @@ class ReviewController extends Controller
 
     protected function canManageEmployeeReviews($user): bool
     {
-        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $role = str_replace(' ', '_', strtolower(trim((string) ($user->role ?? 'employee'))));
+        $roleId = DB::table('roles_master')
+            ->where('slug', $role)
+            ->orWhereRaw('LOWER(REPLACE(name, " ", "_")) = ?', [$role])
+            ->value('id');
 
-        return in_array($role, ['super_admin', 'manager'], true);
+        return in_array($role, ['super_admin', 'manager'], true)
+            || in_array((int) $roleId, [1, 2], true);
     }
 
     protected function resolveEmployeeRecord($user): ?Employee

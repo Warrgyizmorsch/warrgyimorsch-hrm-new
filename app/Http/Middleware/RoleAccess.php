@@ -15,7 +15,7 @@ class RoleAccess
      */
      public function handle(Request $request, Closure $next, ...$allowedRoles)
     {
-        $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
+        $role = str_replace(' ', '_', strtolower(trim((string) (auth()->user()->role ?? 'employee'))));
 
         if (!in_array($role, $allowedRoles)) {
             abort(403, 'Unauthorized access');
