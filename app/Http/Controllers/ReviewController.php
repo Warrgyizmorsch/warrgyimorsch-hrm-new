@@ -624,7 +624,7 @@ class ReviewController extends Controller
                 ->get();
 
         $departments = Department::all();
-        $evaluations = TechnicalReviewEvaluation::where('status', 1)
+        $evaluations = TechnicalReviewEvaluation::where(['status' => 1,'department' => $employeeRecord->department ?? null])
             ->orderBy('sort_order')
             ->get();
 

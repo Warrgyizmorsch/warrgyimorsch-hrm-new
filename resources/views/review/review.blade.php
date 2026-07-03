@@ -271,30 +271,27 @@
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <span class="text-muted small fw-bold text-uppercase">Month</span>
-                <div class="dropdown">
-                    <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
-                        data-bs-toggle="dropdown"
-                        style="min-width: 160px; height: 44px; padding: 0 15px;">
-                        {{ $showAllReviewMonths ? 'All Time' : $selectedReviewMonth }}
-                    </button>
-                    <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 180px; border-radius: 12px;">
+                <form method="GET" action="{{ url('/employee-review') }}" class="review-month-filter-form">
+                    @foreach(request()->except(['month_filter', 'page']) as $key => $value)
+                        @if(is_array($value))
+                            @foreach($value as $item)
+                                <input type="hidden" name="{{ $key }}[]" value="{{ $item }}">
+                            @endforeach
+                        @else
+                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                        @endif
+                    @endforeach
+                    <select name="month_filter" class="review-month-filter-select" onchange="this.form.submit()">
                         @foreach($reviewMonths as $month)
-                            <a
-                                class="dropdown-item wghrm-custom-dropdown-item {{ (!$showAllReviewMonths && $selectedReviewMonth === $month) ? 'active' : '' }}"
-                                href="{{ request()->fullUrlWithQuery(['month_filter' => $month, 'page' => 1]) }}"
-                            >
+                            <option value="{{ $month }}" {{ (!$showAllReviewMonths && $selectedReviewMonth === $month) ? 'selected' : '' }}>
                                 {{ $month }}
-                            </a>
+                            </option>
                         @endforeach
-                        <div class="dropdown-divider"></div>
-                        <a
-                            class="dropdown-item wghrm-custom-dropdown-item {{ $showAllReviewMonths ? 'active' : '' }}"
-                            href="{{ request()->fullUrlWithQuery(['month_filter' => 'all', 'page' => 1]) }}"
-                        >
+                        <option value="all" {{ $showAllReviewMonths ? 'selected' : '' }}>
                             All Time
-                        </a>
-                    </div>
-                </div>
+                        </option>
+                    </select>
+                </form>
                 <span class="badge bg-soft-primary text-primary">
                     @if($canViewReviewAnalytics)
                         {{ $showAllReviewMonths ? 'All months included' : 'Employee of the month' }}
@@ -857,6 +854,29 @@
 
         .review-sort-btn.is-sorted i {
             opacity: 1;
+        }
+
+        .review-month-filter-form {
+            margin: 0;
+        }
+
+        .review-month-filter-select {
+            min-width: 160px;
+            height: 44px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background-color: #ffffff;
+            color: #1e293b;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 0 38px 0 15px;
+            outline: none;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        .review-month-filter-select:focus {
+            border-color: #3858f9;
+            box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.1);
         }
 
         .review-metric-grid {
