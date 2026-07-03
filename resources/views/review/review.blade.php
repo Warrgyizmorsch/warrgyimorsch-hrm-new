@@ -550,6 +550,57 @@
                 ['label' => 'Penalty', 'value' => '-' . $scoreText($objective['penalty'] ?? 0)],
                 ['label' => 'Bonus', 'value' => '+' . $scoreText($objective['bonus'] ?? 0)],
                 ];
+                $breakdownRows = [
+                    [
+                        'criteria' => 'Combined personal review',
+                        'basis' => '1-15 effective review + 16-30 effective review',
+                        'raw' => $scoreText($reviewGroup->combined_total),
+                        'cap' => '100',
+                        'marks' => '+' . $scoreText($reviewGroup->combined_total),
+                    ],
+                    [
+                        'criteria' => 'Late arrivals',
+                        'basis' => 'late days x 2.5',
+                        'raw' => ($objective['late_days'] ?? 0) . ' days / ' . ($objective['late_minutes'] ?? 0) . ' min',
+                        'cap' => 'max -25',
+                        'marks' => '-' . $scoreText(min(($objective['late_days'] ?? 0) * 2.5, 25)),
+                    ],
+                    [
+                        'criteria' => '8h reporting',
+                        'basis' => 'missed reports x 3',
+                        'raw' => ($objective['completed_report_days'] ?? 0) . ' completed of ' . ($objective['report_days'] ?? 0) . ' expected',
+                        'cap' => 'max -30',
+                        'marks' => '-' . $scoreText(min(($objective['missed_reports'] ?? 0) * 3, 30)),
+                    ],
+                    [
+                        'criteria' => 'Task completion',
+                        'basis' => 'pending tasks x 2, completed tasks x 1',
+                        'raw' => ($objective['completed_tasks'] ?? 0) . ' done / ' . ($objective['pending_tasks'] ?? 0) . ' pending',
+                        'cap' => 'pending max -20, bonus max +15',
+                        'marks' => '-' . $scoreText(min(($objective['pending_tasks'] ?? 0) * 2, 20)) . ' / +' . $scoreText(min(($objective['completed_tasks'] ?? 0) * 1, 15)),
+                    ],
+                    [
+                        'criteria' => 'Leave history',
+                        'basis' => 'leave days x 3; no leave gets +10',
+                        'raw' => $scoreText($objective['leave_days'] ?? 0) . ' days',
+                        'cap' => 'leave max -20, no-leave +10',
+                        'marks' => '-' . $scoreText($objective['leave_penalty'] ?? 0) . ' / +' . $scoreText($objective['no_leave_bonus'] ?? 0),
+                    ],
+                    [
+                        'criteria' => 'Technical assessment',
+                        'basis' => 'shown for reference only',
+                        'raw' => $scoreText($objective['technical_score'] ?? 0),
+                        'cap' => 'no effect',
+                        'marks' => '+0',
+                    ],
+                    [
+                        'criteria' => 'Final system result',
+                        'basis' => 'combined review - total penalties + total bonuses',
+                        'raw' => $scoreText($reviewGroup->combined_total) . ' - ' . $scoreText($objective['penalty'] ?? 0) . ' + ' . $scoreText($objective['bonus'] ?? 0),
+                        'cap' => '0 to 100',
+                        'marks' => $scoreText($objective['score'] ?? 0) . ' / 100',
+                    ],
+                ];
             @endphp
             <div class="modal fade" id="{{ $reportCardId }}Modal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-xl">
@@ -586,6 +637,32 @@
                                         <b>{{ $row['value'] }}</b>
                                     </div>
                                 @endforeach
+                            </div>
+
+                            <h6 class="review-report-section-title">Calculation Breakdown</h6>
+                            <div class="table-responsive">
+                                <table class="table table-bordered review-report-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Criteria</th>
+                                            <th>Basis</th>
+                                            <th>Actual Result</th>
+                                            <th>Cap</th>
+                                            <th>Applied Marks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($breakdownRows as $row)
+                                            <tr>
+                                                <td>{{ $row['criteria'] }}</td>
+                                                <td>{{ $row['basis'] }}</td>
+                                                <td>{{ $row['raw'] }}</td>
+                                                <td>{{ $row['cap'] }}</td>
+                                                <td><b>{{ $row['marks'] }}</b></td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
 
                             @foreach([
