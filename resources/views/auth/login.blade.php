@@ -1,273 +1,742 @@
 <!DOCTYPE html>
-<html lang="zxx">
+<html lang="en">
 
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="keyword" content="">
-    <meta name="author" content="theme_ocean">
-    <!--! The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags !-->
-    <!--! BEGIN: Apps Title-->
-    <title>Warrgyizmorsch || Login Minimal</title>
-    <!--! END:  Apps Title-->
-    <!--! BEGIN: Favicon-->
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/favicon.ico') }}">
-    <!--! END: Favicon-->
-    <!--! BEGIN: Bootstrap CSS-->
-    <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/bootstrap.min.css') }}">
-    <!--! END: Bootstrap CSS-->
-    <!--! BEGIN: Vendors CSS-->
-    <link rel="stylesheet" type="text/css" href="{{ asset('assets/vendors/css/vendors.min.css') }}">
-    <!--! END: Vendors CSS-->
-    <!--! BEGIN: Custom CSS-->
-    <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/theme.min.css') }}">
-    <!--! END: Custom CSS-->
+    <meta name="description" content="Sign in to Warrgyizmorsch Pvt Ltd internal HRM portal">
+    <title>Warrgyizmorsch Pvt Ltd | Employee Portal</title>
 
-    <!-- Fonts -->
+    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/favicon.ico') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('assets/vendors/css/vendors.min.css') }}">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        body, html, input, button, select, textarea {
-            font-family: 'Inter', sans-serif !important;
+        :root {
+            --brand-navy: #0c1e3d;
+            --brand-navy-light: #152a52;
+            --brand-blue: #1d4ed8;
+            --brand-blue-bright: #3b82f6;
+            --brand-sky: #60a5fa;
+            --brand-gold: #f59e0b;
+            --text-primary: #0f172a;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            --border: #e2e8f0;
+            --surface: #ffffff;
+            --surface-muted: #f8fafc;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --shadow-form: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--surface-muted);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .login-shell {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Brand panel ── */
+        .brand-panel {
+            flex: 0 0 48%;
+            background: linear-gradient(160deg, var(--brand-navy) 0%, #0f2d5c 45%, var(--brand-blue) 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 2.75rem 3.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.25) 0%, transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(96, 165, 250, 0.15) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        .brand-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 80%);
+            pointer-events: none;
+        }
+
+        .brand-top,
+        .brand-main,
+        .brand-bottom {
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-logo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-logo-wrap img {
+            height: 44px;
+            width: auto;
+            filter: brightness(0) invert(1);
+        }
+
+        .brand-logo-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+
+        .brand-logo-text strong {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .brand-logo-text span {
+            font-size: 0.72rem;
+            font-weight: 500;
+            opacity: 0.65;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .internal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 2.5rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            backdrop-filter: blur(6px);
+        }
+
+        .internal-badge i {
+            font-size: 12px;
+            color: var(--brand-gold);
+        }
+
+        .brand-main h1 {
+            font-size: clamp(1.75rem, 3vw, 2.35rem);
+            font-weight: 800;
+            line-height: 1.2;
+            margin: 1.5rem 0 1rem;
+            letter-spacing: -0.03em;
+        }
+
+        .brand-main h1 em {
+            font-style: normal;
+            color: var(--brand-sky);
+        }
+
+        .brand-main > p {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            opacity: 0.78;
+            max-width: 400px;
+            margin: 0 0 2.25rem;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.85rem;
+            max-width: 420px;
+        }
+
+        .module-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .module-card:hover {
+            background: rgba(255, 255, 255, 0.11);
+            transform: translateY(-1px);
+        }
+
+        .module-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(59, 130, 246, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .module-icon i {
+            font-size: 16px;
+        }
+
+        .module-card strong {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 700;
+            margin-bottom: 0.15rem;
+        }
+
+        .module-card span {
+            font-size: 0.72rem;
+            opacity: 0.65;
+            line-height: 1.4;
+        }
+
+        .brand-bottom {
+            font-size: 0.78rem;
+            opacity: 0.5;
+        }
+
+        /* ── Form panel ── */
+        .form-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background:
+                radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.04) 0%, transparent 40%),
+                var(--surface-muted);
+        }
+
+        .form-card {
+            width: 100%;
+            max-width: 440px;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-form);
+            padding: 2.5rem 2.25rem;
+        }
+
+        .form-card-header {
+            margin-bottom: 2rem;
+        }
+
+        .form-card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0 0 0.4rem;
+            letter-spacing: -0.02em;
+        }
+
+        .form-card-header p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .form-alert {
+            border-radius: var(--radius-md);
+            padding: 0.75rem 1rem;
+            font-size: 0.8125rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .form-alert-danger {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .form-alert-success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .form-field {
+            margin-bottom: 1.15rem;
+        }
+
+        .form-field label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.4rem;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-group .field-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .input-group .toggle-password {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 2;
+            transition: color 0.2s;
+            line-height: 1;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .input-group .toggle-password:hover {
+            color: var(--brand-blue);
+        }
+
+        .form-input {
+            width: 100%;
+            height: 48px;
+            padding: 0 44px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: var(--surface);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input::placeholder {
+            color: var(--text-light);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--brand-blue-bright);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
+        .form-input.is-invalid {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .field-error {
+            font-size: 0.75rem;
+            color: #ef4444;
+            margin-top: 0.35rem;
+        }
+
+        .form-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .form-remember {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .form-remember input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--brand-blue);
+            cursor: pointer;
+        }
+
+        .form-remember span {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        .form-forgot {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--brand-blue);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .form-forgot:hover {
+            color: var(--brand-navy-light);
+        }
+
+        .form-submit {
+            width: 100%;
+            height: 48px;
+            border: none;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-blue-bright) 100%);
+            color: #fff;
+            font-size: 0.9375rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 16px rgba(29, 78, 216, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .form-submit:hover:not(:disabled) {
+            box-shadow: 0 6px 22px rgba(29, 78, 216, 0.38);
+        }
+
+        .form-submit:active:not(:disabled) {
+            transform: scale(0.985);
+        }
+
+        .form-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .form-submit .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .form-submit.is-loading .spinner {
+            display: block;
+        }
+
+        .form-submit.is-loading .btn-text {
+            opacity: 0.85;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .form-footer {
+            margin-top: 1.75rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .form-footer p {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin: 0 0 0.35rem;
+        }
+
+        .form-footer a {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        .form-footer a:hover {
+            color: var(--brand-blue);
+        }
+
+        .secure-note {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            margin-top: 1rem;
+            font-size: 0.7rem;
+            color: var(--text-light);
+        }
+
+        .secure-note i {
+            font-size: 12px;
+            color: #22c55e;
+        }
+
+        /* ── Mobile header ── */
+        .mobile-header {
+            display: none;
+            background: linear-gradient(160deg, var(--brand-navy), var(--brand-blue));
+            padding: 1.25rem 1.5rem;
+            color: #fff;
+        }
+
+        .mobile-header .brand-logo-wrap img {
+            height: 32px;
+        }
+
+        .mobile-header .brand-logo-text strong {
+            font-size: 0.9rem;
+        }
+
+        .mobile-header .brand-logo-text span {
+            font-size: 0.65rem;
+        }
+
+        @media (max-width: 991px) {
+            .login-shell {
+                flex-direction: column;
+            }
+
+            .brand-panel {
+                display: none;
+            }
+
+            .mobile-header {
+                display: block;
+            }
+
+            .form-panel {
+                padding: 1.5rem 1.25rem 2.5rem;
+            }
+
+            .form-card {
+                padding: 2rem 1.5rem;
+                box-shadow: none;
+                border: none;
+                background: transparent;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-options {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
-    <!--! HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries !-->
-    <!--! WARNING: Respond.js doesn"t work if you view the page via file: !-->
-    <!--[if lt IE 9]>
-			<script src="https:oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
-			<script src="https:oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-		<![endif]-->
 </head>
 
 <body>
-    <!--! ================================================================ !-->
-    <!--! [Start] Main Content !-->
-    <!--! ================================================================ !-->
-    <main class="auth-minimal-wrapper">
-        <div class="auth-minimal-inner">
-            <div class="minimal-card-wrapper">
-                <div class="card mb-4 mt-5 mx-4 mx-sm-0 position-relative">
-                    <div class="wd-50 bg-white p-2 rounded-circle shadow-lg position-absolute translate-middle top-0 start-50">
-                        <img src="{{ asset('assets/images/logo-blue.png') }}" alt="" class="img-fluid">
-                    </div>
-                    <div class="card-body p-sm-5">
-                        <h2 class="fs-20 fw-bolder mb-4">Login</h2>
-                        <h4 class="fs-13 fw-bold mb-2">Login to your account</h4>
-                        <p class="fs-12 fw-medium text-muted">Thank you for get back <strong>Nelel</strong> web applications, let's access our the best recommendation for you.</p>
-                        <form method="POST" action="{{ route('login') }}" class="w-100 mt-4 pt-2">
-                            @csrf
-                            <div class="mb-4">
-                                <input type="email" name="email" class="form-control" placeholder="Email" value="{{ old('email') }}" required autofocus>
-                            </div>
-                            <div class="mb-3">
-                                <div class="position-relative">
-                                    <input type="password" name="password" id="loginPassword" class="form-control" placeholder="Password" required style="padding-right: 45px;">
-                                    <span onclick="togglePassword('loginPassword', this)" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-size:16px; z-index:5; transition: color 0.2s;" onmouseover="this.style.color='#3858f9'" onmouseout="this.style.color='#94a3b8'">
-                                        <i class="feather-eye-off"></i>
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="rememberMe" name="remember">
-                                    <label class="form-check-label c-pointer" for="rememberMe">Remember Me</label>
-                                </div>
-                                <div>
-                                    <a href="{{ route('password.request') }}" class="fs-11 text-primary">Forget password?</a>
-                                </div>
-                            </div>
-                            <div class="mt-5">
-                                <button type="submit" class="btn btn-lg btn-primary w-100">Login</button>
-                            </div>
-                        </form>
-                        <div class="w-100 mt-5 text-center mx-auto">
-                            <div class="mb-4 border-bottom position-relative"><span class="small py-1 px-3 text-uppercase text-muted bg-white position-absolute translate-middle">or</span></div>
-                            <div class="d-flex align-items-center justify-content-center gap-2">
-                                <a href="javascript:void(0);" class="btn btn-light-brand flex-fill" data-bs-toggle="tooltip" data-bs-trigger="hover" title="Login with Facebook">
-                                    <i class="feather-facebook"></i>
-                                </a>
-                                <a href="javascript:void(0);" class="btn btn-light-brand flex-fill" data-bs-toggle="tooltip" data-bs-trigger="hover" title="Login with Twitter">
-                                    <i class="feather-twitter"></i>
-                                </a>
-                                <a href="javascript:void(0);" class="btn btn-light-brand flex-fill" data-bs-toggle="tooltip" data-bs-trigger="hover" title="Login with Github">
-                                    <i class="feather-github text"></i>
-                                </a>
-                            </div>
-                        </div>
+    <header class="mobile-header">
+        <div class="brand-logo-wrap">
+            <img src="{{ asset('assets/images/warr-logo.webp') }}" alt="Warrgyizmorsch">
+            <div class="brand-logo-text">
+                <strong>Warrgyizmorsch Pvt Ltd</strong>
+                <span>Employee Portal</span>
+            </div>
+        </div>
+    </header>
 
+    <div class="login-shell">
+        <aside class="brand-panel">
+            <div class="brand-grid"></div>
+
+            <div class="brand-top">
+                <div class="brand-logo-wrap">
+                    <img src="{{ asset('assets/images/warr-logo.webp') }}" alt="Warrgyizmorsch">
+                    <div class="brand-logo-text">
+                        <strong>Warrgyizmorsch Pvt Ltd</strong>
+                        <span>Human Resource Management</span>
+                    </div>
+                </div>
+                <div class="internal-badge">
+                    <i class="feather-shield"></i>
+                    Internal Employee Portal
+                </div>
+            </div>
+
+            <div class="brand-main">
+                <h1>Manage your work,<br><em>all in one place</em></h1>
+                <p>Access your daily tasks, track attendance, view payroll, and complete performance reviews — securely from anywhere within the organisation.</p>
+
+                <div class="module-grid">
+                    <div class="module-card">
+                        <div class="module-icon"><i class="feather-check-square"></i></div>
+                        <div>
+                            <strong>Daily Tasks</strong>
+                            <span>Track assignments &amp; project work</span>
+                        </div>
+                    </div>
+                    <div class="module-card">
+                        <div class="module-icon"><i class="feather-clock"></i></div>
+                        <div>
+                            <strong>Attendance</strong>
+                            <span>Clock-in, leave &amp; holidays</span>
+                        </div>
+                    </div>
+                    <div class="module-card">
+                        <div class="module-icon"><i class="feather-credit-card"></i></div>
+                        <div>
+                            <strong>Payroll</strong>
+                            <span>Payslips &amp; compensation</span>
+                        </div>
+                    </div>
+                    <div class="module-card">
+                        <div class="module-icon"><i class="feather-star"></i></div>
+                        <div>
+                            <strong>Reviews</strong>
+                            <span>Performance &amp; appraisals</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
-    <!--! ================================================================ !-->
-    <!--! [End] Main Content !-->
-    <!--! ================================================================ !-->
-    <!--! ================================================================ !-->
-    <!--! BEGIN: Theme Customizer !-->
-    <!--! ================================================================ !-->
-    <div class="theme-customizer">
-        <div class="customizer-handle">
-            <a href="javascript:void(0);" class="cutomizer-open-trigger bg-primary">
-                <i class="feather-settings"></i>
-            </a>
-        </div>
-        <div class="customizer-sidebar-wrapper">
-            <div class="customizer-sidebar-header px-4 ht-80 border-bottom d-flex align-items-center justify-content-between">
-                <h5 class="mb-0">Theme Settings</h5>
-                <a href="javascript:void(0);" class="cutomizer-close-trigger d-flex">
-                    <i class="feather-x"></i>
-                </a>
+
+            <div class="brand-bottom">
+                &copy; {{ date('Y') }} Warrgyizmorsch Pvt Ltd. Authorised personnel only.
             </div>
-            <div class="customizer-sidebar-body position-relative p-4" data-scrollbar-target="#psScrollbarInit">
-                <!--! BEGIN: [Skins] !-->
-                <div class="position-relative px-3 pb-3 pt-4 mt-3 mb-5 border border-gray-2 theme-options-set">
-                    <label class="py-1 px-2 fs-8 fw-bold text-uppercase text-muted text-spacing-2 bg-white border border-gray-2 position-absolute rounded-2 options-label" style="top: -12px">Skins</label>
-                    <div class="row g-2 theme-options-items app-skin" id="appSkinList">
-                        <div class="col-6 text-center position-relative single-option light-button active">
-                            <input type="radio" class="btn-check" id="app-skin-light" name="app-skin" value="1" data-app-skin="app-skin-light">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-skin-light">Light</label>
-                        </div>
-                        <div class="col-6 text-center position-relative single-option dark-button">
-                            <input type="radio" class="btn-check" id="app-skin-dark" name="app-skin" value="2" data-app-skin="app-skin-dark">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-skin-dark">Dark</label>
-                        </div>
+        </aside>
+
+        <main class="form-panel">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <h2>Welcome back</h2>
+                    <p>Sign in with your company email to access the HRM portal</p>
+                </div>
+
+                @if (session('status'))
+                    <div class="form-alert form-alert-success">
+                        <i class="feather-check-circle"></i>
+                        <span>{{ session('status') }}</span>
                     </div>
-                </div>
-                <!--! END: [Skins] !-->
-                <!--! BEGIN: [Typography] !-->
-                <div class="position-relative px-3 pb-3 pt-4 mt-3 mb-0 border border-gray-2 theme-options-set">
-                    <label class="py-1 px-2 fs-8 fw-bold text-uppercase text-muted text-spacing-2 bg-white border border-gray-2 position-absolute rounded-2 options-label" style="top: -12px">Typography</label>
-                    <div class="row g-2 theme-options-items font-family" id="fontFamilyList">
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-lato" name="font-family" value="1" data-font-family="app-font-family-lato">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-lato">Lato</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-rubik" name="font-family" value="2" data-font-family="app-font-family-rubik">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-rubik">Rubik</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-inter" name="font-family" value="3" data-font-family="app-font-family-inter" checked>
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-inter">Inter</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-cinzel" name="font-family" value="4" data-font-family="app-font-family-cinzel">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-cinzel">Cinzel</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-nunito" name="font-family" value="6" data-font-family="app-font-family-nunito">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-nunito">Nunito</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-roboto" name="font-family" value="7" data-font-family="app-font-family-roboto">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-roboto">Roboto</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-ubuntu" name="font-family" value="8" data-font-family="app-font-family-ubuntu">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-ubuntu">Ubuntu</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-poppins" name="font-family" value="9" data-font-family="app-font-family-poppins">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-poppins">Poppins</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-raleway" name="font-family" value="10" data-font-family="app-font-family-raleway">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-raleway">Raleway</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-system-ui" name="font-family" value="11" data-font-family="app-font-family-system-ui">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-system-ui">System UI</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-noto-sans" name="font-family" value="12" data-font-family="app-font-family-noto-sans">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-noto-sans">Noto Sans</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-fira-sans" name="font-family" value="13" data-font-family="app-font-family-fira-sans">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-fira-sans">Fira Sans</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-work-sans" name="font-family" value="14" data-font-family="app-font-family-work-sans">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-work-sans">Work Sans</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-open-sans" name="font-family" value="15" data-font-family="app-font-family-open-sans">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-open-sans">Open Sans</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-maven-pro" name="font-family" value="16" data-font-family="app-font-family-maven-pro">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-maven-pro">Maven Pro</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-quicksand" name="font-family" value="17" data-font-family="app-font-family-quicksand">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-quicksand">Quicksand</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-montserrat" name="font-family" value="18" data-font-family="app-font-family-montserrat">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-montserrat">Montserrat</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-josefin-sans" name="font-family" value="19" data-font-family="app-font-family-josefin-sans">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-josefin-sans">Josefin Sans</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-ibm-plex-sans" name="font-family" value="20" data-font-family="app-font-family-ibm-plex-sans">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-ibm-plex-sans">IBM Plex Sans</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-source-sans-pro" name="font-family" value="5" data-font-family="app-font-family-source-sans-pro">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-source-sans-pro">Source Sans Pro</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-montserrat-alt" name="font-family" value="21" data-font-family="app-font-family-montserrat-alt">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-montserrat-alt">Montserrat Alt</label>
-                        </div>
-                        <div class="col-6 text-center single-option">
-                            <input type="radio" class="btn-check" id="app-font-family-roboto-slab" name="font-family" value="22" data-font-family="app-font-family-roboto-slab">
-                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-font-family-roboto-slab">Roboto Slab</label>
-                        </div>
+                @endif
+
+                @if ($errors->any())
+                    <div class="form-alert form-alert-danger">
+                        <i class="feather-alert-circle"></i>
+                        <span>{{ $errors->first() }}</span>
                     </div>
+                @endif
+
+                <form method="POST" action="{{ route('login') }}" novalidate id="loginForm">
+                    @csrf
+
+                    <div class="form-field">
+                        <label for="email">Company email</label>
+                        <div class="input-group">
+                            <i class="feather-mail field-icon"></i>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="form-input @error('email') is-invalid @enderror"
+                                placeholder="name@warrgyizmorsch.com"
+                                value="{{ old('email') }}"
+                                required
+                                autofocus
+                                autocomplete="email">
+                        </div>
+                        @error('email')
+                            <div class="field-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-field">
+                        <label for="loginPassword">Password</label>
+                        <div class="input-group">
+                            <i class="feather-lock field-icon"></i>
+                            <input
+                                type="password"
+                                id="loginPassword"
+                                name="password"
+                                class="form-input @error('password') is-invalid @enderror"
+                                placeholder="Enter your password"
+                                required
+                                autocomplete="current-password">
+                            <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)" aria-label="Toggle password visibility">
+                                <i class="feather-eye-off"></i>
+                            </button>
+                        </div>
+                        @error('password')
+                            <div class="field-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-options">
+                        <label class="form-remember">
+                            <input type="checkbox" id="rememberMe" name="remember" {{ old('remember') ? 'checked' : '' }}>
+                            <span>Keep me signed in</span>
+                        </label>
+                        <a href="{{ route('password.request') }}" class="form-forgot">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="form-submit" id="loginBtn">
+                        <span class="spinner"></span>
+                        <span class="btn-text">Sign in to portal</span>
+                    </button>
+                </form>
+
+                <div class="form-footer">
+                    <p>&copy; {{ date('Y') }} Warrgyizmorsch Pvt Ltd. All rights reserved.</p>
+                    <a href="https://warrgyizmorsch.com/" target="_blank" rel="noopener">warrgyizmorsch.com</a>
                 </div>
-                <!--! END: [Typography] !-->
+
+                <div class="secure-note">
+                    <i class="feather-lock"></i>
+                    Secure connection · For authorised employees only
+                </div>
             </div>
-            <div class="customizer-sidebar-footer px-4 ht-60 border-top d-flex align-items-center gap-2">
-                <div class="flex-fill w-50">
-                    <a href="javascript:void(0);" class="btn btn-danger" data-style="reset-all-common-style">Reset</a>
-                </div>
-                <div class="flex-fill w-50">
-                    <a href="javascript:void(0);" class="btn btn-primary">Download</a>
-                </div>
-            </div>
-        </div>
+        </main>
     </div>
-    <!--! ================================================================ !-->
-    <!--! [End] Theme Customizer !-->
-    <!--! ================================================================ !-->
-    <!--! ================================================================ !-->
-    <!--! Footer Script !-->
-    <!--! ================================================================ !-->
-    <!--! BEGIN: Vendors JS !-->
+
     <script src="{{ asset('assets/vendors/js/vendors.min.js') }}"></script>
-    <!-- vendors.min.js {always must need to be top} -->
-    <!--! END: Vendors JS !-->
-    <!--! BEGIN: Apps Init  !-->
-    <script src="{{ asset('assets/js/common-init.min.js') }}"></script>
-    <!--! END: Apps Init !-->
-    <!--! BEGIN: Theme Customizer  !-->
-    <script src="{{ asset('assets/js/theme-customizer-init.min.js') }}"></script>
-    <!--! END: Theme Customizer !-->
     <script>
         function togglePassword(inputId, el) {
             const input = document.getElementById(inputId);
             const icon = el.querySelector('i');
-            if (input.type === 'password') { input.type = 'text'; icon.className = 'feather-eye'; }
-            else { input.type = 'password'; icon.className = 'feather-eye-off'; }
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'feather-eye';
+            } else {
+                input.type = 'password';
+                icon.className = 'feather-eye-off';
+            }
         }
+
+        document.getElementById('loginForm').addEventListener('submit', function () {
+            const btn = document.getElementById('loginBtn');
+            btn.classList.add('is-loading');
+            btn.disabled = true;
+        });
     </script>
 </body>
 
