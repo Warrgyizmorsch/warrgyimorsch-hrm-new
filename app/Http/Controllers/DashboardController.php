@@ -515,6 +515,8 @@ class DashboardController extends Controller
             $totalJourney = 'N/A';
         }
 
+        $canViewPayrollAnalytics = $this->canViewPayrollAnalytics();
+
         if (!$isAdmin) {
             return view('userDashboard', compact(
                 'totalEmployees',
@@ -562,7 +564,8 @@ class DashboardController extends Controller
                 'totalUtilizedLeave',
                 'currentMonthUtilizedLeave',
                 'currentMonthAllottedLeave',
-                'totalJourney'
+                'totalJourney',
+                'canViewPayrollAnalytics'
             ));
         }
 
@@ -606,8 +609,31 @@ class DashboardController extends Controller
             'todayLateEmployees',
             'employee',
             'celebration',
-            'announcements'
+            'announcements',
+            'canViewPayrollAnalytics'
         ));
+    }
+
+    private function canViewPayrollAnalytics(): bool
+    {
+        $allowedRoles = [
+            'super_admin',
+            'manager',
+            'hr_executive',
+            'hr_intern',
+            'business_operation_head',
+        ];
+
+        $role = str_replace(' ', '_', strtolower(trim((string) (auth()->user()->role ?? ''))));
+
+        return in_array($role, $allowedRoles, true);
+    }
+
+    private function authorizePayrollAnalytics(): void
+    {
+        if (!$this->canViewPayrollAnalytics()) {
+            abort(403, 'Unauthorized access');
+        }
     }
 
     private function getLeaveReport(Request $request)
@@ -1179,6 +1205,8 @@ class DashboardController extends Controller
      */
     public function getFullYearBreakdown(Request $request)
     {
+        $this->authorizePayrollAnalytics();
+
         $year = $request->get('year', date('Y'));
 
         $data = [];
@@ -1204,6 +1232,8 @@ class DashboardController extends Controller
 
     public function getMonthlySummary(Request $request)
     {
+        $this->authorizePayrollAnalytics();
+
         $selectedMonth = $request->get('month', Carbon::now()->format('Y-m'));
         $selectedCarbon = Carbon::parse($selectedMonth . '-01');
 
@@ -1252,8 +1282,11 @@ class DashboardController extends Controller
 
     public function getChartData(Request $request)
     {
+        $this->authorizePayrollAnalytics();
+
         $range = (int) $request->get('range', 6);
         $chartMonths = [];
+        $chartTotal = [];
         $chartPaid = [];
         $chartPending = [];
         $chartRejected = [];
@@ -1276,20 +1309,92 @@ class DashboardController extends Controller
             'series' => [
                 [
                     'name' => 'Total Payroll',
-                    'type' => 'area',
                     'data' => $chartTotal
                 ],
                 [
-                    'name' => 'Completed',
-                    'type' => 'bar',
+                    'name' => 'Paid',
                     'data' => $chartPaid
                 ],
                 [
                     'name' => 'Pending',
-                    'type' => 'bar',
                     'data' => $chartPending
                 ]
             ]
         ]);
+    }
+
+    public function fetchLeaveReport(Request $request)
+    {
+        $leaveReport = $this->getLeaveReport($request);
+
+        $employeeLabel = 'All Employees';
+        if ($request->employee_id) {
+            $employee = Employee::active()->find($request->employee_id);
+            $employeeLabel = $employee?->name ?? 'All Employees';
+        }
+
+        return response()->json([
+            'success' => true,
+            'html' => view('dashboard.partials.leave-report-rows', compact('leaveReport'))->render(),
+            'employee_label' => $employeeLabel,
+            'range_label' => $this->getLeaveRangeLabel($request),
+        ]);
+    }
+
+    private function getLeaveRangeLabel(Request $request): string
+    {
+        if ($request->leave_from && $request->leave_to) {
+            return Carbon::parse($request->leave_from)->format('d M Y')
+                . ' → '
+                . Carbon::parse($request->leave_to)->format('d M Y');
+        }
+
+        return match ($request->leave_filter) {
+            'week' => 'Last Week',
+            'month' => 'Last Month',
+            '3month' => 'Last 3 Months',
+            '6month' => 'Last 6 Months',
+            'year' => 'Last 1 Year',
+            default => 'Current Month',
+        };
+    }
+
+    public function fetchLateArrivals(Request $request)
+    {
+        $todayLateEmployees = $this->getLateEmployeesData();
+
+        $employeeLabel = 'All Employees';
+        if ($request->late_employee) {
+            $employee = Employee::active()->find($request->late_employee);
+            $employeeLabel = $employee?->name ?? 'All Employees';
+        }
+
+        return response()->json([
+            'success' => true,
+            'html' => view('dashboard.partials.late-arrivals-list', compact('todayLateEmployees'))->render(),
+            'employee_label' => $employeeLabel,
+            'range_label' => $this->getLateRangeLabel($request),
+            'count' => $todayLateEmployees->count(),
+        ]);
+    }
+
+    private function getLateRangeLabel(Request $request): string
+    {
+        if ($request->late_range === 'custom' && $request->late_custom_start && $request->late_custom_end) {
+            return Carbon::parse($request->late_custom_start)->format('d M Y')
+                . ' → '
+                . Carbon::parse($request->late_custom_end)->format('d M Y');
+        }
+
+        return match ($request->get('late_range', 'today')) {
+            'today' => 'Today',
+            'yesterday' => 'Yesterday',
+            'week' => 'Last Week',
+            'month' => 'Current Month',
+            'last_month' => 'Last Month',
+            '3months' => '3 Months',
+            'year' => '1 Year',
+            default => 'Today',
+        };
     }
 }

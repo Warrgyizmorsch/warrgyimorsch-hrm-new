@@ -13,7 +13,8 @@
         </div>
         <div class="page-header-right">
             <button id="openCreateReviewBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReviewModal" data-mode="create">
-                <i class="fa fa-plus me-1"></i> Create Review
+                <i class="fa fa-plus me-1"></i>
+                {{ ($isTeamLeader && !$isAdmin) ? 'Create Team Review' : 'Create Review' }}
             </button>
         </div>
     </div>
@@ -100,6 +101,11 @@
                                 @if($isAdmin || $isTeamLeader)
                                     <div class="{{ $columnClass }}">
                                         <label class="fw-bold mb-1">Select Employee</label>
+                                        @if($isTeamLeader && !$isAdmin)
+                                            <div class="small text-muted mb-1">
+                                                Department employees only: {{ $employeeRecord->department ?? 'N/A' }}
+                                            </div>
+                                        @endif
                                         <div class="review-select" data-select>
                                             <input type="hidden" name="user_id" value="{{ old('user_id') }}" required>
                                             <button type="button" class="review-select-trigger" data-select-trigger aria-expanded="false">
@@ -293,7 +299,9 @@
                     </select>
                 </form>
                 <span class="badge bg-soft-primary text-primary">
-                    @if($canViewReviewAnalytics)
+                    @if($isTeamLeader && !$isAdmin)
+                        Team leader review mode: {{ $employeeRecord->department ?? 'N/A' }}
+                    @elseif($canViewReviewAnalytics)
                         {{ $showAllReviewMonths ? 'All months included' : 'Employee of the month' }}
                     @else
                         {{ $showAllReviewMonths ? 'My all-time reviews' : 'My monthly reviews' }}

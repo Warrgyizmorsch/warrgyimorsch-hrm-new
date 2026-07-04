@@ -1,384 +1,259 @@
 @extends('layouts.app')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/attendance-management.css') }}?v={{ filemtime(public_path('assets/css/attendance-management.css')) ?: time() }}">
+@endpush
+
 @section('content')
     @php
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
         $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $importDropdown = $isAdmin ? '
+            <div class="dropdown">
+                <button type="button" class="zoho-icon-btn dropdown-toggle" data-bs-toggle="dropdown" title="Import">
+                    <i class="feather-upload"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end attendance-import-menu">
+                    <form action="' . route('payroll.attendance.import') . '" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="' . csrf_token() . '">
+                        <label class="form-label fw-bold small text-dark mb-2">Import Excel/CSV</label>
+                        <input type="file" class="form-control mb-3" name="import_file" accept=".xlsx,.xls,.csv" required>
+                        <button type="submit" class="zoho-btn-primary w-100">Upload & Calculate</button>
+                    </form>
+                </div>
+            </div>' : '';
+        $addButton = $isAdmin ? '<a href="' . route('payroll.attendance.add') . '" class="zoho-btn-primary" title="Add attendance"><i class="feather-plus"></i> Add</a>' : '';
+        $attendanceHeaderActions = '
+            <a href="' . route('payroll.attendace.employee') . '" class="zoho-btn-outline">
+                <i class="feather-users"></i> Employee Wise
+            </a>
+            ' . $importDropdown . '
+            <button type="button" class="zoho-icon-btn" onclick="exportAttendance()" title="Export">
+                <i class="feather-download"></i>
+            </button>
+            ' . $addButton;
     @endphp
-    <div class="container-fluid px-0" style="background: #f8fafc; min-height: 100vh; font-family: 'Inter', sans-serif;">
-        <!-- Main Content Card -->
-        <div class="px-2 px-md-4 pt-3 pt-md-4">
-            <div class="card border-0 shadow-sm" style="border-radius: 12px; background: white;">
-                <div class="card-header bg-white border-bottom py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3"
-                    style="border-radius: 12px 12px 0 0;">
-                    <div class="d-flex flex-column">
-                        <h5 class="fw-bold mb-0" style="color: #334155;">Attendance Management</h5>
-                        <nav aria-label="breadcrumb">
-                            <ol class="breadcrumb mb-0">
-                                <li class="breadcrumb-item"><a href="#"
-                                        class="text-decoration-none text-muted small">Home</a></li>
-                                <li class="breadcrumb-item active small fw-bold" style="color: #3858f9;"
-                                    aria-current="page">Attendance List</li>
-                            </ol>
-                        </nav>
-                    </div>
-                    <div
-                        class="d-flex flex-column flex-md-row align-items-center gap-2 ms-md-auto w-100 w-md-auto justify-content-end">
-                        <!-- Premium Search Bar -->
-                        <div class="flex-grow-1 flex-md-grow-0" style="min-width: 250px; max-width: 320px;">
-                            <div class="search-group d-flex align-items-center px-3"
-                                style="height: 40px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; transition: all 0.3s ease;">
-                                <i data-feather="search" class="text-muted me-2" style="width: 16px; height: 16px;"></i>
-                                <input type="text" id="tableSearch" onkeyup="searchTable()" placeholder="Search records..."
-                                    style="border: none; background: transparent; outline: none; width: 100%; font-size: 13px; font-weight: 500; color: #334155;">
-                            </div>
-                        </div>
 
-                        <!-- Action Buttons -->
-                        <div class="d-flex align-items-center gap-2">
-                                <a href="{{ route('payroll.attendace.employee') }}"
-                                    class="btn btn-soft-primary btn-sm fw-bold d-flex align-items-center px-3"
-                                    style="height: 40px; border-radius: 10px; border: 1px solid rgba(56, 88, 249, 0.2) !important; white-space: nowrap;">
-                                    <span class="d-none d-sm-inline">EMPLOYEE WISE</span>
-                                    <i data-feather="users" class="ms-sm-2"></i>
-                                </a>
+    <div class="zoho-page-shell attendance-page">
+        @include('layouts.partials.zoho-people-list-header', [
+            'title' => 'Attendance Management',
+            'viewLabel' => 'Attendance List',
+            'scopeLinks' => [
+                ['label' => 'Home', 'url' => route('dashboard'), 'active' => false],
+                ['label' => 'Attendance List', 'url' => route('payroll.attendance'), 'active' => true],
+            ],
+            'primaryAction' => $attendanceHeaderActions,
+        ])
 
-                                @if($isAdmin)
-                                    <div class="dropdown">
-                                        <button
-                                            class="btn btn-soft-secondary btn-sm fw-bold d-flex align-items-center px-3 dropdown-toggle"
-                                            type="button" data-bs-toggle="dropdown"
-                                            style="height: 40px; border-radius: 10px; border: 1px solid rgba(100, 116, 139, 0.2) !important;">
-                                            <span class="d-none d-sm-inline">IMPORT</span>
-                                            <i class="fas fa-upload ms-2"></i>
-                                        </button>
-                                        <div class="dropdown-menu dropdown-menu-end p-4 shadow-lg border-0"
-                                            style="width: 320px; border-radius: 15px;">
-                                            <form action="{{ route('payroll.attendance.import') }}" method="POST"
-                                                enctype="multipart/form-data">
-                                                @csrf
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-bold small text-dark mb-2">Import Excel/CSV
-                                                        File</label>
-                                                    <input type="file" class="form-control" name="import_file"
-                                                        accept=".xlsx, .xls, .csv" required style="border-radius: 8px;">
-                                                </div>
-                                                <button type="submit" class="btn btn-primary w-100 fw-bold py-2"
-                                                    style="border-radius: 8px;">
-                                                    UPLOAD & CALCULATE
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <div class="d-flex gap-1">
-                                    <a href="javascript:void(0);" class="btn btn-icon btn-soft-info"
-                                        onclick="exportAttendance()"
-                                        style="height: 40px; width: 40px; border-radius: 10px; border: 1px solid rgba(13, 202, 240, 0.1) !important;">
-                                        <i data-feather="download"></i>
-                                    </a>
-                                    @if($isAdmin)
-                                        <a href="{{ route('payroll.attendance.add') }}" class="btn btn-icon btn-primary shadow-sm"
-                                            style="height: 40px; width: 40px; border-radius: 10px;">
-                                            <i data-feather="plus"></i>
-                                        </a>
-                                    @endif
-                                </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Always Visible Filter Section -->
-                <div id="filterSection">
-                    <div class="card-body border-bottom bg-light bg-opacity-10 p-4">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted mb-2">Quick Range</label>
-                                <div class="dropdown">
-                                    <button class="wghrm-custom-select-btn fw-bold dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" id="quickRangeBtn">
-                                        @php
-                                            $range = request('range');
-                                            $label = 'All Time';
-                                            if ($range == 'today')
-                                                $label = 'Today';
-                                            elseif ($range == 'yesterday')
-                                                $label = 'Yesterday';
-                                            elseif ($range == 'week')
-                                                $label = 'This Week';
-                                            elseif ($range == 'month')
-                                                $label = 'This Month';
-                                            elseif ($range == 'lastMonth')
-                                                $label = 'Last Month';
-                                            elseif ($range == '3months')
-                                                $label = 'Last 3 Months';
-                                            elseif ($range == '6months')
-                                                $label = 'Last 6 Months';
-                                            elseif ($range == '1year')
-                                                $label = 'Last 1 Year';
-                                            elseif ($range == 'custom')
-                                                $label = 'Custom Date';
-                                        @endphp
-                                        {{ $label }}
-                                    </button>
-                                    <div class="dropdown-menu wghrm-custom-dropdown-menu">
-                                        <div class="wghrm-custom-search-box">
-                                            <input type="text" class="wghrm-custom-search-input"
-                                                placeholder="Search range..." onkeyup="wghrmFilterItems(this)">
-                                        </div>
-                                        <div class="wghrm-items-container">
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ !$range ? 'active' : '' }}"
-                                                href="javascript:void(0);" onclick="selectQuickRange('', 'All Time')">All
-                                                Time</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'today' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('today', 'Today')">Today</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'yesterday' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('yesterday', 'Yesterday')">Yesterday</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'week' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('week', 'This Week')">This Week</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'month' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('month', 'This Month')">This Month</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'lastMonth' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('lastMonth', 'Last Month')">Last Month</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '3months' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('3months', 'Last 3 Months')">Last 3 Months</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '6months' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('6months', 'Last 6 Months')">Last 6 Months</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '1year' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('1year', 'Last 1 Year')">Last 1 Year</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'custom' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('custom', 'Custom Date')">Custom Date</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <input type="hidden" id="quickRange" value="{{ request('range') }}">
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold text-muted mb-2">Employee</label>
-                                <div class="dropdown">
-                                    <button class="wghrm-custom-select-btn fw-bold dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeSelectBtn">
-                                        @php
-                                            $selectedEmpId = request('employee_id');
-                                            $selectedEmp = $employees->firstWhere('id', $selectedEmpId);
-                                        @endphp
-                                        {{ $selectedEmp ? $selectedEmp->name : 'All Employees' }}
-                                    </button>
-                                    <div class="dropdown-menu wghrm-custom-dropdown-menu">
-                                        <div class="wghrm-custom-search-box">
-                                            <input type="text" class="wghrm-custom-search-input"
-                                                placeholder="Search employee..." onkeyup="wghrmFilterItems(this)">
-                                        </div>
-                                        <div class="wghrm-items-container">
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ !$selectedEmpId ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectEmployee('', 'All Employees')">All Employees</a>
-                                            @foreach ($employees as $emp)
-                                                <a class="dropdown-item wghrm-custom-dropdown-item {{ $selectedEmpId == $emp->id ? 'active' : '' }}"
-                                                    href="javascript:void(0);"
-                                                    onclick="selectEmployee('{{ $emp->id }}', '{{ $emp->name }}')">
-                                                    {{ $emp->name }}
-                                                </a>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                                <input type="hidden" id="selectedEmployeeId" value="{{ request('employee_id') }}">
-                            </div>
-
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted mb-2">Start Date</label>
-                                <input type="date" id="startDate"
-                                    class="form-control border-0 bg-white py-2 px-3 shadow-sm fw-bold"
-                                    value="{{ request('start_date') }}" style="border-radius: 10px; height: 44px;">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted mb-2">End Date</label>
-                                <input type="date" id="endDate"
-                                    class="form-control border-0 bg-white py-2 px-3 shadow-sm fw-bold"
-                                    value="{{ request('end_date') }}" style="border-radius: 10px; height: 44px;">
-                            </div>
-                            <div class="col-md-3 d-flex justify-content-around">
-                                <button type="button"
-                                    class="btn btn-primary w-50 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
-                                    onclick="applyFilters()"
-                                    style="background: #3858f9; border: none; height: 44px; border-radius: 10px;">
-                                    <i data-feather="search"></i> APPLY
-                                </button>
-                                <a href="{{ route('payroll.attendance') }}"
-                                    class="btn btn-soft-danger fw-bold d-flex align-items-center justify-content-center"
-                                    style="border-radius: 8px; height: 44px; width: 80px; font-size: 13px;">
-                                RESET</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                @if ($message = Session::get('success'))
-                    <div class="alert alert-success border-0 shadow-sm mb-4 d-flex align-items-center py-3" role="alert"
-                        style="border-radius: 12px; background: #ecfdf5; color: #065f46;">
-                        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
-                        <div class="fw-bold">{{ $message }}</div>
-                        <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
-
-                <div id="attendanceTableContainer">
-                    <!-- Desktop Table View -->
-                    <div class="d-none d-lg-block">
-                    <!-- SHOW ENTRIES -->
-                    <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
-                        <span class="text-muted small fw-bold text-uppercase">Show</span>
+        <div class="main-content zoho-module-content">
+            {{-- Filters --}}
+            <div class="attendance-filter-panel" id="filterSection">
+                <div class="attendance-filter-grid">
+                    <div class="attendance-filter-field">
+                        <label>Quick Range</label>
                         <div class="dropdown">
                             <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
-                                data-bs-toggle="dropdown" id="showEntriesBtn"
-                                style="width: 80px; height: 44px; padding: 0 15px;">
-                                {{ $perPage ?? 20 }}
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" id="quickRangeBtn">
+                                @php
+                                    $range = request('range');
+                                    $label = 'All Time';
+                                    if ($range == 'today') $label = 'Today';
+                                    elseif ($range == 'yesterday') $label = 'Yesterday';
+                                    elseif ($range == 'week') $label = 'This Week';
+                                    elseif ($range == 'month') $label = 'This Month';
+                                    elseif ($range == 'lastMonth') $label = 'Last Month';
+                                    elseif ($range == '3months') $label = 'Last 3 Months';
+                                    elseif ($range == '6months') $label = 'Last 6 Months';
+                                    elseif ($range == '1year') $label = 'Last 1 Year';
+                                    elseif ($range == 'custom') $label = 'Custom Date';
+                                @endphp
+                                {{ $label }}
                             </button>
-                            <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
-                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
-                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
-                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu">
+                                <div class="wghrm-custom-search-box">
+                                    <input type="text" class="wghrm-custom-search-input" placeholder="Search range..." onkeyup="wghrmFilterItems(this)">
+                                </div>
+                                <div class="wghrm-items-container">
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ !$range ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('', 'All Time')">All Time</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'today' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('today', 'Today')">Today</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'yesterday' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('yesterday', 'Yesterday')">Yesterday</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'week' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('week', 'This Week')">This Week</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'month' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('month', 'This Month')">This Month</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'lastMonth' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('lastMonth', 'Last Month')">Last Month</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '3months' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('3months', 'Last 3 Months')">Last 3 Months</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '6months' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('6months', 'Last 6 Months')">Last 6 Months</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '1year' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('1year', 'Last 1 Year')">Last 1 Year</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'custom' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('custom', 'Custom Date')">Custom Date</a>
+                                </div>
                             </div>
                         </div>
-                        <span class="text-muted small fw-bold text-uppercase">entries</span>
+                        <input type="hidden" id="quickRange" value="{{ request('range') }}">
                     </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <thead style="background: #ffffff; border-bottom: 1px solid #f1f5f9;">
-                                <tr>
-                                    <th class="ps-4 py-3 text-muted small fw-bold text-uppercase"
-                                        style="letter-spacing: 0.5px; width: 150px;">DATE</th>
-                                    <th class="py-3 text-muted small fw-bold text-uppercase" style="letter-spacing: 0.5px;">
-                                        ATTENDANCE HISTORY</th>
-                                    <th class="pe-4 py-3 text-muted small fw-bold text-uppercase text-end"
-                                        style="width: 150px; letter-spacing: 0.5px;">ACTION</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($attendance as $att)
-                                    <tr class="border-bottom hover-row">
-                                        <td class="ps-4 py-4 text-dark fw-bold">
-                                            {{ \Carbon\Carbon::parse($att->attendance_date)->format('d-m-Y') }}
-                                        </td>
-                                        <td>
-                                            @php $date = \Carbon\Carbon::parse($att->attendance_date)->format('Y-m-d'); @endphp
-                                            @if(request('employee_id'))
-                                                <div class="d-flex align-items-center gap-3">
-                                                    @php
-                                                        $statusClass = [
-                                                            'present' => 'bg-soft-success text-success',
-                                                            'absent' => 'bg-soft-danger text-danger',
-                                                            'leave' => 'bg-soft-danger text-danger',
-                                                            'half_day' => 'bg-soft-warning text-warning',
-                                                            'wfh' => 'bg-soft-purple text-purple',
-                                                            'overtime' => 'bg-soft-primary text-primary'
-                                                        ][$att->status] ?? 'bg-soft-secondary text-secondary';
-                                                    @endphp
-                                                    <span class="badge {{ $statusClass }} fw-bold text-uppercase px-3 py-2" style="font-size: 11px; border-radius: 6px;">{{ str_replace('_', ' ', $att->status) }}</span>
-                                                    
-                                                    <div class="d-flex align-items-center gap-4">
-                                                        <div class="text-center">
-                                                            <div class="small text-muted fw-bold text-uppercase" style="font-size: 9px;">Check In</div>
-                                                            <div class="fw-bold text-dark" style="font-size: 13px;">{{ $att->check_in ? date('h:i A', strtotime($att->check_in)) : '--:--' }}</div>
-                                                        </div>
-                                                        <div class="text-center">
-                                                            <div class="small text-muted fw-bold text-uppercase" style="font-size: 9px;">Check Out</div>
-                                                            <div class="fw-bold text-dark" style="font-size: 13px;">{{ $att->check_out ? date('h:i A', strtotime($att->check_out)) : '--:--' }}</div>
-                                                        </div>
-                                                        <div class="text-center">
-                                                            <div class="small text-muted fw-bold text-uppercase" style="font-size: 9px;">Work Hours</div>
-                                                            <div class="fw-bold text-primary" style="font-size: 13px;">{{ number_format($att->total_hours, 2) }} hrs</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            @else
-                                                <div class="d-flex flex-wrap gap-2">
-                                                    <div class="ref-badge badge-green clickable" title="View Present"
-                                                        onclick="openAttendanceDetails('{{ $date }}', 'present')">
-                                                        Present: <span class="fw-bold ms-1">{{ $att->present_count }}</span>
-                                                    </div>
-                                                    <div class="ref-badge badge-blue clickable" title="View Overtime"
-                                                        onclick="openAttendanceDetails('{{ $date }}', 'overtime')">
-                                                        Overtime: <span class="fw-bold ms-1">{{ $att->overtime_count }}</span>
-                                                    </div>
-                                                    <div class="ref-badge badge-yellow clickable" title="View Half Day"
-                                                        onclick="openAttendanceDetails('{{ $date }}', 'half_day')">
-                                                        Half Day: <span class="fw-bold ms-1">{{ $att->half_day_count }}</span>
-                                                    </div>
-                                                    <div class="ref-badge badge-red clickable" title="View Leave"
-                                                        onclick="openAttendanceDetails('{{ $date }}', 'leave')">
-                                                        Leave: <span class="fw-bold ms-1">{{ $att->leave_count }}</span>
-                                                    </div>
-                                                    <div class="ref-badge badge-red clickable" title="View Absent"
-                                                        onclick="openAttendanceDetails('{{ $date }}', 'absent')">
-                                                        Absent: <span class="fw-bold ms-1">{{ $att->absent_count }}</span>
-                                                    </div>
-                                                    <div class="ref-badge badge-purple clickable" title="View Present"
-                                                        onclick="openAttendanceDetails('{{ $date }}', 'wfh')">
-                                                        WFH: <span class="fw-bold ms-1">{{ $att->wfh_count }}</span>
-                                                    </div>
-                                                    <div class="ref-badge badge-purple clickable" title="View Present"
-                                                        onclick="openAttendanceDetails('{{ $date }}', 'early_out')">
-                                                        Early Out: <span class="fw-bold ms-1">{{ $att->early_count }}</span>
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        </td>
-                                        <td class="pe-4 text-end">
-                                            <div class="d-flex justify-content-end gap-2">
-                                                @if($isAdmin)
-                                                    <a href="{{ route('payroll.attendance.editByDate', \Carbon\Carbon::parse($att->attendance_date)->format('Y-m-d')) }} "
-                                                        class="btn btn-icon btn-soft-primary rounded-circle" title="Edit"
-                                                        style="width: 34px; height: 34px; border: 1px solid rgba(56, 88, 249, 0.1) !important;">
-                                                        <i data-feather="edit" style="width: 14px; height: 14px;"></i>
-                                                    </a>
-                                                @endif
-                                                <a href="javascript:void(0);"
-                                                    class="btn btn-icon btn-soft-primary rounded-circle"
-                                                    onclick="openAttendanceDetails('{{ $date }}')" title="View"
-                                                    style="width: 34px; height: 34px; border: 1px solid rgba(56, 88, 249, 0.1) !important;">
-                                                    <i data-feather="eye" style="width: 14px; height: 14px;"></i>
-                                                </a>
-                                                @if($isAdmin)
-                                                    <a href="javascript:void(0);"
-                                                        class="btn btn-icon btn-soft-danger rounded-circle"
-                                                        onclick="deleteAttendanceByDate('{{ $date }}')" title="Delete"
-                                                        style="width: 34px; height: 34px; border: 1px solid rgba(239, 68, 68, 0.1) !important;">
-                                                        <i data-feather="trash-2" style="width: 14px; height: 14px;"></i>
-                                                    </a>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="3" class="text-center py-5">
-                                            <div class="py-5">
-                                                <i class="bi bi-calendar-x text-muted"
-                                                    style="font-size: 3rem; opacity: 0.2;"></i>
-                                                <p class="text-muted mt-3 fw-bold">No Attendance Records Found</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                    <div class="attendance-filter-field">
+                        <label>Employee</label>
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeSelectBtn">
+                                @php
+                                    $selectedEmpId = request('employee_id');
+                                    $selectedEmp = $employees->firstWhere('id', $selectedEmpId);
+                                @endphp
+                                {{ $selectedEmp ? $selectedEmp->name : 'All Employees' }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu">
+                                <div class="wghrm-custom-search-box">
+                                    <input type="text" class="wghrm-custom-search-input" placeholder="Search employee..." onkeyup="wghrmFilterItems(this)">
+                                </div>
+                                <div class="wghrm-items-container">
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ !$selectedEmpId ? 'active' : '' }}" href="javascript:void(0);" onclick="selectEmployee('', 'All Employees')">All Employees</a>
+                                    @foreach ($employees as $emp)
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ $selectedEmpId == $emp->id ? 'active' : '' }}"
+                                            href="javascript:void(0);" onclick="selectEmployee('{{ $emp->id }}', '{{ addslashes($emp->name) }}')">{{ $emp->name }}</a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="selectedEmployeeId" value="{{ request('employee_id') }}">
+                    </div>
+                    <div class="attendance-filter-field">
+                        <label>Start Date</label>
+                        <input type="date" id="startDate" class="form-control" value="{{ request('start_date') }}">
+                    </div>
+                    <div class="attendance-filter-field">
+                        <label>End Date</label>
+                        <input type="date" id="endDate" class="form-control" value="{{ request('end_date') }}">
+                    </div>
+                    <div class="attendance-filter-actions">
+                        <button type="button" class="zoho-btn-primary" onclick="applyFilters()">
+                            <i class="feather-search"></i> Apply
+                        </button>
+                        <a href="{{ route('payroll.attendance') }}" class="zoho-btn-outline">Reset</a>
                     </div>
                 </div>
+            </div>
+
+            @if ($message = Session::get('success'))
+                <div class="attendance-alert" role="alert">
+                    <i class="feather-check-circle"></i>
+                    <span>{{ $message }}</span>
+                    <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            <div class="zoho-people-table-card">
+                <div id="attendanceTableContainer">
+                    <div class="d-none d-lg-block">
+                        <div class="zoho-people-table-toolbar">
+                            <div class="zoho-people-table-search">
+                                <i class="feather-search"></i>
+                                <input type="text" id="tableSearch" onkeyup="searchTable()" placeholder="Search in list..." value="{{ request('search') }}">
+                            </div>
+                            <div class="zoho-list-bar mb-0 border-0 bg-transparent p-0">
+                                <span class="text-muted small fw-bold text-uppercase">Show</span>
+                                <div class="dropdown">
+                                    <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown" id="showEntriesBtn"
+                                        style="width: 80px; height: 38px; padding: 0 12px;">
+                                        {{ $perPage ?? 20 }}
+                                    </button>
+                                    <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 10px;">
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                                    </div>
+                                </div>
+                                <span class="text-muted small fw-bold text-uppercase">entries</span>
+                            </div>
+                        </div>
+
+                        <div class="card-body p-0 zoho-list-body">
+                            <div class="table-responsive zoho-table-wrap">
+                                <table class="table zoho-data-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 130px;">Date</th>
+                                            <th>Attendance History</th>
+                                            <th class="text-end" style="width: 120px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($attendance as $att)
+                                            @php $date = \Carbon\Carbon::parse($att->attendance_date)->format('Y-m-d'); @endphp
+                                            <tr>
+                                                <td><span class="attendance-date">{{ \Carbon\Carbon::parse($att->attendance_date)->format('d M Y') }}</span></td>
+                                                <td>
+                                                    @if(request('employee_id'))
+                                                        @php
+                                                            $empStatusClass = match($att->status) {
+                                                                'present' => 'att-emp-status--present',
+                                                                'absent', 'leave' => 'att-emp-status--absent',
+                                                                'half_day' => 'att-emp-status--half_day',
+                                                                'wfh' => 'att-emp-status--wfh',
+                                                                'overtime' => 'att-emp-status--overtime',
+                                                                default => 'att-emp-status--default',
+                                                            };
+                                                        @endphp
+                                                        <div class="att-emp-day">
+                                                            <span class="att-emp-status {{ $empStatusClass }}">{{ str_replace('_', ' ', $att->status) }}</span>
+                                                            <div class="att-time-stat">
+                                                                <div class="att-time-stat-label">Check In</div>
+                                                                <div class="att-time-stat-value">{{ $att->check_in ? date('h:i A', strtotime($att->check_in)) : '--' }}</div>
+                                                            </div>
+                                                            <div class="att-time-stat">
+                                                                <div class="att-time-stat-label">Check Out</div>
+                                                                <div class="att-time-stat-value">{{ $att->check_out ? date('h:i A', strtotime($att->check_out)) : '--' }}</div>
+                                                            </div>
+                                                            <div class="att-time-stat">
+                                                                <div class="att-time-stat-label">Work Hours</div>
+                                                                <div class="att-time-stat-value att-time-stat-value--primary">{{ number_format($att->total_hours, 2) }} hrs</div>
+                                                            </div>
+                                                        </div>
+                                                    @else
+                                                        <div class="att-stat-chips">
+                                                            <span class="att-stat-chip att-stat-chip--present" onclick="openAttendanceDetails('{{ $date }}', 'present')">Present <strong>{{ $att->present_count }}</strong></span>
+                                                            <span class="att-stat-chip att-stat-chip--overtime" onclick="openAttendanceDetails('{{ $date }}', 'overtime')">Overtime <strong>{{ $att->overtime_count }}</strong></span>
+                                                            <span class="att-stat-chip att-stat-chip--half" onclick="openAttendanceDetails('{{ $date }}', 'half_day')">Half Day <strong>{{ $att->half_day_count }}</strong></span>
+                                                            <span class="att-stat-chip att-stat-chip--leave" onclick="openAttendanceDetails('{{ $date }}', 'leave')">Leave <strong>{{ $att->leave_count }}</strong></span>
+                                                            <span class="att-stat-chip att-stat-chip--absent" onclick="openAttendanceDetails('{{ $date }}', 'absent')">Absent <strong>{{ $att->absent_count }}</strong></span>
+                                                            <span class="att-stat-chip att-stat-chip--wfh" onclick="openAttendanceDetails('{{ $date }}', 'wfh')">WFH <strong>{{ $att->wfh_count }}</strong></span>
+                                                            <span class="att-stat-chip att-stat-chip--early" onclick="openAttendanceDetails('{{ $date }}', 'early_out')">Early Out <strong>{{ $att->early_count }}</strong></span>
+                                                        </div>
+                                                    @endif
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="attendance-row-actions">
+                                                        <button type="button" class="zoho-icon-btn" onclick="openAttendanceDetails('{{ $date }}')" title="View">
+                                                            <i class="feather-eye"></i>
+                                                        </button>
+                                                        @if($isAdmin)
+                                                            <div class="dropdown">
+                                                                <button type="button" class="zoho-icon-btn" data-bs-toggle="dropdown" title="More actions">
+                                                                    <i class="feather-more-horizontal"></i>
+                                                                </button>
+                                                                <ul class="dropdown-menu dropdown-menu-end zoho-more-menu">
+                                                                    <li><a class="dropdown-item" href="{{ route('payroll.attendance.editByDate', $date) }}"><i class="feather-edit me-2"></i>Edit</a></li>
+                                                                    <li><a class="dropdown-item text-danger" href="javascript:void(0);" onclick="deleteAttendanceByDate('{{ $date }}')"><i class="feather-trash-2 me-2"></i>Delete</a></li>
+                                                                </ul>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="3">
+                                                    <div class="attendance-empty">
+                                                        <i class="feather-calendar"></i>
+                                                        <p>No attendance records found.</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
 
                 <!-- Mobile & Tablet Card View -->
                 <div class="d-lg-none px-1 pt-3">
@@ -505,44 +380,46 @@
 @endsection
 
 @push('modals')
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="attendanceDetailOffcanvas" style="width: 900px;">
-        <div class="offcanvas-header border-bottom px-4 py-3 bg-white shadow-sm">
-            <div class="d-flex flex-column">
-                <h5 class="offcanvas-title fw-bold" style="color: #334155;">Record for <span id="offcanvasDate"
-                        class="text-primary"></span></h5>
-                <div id="statusIndicator" class="small fw-bold text-muted mt-1">Showing All Records</div>
+    <div class="offcanvas offcanvas-end att-detail-drawer" tabindex="-1" id="attendanceDetailOffcanvas">
+        <div class="att-detail-drawer-head">
+            <div class="att-detail-drawer-head-main">
+                <span class="att-detail-drawer-icon"><i class="feather-calendar"></i></span>
+                <div>
+                    <h5 class="att-detail-drawer-title">Attendance Record</h5>
+                    <p class="att-detail-drawer-date">Date: <span id="offcanvasDate"></span></p>
+                    <p class="att-detail-drawer-meta" id="statusIndicator">Showing all records</p>
+                </div>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-sm btn-link text-decoration-none fw-bold small p-0 me-3" id="showAllBtn"
-                    style="display:none;" onclick="resetModalFilter()">Show All</button>
-                <button type="button" class="btn-close shadow-none" data-bs-dismiss="offcanvas"></button>
+            <div class="att-detail-drawer-actions">
+                <button type="button" class="zoho-btn-outline att-detail-show-all" id="showAllBtn"
+                    style="display:none;" onclick="resetModalFilter()">
+                    <i class="feather-list"></i> Show All
+                </button>
+                <button type="button" class="zoho-icon-btn" data-bs-dismiss="offcanvas" title="Close">
+                    <i class="feather-x"></i>
+                </button>
             </div>
         </div>
-        <div class="offcanvas-body p-0">
-            <!-- Desktop View -->
+        <div class="offcanvas-body att-detail-drawer-body p-0">
             <div class="d-none d-md-block">
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead class="bg-light">
+                <div class="table-responsive zoho-table-wrap att-detail-table-wrap">
+                    <table class="table zoho-data-table mb-0 att-detail-table">
+                        <thead>
                             <tr>
-                                <th class="ps-4 py-3 small fw-bold text-muted text-uppercase" style="width: 80px;">SR. NO.
-                                </th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase">EMPLOYEE NAME</th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase text-center">CHECK IN</th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase text-center">CHECK OUT</th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase text-center">Working Hrs</th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase text-center">STATUS</th>
-                                <th class="pe-4 py-3 small fw-bold text-muted text-uppercase text-center">ACTION</th>
+                                <th class="col-num">Sr. No.</th>
+                                <th>Employee Name</th>
+                                <th class="text-center">Check In</th>
+                                <th class="text-center">Check Out</th>
+                                <th class="text-center">Working Hrs</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody id="offcanvasTableBody"></tbody>
                     </table>
                 </div>
             </div>
-            <!-- Mobile View -->
-            <div class="d-md-none p-3" id="offcanvasCardsBody">
-                <!-- Cards will be injected here via JS -->
-            </div>
+            <div class="d-md-none att-detail-mobile-list" id="offcanvasCardsBody"></div>
         </div>
     </div>
 @endpush
@@ -750,10 +627,65 @@
         let lastFetchedData = null;
         let lastDate = null;
 
+        const OVERTIME_HOURS_THRESHOLD = 9.5;
+
+        function extractTimeValue(value) {
+            if (!value) return null;
+            const raw = value.includes(' ') ? value.split(' ')[1] : value;
+            return raw.substring(0, 5);
+        }
+
+        function timeToMinutes(time) {
+            const [h, m] = time.split(':').map(Number);
+            return (h * 60) + m;
+        }
+
+        function subtractMinutesFromTime(time, minutes) {
+            let total = timeToMinutes(time) - minutes;
+            if (total < 0) total += 24 * 60;
+            const h = Math.floor(total / 60) % 24;
+            const m = total % 60;
+            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        }
+
+        function halfDayEndTime(timeIn, timeOut) {
+            const span = timeToMinutes(timeOut) - timeToMinutes(timeIn);
+            const total = timeToMinutes(timeIn) + Math.floor(span / 2);
+            const h = Math.floor(total / 60) % 24;
+            const m = total % 60;
+            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        }
+
+        function matchesEarlyOut(item) {
+            const status = (item.status || '').toLowerCase();
+            if (['early_leave', 'early_out'].includes(status)) {
+                return true;
+            }
+            if (!item.check_out || !item.employee) return false;
+
+            const checkOutTime = extractTimeValue(item.check_out);
+            const emp = item.employee;
+
+            if (['present', 'late'].includes(status) && emp.time_out) {
+                return checkOutTime <= subtractMinutesFromTime(extractTimeValue(emp.time_out), 30);
+            }
+
+            if (status === 'half_day' && emp.time_in && emp.time_out) {
+                const halfEnd = halfDayEndTime(extractTimeValue(emp.time_in), extractTimeValue(emp.time_out));
+                return checkOutTime <= subtractMinutesFromTime(halfEnd, 30);
+            }
+
+            return false;
+        }
+
+        function matchesOvertime(item) {
+            return Number(item.total_hours) > OVERTIME_HOURS_THRESHOLD;
+        }
+
         function resetModalFilter() {
             if (lastFetchedData) renderTable(lastFetchedData, null);
             document.getElementById('showAllBtn').style.display = 'none';
-            document.getElementById('statusIndicator').innerText = 'Showing All Records';
+            document.getElementById('statusIndicator').innerHTML = 'Showing all records';
         }
 
         function openAttendanceDetails(date, filterStatus = null) {
@@ -767,15 +699,22 @@
                     if (data.success) {
                         lastFetchedData = data.data;
                         const dateLabel = document.getElementById('offcanvasDate');
-                        if (dateLabel) dateLabel.innerText = date;
+                        if (dateLabel) {
+                            try {
+                                const d = new Date(date + 'T00:00:00');
+                                dateLabel.innerText = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                            } catch (e) {
+                                dateLabel.innerText = date;
+                            }
+                        }
 
                         const statusLabel = document.getElementById('statusIndicator');
                         if (statusLabel) {
                             if (filterStatus) {
-                                statusLabel.innerText = `Showing ${filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1).replace('_', ' ')} Records`;
-                                document.getElementById('showAllBtn').style.display = 'inline-block';
+                                statusLabel.innerHTML = `Filtered: <strong>${filterStatus.replace('_', ' ')}</strong>`;
+                                document.getElementById('showAllBtn').style.display = 'inline-flex';
                             } else {
-                                statusLabel.innerText = 'Showing All Records';
+                                statusLabel.innerHTML = 'Showing all records';
                                 document.getElementById('showAllBtn').style.display = 'none';
                             }
                         }
@@ -824,19 +763,14 @@
             rows.forEach((item, index) => {
                 let match = !filterStatus;
                 const isHoliday = !!item.is_holiday;
-                if (filterStatus === 'present' && (item.status === 'present' || (isHoliday && item.status === 'absent'))) match = true;
+                if (filterStatus === 'present' && (['present', 'late'].includes(item.status) || (isHoliday && item.status === 'absent'))) match = true;
                 if (filterStatus === 'half_day' && item.status === 'half_day') match = true;
                 if (filterStatus === 'leave' && item.status === 'leave') match = true;
                 if (filterStatus === 'absent' && item.status === 'absent' && !isHoliday) match = true;
                 if (filterStatus === 'late' && item.status === 'late') match = true;
-                if (filterStatus === 'overtime' && item.total_hours > 9.30) match = true;
+                if (filterStatus === 'overtime' && matchesOvertime(item)) match = true;
                 if (filterStatus === 'wfh' && item.status === 'wfh') match = true;
-                if (filterStatus === 'early_out' && item.check_out) {
-                    const checkOutTime = item.check_out.includes(' ') ? item.check_out.split(' ')[1] : item.check_out;
-                    if (checkOutTime >= '15:00' && checkOutTime < '17:30') {
-                        match = true;
-                    }
-                }
+                if (filterStatus === 'early_out' && matchesEarlyOut(item)) match = true;
 
                 if (match) {
                     count++;
@@ -857,91 +791,108 @@
 
                     if (isHoliday && item.status === 'absent') {
                         statusDisplay = 'Holiday';
-                        badgeClass = 'status-badge-success';
+                        badgeClass = 'att-detail-status--present';
                     } else if (isActivityDay && (isEarly || item.status === 'early_out' || item.status === 'early_leave' || (item.status === 'half_day' && !isHalfDayPunch))) {
                         statusDisplay = 'Present Activity';
-                        badgeClass = 'status-badge-info';
+                        badgeClass = 'att-detail-status--info';
                     } else if (isEarly) {
                         statusDisplay = 'Early Out';
-                        badgeClass = 'status-badge-info';
+                        badgeClass = 'att-detail-status--info';
                     } else if (isHalfDayPunch || item.status === 'half_day') {
                         statusDisplay = 'Half Day';
-                        badgeClass = 'status-badge-warning';
+                        badgeClass = 'att-detail-status--half';
                     } else {
                         statusDisplay = item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' ');
                         if (statusDisplay === 'Early out' || statusDisplay === 'Early leave') statusDisplay = 'Early Out';
                         badgeClass = getStatusBadge(item.status);
                     }
 
-                    // Desktop Row
-                    body.innerHTML += `
-                                <tr class="border-bottom">
-                                    <td class="ps-4 py-3 text-muted fw-bold">${index + 1}</td>
-                                    <td class="fw-bold text-dark">${item.employee.name}</td>
-                                    <td class="text-center">${item.check_in ? formatTime(item.check_in) : '--'}</td>
-                                    <td class="text-center">${item.check_out ? formatTime(item.check_out) : '--'}</td>
-                                   <td class="text-center">${formatHours(item.total_hours)}</td>
-                                    <td class="text-center">
-                                        <span class="status-badge ${badgeClass}">${statusDisplay}</span>
-                                    </td>
-                                    <td class="pe-4 text-center d-flex justify-content-center">
-                                        @if($isAdmin)
-                                            <button class="btn btn-sm text-primary shadow-none" onclick="editSingleAttendance(${item.id})">
-                                                <i data-feather="edit" style="width:14px; height:14px;"></i>
-                                            </button>
-                                            <button class="btn btn-sm text-danger shadow-none" onclick="deleteSingleAttendance(${item.id}, '${lastDate}')">
-                                                <i data-feather="trash-2" style="width:14px; height:14px;"></i>
-                                            </button>
-                                        @endif
-                                    </td>
-                                </tr>
-                            `;
+                    const adminActions = `@if($isAdmin)
+                        <div class="attendance-row-actions">
+                            <button type="button" class="zoho-icon-btn" onclick="editSingleAttendance(${item.id})" title="Edit">
+                                <i data-feather="edit"></i>
+                            </button>
+                            <button type="button" class="zoho-icon-btn" onclick="deleteSingleAttendance(${item.id}, '${lastDate}')" title="Delete">
+                                <i data-feather="trash-2"></i>
+                            </button>
+                        </div>
+                    @endif`;
 
-                    // Mobile Card
+                    body.innerHTML += `
+                        <tr>
+                            <td class="text-muted fw-semibold">${count}</td>
+                            <td><span class="att-detail-emp-name">${item.employee.name}</span></td>
+                            <td class="text-center att-detail-time">${item.check_in ? formatTime(item.check_in) : '--'}</td>
+                            <td class="text-center att-detail-time">${item.check_out ? formatTime(item.check_out) : '--'}</td>
+                            <td class="text-center att-detail-hours">${formatHours(item.total_hours)}</td>
+                            <td class="text-center">
+                                <span class="att-detail-status ${badgeClass}">${statusDisplay}</span>
+                            </td>
+                            <td class="text-center">${adminActions}</td>
+                        </tr>
+                    `;
+
                     cardsBody.innerHTML += `
-                            <div class="mobile-attendance-card p-3 shadow-sm border mb-3" style="border-radius: 12px; background: #fff;">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <span class="d-block small text-muted text-uppercase fw-bold" style="letter-spacing: 0.5px;">Employee</span>
-                                        <span class="fw-bold text-dark">${item.employee.name}</span>
-                                    </div>
-                                    <span class="status-badge ${badgeClass}">${statusDisplay}</span>
+                        <div class="att-detail-mobile-card">
+                            <div class="att-detail-mobile-card-head">
+                                <div>
+                                    <div class="att-detail-mobile-label">Employee</div>
+                                    <div class="att-detail-emp-name">${item.employee.name}</div>
                                 </div>
-                                <div class="row g-2 mb-3">
-                                    <div class="col-4 text-center">
-                                        <span class="d-block small text-muted">In</span>
-                                        <span class="fw-bold small text-dark">${item.check_in ? formatTime(item.check_in) : '--'}</span>
-                                    </div>
-                                    <div class="col-4 text-center border-start border-end">
-                                        <span class="d-block small text-muted">Out</span>
-                                        <span class="fw-bold small text-dark">${item.check_out ? formatTime(item.check_out) : '--'}</span>
-                                    </div>
-                                    <div class="col-4 text-center">
-                                        <span class="d-block small text-muted">Hrs</span>
-                                        <span class="fw-bold small text-dark">${formatHours(item.total_hours)}</span>
-                                    </div>
+                                <span class="att-detail-status ${badgeClass}">${statusDisplay}</span>
+                            </div>
+                            <div class="att-detail-mobile-stats">
+                                <div class="att-time-stat">
+                                    <div class="att-time-stat-label">Check In</div>
+                                    <div class="att-time-stat-value">${item.check_in ? formatTime(item.check_in) : '--'}</div>
                                 </div>
-                                <div class="d-flex justify-content-end gap-2">
-                                    @if($isAdmin)
-                                        <button class="btn btn-sm btn-soft-primary px-3 rounded-pill" onclick="editSingleAttendance(${item.id}, '${lastDate}')">
-                                            <i class="feather-edit me-1"></i> Edit
-                                        </button>
-                                        <button class="btn btn-sm btn-soft-danger px-3 rounded-pill" onclick="deleteSingleAttendance(${item.id}, '${lastDate}')">
-                                            <i class="bi bi-trash me-1"></i> Delete
-                                        </button>
-                                    @endif
+                                <div class="att-time-stat">
+                                    <div class="att-time-stat-label">Check Out</div>
+                                    <div class="att-time-stat-value">${item.check_out ? formatTime(item.check_out) : '--'}</div>
+                                </div>
+                                <div class="att-time-stat">
+                                    <div class="att-time-stat-label">Hours</div>
+                                    <div class="att-time-stat-value att-time-stat-value--primary">${formatHours(item.total_hours)}</div>
                                 </div>
                             </div>
-                        `;
+                            @if($isAdmin)
+                            <div class="att-detail-mobile-actions">
+                                <button type="button" class="zoho-btn-outline" onclick="editSingleAttendance(${item.id}, '${lastDate}')">
+                                    <i data-feather="edit"></i> Edit
+                                </button>
+                                <button type="button" class="zoho-btn-outline text-danger" onclick="deleteSingleAttendance(${item.id}, '${lastDate}')">
+                                    <i data-feather="trash-2"></i> Delete
+                                </button>
+                            </div>
+                            @endif
+                        </div>
+                    `;
                 }
             });
 
             if (filterStatus) {
-                document.getElementById('showAllBtn').style.display = 'block';
-                document.getElementById('statusIndicator').innerHTML = `Showing: <span class="text-primary text-uppercase">${filterStatus}</span> (${count} found)`;
+                document.getElementById('showAllBtn').style.display = 'inline-flex';
+                document.getElementById('statusIndicator').innerHTML = `Filtered: <strong>${filterStatus.replace('_', ' ')}</strong> · ${count} record${count === 1 ? '' : 's'}`;
             } else {
                 document.getElementById('showAllBtn').style.display = 'none';
-                document.getElementById('statusIndicator').innerText = 'Showing All Records';
+                document.getElementById('statusIndicator').innerHTML = `Showing all records · ${count} employee${count === 1 ? '' : 's'}`;
+            }
+
+            if (count === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="7">
+                            <div class="attendance-empty">
+                                <i data-feather="users"></i>
+                                <p>No records found for this filter.</p>
+                            </div>
+                        </td>
+                    </tr>`;
+                cardsBody.innerHTML = `
+                    <div class="attendance-empty">
+                        <i data-feather="users"></i>
+                        <p>No records found for this filter.</p>
+                    </div>`;
             }
 
             if (typeof feather !== 'undefined') {
@@ -973,14 +924,17 @@
 
         function getStatusBadge(status) {
             switch (status.toLowerCase()) {
-                case 'present': return 'status-badge-success';
-                case 'holiday': return 'status-badge-success';
-                case 'absent': return 'status-badge-danger';
-                case 'half_day': return 'status-badge-warning';
-                case 'activity': return 'status-badge-info';
-                case 'early_leave': return 'status-badge-info';
-                case 'early_out': return 'status-badge-info';
-                default: return 'status-badge-info';
+                case 'present': return 'att-detail-status--present';
+                case 'holiday': return 'att-detail-status--present';
+                case 'absent': return 'att-detail-status--absent';
+                case 'leave': return 'att-detail-status--absent';
+                case 'half_day': return 'att-detail-status--half';
+                case 'wfh': return 'att-detail-status--wfh';
+                case 'activity': return 'att-detail-status--info';
+                case 'early_leave': return 'att-detail-status--info';
+                case 'early_out': return 'att-detail-status--info';
+                case 'overtime': return 'att-detail-status--info';
+                default: return 'att-detail-status--info';
             }
         }
 

@@ -18,21 +18,27 @@
 
     <style>
         :root {
-            --brand-navy: #0c1e3d;
-            --brand-navy-light: #152a52;
-            --brand-blue: #1d4ed8;
-            --brand-blue-bright: #3b82f6;
-            --brand-sky: #60a5fa;
-            --brand-gold: #f59e0b;
-            --text-primary: #0f172a;
-            --text-muted: #64748b;
-            --text-light: #94a3b8;
-            --border: #e2e8f0;
+            --brand-nav: #1a2138;
+            --brand-primary: #1070e0;
+            --brand-primary-hover: #0d5fc0;
+            --brand-primary-soft: #e6f1fc;
+            --brand-primary-muted: #b3d4f5;
+            --brand-secondary: #5c6575;
+            --brand-navy: #1a2138;
+            --brand-navy-light: #232b45;
+            --brand-blue: #1070e0;
+            --brand-blue-bright: #3d8fe8;
+            --brand-sky: #6baef0;
+            --brand-gold: #1070e0;
+            --text-primary: #1e2533;
+            --text-muted: #5c6575;
+            --text-light: #8b95a5;
+            --border: #e0e0e0;
             --surface: #ffffff;
-            --surface-muted: #f8fafc;
-            --radius-lg: 16px;
-            --radius-md: 12px;
-            --shadow-form: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
+            --surface-muted: #f4f7f9;
+            --radius-lg: 6px;
+            --radius-md: 4px;
+            --shadow-form: 0 2px 8px rgba(20, 50, 80, 0.08);
         }
 
         *, *::before, *::after {
@@ -41,7 +47,7 @@
 
         body {
             margin: 0;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
             background: var(--surface-muted);
             color: var(--text-primary);
             min-height: 100vh;
@@ -53,10 +59,10 @@
             min-height: 100vh;
         }
 
-        /* ── Brand panel ── */
+        /* ── Brand panel (logo blue — light professional) ── */
         .brand-panel {
             flex: 0 0 48%;
-            background: linear-gradient(160deg, var(--brand-navy) 0%, #0f2d5c 45%, var(--brand-blue) 100%);
+            background: linear-gradient(160deg, #1a2138 0%, #1070e0 100%);
             color: #fff;
             display: flex;
             flex-direction: column;
@@ -71,8 +77,8 @@
             position: absolute;
             inset: 0;
             background:
-                radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.25) 0%, transparent 45%),
-                radial-gradient(circle at 85% 80%, rgba(96, 165, 250, 0.15) 0%, transparent 40%);
+                radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 40%);
             pointer-events: none;
         }
 
@@ -499,13 +505,13 @@
 
         .secure-note i {
             font-size: 12px;
-            color: #22c55e;
+            color: var(--brand-primary);
         }
 
         /* ── Mobile header ── */
         .mobile-header {
             display: none;
-            background: linear-gradient(160deg, var(--brand-navy), var(--brand-blue));
+            background: linear-gradient(160deg, #1a2138, #1070e0);
             padding: 1.25rem 1.5rem;
             color: #fff;
         }

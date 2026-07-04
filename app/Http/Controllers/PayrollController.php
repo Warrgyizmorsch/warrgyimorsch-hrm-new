@@ -84,16 +84,10 @@ class PayrollController extends Controller
             });
         }
         // ✅ GROUPING (required for your blade)
-        $select = [
-            'attendances.attendance_date',
-            DB::raw("COUNT(CASE WHEN attendances.status = 'present' OR (attendances.status = 'absent' AND holidays.id IS NOT NULL) THEN 1 END) as present_count"),
-            DB::raw("COUNT(CASE WHEN attendances.status = 'overtime' THEN 1 END) as overtime_count"),
-            DB::raw("COUNT(CASE WHEN attendances.status = 'half_day' THEN 1 END) as half_day_count"),
-            DB::raw("COUNT(CASE WHEN attendances.status = 'wfh' THEN 1 END) as wfh_count"),
-            DB::raw("COUNT(CASE WHEN attendances.status = 'leave' OR (attendances.status = 'absent' AND holidays.id IS NULL) THEN 1 END) as leave_count"),
-            DB::raw("COUNT(CASE WHEN attendances.status = 'absent' AND holidays.id IS NULL THEN 1 END) as absent_count"),
-            DB::raw("SUM(CASE WHEN attendances.check_out IS NOT NULL AND ((attendances.status = 'present' AND TIME(attendances.check_out) <= SUBTIME(TIME(employees.time_out), '00:30:00')) OR (attendances.status = 'half_day' AND TIME(attendances.check_out) <= SUBTIME(ADDTIME(TIME(employees.time_in), SEC_TO_TIME(TIME_TO_SEC(TIMEDIFF(employees.time_out, employees.time_in)) / 2)), '00:30:00'))) THEN 1 ELSE 0 END) as early_count")
-        ];
+        $select = array_merge(
+            ['attendances.attendance_date'],
+            $this->attendanceAggregateSelectColumns()
+        );
 
         $groupBy = ['attendances.attendance_date'];
 
@@ -115,8 +109,7 @@ class PayrollController extends Controller
             $perPage = 20;
         }
 
-        $attendance = $query->leftJoin('holidays', 'attendances.attendance_date', '=', 'holidays.date')
-            ->select($select)
+        $attendance = $query->select($select)
             ->groupBy($groupBy)
             ->orderBy('attendances.attendance_date', 'desc')
             ->paginate($perPage);
@@ -1357,50 +1350,15 @@ class PayrollController extends Controller
         }
         $employees = $empQuery->get();
 
-        $query = Attendance::selectRaw("
-        attendances.employee_id,
-        employees.name as employee_name,
-
-        COUNT(CASE WHEN attendances.status = 'present' OR (attendances.status = 'absent' AND holidays.id IS NOT NULL) THEN 1 END) as present_count,
-        COUNT(CASE WHEN attendances.total_hours > 9.50 THEN 1 END) as overtime_count,
-        COUNT(CASE WHEN attendances.status = 'half_day' THEN 1 END) as half_day_count,
-        COUNT(CASE WHEN attendances.status IN ('leave') THEN 1 END) as leave_count,
-        COUNT(CASE WHEN attendances.status IN ('absent') AND holidays.id IS NULL THEN 1 END) as absent_count,
-        COUNT(CASE WHEN attendances.status = 'wfh' THEN 1 END) as wfh_count,
-
-        COUNT(
-            CASE 
-                WHEN attendances.check_out IS NOT NULL AND (
-                    
-                    -- ✅ Full Day Early
-                    (
-                        attendances.status = 'present'
-                        AND TIME(attendances.check_out) <= SUBTIME(TIME(employees.time_out), '00:30:00')
-                    )
-
-                    OR
-
-                    -- ✅ Half Day Early
-                    (
-                        attendances.status = 'half_day'
-                        AND TIME(attendances.check_out) <= SUBTIME(
-                            ADDTIME(
-                                TIME(employees.time_in),
-                                SEC_TO_TIME(
-                                    TIME_TO_SEC(TIMEDIFF(employees.time_out, employees.time_in)) / 2
-                                )
-                            ),
-                            '00:30:00'
-                        )
-                    )
-
-                )
-                THEN 1
-            END
-        ) as early_count
-    ")
+        $query = Attendance::query()
             ->join('employees', 'attendances.employee_id', '=', 'employees.id')
-            ->leftJoin('holidays', 'attendances.attendance_date', '=', 'holidays.date');
+            ->select(array_merge(
+                [
+                    'attendances.employee_id',
+                    DB::raw('employees.name as employee_name'),
+                ],
+                $this->attendanceAggregateSelectColumns()
+            ));
 
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
@@ -1911,5 +1869,57 @@ class PayrollController extends Controller
         return str_contains($category, 'half')
             || str_contains($type, 'half')
             || (float) $leave->total_days === 0.5;
+    }
+
+    /**
+     * SQL EXISTS check — avoids holiday join row duplication in aggregates.
+     */
+    private function attendanceHolidayExistsSql(): string
+    {
+        return 'EXISTS (SELECT 1 FROM holidays h WHERE h.date = attendances.attendance_date)';
+    }
+
+    /**
+     * Shared attendance history count columns (date-wise & employee-wise lists).
+     */
+    private function attendanceAggregateSelectColumns(): array
+    {
+        $holiday = $this->attendanceHolidayExistsSql();
+
+        return [
+            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status IN ('present', 'late') OR (attendances.status = 'absent' AND {$holiday}) THEN attendances.id END) as present_count"),
+            DB::raw('COUNT(DISTINCT CASE WHEN attendances.total_hours > 9.5 THEN attendances.id END) as overtime_count'),
+            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'half_day' THEN attendances.id END) as half_day_count"),
+            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'leave' THEN attendances.id END) as leave_count"),
+            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'absent' AND NOT ({$holiday}) THEN attendances.id END) as absent_count"),
+            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'wfh' THEN attendances.id END) as wfh_count"),
+            DB::raw($this->attendanceEarlyOutCountSql() . ' as early_count'),
+        ];
+    }
+
+    private function attendanceEarlyOutCountSql(): string
+    {
+        return "COUNT(DISTINCT CASE
+            WHEN attendances.status IN ('early_leave', 'early_out') THEN attendances.id
+            WHEN attendances.check_out IS NOT NULL AND (
+                (
+                    attendances.status IN ('present', 'late')
+                    AND employees.time_out IS NOT NULL
+                    AND TIME(attendances.check_out) <= SUBTIME(TIME(employees.time_out), '00:30:00')
+                )
+                OR (
+                    attendances.status = 'half_day'
+                    AND employees.time_in IS NOT NULL
+                    AND employees.time_out IS NOT NULL
+                    AND TIME(attendances.check_out) <= SUBTIME(
+                        ADDTIME(
+                            TIME(employees.time_in),
+                            SEC_TO_TIME(TIME_TO_SEC(TIMEDIFF(employees.time_out, employees.time_in)) / 2)
+                        ),
+                        '00:30:00'
+                    )
+                )
+            ) THEN attendances.id
+        END)";
     }
 }

@@ -1,430 +1,273 @@
 @extends('layouts.app')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/attendance-management.css') }}?v={{ filemtime(public_path('assets/css/attendance-management.css')) ?: time() }}">
+@endpush
+
 @section('content')
     @php
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
         $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
         $isTeamLeader = in_array($role, ['team_leader']);
+        $importDropdown = $isAdmin ? '
+            <div class="dropdown">
+                <button type="button" class="zoho-icon-btn dropdown-toggle" data-bs-toggle="dropdown" title="Import">
+                    <i class="feather-upload"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end attendance-import-menu">
+                    <form action="' . route('payroll.attendance.import') . '" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="' . csrf_token() . '">
+                        <label class="form-label fw-bold small text-dark mb-2">Import Excel/CSV</label>
+                        <input type="file" class="form-control mb-3" name="import_file" accept=".xlsx,.xls,.csv" required>
+                        <button type="submit" class="zoho-btn-primary w-100">Upload & Calculate</button>
+                    </form>
+                </div>
+            </div>' : '';
+        $addButton = $isAdmin ? '<a href="' . route('payroll.attendance.add') . '" class="zoho-btn-primary" title="Add attendance"><i class="feather-plus"></i> Add</a>' : '';
+        $employeeHeaderActions = '
+            <a href="' . route('payroll.attendance') . '" class="zoho-btn-outline">
+                <i class="feather-calendar"></i> Date Wise
+            </a>
+            ' . $importDropdown . '
+            <button type="button" class="zoho-icon-btn" onclick="exportAttendance()" title="Export">
+                <i class="feather-download"></i>
+            </button>
+            ' . $addButton;
     @endphp
-    <div class="container-fluid px-0" style="background: #f8fafc; min-height: 100vh; font-family: 'Inter', sans-serif;">
-        <!-- Main Content Card -->
-        <div class="px-2 px-md-4 pt-3 pt-md-4">
-            <div class="card border-0 shadow-sm" style="border-radius: 12px; background: white;">
-                <div class="card-header bg-white border-bottom py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3"
-                    style="border-radius: 12px 12px 0 0;">
-                    <div class="d-flex flex-column">
-                        <h5 class="fw-bold mb-0" style="color: #334155;">Attendance Management</h5>
-                        <nav aria-label="breadcrumb">
-                            <ol class="breadcrumb mb-0">
-                                <li class="breadcrumb-item"><a href="#"
-                                        class="text-decoration-none text-muted small">Home</a></li>
-                                <li class="breadcrumb-item active small fw-bold" style="color: #3858f9;"
-                                    aria-current="page">Attendance List</li>
-                            </ol>
-                        </nav>
-                    </div>
-                    <div
-                        class="d-flex flex-column flex-md-row align-items-center gap-2 ms-md-auto w-100 w-md-auto justify-content-end">
-                        <!-- Premium Search Bar -->
-                        <div class="flex-grow-1 flex-md-grow-0" style="min-width: 250px; max-width: 320px;">
-                            <div class="search-group d-flex align-items-center px-3"
-                                style="height: 40px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; transition: all 0.3s ease;">
-                                <i class="feather-search text-muted me-2" style="font-size: 14px;"></i>
-                                <input type="text" id="tableSearch" onkeyup="searchTable(event)" placeholder="Search records..."
-                                    value="{{ request('search') }}"
-                                    style="border: none; background: transparent; outline: none; width: 100%; font-size: 13px; font-weight: 500; color: #334155;">
-                            </div>
-                        </div>
 
-                        <!-- Action Buttons -->
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('payroll.attendance') }}"
-                                class="btn btn-soft-primary btn-sm fw-bold d-flex align-items-center px-3"
-                                style="height: 40px; border-radius: 10px; border: 1px solid rgba(56, 88, 249, 0.2) !important; white-space: nowrap;">
-                                <span class="d-none d-sm-inline">DATE WISE</span>
-                                <i class="feather-calendar d-sm-none"></i>
-                            </a>
+    <div class="zoho-page-shell attendance-page attendance-employee-page">
+        @include('layouts.partials.zoho-people-list-header', [
+            'title' => 'Attendance Management',
+            'viewLabel' => 'Employee Wise',
+            'scopeLinks' => [
+                ['label' => 'Home', 'url' => route('dashboard'), 'active' => false],
+                ['label' => 'Employee Wise', 'url' => route('payroll.attendace.employee'), 'active' => true],
+            ],
+            'primaryAction' => $employeeHeaderActions,
+        ])
 
-                            @if ($isAdmin)
-                                <div class="dropdown">
-                                    <button
-                                        class="btn btn-soft-secondary btn-sm fw-bold d-flex align-items-center px-3 dropdown-toggle"
-                                        type="button" data-bs-toggle="dropdown"
-                                        style="height: 40px; border-radius: 10px; border: 1px solid rgba(100, 116, 139, 0.2) !important;">
-                                        <span class="d-none d-sm-inline">IMPORT</span>
-                                        <i class="fas fa-upload ms-2"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end p-4 shadow-lg border-0"
-                                        style="width: 320px; border-radius: 15px;">
-                                        <form action="{{ route('payroll.attendance.import') }}" method="POST"
-                                            enctype="multipart/form-data">
-                                            @csrf
-                                            <div class="mb-3">
-                                                <label class="form-label fw-bold small text-dark mb-2">Import Excel/CSV
-                                                    File</label>
-                                                <input type="file" class="form-control" name="import_file"
-                                                    accept=".xlsx, .xls, .csv" required style="border-radius: 8px;">
-                                            </div>
-                                            <button type="submit" class="btn btn-primary w-100 fw-bold py-2"
-                                                style="border-radius: 8px;">
-                                                UPLOAD & CALCULATE
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div> 
-                            @endif
-
-                            <div class="d-flex gap-1">
-                                <!-- <a href="javascript:void(0);" class="btn btn-icon btn-soft-primary"
-                                    data-bs-toggle="collapse" data-bs-target="#filterSection"
-                                    style="height: 40px; width: 40px; border-radius: 10px; border: 1px solid rgba(56, 88, 249, 0.1) !important;">
-                                    <i class="feather-filter"></i>
-                                </a> -->
-                                <a href="javascript:void(0);" class="btn btn-icon btn-soft-info"
-                                    onclick="exportAttendance()"
-                                    style="height: 40px; width: 40px; border-radius: 10px; border: 1px solid rgba(13, 202, 240, 0.1) !important;">
-                                    <i class="feather-download"></i>
-                                </a>
-                                @if ($isAdmin)
-                                    <a href="{{ route('payroll.attendance.add') }}" class="btn btn-icon btn-primary shadow-sm"
-                                        style="height: 40px; width: 40px; border-radius: 10px;">
-                                        <i data-feather="plus"></i>
-                                    </a>  
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Collapsible Filter Section -->
-                <div class="show" id="filterSection">
-                    <div class="card-body border-bottom bg-light bg-opacity-10 p-4">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold text-muted mb-2">Employee Name</label>
-                                <div class="dropdown">
-                                    <button class="wghrm-custom-select-btn fw-bold dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeSelectBtn">
-                                        @php
-                                            $selectedEmpId = request('employee_id');
-                                            $selectedEmpName = 'Select Employee';
-                                            foreach ($employees as $emp) {
-                                                if ($emp->id == $selectedEmpId) {
-                                                    $selectedEmpName = $emp->name;
-                                                    break;
-                                                }
-                                            }
-                                        @endphp
-                                        {{ $selectedEmpName }}
-                                    </button>
-                                    <div class="dropdown-menu wghrm-custom-dropdown-menu">
-                                        <div class="wghrm-custom-search-box">
-                                            <input type="text" class="wghrm-custom-search-input"
-                                                placeholder="Search employee..." onkeyup="wghrmFilterItems(this)">
-                                        </div>
-                                        <div class="wghrm-items-container">
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ !$selectedEmpId ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectEmployee('', 'Select Employee')">All Employees</a>
-                                            @foreach($employees as $employee)
-                                                <a class="dropdown-item wghrm-custom-dropdown-item {{ $selectedEmpId == $employee->id ? 'active' : '' }}"
-                                                    href="javascript:void(0);"
-                                                    onclick="selectEmployee('{{ $employee->id }}', '{{ $employee->name }}')">{{ $employee->name }}</a>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                                <input type="hidden" id="employee_id" value="{{ request('employee_id') }}">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted mb-2">Range</label>
-                                <div class="dropdown">
-                                    <button class="wghrm-custom-select-btn fw-bold dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" id="quickRangeBtn">
-                                        @php
-                                            $range = request('range');
-                                            $label = 'All Time';
-                                            if ($range == 'today')
-                                                $label = 'Today';
-                                            elseif ($range == 'yesterday')
-                                                $label = 'Yesterday';
-                                            elseif ($range == 'week')
-                                                $label = 'This Week';
-                                            elseif ($range == 'month')
-                                                $label = 'This Month';
-                                            elseif ($range == 'lastMonth')
-                                                $label = 'Last Month';
-                                            elseif ($range == '3months')
-                                                $label = 'Last 3 Months';
-                                            elseif ($range == '6months')
-                                                $label = 'Last 6 Months';
-                                            elseif ($range == '1year')
-                                                $label = 'Last 1 Year';
-                                            elseif ($range == 'custom')
-                                                $label = 'Custom Date';
-                                        @endphp
-                                        {{ $label }}
-                                    </button>
-                                    <div class="dropdown-menu wghrm-custom-dropdown-menu">
-                                        <div class="wghrm-custom-search-box">
-                                            <input type="text" class="wghrm-custom-search-input"
-                                                placeholder="Search range..." onkeyup="wghrmFilterItems(this)">
-                                        </div>
-                                        <div class="wghrm-items-container">
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ !$range ? 'active' : '' }}"
-                                                href="javascript:void(0);" onclick="selectQuickRange('', 'All Time')">All
-                                                Time</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'today' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('today', 'Today')">Today</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'yesterday' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('yesterday', 'Yesterday')">Yesterday</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'week' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('week', 'This Week')">This Week</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'lastMonth' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('month', 'This Month')">This Month</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'month' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('lastMonth', 'Last Month')">Last Month</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '3months' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('3months', 'Last 3 Months')">Last 3 Months</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '6months' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('6months', 'Last 6 Months')">Last 6 Months</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '1year' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('1year', 'Last 1 Year')">Last 1 Year</a>
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'custom' ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="selectQuickRange('custom', 'Custom Date')">Custom Date</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <input type="hidden" id="quickRange" value="{{ request('range') }}">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted mb-2">Start Date</label>
-                                <input type="date" id="startDate"
-                                    class="form-control border-0 bg-white py-2 px-3 shadow-sm fw-bold"
-                                    value="{{ request('start_date') }}" style="border-radius: 10px; height: 44px;">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted mb-2">End Date</label>
-                                <input type="date" id="endDate"
-                                    class="form-control border-0 bg-white py-2 px-3 shadow-sm fw-bold"
-                                    value="{{ request('end_date') }}" style="border-radius: 10px; height: 44px;">
-                            </div>
-                            <div class="col-md-3 d-flex justify-content-around">
-                                <button
-                                    class="btn btn-primary w-50 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
-                                    onclick="applyFilters()"
-                                    style="background: #3858f9; border: none; height: 44px; border-radius: 10px;">
-                                    <i class="feather-search"></i> APPLY
-                                </button>
-                                <a href="{{ route('payroll.attendace.employee') }}"
-                                    class="btn btn-soft-danger fw-bold d-flex align-items-center justify-content-center"
-                                    style="border-radius: 8px; height: 44px; width: 80px; font-size: 13px;">
-                                RESET</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                @if ($message = Session::get('success'))
-                    <div class="alert alert-success border-0 shadow-sm mb-4 d-flex align-items-center py-3" role="alert"
-                        style="border-radius: 12px; background: #ecfdf5; color: #065f46;">
-                        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
-                        <div class="fw-bold">{{ $message }}</div>
-                        <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
-
-                <div id="attendanceTableContainer">
-                    <!-- Desktop Table View -->
-                    <div class="d-none d-lg-block">
-                    <!-- SHOW ENTRIES -->
-                    <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
-                        <span class="text-muted small fw-bold text-uppercase">Show</span>
+        <div class="main-content zoho-module-content">
+            <div class="attendance-filter-panel" id="filterSection">
+                <div class="attendance-filter-grid attendance-filter-grid--employee">
+                    <div class="attendance-filter-field">
+                        <label>Employee</label>
                         <div class="dropdown">
                             <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
-                                data-bs-toggle="dropdown" id="showEntriesBtn"
-                                style="width: 80px; height: 44px; padding: 0 15px;">
-                                {{ $perPage ?? 20 }}
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeSelectBtn">
+                                @php
+                                    $selectedEmpId = request('employee_id');
+                                    $selectedEmpName = 'All Employees';
+                                    foreach ($employees as $emp) {
+                                        if ($emp->id == $selectedEmpId) {
+                                            $selectedEmpName = $emp->name;
+                                            break;
+                                        }
+                                    }
+                                @endphp
+                                {{ $selectedEmpName }}
                             </button>
-                            <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
-                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
-                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
-                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu">
+                                <div class="wghrm-custom-search-box">
+                                    <input type="text" class="wghrm-custom-search-input" placeholder="Search employee..." onkeyup="wghrmFilterItems(this)">
+                                </div>
+                                <div class="wghrm-items-container">
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ !$selectedEmpId ? 'active' : '' }}"
+                                        href="javascript:void(0);" onclick="selectEmployee('', 'All Employees')">All Employees</a>
+                                    @foreach ($employees as $employee)
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ $selectedEmpId == $employee->id ? 'active' : '' }}"
+                                            href="javascript:void(0);"
+                                            onclick="selectEmployee('{{ $employee->id }}', '{{ addslashes($employee->name) }}')">{{ $employee->name }}</a>
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
-                        <span class="text-muted small fw-bold text-uppercase">entries</span>
+                        <input type="hidden" id="employee_id" value="{{ request('employee_id') }}">
                     </div>
-
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <thead style="background: #ffffff; border-bottom: 1px solid #f1f5f9;">
-                                <tr>
-                                    <th class="ps-4 py-3 text-muted small fw-bold text-uppercase"
-                                        style="letter-spacing: 0.5px; width: 150px;">Employee Name</th>
-                                    <th class="py-3 text-muted small fw-bold text-uppercase" style="letter-spacing: 0.5px;">
-                                        ATTENDANCE HISTORY</th>
-                                    <th class="pe-4 py-3 text-muted small fw-bold text-uppercase text-end"
-                                        style="width: 150px; letter-spacing: 0.5px;">ACTION</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($attendance as $att)
-                                    <tr class="border-bottom hover-row">
-                                        @php
-                                            $employeeId = $att->employee_id;
-                                            $employeeName = $att->employee_name;
-                                        @endphp
-                                        <td class="ps-4 py-4 text-dark fw-bold">
-                                            {{ $employeeName }}
-                                        </td>
-                                        <td>
-                                            @php $date = \Carbon\Carbon::parse($att->attendance_date)->format('Y-m-d'); @endphp
-                                            <div class="d-flex flex-wrap gap-2">
-                                                <div class="ref-badge badge-green clickable" title="View Present"
-                                                    onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'present')">
-                                                    Present: <span class="fw-bold ms-1">{{ $att->present_count }}</span>
-                                                </div>
-                                                <div class="ref-badge badge-blue clickable" title="View Overtime"
-                                                    onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'overtime')">
-                                                    Overtime: <span class="fw-bold ms-1">{{ $att->overtime_count }}</span>
-                                                </div>
-                                                <div class="ref-badge badge-yellow clickable" title="View Half Day"
-                                                    onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'half_day')">
-                                                    Half Day: <span class="fw-bold ms-1">{{ $att->half_day_count }}</span>
-                                                </div>
-                                                <div class="ref-badge badge-red clickable" title="View Leave"
-                                                    onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'leave')">
-                                                    Leave: <span class="fw-bold ms-1">{{ $att->leave_count }}</span>
-                                                </div>
-                                                <div class="ref-badge badge-red clickable" title="View Absent"
-                                                    onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'absent')">
-                                                    Absent: <span class="fw-bold ms-1">{{ $att->absent_count }}</span>
-                                                </div>
-                                                <div class="ref-badge badge-purple clickable" title="View Present"
-                                                    onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'wfh')">
-                                                    WFH: <span class="fw-bold ms-1">{{ $att->wfh_count }}</span>
-                                                </div>
-                                                <div class="ref-badge badge-purple clickable" title="View Present"
-                                                    onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'early_out')">
-                                                    Early Out: <span class="fw-bold ms-1">{{ $att->early_count }}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="pe-4 text-end">
-                                            <div class="d-flex justify-content-end gap-2">
-                                                <a href="javascript:void(0);"
-                                                    class="btn btn-icon btn-soft-primary rounded-circle"
-                                                    onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}')"
-                                                    title="View"
-                                                    style="width: 34px; height: 34px; border: 1px solid rgba(56, 88, 249, 0.1) !important;">
-                                                    <i data-feather="eye" style="width: 14px; height: 14px;"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="3" class="text-center py-5">
-                                            <div class="py-5">
-                                                <i class="bi bi-calendar-x text-muted"
-                                                    style="font-size: 3rem; opacity: 0.2;"></i>
-                                                <p class="text-muted mt-3 fw-bold">No Attendance Records Found</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                    <div class="attendance-filter-field">
+                        <label>Quick Range</label>
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" id="quickRangeBtn">
+                                @php
+                                    $range = request('range');
+                                    $label = 'All Time';
+                                    if ($range == 'today') $label = 'Today';
+                                    elseif ($range == 'yesterday') $label = 'Yesterday';
+                                    elseif ($range == 'week') $label = 'This Week';
+                                    elseif ($range == 'month') $label = 'This Month';
+                                    elseif ($range == 'lastMonth') $label = 'Last Month';
+                                    elseif ($range == '3months') $label = 'Last 3 Months';
+                                    elseif ($range == '6months') $label = 'Last 6 Months';
+                                    elseif ($range == '1year') $label = 'Last 1 Year';
+                                    elseif ($range == 'custom') $label = 'Custom Date';
+                                @endphp
+                                {{ $label }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu">
+                                <div class="wghrm-custom-search-box">
+                                    <input type="text" class="wghrm-custom-search-input" placeholder="Search range..." onkeyup="wghrmFilterItems(this)">
+                                </div>
+                                <div class="wghrm-items-container">
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ !$range ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('', 'All Time')">All Time</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'today' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('today', 'Today')">Today</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'yesterday' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('yesterday', 'Yesterday')">Yesterday</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'week' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('week', 'This Week')">This Week</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'month' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('month', 'This Month')">This Month</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'lastMonth' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('lastMonth', 'Last Month')">Last Month</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '3months' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('3months', 'Last 3 Months')">Last 3 Months</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '6months' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('6months', 'Last 6 Months')">Last 6 Months</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '1year' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('1year', 'Last 1 Year')">Last 1 Year</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'custom' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('custom', 'Custom Date')">Custom Date</a>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="quickRange" value="{{ request('range') }}">
+                    </div>
+                    <div class="attendance-filter-field">
+                        <label>Start Date</label>
+                        <input type="date" id="startDate" class="form-control" value="{{ request('start_date') }}">
+                    </div>
+                    <div class="attendance-filter-field">
+                        <label>End Date</label>
+                        <input type="date" id="endDate" class="form-control" value="{{ request('end_date') }}">
+                    </div>
+                    <div class="attendance-filter-actions">
+                        <button type="button" class="zoho-btn-primary" onclick="applyFilters()">
+                            <i class="feather-search"></i> Apply
+                        </button>
+                        <a href="{{ route('payroll.attendace.employee') }}" class="zoho-btn-outline">Reset</a>
                     </div>
                 </div>
+            </div>
 
-                <!-- Mobile & Tablet Card View -->
-                <div class="d-lg-none px-1 pt-3">
-                    <div class="row g-3">
+            @if ($message = Session::get('success'))
+                <div class="attendance-alert" role="alert">
+                    <i class="feather-check-circle"></i>
+                    <span>{{ $message }}</span>
+                    <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            <div class="zoho-people-table-card">
+                <div id="attendanceTableContainer">
+                    <div class="d-none d-lg-block">
+                        <div class="zoho-people-table-toolbar">
+                            <div class="zoho-people-table-search">
+                                <i class="feather-search"></i>
+                                <input type="text" id="tableSearch" onkeyup="searchTable(event)" placeholder="Search in list..." value="{{ request('search') }}">
+                            </div>
+                            <div class="zoho-list-bar mb-0 border-0 bg-transparent p-0">
+                                <span class="text-muted small fw-bold text-uppercase">Show</span>
+                                <div class="dropdown">
+                                    <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown" id="showEntriesBtn"
+                                        style="width: 80px; height: 38px; padding: 0 12px;">
+                                        {{ $perPage ?? 20 }}
+                                    </button>
+                                    <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 10px;">
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                                    </div>
+                                </div>
+                                <span class="text-muted small fw-bold text-uppercase">entries</span>
+                            </div>
+                        </div>
+
+                        <div class="card-body p-0 zoho-list-body">
+                            <div class="table-responsive zoho-table-wrap">
+                                <table class="table zoho-data-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 200px;">Employee Name</th>
+                                            <th>Attendance History</th>
+                                            <th class="text-end" style="width: 100px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($attendance as $att)
+                                            @php
+                                                $employeeId = $att->employee_id;
+                                                $employeeName = $att->employee_name;
+                                            @endphp
+                                            <tr>
+                                                <td>
+                                                    <span class="att-emp-list-name">{{ $employeeName }}</span>
+                                                </td>
+                                                <td>
+                                                    <div class="att-stat-chips">
+                                                        <span class="att-stat-chip att-stat-chip--present" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'present')">Present <strong>{{ $att->present_count }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--overtime" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'overtime')">Overtime <strong>{{ $att->overtime_count }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--half" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'half_day')">Half Day <strong>{{ $att->half_day_count }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--leave" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'leave')">Leave <strong>{{ $att->leave_count }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--absent" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'absent')">Absent <strong>{{ $att->absent_count }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--wfh" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'wfh')">WFH <strong>{{ $att->wfh_count }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--early" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'early_out')">Early Out <strong>{{ $att->early_count }}</strong></span>
+                                                    </div>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="attendance-row-actions">
+                                                        <button type="button" class="zoho-icon-btn" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}')" title="View">
+                                                            <i class="feather-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="3">
+                                                    <div class="attendance-empty">
+                                                        <i class="feather-users"></i>
+                                                        <p>No attendance records found.</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-lg-none att-emp-mobile-list">
                         @forelse($attendance as $att)
                             @php
                                 $employeeId = $att->employee_id;
                                 $employeeName = $att->employee_name;
                             @endphp
-                            <div class="col-12 mobile-card-wrapper">
-                                <div class="mobile-attendance-card p-3 shadow-sm border mb-3"
-                                    style="border-radius: 15px; background: #fff;">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <div>
-                                            <span class="d-block small text-muted text-uppercase fw-bold"
-                                                style="letter-spacing: 0.5px;">Employee</span>
-                                            <span class="fw-bold text-dark fs-6">{{ $employeeName }}</span>
-                                        </div>
-                                        <div class="d-flex gap-2">
-                                            <a href="javascript:void(0);"
-                                                onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}')"
-                                                class="avatar-text avatar-sm bg-soft-info text-info">
-                                                <i data-feather="eye"></i>
-                                            </a>
-                                        </div>
+                            <div class="att-emp-mobile-card">
+                                <div class="att-emp-mobile-card-head">
+                                    <div>
+                                        <div class="att-detail-mobile-label">Employee</div>
+                                        <div class="att-emp-list-name">{{ $employeeName }}</div>
                                     </div>
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <div class="ref-badge badge-green w-100 clickable py-2"
-                                                onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'present')">
-                                                Present: <span class="fw-bold ms-1">{{ $att->present_count }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="ref-badge badge-blue w-100 clickable py-2"
-                                                onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'overtime')">
-                                                Overtime: <span class="fw-bold ms-1">{{ $att->overtime_count }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="ref-badge badge-yellow w-100 clickable py-2"
-                                                onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'half_day')">
-                                                Half Day: <span class="fw-bold ms-1">{{ $att->half_day_count }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="ref-badge badge-red w-100 clickable py-2"
-                                                onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'leave')">
-                                                Leave: <span class="fw-bold ms-1">{{ $att->leave_count }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="ref-badge badge-purple w-100 clickable py-2"
-                                                onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'wfh')">
-                                                WFH: <span class="fw-bold ms-1">{{ $att->wfh_count }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="ref-badge badge-purple w-100 clickable py-2"
-                                                onclick="openAttendanceDetails('{{ $employeeId }}', '{{ $employeeName }}', 'early_out')">
-                                                Early: <span class="fw-bold ms-1">{{ $att->early_count }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <button type="button" class="zoho-icon-btn" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}')" title="View">
+                                        <i class="feather-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="att-stat-chips">
+                                    <span class="att-stat-chip att-stat-chip--present" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'present')">Present <strong>{{ $att->present_count }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--overtime" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'overtime')">Overtime <strong>{{ $att->overtime_count }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--half" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'half_day')">Half Day <strong>{{ $att->half_day_count }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--leave" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'leave')">Leave <strong>{{ $att->leave_count }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--absent" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'absent')">Absent <strong>{{ $att->absent_count }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--wfh" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'wfh')">WFH <strong>{{ $att->wfh_count }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--early" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'early_out')">Early Out <strong>{{ $att->early_count }}</strong></span>
                                 </div>
                             </div>
                         @empty
-                            <div class="col-12 text-center py-5">
-                                <i class="bi bi-calendar-x text-muted" style="font-size: 3rem; opacity: 0.2;"></i>
-                                <p class="text-muted mt-3 fw-bold">No Attendance Records Found</p>
+                            <div class="attendance-empty">
+                                <i class="feather-users"></i>
+                                <p>No attendance records found.</p>
                             </div>
                         @endforelse
                     </div>
-                </div>
-                @if($attendance->hasPages())
-                    <div class="card-footer bg-white border-0 py-3 attendance-pagination">
-                        {{ $attendance->appends(request()->query())->links('pagination::bootstrap-5') }}
-                    </div>
-                @endif
+
+                    @if($attendance->hasPages())
+                        <div class="attendance-pagination">
+                            {{ $attendance->appends(request()->query())->links('pagination::bootstrap-5') }}
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -432,56 +275,52 @@
 @endsection
 
 @push('modals')
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="attendanceDetailOffcanvas" style="width: 900px;">
-        <div class="offcanvas-header border-bottom px-4 py-3 bg-white shadow-sm">
-            <div class="d-flex flex-column">
-                <h5 class="offcanvas-title fw-bold" style="color: #334155;">Record for <span id="offcanvasDate"
-                        class="text-primary"></span></h5>
-                <div id="statusIndicator" class="small fw-bold text-muted mt-1">Showing All Records</div>
+    <div class="offcanvas offcanvas-end att-detail-drawer" tabindex="-1" id="attendanceDetailOffcanvas">
+        <div class="att-detail-drawer-head">
+            <div class="att-detail-drawer-head-main">
+                <span class="att-detail-drawer-icon"><i class="feather-user"></i></span>
+                <div>
+                    <h5 class="att-detail-drawer-title">Employee Attendance</h5>
+                    <p class="att-detail-drawer-date">Employee: <span id="offcanvasDate"></span></p>
+                    <p class="att-detail-drawer-meta" id="statusIndicator">Showing all records</p>
+                </div>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-sm btn-link text-decoration-none fw-bold small p-0 me-3" id="showAllBtn"
-                    style="display:none;" onclick="resetModalFilter()">Show All</button>
-                <button type="button" class="btn-close shadow-none" data-bs-dismiss="offcanvas"></button>
+            <div class="att-detail-drawer-actions">
+                <button type="button" class="zoho-btn-outline att-detail-show-all" id="showAllBtn"
+                    style="display:none;" onclick="resetModalFilter()">
+                    <i class="feather-list"></i> Show All
+                </button>
+                <button type="button" class="zoho-icon-btn" data-bs-dismiss="offcanvas" title="Close">
+                    <i class="feather-x"></i>
+                </button>
             </div>
         </div>
-        <div class="offcanvas-body p-0">
-            <!-- Desktop View -->
+        <div class="offcanvas-body att-detail-drawer-body p-0">
             <div class="d-none d-md-block">
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead class="bg-light">
+                <div class="table-responsive zoho-table-wrap att-detail-table-wrap">
+                    <table class="table zoho-data-table mb-0 att-detail-table">
+                        <thead>
                             <tr>
-                                <th class="ps-4 py-3 small fw-bold text-muted text-uppercase" style="width: 80px;">SR. NO.
-                                </th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase">Date</th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase text-center">CHECK IN</th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase text-center">CHECK OUT</th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase text-center">Working Hrs</th>
-                                <th class="py-3 small fw-bold text-muted text-uppercase text-center">STATUS</th>
-                                <th class="pe-4 py-3 small fw-bold text-muted text-uppercase text-center">ACTION</th>
+                                <th class="col-num">Sr. No.</th>
+                                <th>Date</th>
+                                <th class="text-center">Check In</th>
+                                <th class="text-center">Check Out</th>
+                                <th class="text-center">Working Hrs</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody id="offcanvasTableBody"></tbody>
                     </table>
                 </div>
             </div>
-            <!-- Mobile View -->
-            <div class="d-md-none p-3" id="offcanvasCardsBody">
-                <!-- Cards will be injected here via JS -->
-            </div>
+            <div class="d-md-none att-detail-mobile-list" id="offcanvasCardsBody"></div>
         </div>
     </div>
 @endpush
 
 @push('scripts')
-    <script src="https://unpkg.com/feather-icons"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            if (typeof feather !== 'undefined') {
-                feather.replace();
-            }
-        });
         const isAdmin = {{ $isAdmin ? 'true' : 'false' }};
         const isTeamLeader = {{ $isTeamLeader ? 'true' : 'false' }};
 
@@ -572,9 +411,7 @@
             window.history.pushState(null, '', url.toString());
 
             fetch(url.toString(), {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(res => res.text())
             .then(html => {
@@ -584,9 +421,6 @@
                 const currentContainer = document.getElementById('attendanceTableContainer');
                 if (newContainer && currentContainer) {
                     currentContainer.innerHTML = newContainer.innerHTML;
-                }
-                if (window.feather) {
-                    feather.replace();
                 }
             })
             .catch(err => console.error('Error fetching search results:', err));
@@ -598,15 +432,10 @@
             const items = container.querySelectorAll('.wghrm-custom-dropdown-item');
             items.forEach(item => {
                 const text = item.textContent.toLowerCase();
-                if (text.includes(filter)) {
-                    item.style.setProperty('display', 'block', 'important');
-                } else {
-                    item.style.setProperty('display', 'none', 'important');
-                }
+                item.style.setProperty('display', text.includes(filter) ? 'block' : 'none', 'important');
             });
         }
 
-        // Initialize custom listeners
         document.addEventListener('DOMContentLoaded', function () {
             const startInput = document.getElementById('startDate');
             const endInput = document.getElementById('endDate');
@@ -621,20 +450,15 @@
                 });
             }
 
-            // AJAX navigation for pagination and entries dropdown inside container
             document.addEventListener('click', function(e) {
                 const ajaxLink = e.target.closest('#attendanceTableContainer a');
                 if (ajaxLink && (ajaxLink.closest('.pagination') || ajaxLink.closest('.dropdown-menu'))) {
                     const targetUrl = ajaxLink.getAttribute('href');
                     if (targetUrl && targetUrl !== 'javascript:void(0)' && !targetUrl.startsWith('#')) {
                         e.preventDefault();
-                        
                         window.history.pushState(null, '', targetUrl);
-                        
                         fetch(targetUrl, {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
                         })
                         .then(res => res.text())
                         .then(html => {
@@ -645,9 +469,6 @@
                             if (newContainer && currentContainer) {
                                 currentContainer.innerHTML = newContainer.innerHTML;
                                 currentContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                            if (window.feather) {
-                                feather.replace();
                             }
                         })
                         .catch(err => console.error('Error fetching dynamic content:', err));
@@ -666,10 +487,14 @@
             let url = new URL(window.location.href);
 
             if (employeeId) url.searchParams.set('employee_id', employeeId);
+            else url.searchParams.delete('employee_id');
             if (start) url.searchParams.set('start_date', start);
+            else url.searchParams.delete('start_date');
             if (end) url.searchParams.set('end_date', end);
+            else url.searchParams.delete('end_date');
             if (range) url.searchParams.set('range', range);
-            
+            else url.searchParams.delete('range');
+
             if (searchVal) url.searchParams.set('search', searchVal);
             else url.searchParams.delete('search');
 
@@ -678,12 +503,66 @@
         }
 
         let lastFetchedData = null;
-        let lastDate = null;
+
+        const OVERTIME_HOURS_THRESHOLD = 9.5;
+
+        function extractTimeValue(value) {
+            if (!value) return null;
+            const raw = value.includes(' ') ? value.split(' ')[1] : value;
+            return raw.substring(0, 5);
+        }
+
+        function timeToMinutes(time) {
+            const [h, m] = time.split(':').map(Number);
+            return (h * 60) + m;
+        }
+
+        function subtractMinutesFromTime(time, minutes) {
+            let total = timeToMinutes(time) - minutes;
+            if (total < 0) total += 24 * 60;
+            const h = Math.floor(total / 60) % 24;
+            const m = total % 60;
+            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        }
+
+        function halfDayEndTime(timeIn, timeOut) {
+            const span = timeToMinutes(timeOut) - timeToMinutes(timeIn);
+            const total = timeToMinutes(timeIn) + Math.floor(span / 2);
+            const h = Math.floor(total / 60) % 24;
+            const m = total % 60;
+            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        }
+
+        function matchesEarlyOut(item) {
+            const status = (item.status || '').toLowerCase();
+            if (['early_leave', 'early_out'].includes(status)) {
+                return true;
+            }
+            if (!item.check_out || !item.employee) return false;
+
+            const checkOutTime = extractTimeValue(item.check_out);
+            const emp = item.employee;
+
+            if (['present', 'late'].includes(status) && emp.time_out) {
+                return checkOutTime <= subtractMinutesFromTime(extractTimeValue(emp.time_out), 30);
+            }
+
+            if (status === 'half_day' && emp.time_in && emp.time_out) {
+                const halfEnd = halfDayEndTime(extractTimeValue(emp.time_in), extractTimeValue(emp.time_out));
+                return checkOutTime <= subtractMinutesFromTime(halfEnd, 30);
+            }
+
+            return false;
+        }
+
+        function matchesOvertime(item) {
+            return Number(item.total_hours) > OVERTIME_HOURS_THRESHOLD;
+        }
 
         function resetModalFilter() {
             if (lastFetchedData) renderTable(lastFetchedData, null);
             document.getElementById('showAllBtn').style.display = 'none';
-            document.getElementById('statusIndicator').innerText = 'Showing All Records';
+            document.getElementById('statusIndicator').innerText = 'Showing all records';
         }
 
         function openAttendanceDetails(employeeId, employeeName = '', filterStatus = null) {
@@ -691,26 +570,24 @@
             const end = document.getElementById('endDate').value;
 
             let url = `/payroll/attendance/employee-wise-details?employee_id=${employeeId}`;
-
             if (start) url += `&start_date=${start}`;
             if (end) url += `&end_date=${end}`;
 
             fetch(url)
                 .then(res => res.json())
                 .then(data => {
-                    console.log('Attendance data received:', data);
                     if (data.success) {
                         lastFetchedData = data.data;
                         const dateLabel = document.getElementById('offcanvasDate');
-                        if (dateLabel) dateLabel.innerText = data.employee_name;
+                        if (dateLabel) dateLabel.innerText = data.employee_name || employeeName;
 
                         const statusLabel = document.getElementById('statusIndicator');
                         if (statusLabel) {
                             if (filterStatus) {
-                                statusLabel.innerText = `Showing ${filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1).replace('_', ' ')} Records`;
-                                document.getElementById('showAllBtn').style.display = 'inline-block';
+                                statusLabel.innerText = `Showing ${filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1).replace('_', ' ')} records`;
+                                document.getElementById('showAllBtn').style.display = 'inline-flex';
                             } else {
-                                statusLabel.innerText = 'Showing All Records';
+                                statusLabel.innerText = 'Showing all records';
                                 document.getElementById('showAllBtn').style.display = 'none';
                             }
                         }
@@ -719,14 +596,12 @@
 
                         const offcanvasEl = document.getElementById('attendanceDetailOffcanvas');
                         if (offcanvasEl) {
-                            const offcanvas = new bootstrap.Offcanvas(offcanvasEl);
-                            offcanvas.show();
+                            bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
                         }
                     }
                 })
                 .catch(err => {
                     console.error('Error fetching details:', err);
-                    alert('Could not load attendance details. Please check console for errors.');
                 });
         }
 
@@ -740,19 +615,14 @@
             rows.forEach((item, index) => {
                 let match = !filterStatus;
                 const isHoliday = !!item.is_holiday;
-                if (filterStatus === 'present' && (item.status === 'present' || (isHoliday && item.status === 'absent'))) match = true;
+                if (filterStatus === 'present' && (['present', 'late'].includes(item.status) || (isHoliday && item.status === 'absent'))) match = true;
                 if (filterStatus === 'half_day' && item.status === 'half_day') match = true;
                 if (filterStatus === 'leave' && item.status === 'leave') match = true;
                 if (filterStatus === 'absent' && item.status === 'absent' && !isHoliday) match = true;
                 if (filterStatus === 'late' && item.status === 'late') match = true;
-                if (filterStatus === 'overtime' && item.total_hours > 9) match = true;
+                if (filterStatus === 'overtime' && matchesOvertime(item)) match = true;
                 if (filterStatus === 'wfh' && item.status === 'wfh') match = true;
-                if (filterStatus === 'early_out' && item.check_out) {
-                    const checkOutTime = item.check_out.includes(' ') ? item.check_out.split(' ')[1] : item.check_out;
-                    if (checkOutTime >= '15:00' && checkOutTime < '17:30') {
-                        match = true;
-                    }
-                }
+                if (filterStatus === 'early_out' && matchesEarlyOut(item)) match = true;
 
                 if (match) {
                     count++;
@@ -775,163 +645,145 @@
 
                     if (isHoliday && item.status === 'absent') {
                         statusDisplay = 'Holiday';
-                        badgeClass = 'status-badge-success';
+                        badgeClass = 'att-detail-status--present';
                     } else if (isActivityDay && (isEarly || item.status === 'early_out' || item.status === 'early_leave' || (item.status === 'half_day' && !isHalfDayPunch))) {
                         statusDisplay = 'Present Activity';
-                        badgeClass = 'status-badge-info';
+                        badgeClass = 'att-detail-status--info';
                     } else if (isEarly) {
                         statusDisplay = 'Early Out';
-                        badgeClass = 'status-badge-info';
+                        badgeClass = 'att-detail-status--info';
                     } else if (isHalfDayPunch || item.status === 'half_day') {
                         statusDisplay = 'Half Day';
-                        badgeClass = 'status-badge-warning';
+                        badgeClass = 'att-detail-status--half';
                     } else {
                         statusDisplay = item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' ');
                         if (statusDisplay === 'Early out' || statusDisplay === 'Early leave') statusDisplay = 'Early Out';
                         badgeClass = getStatusBadge(item.status);
                     }
 
-                    // Desktop Row
-                    body.innerHTML += `
-                                <tr class="border-bottom">
-                                    <td class="ps-4 py-3 text-muted fw-bold">${index + 1}</td>
-                                    <td class="fw-bold text-dark">${formatDate(item.attendance_date)}</td>
-                                    <td class="text-center">${item.check_in ? formatTime(item.check_in) : '--'}</td>
-                                    <td class="text-center">${item.check_out ? formatTime(item.check_out) : '--'}</td>
-                                   <td class="text-center">${formatHours(item.total_hours)}</td>
-                                    <td class="text-center">
-                                        <span class="status-badge ${badgeClass}">${statusDisplay}</span>
-                                    </td>
-                                    <td class="pe-4 text-center d-flex justify-content-center">
-                                        @if($isAdmin)
-                                            <button class="btn btn-sm text-primary shadow-none" onclick="editSingleAttendance(${item.id}, '${item.employee_id}')">
-                                                <i data-feather="edit" style="width:14px; height:14px;"></i>
-                                            </button>
-                                            <button class="btn btn-sm text-danger shadow-none" onclick="deleteSingleAttendance(${item.id})">
-                                                <i data-feather="trash-2" style="width:14px; height:14px;"></i>
-                                            </button>
-                                        @endif
-                                    </td>
-                                </tr>
-                            `;
+                    const adminActions = isAdmin ? `
+                        <div class="attendance-row-actions">
+                            <button type="button" class="zoho-icon-btn" onclick="editSingleAttendance(${item.id}, '${item.employee_id}')" title="Edit">
+                                <i class="feather-edit"></i>
+                            </button>
+                            <button type="button" class="zoho-icon-btn" onclick="deleteSingleAttendance(${item.id})" title="Delete">
+                                <i class="feather-trash-2"></i>
+                            </button>
+                        </div>` : '';
 
-                    // Mobile Card
+                    body.innerHTML += `
+                        <tr>
+                            <td class="text-muted fw-semibold">${count}</td>
+                            <td class="fw-bold">${formatDate(item.attendance_date)}</td>
+                            <td class="text-center att-detail-time">${item.check_in ? formatTime(item.check_in) : '--'}</td>
+                            <td class="text-center att-detail-time">${item.check_out ? formatTime(item.check_out) : '--'}</td>
+                            <td class="text-center att-detail-hours">${formatHours(item.total_hours)}</td>
+                            <td class="text-center">
+                                <span class="att-detail-status ${badgeClass}">${statusDisplay}</span>
+                            </td>
+                            <td class="text-center">${adminActions}</td>
+                        </tr>`;
+
                     cardsBody.innerHTML += `
-                            <div class="mobile-attendance-card p-3 shadow-sm border mb-3" style="border-radius: 12px; background: #fff;">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <span class="d-block small text-muted text-uppercase fw-bold" style="letter-spacing: 0.5px;">Date</span>
-                                        <span class="fw-bold text-dark">${formatDate(item.attendance_date)}</span>
-                                    </div>
-                                    <span class="status-badge ${badgeClass}">${statusDisplay}</span>
+                        <div class="att-detail-mobile-card">
+                            <div class="att-detail-mobile-card-head">
+                                <div>
+                                    <div class="att-detail-mobile-label">Date</div>
+                                    <div class="fw-bold text-dark">${formatDate(item.attendance_date)}</div>
                                 </div>
-                                <div class="row g-2 mb-3">
-                                    <div class="col-4 text-center">
-                                        <span class="d-block small text-muted">In</span>
-                                        <span class="fw-bold small text-dark">${item.check_in ? formatTime(item.check_in) : '--'}</span>
-                                    </div>
-                                    <div class="col-4 text-center border-start border-end">
-                                        <span class="d-block small text-muted">Out</span>
-                                        <span class="fw-bold small text-dark">${item.check_out ? formatTime(item.check_out) : '--'}</span>
-                                    </div>
-                                    <div class="col-4 text-center">
-                                        <span class="d-block small text-muted">Hrs</span>
-                                        <span class="fw-bold small text-dark">${formatHours(item.total_hours)}</span>
-                                    </div>
+                                <span class="att-detail-status ${badgeClass}">${statusDisplay}</span>
+                            </div>
+                            <div class="att-detail-mobile-stats">
+                                <div class="text-center">
+                                    <div class="att-detail-mobile-label">Check In</div>
+                                    <div class="att-detail-time">${item.check_in ? formatTime(item.check_in) : '--'}</div>
                                 </div>
-                                <div class="d-flex justify-content-end gap-2">
-                                    @if($isAdmin)
-                                        <button class="btn btn-sm btn-soft-primary px-3 rounded-pill" onclick="editSingleAttendance(${item.id})">
-                                            <i data-feather="edit" style="width:14px; height:14px;" class="me-1"></i> Edit
-                                        </button>
-                                        <button class="btn btn-sm btn-soft-danger px-3 rounded-pill" onclick="deleteSingleAttendance(${item.id})">
-                                            <i data-feather="trash-2" style="width:14px; height:14px;" class="me-1"></i> Delete
-                                        </button>
-                                    @endif
+                                <div class="text-center">
+                                    <div class="att-detail-mobile-label">Check Out</div>
+                                    <div class="att-detail-time">${item.check_out ? formatTime(item.check_out) : '--'}</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="att-detail-mobile-label">Hours</div>
+                                    <div class="att-detail-hours">${formatHours(item.total_hours)}</div>
                                 </div>
                             </div>
-                        `;
+                            ${isAdmin ? `
+                            <div class="att-detail-mobile-actions">
+                                <button type="button" class="zoho-btn-outline" onclick="editSingleAttendance(${item.id}, '${item.employee_id}')">
+                                    <i class="feather-edit"></i> Edit
+                                </button>
+                                <button type="button" class="zoho-btn-outline" onclick="deleteSingleAttendance(${item.id})">
+                                    <i class="feather-trash-2"></i> Delete
+                                </button>
+                            </div>` : ''}
+                        </div>`;
                 }
             });
 
             if (filterStatus) {
-                document.getElementById('showAllBtn').style.display = 'block';
-                document.getElementById('statusIndicator').innerHTML = `Showing: <span class="text-primary text-uppercase">${filterStatus}</span> (${count} found)`;
+                document.getElementById('showAllBtn').style.display = 'inline-flex';
+                document.getElementById('statusIndicator').innerHTML = `Showing: <strong>${filterStatus.replace('_', ' ')}</strong> (${count} found)`;
             } else {
                 document.getElementById('showAllBtn').style.display = 'none';
-                document.getElementById('statusIndicator').innerText = 'Showing All Records';
-            }
-
-            if (typeof feather !== 'undefined') {
-                feather.replace();
+                document.getElementById('statusIndicator').innerText = 'Showing all records';
             }
         }
 
         function formatDate(date) {
             if (!date) return '--';
-
-            const d = new Date(date);
-            return d.toLocaleDateString('en-GB');
+            return new Date(date).toLocaleDateString('en-GB');
         }
 
         function formatHours(decimalHours) {
             if (!decimalHours) return '--';
-
             let hours = Math.floor(decimalHours);
             let minutes = Math.round((decimalHours - hours) * 60);
-
-            // handle edge case (60 minutes)
             if (minutes === 60) {
                 hours += 1;
                 minutes = 0;
             }
-
             return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
         }
-
 
         function formatTime(time) {
             if (!time) return '--';
             let [h, m] = time.split(':');
-            let ampm = h >= 12 ? 'PM' : 'AM';
+            h = parseInt(h, 10);
+            const ampm = h >= 12 ? 'PM' : 'AM';
             h = h % 12 || 12;
             return `${h}:${m} ${ampm}`;
         }
 
         function getStatusBadge(status) {
-            switch (status.toLowerCase()) {
-                case 'present': return 'status-badge-success';
-                case 'holiday': return 'status-badge-success';
-                case 'absent': return 'status-badge-danger';
-                case 'half_day': return 'status-badge-warning';
-                case 'activity': return 'status-badge-info';
-                case 'early_leave': return 'status-badge-info';
-                case 'early_out': return 'status-badge-info';
-                default: return 'status-badge-info';
+            switch ((status || '').toLowerCase()) {
+                case 'present':
+                case 'holiday':
+                    return 'att-detail-status--present';
+                case 'absent':
+                    return 'att-detail-status--absent';
+                case 'half_day':
+                    return 'att-detail-status--half';
+                case 'activity':
+                case 'early_leave':
+                case 'early_out':
+                case 'late':
+                case 'wfh':
+                    return 'att-detail-status--info';
+                default:
+                    return 'att-detail-status--info';
             }
         }
-
-        // function deleteAttendanceByDate(employeeId) {
-        //     if (confirm('Are you sure you want to delete this employee attendance record?')) {
-        //         fetch(`/payroll/attendance/date/${employeeId}`, {
-        //             method: 'DELETE',
-        //             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-        //         }).then(res => res.json()).then(data => {
-        //             if(data.success) window.location.reload();
-        //         });
-        //     }
-        // }
 
         function deleteSingleAttendance(id) {
             Swal.fire({
                 title: 'Are you sure?',
-                text: "Delete this attendance record?",
+                text: 'Delete this attendance record?',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#3858f9',
+                confirmButtonColor: '#1070e0',
                 cancelButtonColor: '#64748b',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'No, cancel',
+                confirmButtonText: 'Yes, delete it',
+                cancelButtonText: 'Cancel',
                 reverseButtons: true,
                 customClass: {
                     confirmButton: 'btn btn-primary px-4',
@@ -942,23 +794,15 @@
                 if (result.isConfirmed) {
                     fetch(`{{ url('/payroll/attendance') }}/${id}`, {
                         method: 'DELETE',
-                        headers: {
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        }
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                     }).then(res => res.json())
                         .then(data => {
                             if (data.success) {
                                 if (typeof Toast !== 'undefined') {
-                                    Toast.fire({
-                                        icon: 'success',
-                                        title: 'Record deleted'
-                                    });
+                                    Toast.fire({ icon: 'success', title: 'Record deleted' });
                                 }
-
-                                // refresh eye tab data
                                 const employeeName = document.getElementById('offcanvasDate').innerText;
                                 const employeeId = lastFetchedData[0]?.employee_id;
-
                                 if (employeeId) {
                                     openAttendanceDetails(employeeId, employeeName);
                                 }
@@ -994,372 +838,13 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'attendance.xlsx'; // change filename if needed
+                a.download = 'attendance.xlsx';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
                 window.URL.revokeObjectURL(url);
             })
-            .catch(error => {
-                console.error('Export failed:', error);
-            });
+            .catch(error => console.error('Export failed:', error));
         }
     </script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-        .wghrm-custom-select-btn {
-            background-color: #fff;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075);
-            border-radius: 10px;
-            color: #475569;
-            padding: 10px 15px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            height: 44px;
-            font-size: 14px;
-            text-align: left;
-            transition: all 0.2s;
-        }
-
-        .wghrm-custom-select-btn:focus,
-        .wghrm-custom-select-btn:active {
-            border-color: #3858f9;
-            box-shadow: 0 0 0 3px rgba(56, 88, 249, 0.1);
-            outline: none;
-        }
-
-        .wghrm-custom-select-btn::after {
-            border-top: .3em solid;
-            border-right: .3em solid transparent;
-            border-bottom: 0;
-            border-left: .3em solid transparent;
-            margin-left: .255em;
-            content: "";
-        }
-
-        .wghrm-custom-dropdown-menu {
-            border-radius: 12px !important;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08) !important;
-            padding: 8px !important;
-            margin-top: 8px !important;
-            z-index: 99 !important;
-            background: #fff !important;
-            border: 1px solid #e2e8f0 !important;
-            width: 100%;
-            min-width: 250px;
-        }
-
-        .wghrm-custom-search-box {
-            position: sticky;
-            top: 0;
-            background: white;
-            z-index: 10;
-            padding: 4px;
-            margin-bottom: 8px;
-        }
-
-        .wghrm-custom-search-input {
-            width: 100%;
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            font-size: 13px;
-            outline: none;
-            background: #f8fafc;
-            font-weight: 500;
-        }
-
-        .wghrm-custom-search-input:focus {
-            border-color: #3858f9;
-            background: #fff;
-        }
-
-        .wghrm-items-container {
-            max-height: 250px;
-            overflow-y: auto;
-        }
-
-        .wghrm-custom-dropdown-item {
-            border-radius: 10px !important;
-            padding: 10px 15px !important;
-            font-weight: 500 !important;
-            font-size: 14px !important;
-            color: #475569 !important;
-            margin-bottom: 3px !important;
-            transition: all 0.2s ease !important;
-            cursor: pointer !important;
-            white-space: nowrap !important;
-        }
-
-        .wghrm-custom-dropdown-item:hover,
-        .wghrm-custom-dropdown-item.active {
-            background: #eff6ff !important;
-            color: #3858f9 !important;
-        }
-
-        .breadcrumb-item+.breadcrumb-item::before {
-            content: ">";
-            color: #94a3b8;
-        }
-
-        .hover-row:hover {
-            background-color: #fbfcfe;
-        }
-
-        .ref-badge {
-            font-size: 11px;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            min-width: 90px;
-            display: inline-block;
-            text-align: center;
-            text-transform: uppercase;
-        }
-
-        .clickable {
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        .clickable:hover {
-            transform: scale(1.05);
-        }
-
-        .badge-green {
-            background: #ecfdf5;
-            color: #059669;
-            border: 1px solid #d1fae5;
-        }
-
-        .badge-blue {
-            background: #eff6ff;
-            color: #2563eb;
-            border: 1px solid #dbeafe;
-        }
-
-        .badge-yellow {
-            background: #fffbeb;
-            color: #d97706;
-            border: 1px solid #fef3c7;
-        }
-
-        .badge-red {
-            background: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fee2e2;
-        }
-
-        .status-badge {
-            font-size: 11px;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 4px;
-            text-transform: uppercase;
-        }
-
-        .status-badge-success {
-            background: #ecfdf5;
-            color: #059669;
-            border: 1px solid #d1fae5;
-        }
-
-        .status-badge-danger {
-            background: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fee2e2;
-        }
-
-        .status-badge-warning {
-            background: #fffbeb;
-            color: #d97706;
-            border: 1px solid #fef3c7;
-        }
-
-        .status-badge-info {
-            background: #f0f9ff;
-            color: #0284c7;
-            border: 1px solid #e0f2fe;
-        }
-
-        .btn-soft-primary {
-            background-color: rgba(56, 88, 249, 0.1);
-            color: #3858f9;
-            border: none;
-            transition: all 0.2s;
-        }
-
-        .btn-soft-primary:hover {
-            background-color: #3858f9;
-            color: #fff;
-        }
-
-        .btn-soft-danger {
-            background-color: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-            border: none;
-            transition: all 0.2s;
-        }
-
-        .btn-soft-danger:hover {
-            background-color: #ef4444;
-            color: #fff;
-        }
-
-        .mobile-attendance-card {
-            transition: all 0.3s ease;
-            border: 1px solid #f1f5f9 !important;
-        }
-
-        .mobile-attendance-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-            border-color: #e2e8f0 !important;
-        }
-
-        @media (max-width: 768px) {
-            .offcanvas {
-                width: 100% !important;
-            }
-
-            .container-fluid {
-                padding-left: 10px !important;
-                padding-right: 10px !important;
-            }
-
-            .card-header {
-                padding: 15px !important;
-            }
-        }
-
-        .action-btn-outline {
-            background: transparent !important;
-            border: 0 !important;
-            border-radius: 8px;
-            width: 32px;
-            height: 32px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            color: #64748b;
-            box-shadow: none !important;
-        }
-
-        .action-btn-outline:hover {
-            background: #f1f5f9 !important;
-            color: #3858f9;
-            border: 0 !important;
-        }
-
-        .badge-purple {
-            background: #f3e8ff;
-            color: #7c3aed;
-            border: 1px solid #ddd6fe;
-        }
-
-        .attendance-pagination .pagination {
-            margin-bottom: 0;
-            justify-content: center;
-            gap: 0.35rem;
-        }
-
-        .attendance-pagination .page-link {
-            min-width: 38px;
-            height: 38px;
-            padding: 0.5rem 0.75rem;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #475569;
-            font-weight: 600;
-            box-shadow: none;
-        }
-
-        .attendance-pagination .page-item.active .page-link {
-            background: #3858f9;
-            border-color: #3858f9;
-            color: #fff;
-        }
-
-        .attendance-pagination .page-item.disabled .page-link {
-            color: #94a3b8;
-            background: #f8fafc;
-            border-color: #e2e8f0;
-        }
-
-        .attendance-pagination .page-link svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        /* Premium Calendar/Date Input Styling */
-        input[type="date"],
-        input[type="month"] {
-            border: 1px solid #e2e8f0 !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            color: #334155 !important;
-            font-weight: 600 !important;
-            cursor: pointer;
-        }
-
-        input[type="date"]:hover,
-        input[type="month"]:hover {
-            border-color: #cbd5e1 !important;
-            background-color: #ffffff !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        input[type="date"]:focus,
-        input[type="month"]:focus {
-            border-color: #3858f9 !important;
-            box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.12) !important;
-            background-color: #ffffff !important;
-            outline: none !important;
-        }
-
-        /* Customizing the native calendar picker icon */
-        input[type="date"]::-webkit-calendar-picker-indicator,
-        input[type="month"]::-webkit-calendar-picker-indicator {
-            cursor: pointer;
-            opacity: 0.6;
-            transition: all 0.2s;
-        }
-
-        input[type="date"]::-webkit-calendar-picker-indicator:hover,
-        input[type="month"]::-webkit-calendar-picker-indicator:hover {
-            opacity: 1;
-        }
-
-        /* Custom Scrollbar (Slider) */
-        .wghrm-items-container::-webkit-scrollbar,
-        .wghrm-custom-dropdown-menu::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .wghrm-items-container::-webkit-scrollbar-track,
-        .wghrm-custom-dropdown-menu::-webkit-scrollbar-track {
-            background: #f8fafc;
-            border-radius: 10px;
-        }
-
-        .wghrm-items-container::-webkit-scrollbar-thumb,
-        .wghrm-custom-dropdown-menu::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-
-        .wghrm-items-container::-webkit-scrollbar-thumb:hover,
-        .wghrm-custom-dropdown-menu::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-    </style>
 @endpush

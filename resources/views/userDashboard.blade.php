@@ -408,55 +408,8 @@
     <!-- [ page-header ] end -->
     <!-- [ Main Content ] start -->
     <div class="main-content pt-md-4 pt-2 hrm-resp-main-content">
-        <div class="card shadow-sm border-0 mb-4" id="announcementBox">
-            {{-- Header with minimize and close buttons --}}
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2" style="height: 60px;">
-                <h6 class="mb-0 font-weight-bold text-white"><i class="fas fa-bullhorn me-2"></i>Urgent Announcements</h6>
-                <div class="d-flex justify-content-between" style="width: 50px;">
-                    <button class="btn btn-md text-white p-1 border-0" id="btnMinimize" style="box-shadow: none;"><i class="fas fa-minus"></i></button>
-                    <button class="btn btn-md text-white p-1 border-0 ml-1" id="btnClose" style="box-shadow: none;"><i class="fas fa-times"></i></button>
-                </div>
-            </div>
-            
-            {{-- Body Wrapper --}}
-            <div class="card-body bg-light p-3" id="announcementBody">
-                @foreach($announcements as $announcement)
-                    @php
-                        // Check if current user logged in has read this item
-                        $isRead = $announcement->readByUsers->contains(auth()->id());
-                    @endphp
-                    
-                    <div class="card mb-3 shadow-none position-relative" 
-                        id="msg-card-{{ $announcement->id }}" 
-                        style="border: 1px solid #e2e2e2; 
-                                border-left: 5px solid {{ $isRead ? '#9e9e9e' : '#ff4d4d' }}; 
-                                background-color: {{ $isRead ? '#ffffff' : '#eaeaea' }}; 
-                                border-radius: 4px; 
-                                transition: all 0.3s ease;">
-                        
-                        <div class="card-body d-flex justify-content-between align-items-center p-3" style="min-height: 70px;">
-                            <div style="font-size: 14px; padding-right: 15px;">
-                                <p class="mb-1" style="color: {{ $isRead ? '#666666' : '#333333' }} !important; font-weight: 600; line-height: 1.4;">
-                                    <span class="text-danger me-2" style="color: {{ $isRead ? '#9e9e9e' : '#ff4d4d' }} !important; font-size: 12px; vertical-align: middle;">●</span>{{ $announcement->message }}
-                                </p>
-                                <small class="text-muted" style="font-size: 12px;"><i class="far fa-clock me-1"></i>{{ $announcement->created_at->diffForHumans() }}</small>
-                            </div>
-                            
-                            {{-- Render 'Mark as Read' only if they haven't clicked it yet --}}
-                            <div class="action-btn-zone flex-shrink-0">
-                                @if(!$isRead)
-                                    <button class="btn btn-dark btn-sm px-3 font-weight-bold btn-mark-read" 
-                                            data-id="{{ $announcement->id }}" 
-                                            style="font-size: 12px; background-color: #2b2b2b !important; border: none; border-radius: 4px; height: 32px;">
-                                        Mark as Read
-                                    </button>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
+        @include('partials.urgent-announcements-card', ['announcements' => $announcements])
+
         <div class="row">
             <!-- [Available Leave Balance] start -->
             <div class="col-xxl-3 col-md-6">
@@ -1403,6 +1356,7 @@
             <div class="row pt-4">
 
             </div><!-- second row end -->
+            @if($canViewPayrollAnalytics)
             <!-- Monthly Summary Modal [ENHANCED] -->
             <div class="modal fade" id="summaryModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1443,6 +1397,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 
@@ -1546,6 +1501,7 @@
 
             // Re-render chart to ensure dynamic data is applied over theme defaults
             setTimeout(function () {
+                @if($canViewPayrollAnalytics)
                 const chartContainer = document.querySelector("#payment-records-chart");
                 var chart;
                 if (chartContainer) {
@@ -1605,6 +1561,7 @@
                             }
                         });
                 }
+                @endif
 
                 // Holiday Slider Logic
                 let currentHolidayPage = 0;
@@ -1855,39 +1812,6 @@
             document.querySelector('input[name="leave_from"]').value = '';
             document.querySelector('input[name="leave_to"]').value = '';
         }
-
-        $(document).ready(function() {
-            // 1. Minimize (-) toggle action
-            $('#btnMinimize').click(function() {
-                $('#announcementBody').slideToggle(200);
-            });
-
-            // 2. Remove (x) card context box until reload
-            $('#btnClose').click(function() {
-                $('#announcementBox').fadeOut(200);
-            });
-
-            // 3. AJAX read assignment dispatching
-            $(document).on('click', '.btn-mark-read', function() {
-                let broadcastId = $(this).data('id');
-                let button = $(this);
-                let parentCard = $('#msg-card-' + broadcastId);
-
-                $.ajax({
-                    url: `{{ url('/broadcasts') }}/${broadcastId}/read`,
-                    method: 'POST',
-                    data: { _token: '{{ csrf_token() }}' },
-                    success: function(response) {
-                        if(response.success) {
-                            // Soften visual weight layout accent to look gray/read
-                            parentCard.css('border-left-color', '#e3e6f0');
-                            parentCard.find('p').removeClass('text-dark').addClass('text-secondary');
-                            // Remove button smoothly
-                            button.fadeOut(200, function() { $(this).remove(); });
-                        }
-                    }
-                });
-            });
-        });
     </script>
+    @include('partials.urgent-announcements-scripts')
 @endpush

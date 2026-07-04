@@ -2,6 +2,8 @@
 
 @section('content')
 
+<div class="zoho-page-shell">
+<div class="main-content zoho-module-content">
 <div class="celebrations-container">
     <!-- Hero Header -->
     <div class="celebrations-hero">
@@ -308,6 +310,8 @@
     </div>
 
 </div>
+</div>
+</div>
 
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
@@ -334,16 +338,16 @@
     }
 
     .celebrations-container {
-        --bg-main: #f8fafc;
+        --bg-main: #f4f7f9;
         --card-bg: #ffffff;
-        --primary: #3858f9;
-        --secondary: #8b5cf6;
-        --text-dark: #0f172a;
-        --text-light: #64748b;
-        --birthday-gradient: linear-gradient(135deg, #3858f9 0%, #8b5cf6 100%);
-        --anniversary-gradient: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+        --primary: #1070e0;
+        --secondary: #1a2138;
+        --text-dark: #1a2138;
+        --text-light: #616e88;
+        --birthday-gradient: linear-gradient(135deg, #1070e0 0%, #1a2138 100%);
+        --anniversary-gradient: linear-gradient(135deg, #1070e0 0%, #0d5bb8 100%);
         --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.04);
-        --shadow-strong: 0 20px 40px -12px rgba(56, 88, 249, 0.08);
+        --shadow-strong: 0 20px 40px -12px rgba(16, 112, 224, 0.08);
         
         padding: 30px;
         font-family: 'Outfit', sans-serif;
@@ -470,19 +474,19 @@
     }
 
     .premium-card.birthday-theme {
-        --theme-color: #3858f9;
-        --theme-bg-light: #eef2ff;
-        --theme-border-light: #c7d2fe;
-        --theme-glow: radial-gradient(circle, rgba(56, 88, 249, 0.04) 0%, transparent 70%);
-        --theme-glow-hover: radial-gradient(circle, rgba(56, 88, 249, 0.08) 0%, transparent 70%);
+        --theme-color: #1070e0;
+        --theme-bg-light: #eef4fc;
+        --theme-border-light: #c5daf5;
+        --theme-glow: radial-gradient(circle, rgba(16, 112, 224, 0.04) 0%, transparent 70%);
+        --theme-glow-hover: radial-gradient(circle, rgba(16, 112, 224, 0.08) 0%, transparent 70%);
     }
 
     .premium-card.anniversary-theme {
-        --theme-color: #f59e0b;
-        --theme-bg-light: #fffbeb;
-        --theme-border-light: #fde68a;
-        --theme-glow: radial-gradient(circle, rgba(245, 158, 11, 0.04) 0%, transparent 70%);
-        --theme-glow-hover: radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, transparent 70%);
+        --theme-color: #0d5bb8;
+        --theme-bg-light: #eef4fc;
+        --theme-border-light: #c5daf5;
+        --theme-glow: radial-gradient(circle, rgba(13, 91, 184, 0.04) 0%, transparent 70%);
+        --theme-glow-hover: radial-gradient(circle, rgba(13, 91, 184, 0.08) 0%, transparent 70%);
     }
 
     .premium-card:hover {

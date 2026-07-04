@@ -1,0 +1,4596 @@
+/* ═══════════════════════════════════════════════════════════════
+   Warrgyizmorsch HRM — Zoho CRM Portal Design System
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ── Zoho People palette ── */
+    --brand-nav: #1a2138;
+    --brand-nav-hover: #232b45;
+    --brand-nav-active: #2a3352;
+    --brand-nav-border: rgba(255, 255, 255, 0.08);
+    --brand-nav-text: rgba(255, 255, 255, 0.78);
+    --brand-nav-text-muted: rgba(255, 255, 255, 0.45);
+    --brand-nav-text-active: #ffffff;
+
+    /* Primary action blue */
+    --brand-primary: #1070e0;
+    --brand-primary-hover: #0d5fc0;
+    --brand-primary-active: #0a4fa3;
+    --brand-primary-soft: #e6f1fc;
+    --brand-primary-muted: #b3d4f5;
+    --brand-primary-ghost: rgba(16, 112, 224, 0.08);
+    --brand-primary-ring: rgba(16, 112, 224, 0.2);
+
+    /* Secondary neutral */
+    --brand-secondary: #5c6575;
+    --brand-secondary-hover: #4a5363;
+    --brand-secondary-soft: #f0f2f5;
+
+    /* Surfaces */
+    --brand-page-bg: #f4f7f9;
+    --brand-surface: #ffffff;
+    --brand-sidebar-bg: var(--brand-nav);
+    --brand-topbar-bg: var(--brand-nav);
+
+    /* Text (content area) */
+    --brand-text: #1e2533;
+    --brand-text-secondary: #5c6575;
+    --brand-text-muted: #8b95a5;
+
+    /* Borders */
+    --brand-border: #e0e0e0;
+    --brand-border-light: #ececec;
+
+    /* Semantic */
+    --brand-danger: #d32f2f;
+    --brand-danger-soft: #ffebee;
+
+    /* Legacy aliases */
+    --zoho-navy: var(--brand-nav);
+    --zoho-navy-hover: var(--brand-nav-hover);
+    --zoho-navy-active: var(--brand-nav-active);
+    --zoho-topbar-h: 44px;
+    --zoho-subheader-h: 52px;
+    --zoho-header-total-h: calc(var(--zoho-topbar-h) + var(--zoho-subheader-h));
+    --zoho-sidebar-w: 240px;
+    --zoho-page-bg: var(--brand-page-bg);
+    --zoho-surface: var(--brand-surface);
+    --zoho-border: var(--brand-border);
+    --zoho-border-light: var(--brand-border-light);
+    --zoho-text: var(--brand-text);
+    --zoho-text-secondary: var(--brand-text-secondary);
+    --zoho-muted: var(--brand-text-muted);
+    --zoho-accent: var(--brand-primary);
+    --zoho-accent-hover: var(--brand-primary-hover);
+    --zoho-accent-soft: var(--brand-primary-soft);
+    --zoho-link: var(--brand-primary);
+    --zoho-success: var(--brand-primary);
+    --zoho-warning: var(--brand-primary-hover);
+    --zoho-danger: var(--brand-danger);
+    --zoho-radius: 4px;
+    --zoho-radius-lg: 6px;
+    --zoho-shadow: 0 1px 2px rgba(26, 33, 56, 0.06);
+    --zoho-shadow-md: 0 2px 8px rgba(26, 33, 56, 0.08);
+    --zoho-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    --bs-primary: var(--brand-primary);
+    --bs-primary-rgb: 16, 112, 224;
+    --bs-link-color: var(--brand-primary);
+    --bs-link-hover-color: var(--brand-primary-hover);
+}
+
+body.zoho-portal {
+    --zoho-header-total-h: var(--zoho-topbar-h);
+}
+
+body.zoho-portal.zoho-has-subheader {
+    --zoho-header-total-h: calc(var(--zoho-topbar-h) + var(--zoho-subheader-h));
+}
+
+/* ── Base ── */
+body.zoho-portal {
+    font-family: var(--zoho-font) !important;
+    background: var(--zoho-page-bg) !important;
+    color: var(--zoho-text);
+    font-size: 13px;
+}
+
+body.zoho-portal .nxl-container {
+    background: var(--zoho-page-bg) !important;
+    margin-left: var(--zoho-sidebar-w) !important;
+    top: var(--zoho-header-total-h) !important;
+    min-height: calc(100vh - var(--zoho-header-total-h)) !important;
+    transition: margin-left 0.2s ease, top 0.2s ease;
+}
+
+body.zoho-portal .nxl-content {
+    padding: 0 !important;
+}
+
+body.zoho-portal .main-content {
+    padding: 16px 20px 24px !important;
+    background: var(--zoho-page-bg);
+}
+
+/* ── Sidebar (Zoho People dark nav) ── */
+body.zoho-portal .nxl-navigation {
+    background: var(--brand-nav) !important;
+    border-right: 1px solid var(--brand-nav-border) !important;
+    width: var(--zoho-sidebar-w) !important;
+}
+
+body.zoho-portal .nxl-navigation .m-header {
+    background: var(--brand-nav) !important;
+    border-bottom: 1px solid var(--brand-nav-border) !important;
+    padding: 10px 14px !important;
+    min-height: 52px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.zoho-portal .nxl-navigation .navbar-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+body.zoho-portal .nxl-navigation .navbar-content {
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden !important;
+    height: auto !important;
+    border-right: none !important;
+}
+
+body.zoho-portal .zoho-sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+body.zoho-portal .zoho-sidebar-scroll::-webkit-scrollbar {
+    width: 5px;
+}
+
+body.zoho-portal .zoho-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+}
+
+body.zoho-portal .zoho-sidebar-user {
+    flex-shrink: 0;
+    padding-top: 4px;
+    border-top: 1px solid var(--brand-nav-border);
+}
+
+body.zoho-portal .zoho-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+    text-decoration: none;
+    flex: 1;
+    min-width: 0;
+}
+
+body.zoho-portal .zoho-sidebar-brand span {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+body.zoho-portal .zoho-sidebar-search {
+    padding: 10px 12px 8px;
+    flex-shrink: 0;
+}
+
+body.zoho-portal .zoho-sidebar-search input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px 0 40px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--zoho-radius);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+body.zoho-portal .zoho-sidebar-search input::placeholder {
+    color: var(--brand-nav-text-muted);
+}
+
+body.zoho-portal .zoho-sidebar-search input:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 0 0 2px var(--brand-primary-ring);
+}
+
+body.zoho-portal .zoho-sidebar-search-wrap {
+    position: relative;
+}
+
+body.zoho-portal .zoho-sidebar-search-wrap i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--brand-nav-text-muted);
+    font-size: 13px;
+    pointer-events: none;
+}
+
+body.zoho-portal .nxl-navbar .nxl-caption label {
+    color: var(--brand-nav-text-muted) !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    padding: 12px 16px 6px !important;
+}
+
+body.zoho-portal .nxl-navbar .nxl-link {
+    color: var(--brand-nav-text) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    padding: 9px 14px !important;
+    margin: 1px 8px !important;
+    border-radius: var(--zoho-radius) !important;
+    transition: background 0.15s, color 0.15s !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+body.zoho-portal .nxl-navbar .nxl-mtext {
+    flex: 1;
+}
+
+body.zoho-portal .nxl-navbar .nxl-arrow {
+    color: rgba(255, 255, 255, 0.35) !important;
+    margin-left: auto !important;
+    font-size: 12px !important;
+}
+
+body.zoho-portal .nxl-navbar .nxl-link:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--brand-nav-text-active) !important;
+}
+
+body.zoho-portal .nxl-navbar > .nxl-item > .nxl-link.active,
+body.zoho-portal .nxl-navbar > .nxl-item.active > .nxl-link {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--brand-nav-text-active) !important;
+    box-shadow: inset 3px 0 0 var(--brand-primary);
+    font-weight: 600 !important;
+}
+
+body.zoho-portal .nxl-item.nxl-hasmenu.zoho-menu-open > .nxl-link {
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: var(--brand-nav-text-active) !important;
+}
+
+body.zoho-portal .nxl-submenu .nxl-link {
+    background: transparent !important;
+    box-shadow: none !important;
+    margin: 0 10px 1px 14px !important;
+    padding: 7px 10px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.62) !important;
+    border-radius: 3px !important;
+}
+
+body.zoho-portal .nxl-submenu .nxl-link:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--brand-nav-text-active) !important;
+}
+
+body.zoho-portal .nxl-submenu .nxl-link.active {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--brand-nav-text-active) !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+}
+
+/* Hide redundant dot icons in nested submenu */
+body.zoho-portal .nxl-submenu .nxl-submenu .nxl-micon {
+    display: none !important;
+}
+
+body.zoho-portal .nxl-submenu .nxl-submenu .nxl-link {
+    padding-left: 14px !important;
+    margin-left: 20px !important;
+}
+
+body.zoho-portal .nxl-navbar .nxl-micon {
+    color: rgba(255, 255, 255, 0.55) !important;
+    min-width: 20px;
+}
+
+body.zoho-portal .nxl-navbar .nxl-link:hover .nxl-micon,
+body.zoho-portal .nxl-navbar .nxl-link.active .nxl-micon {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+body.zoho-portal .nxl-item.nxl-hasmenu > .nxl-submenu,
+body.zoho-portal .nxl-item.nxl-hasmenu .nxl-hasmenu > .nxl-submenu {
+    display: none;
+}
+
+body.zoho-portal .nxl-item.nxl-hasmenu.zoho-menu-open > .nxl-submenu,
+body.zoho-portal .nxl-item.nxl-hasmenu.zoho-menu-open .nxl-hasmenu.zoho-menu-open > .nxl-submenu {
+    display: block !important;
+}
+
+body.zoho-portal .nxl-item.nxl-hasmenu.zoho-menu-open > .nxl-link .nxl-arrow i {
+    transform: rotate(90deg);
+}
+
+body.zoho-portal .nxl-submenu {
+    background: transparent !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+    margin: 2px 0 4px 22px !important;
+    padding: 2px 0 4px 0 !important;
+}
+
+body.zoho-portal .nxl-submenu .nxl-link {
+    font-size: 12px !important;
+}
+
+body.zoho-portal .nxl-navigation .card {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: var(--zoho-radius-lg) !important;
+    margin: 10px 12px 12px !important;
+}
+
+body.zoho-portal .zoho-sidebar-user-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+body.zoho-portal .zoho-sidebar-user-email {
+    font-size: 11px;
+    color: var(--brand-nav-text-muted);
+    margin: 0 0 10px;
+    word-break: break-all;
+}
+
+body.zoho-portal .zoho-logout-btn {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    padding: 8px 12px !important;
+    height: auto !important;
+}
+
+body.zoho-portal .zoho-sidebar-no-results {
+    padding: 16px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--brand-nav-text-muted);
+}
+
+body.zoho-portal .nxl-navigation .card-body {
+    padding: 14px !important;
+}
+
+body.zoho-portal .nxl-navigation .card h6,
+body.zoho-portal .nxl-navigation .card p {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+body.zoho-portal .nxl-navigation .card .btn-primary {
+    background: var(--brand-primary) !important;
+    border: none !important;
+    border-radius: var(--zoho-radius) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+}
+
+body.zoho-portal .nxl-navigation .card .feather-sunrise {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ── Top bar (Zoho People dark nav) ── */
+.zoho-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--zoho-topbar-h);
+    background: var(--brand-nav);
+    border-bottom: 1px solid var(--brand-nav-border);
+    padding: 0 16px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    overflow: visible;
+}
+
+.zoho-topbar-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    margin-right: 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.zoho-topbar-nav a {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    color: var(--brand-nav-text);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.zoho-topbar-nav a:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.zoho-topbar-nav a.active {
+    color: #fff;
+    border-bottom-color: var(--brand-primary);
+    background: rgba(255, 255, 255, 0.04);
+    font-weight: 600;
+}
+
+.zoho-topbar-icon {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--brand-nav-text);
+    border-radius: var(--zoho-radius);
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+}
+
+.zoho-topbar-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.zoho-topbar-nav {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+}
+
+.zoho-topbar-icon .badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 9px;
+    padding: 2px 5px;
+}
+
+/* ── Page sub-header (white bar) ── */
+.zoho-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    min-height: var(--zoho-subheader-h);
+    padding: 10px 20px;
+    background: var(--zoho-surface);
+    border-bottom: 1px solid var(--zoho-border);
+}
+
+.zoho-page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.zoho-page-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--zoho-text);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.zoho-welcome-strip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--zoho-accent-soft);
+    border: 1px solid #c5e3f7;
+    border-radius: var(--zoho-radius);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-accent);
+}
+
+.zoho-welcome-strip i {
+    font-size: 14px;
+}
+
+.zoho-page-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.zoho-header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--zoho-border);
+    border-radius: var(--zoho-radius);
+    background: var(--zoho-surface);
+    color: var(--zoho-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.zoho-header-btn:hover {
+    border-color: var(--zoho-accent);
+    color: var(--zoho-accent);
+    background: var(--zoho-accent-soft);
+}
+
+/* ── Override legacy header ── */
+body.zoho-portal .nxl-header {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: var(--zoho-sidebar-w) !important;
+    right: 0 !important;
+    width: auto !important;
+    min-height: var(--zoho-header-total-h) !important;
+    z-index: 1030 !important;
+    transition: left 0.2s ease;
+}
+
+body.zoho-portal .nxl-header .header-wrapper {
+    display: none !important;
+}
+
+body.zoho-portal .zoho-header-stack {
+    width: 100%;
+    overflow: visible !important;
+}
+
+body.zoho-portal .nxl-header,
+body.zoho-portal .zoho-topbar {
+    overflow: visible !important;
+}
+
+/* ── Top bar: notifications & profile dropdowns ── */
+.zoho-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 4px;
+}
+
+.zoho-header-dropdown-wrap {
+    position: relative;
+}
+
+.zoho-header-dropdown-wrap .dropdown-menu {
+    z-index: 1060 !important;
+    margin-top: 0 !important;
+    display: none;
+}
+
+.zoho-header-dropdown-wrap .dropdown-menu.show {
+    display: block !important;
+}
+
+.zoho-topbar-icon,
+.zoho-topbar-profile {
+    font: inherit;
+    line-height: inherit;
+}
+
+.zoho-topbar-profile {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.zoho-header-dropdown {
+    width: min(380px, calc(100vw - 24px));
+    padding: 0 !important;
+    border: 1px solid var(--zoho-border, #e0e0e0) !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+    overflow: hidden;
+}
+
+.zoho-topbar-notify {
+    width: 36px;
+    height: 36px;
+}
+
+.zoho-notify-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    border: 2px solid var(--brand-nav, #1a2035);
+    pointer-events: none;
+}
+
+.zoho-notify-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid #eef1f5;
+    background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+}
+
+.zoho-notify-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.zoho-notify-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.zoho-notify-list {
+    max-height: min(420px, calc(100vh - 180px));
+    overflow-y: auto;
+}
+
+.zoho-notify-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.zoho-notify-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.zoho-notify-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    text-decoration: none !important;
+    color: inherit;
+    transition: background 0.15s ease;
+}
+
+.zoho-notify-item:last-child {
+    border-bottom: none;
+}
+
+.zoho-notify-item:hover {
+    background: #f8fafc;
+}
+
+.zoho-notify-item-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.zoho-notify-item--leave .zoho-notify-item-icon {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.zoho-notify-item--payroll .zoho-notify-item-icon {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.zoho-notify-item--celebration .zoho-notify-item-icon {
+    background: #fce7f3;
+    color: #db2777;
+}
+
+.zoho-notify-item-icon i {
+    width: 15px;
+    height: 15px;
+}
+
+.zoho-notify-item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.zoho-notify-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--zoho-text, #1a1a2e);
+    line-height: 1.35;
+}
+
+.zoho-notify-item-desc {
+    font-size: 12px;
+    color: var(--zoho-text-secondary, #434a5a);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.zoho-notify-item-meta {
+    font-size: 10px;
+    color: var(--zoho-muted, #616e88);
+    margin-top: 2px;
+}
+
+.zoho-notify-item-avatar {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+.zoho-notify-item-avatar--initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #dbeafe;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.zoho-notify-empty {
+    padding: 32px 20px;
+    text-align: center;
+    color: var(--zoho-muted, #616e88);
+}
+
+.zoho-notify-empty i {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.zoho-notify-empty p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.zoho-notify-foot {
+    padding: 10px 16px;
+    border-top: 1px solid #eef1f5;
+    text-align: center;
+    background: #fafbfc;
+}
+
+.zoho-notify-foot a {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-accent, #1070e0);
+    text-decoration: none;
+}
+
+.zoho-notify-foot a:hover {
+    text-decoration: underline;
+}
+
+/* Profile trigger in top bar */
+.zoho-topbar-profile {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 10px 0 4px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--brand-nav-text, rgba(255, 255, 255, 0.85));
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    max-width: 200px;
+}
+
+.zoho-topbar-profile:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.zoho-topbar-profile-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.zoho-topbar-profile-avatar--initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.85);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.zoho-topbar-profile-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    line-height: 1.2;
+}
+
+.zoho-topbar-profile-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+}
+
+.zoho-topbar-profile-role {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+}
+
+.zoho-topbar-profile-chevron {
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+/* Profile dropdown panel */
+.zoho-user-panel {
+    width: min(280px, calc(100vw - 24px));
+}
+
+.zoho-user-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid #eef1f5;
+    background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+}
+
+.zoho-user-panel-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3px #e2e8f0;
+}
+
+.zoho-user-panel-avatar--initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #dbeafe;
+    color: #2563eb;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.zoho-user-panel-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.zoho-user-panel-info strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.zoho-user-panel-info span {
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.zoho-user-panel-menu {
+    padding: 6px;
+}
+
+.zoho-user-panel-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--zoho-text-secondary, #434a5a);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.zoho-user-panel-link:hover {
+    background: #f1f5f9;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.zoho-user-panel-link i {
+    width: 16px;
+    height: 16px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.zoho-user-panel-foot {
+    padding: 8px;
+    border-top: 1px solid #eef1f5;
+}
+
+.zoho-user-panel-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 36px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.zoho-user-panel-logout:hover {
+    background: #fee2e2;
+}
+
+.zoho-user-panel-logout i {
+    width: 16px;
+    height: 16px;
+}
+
+.zoho-page-date {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+    padding-left: 12px;
+    border-left: 1px solid var(--zoho-border-light, #eef1f5);
+}
+
+/* ── Widget / Card system ── */
+.zoho-widget {
+    background: var(--zoho-surface);
+    border: 1px solid var(--zoho-border);
+    border-radius: var(--zoho-radius-lg);
+    box-shadow: var(--zoho-shadow);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.zoho-widget-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--zoho-border-light);
+    min-height: 48px;
+}
+
+.zoho-widget-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text);
+    margin: 0;
+}
+
+.zoho-widget-title a {
+    color: var(--zoho-link);
+    text-decoration: none;
+}
+
+.zoho-widget-title a:hover {
+    text-decoration: underline;
+}
+
+.zoho-widget-sub {
+    font-size: 11px;
+    color: var(--zoho-muted);
+    margin: 2px 0 0;
+}
+
+.zoho-widget-body {
+    padding: 0;
+    flex: 1;
+}
+
+.zoho-widget-body.padded {
+    padding: 16px;
+}
+
+.zoho-widget-footer {
+    padding: 8px 16px;
+    border-top: 1px solid var(--zoho-border-light);
+    font-size: 11px;
+    color: var(--zoho-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ── Metric cards (Zoho KPI style) ── */
+.zoho-metric {
+    background: var(--zoho-surface);
+    border: 1px solid var(--zoho-border);
+    border-radius: var(--zoho-radius-lg);
+    box-shadow: var(--zoho-shadow);
+    padding: 14px 16px 16px;
+    height: 100%;
+    border-top: 3px solid var(--zoho-accent);
+    transition: box-shadow 0.2s;
+    position: relative;
+}
+
+.zoho-metric:hover {
+    box-shadow: var(--zoho-shadow-md);
+}
+
+.zoho-metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-link);
+    margin: 0 0 10px;
+    display: block;
+}
+
+.zoho-metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--zoho-text);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.zoho-metric-meta {
+    font-size: 11px;
+    color: var(--zoho-muted);
+    margin-top: 8px;
+}
+
+.zoho-metric--success { border-top-color: #43a047; }
+.zoho-metric--warning { border-top-color: #fb8c00; }
+.zoho-metric--danger { border-top-color: #e53935; }
+.zoho-metric--info { border-top-color: var(--zoho-accent); }
+
+.zoho-metric-label--success { color: #2e7d32; }
+.zoho-metric-label--warning { color: #ed6c02; }
+.zoho-metric-label--danger { color: #c62828; }
+
+/* ── Tables inside widgets ── */
+.zoho-table {
+    width: 100%;
+    margin: 0;
+    font-size: 12px;
+}
+
+.zoho-table thead th {
+    background: #f6f8fa;
+    color: var(--zoho-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--zoho-border);
+    white-space: nowrap;
+}
+
+.zoho-table tbody td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--zoho-border-light);
+    color: var(--zoho-text);
+    vertical-align: middle;
+}
+
+.zoho-table tbody tr:hover {
+    background: #f8fafb;
+}
+
+.zoho-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ── Global card overrides ── */
+body.zoho-portal .card {
+    border: 1px solid var(--zoho-border) !important;
+    border-radius: var(--zoho-radius-lg) !important;
+    box-shadow: var(--zoho-shadow) !important;
+}
+
+body.zoho-portal .card-header {
+    background: var(--zoho-surface) !important;
+    border-bottom: 1px solid var(--zoho-border-light) !important;
+    padding: 12px 16px !important;
+}
+
+body.zoho-portal .card-title {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: var(--zoho-text) !important;
+}
+
+body.zoho-portal .card-footer {
+    background: #fafbfc !important;
+    border-top: 1px solid var(--zoho-border-light) !important;
+}
+
+/* ── Buttons ── */
+body.zoho-portal .btn-primary {
+    background: var(--zoho-accent) !important;
+    border-color: var(--zoho-accent) !important;
+    border-radius: var(--zoho-radius) !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+}
+
+body.zoho-portal .btn-primary:hover {
+    background: var(--zoho-accent-hover) !important;
+    border-color: var(--zoho-accent-hover) !important;
+}
+
+body.zoho-portal .btn-light,
+body.zoho-portal .btn-light-brand {
+    background: var(--zoho-surface) !important;
+    border: 1px solid var(--zoho-border) !important;
+    color: var(--zoho-text-secondary) !important;
+    border-radius: var(--zoho-radius) !important;
+}
+
+/* ── Badges ── */
+body.zoho-portal .badge {
+    border-radius: 3px !important;
+    font-weight: 600 !important;
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+}
+
+/* ── Footer ── */
+body.zoho-portal .footer {
+    background: var(--zoho-surface) !important;
+    border-top: 1px solid var(--zoho-border) !important;
+    padding: 10px 20px !important;
+}
+
+/* ── Dashboard SaaS → Zoho mapping ── */
+body.zoho-portal .saas-stat-card {
+    border-radius: var(--zoho-radius-lg) !important;
+    border: 1px solid var(--zoho-border) !important;
+    box-shadow: var(--zoho-shadow) !important;
+    border-top-width: 3px !important;
+}
+
+body.zoho-portal .saas-stat-card::after {
+    display: none !important;
+}
+
+body.zoho-portal .saas-stat-paid,
+body.zoho-portal .saas-stat-pending,
+body.zoho-portal .saas-stat-rejected,
+body.zoho-portal .saas-stat-staff {
+    border-top-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .saas-stat-paid { opacity: 1; }
+body.zoho-portal .saas-stat-pending { border-top-color: var(--brand-primary-hover) !important; }
+body.zoho-portal .saas-stat-rejected { border-top-color: var(--brand-primary-active) !important; }
+body.zoho-portal .saas-stat-staff { border-top-color: #4da3e8 !important; }
+
+body.zoho-portal .saas-chart-card,
+body.zoho-portal .saas-panel-card {
+    border-radius: var(--zoho-radius-lg) !important;
+    border: 1px solid var(--zoho-border) !important;
+    box-shadow: var(--zoho-shadow) !important;
+}
+
+body.zoho-portal .saas-chart-card .card-header,
+body.zoho-portal .saas-panel-card .card-header {
+    background: var(--zoho-surface) !important;
+    border-bottom: 1px solid var(--zoho-border-light) !important;
+}
+
+body.zoho-portal .saas-dashboard-hero {
+    display: none !important;
+}
+
+body.zoho-portal .saas-announcement-card {
+    border-radius: var(--zoho-radius-lg) !important;
+    border: 1px solid var(--zoho-border) !important;
+    overflow: hidden;
+}
+
+body.zoho-portal .saas-announcement-card > .card-header {
+    background: var(--brand-primary) !important;
+    border: none !important;
+    padding: 10px 16px !important;
+    height: auto !important;
+}
+
+body.zoho-portal .saas-list-item {
+    border-bottom: 1px solid var(--zoho-border-light) !important;
+    padding: 10px 16px !important;
+}
+
+body.zoho-portal .saas-list-item:last-child {
+    border-bottom: none !important;
+}
+
+body.zoho-portal .saas-range-pills button {
+    border-radius: var(--zoho-radius) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+}
+
+body.zoho-portal .saas-range-pills button.active {
+    background: var(--zoho-accent) !important;
+}
+
+/* ── Form controls ── */
+body.zoho-portal .form-control,
+body.zoho-portal .form-select {
+    border-radius: var(--zoho-radius) !important;
+    border-color: var(--zoho-border) !important;
+    height: 40px !important;
+    font-size: 13px !important;
+    background: var(--zoho-surface) !important;
+}
+
+body.zoho-portal .form-control:focus,
+body.zoho-portal .form-select:focus {
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 0 2px var(--brand-primary-ring) !important;
+}
+
+body.zoho-portal .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767.98px) {
+    body.zoho-portal .dropdown-menu {
+        max-width: calc(100vw - 24px);
+    }
+
+    body.zoho-portal .saas-panel-card .card-header,
+    body.zoho-portal .saas-chart-card .card-header {
+        padding: 12px !important;
+    }
+
+    body.zoho-portal .hrm-resp-card-header-action .dropdown,
+    body.zoho-portal .hrm-resp-card-header-action .btn {
+        width: 100%;
+    }
+
+    body.zoho-portal .wghrm-custom-select-btn {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}
+
+/* ── Page header mobile toggle ── */
+.zoho-mobile-toggle {
+    display: none;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.85);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    margin-right: 2px;
+    flex-shrink: 0;
+    border-radius: var(--zoho-radius);
+}
+
+.zoho-mobile-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.zoho-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 1035;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.zoho-sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+body.zoho-sidebar-open {
+    overflow: hidden;
+}
+
+.zoho-sidebar-close {
+    display: none;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-radius: var(--zoho-radius);
+    cursor: pointer;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.zoho-sidebar-close:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+/* ── Tablet & mobile (matches theme breakpoint) ── */
+@media (max-width: 1024px) {
+    body.zoho-portal .nxl-header {
+        left: 0 !important;
+    }
+
+    body.zoho-portal .nxl-container {
+        margin-left: 0 !important;
+    }
+
+    body.zoho-portal .nxl-navigation {
+        left: calc(-1 * var(--zoho-sidebar-w)) !important;
+        width: min(var(--zoho-sidebar-w), 88vw) !important;
+        max-width: 280px;
+        z-index: 1040 !important;
+        transition: left 0.25s ease !important;
+        box-shadow: none !important;
+    }
+
+    body.zoho-portal .nxl-navigation.mob-navigation-active {
+        left: 0 !important;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.28) !important;
+    }
+
+    body.zoho-portal .nxl-navigation .m-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .zoho-sidebar-close {
+        display: inline-flex;
+    }
+
+    .zoho-topbar-nav {
+        display: none;
+    }
+
+    .zoho-mobile-toggle {
+        display: inline-flex;
+    }
+
+    .zoho-topbar {
+        padding: 0 10px 0 4px;
+    }
+
+    .zoho-topbar-actions {
+        gap: 2px;
+    }
+
+    .zoho-page-header {
+        padding: 10px 14px;
+        min-height: auto;
+    }
+
+    /* Disable theme PerfectScrollbar wrapper on mobile — use native scroll */
+    body.zoho-portal .nxl-navigation .navbar-content.ps {
+        overflow: hidden !important;
+    }
+
+    body.zoho-portal .nxl-navigation .navbar-content .ps__rail-x,
+    body.zoho-portal .nxl-navigation .navbar-content .ps__rail-y {
+        display: none !important;
+    }
+}
+
+/* ── Phone ── */
+@media (max-width: 767.98px) {
+    body.zoho-portal .main-content {
+        padding: 12px 12px 20px !important;
+    }
+
+    .zoho-page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .zoho-page-header-left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .zoho-page-header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .zoho-page-title {
+        font-size: 17px;
+    }
+
+    .zoho-welcome-strip {
+        max-width: 100%;
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+
+    .zoho-header-btn-label {
+        display: none;
+    }
+
+    .zoho-topbar-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .zoho-metric-value {
+        font-size: 24px;
+    }
+
+    body.zoho-portal .footer {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 8px;
+        padding: 12px 14px !important;
+    }
+
+    body.zoho-portal .footer .d-flex {
+        flex-wrap: wrap;
+        gap: 12px !important;
+    }
+
+    body.zoho-portal .zoho-sidebar-brand span {
+        font-size: 12px;
+    }
+
+    body.zoho-portal .zoho-sidebar-user .card {
+        margin: 8px 10px 10px !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .zoho-subheader-h-compact {
+        --zoho-subheader-h: 48px;
+    }
+
+    body.zoho-portal .nxl-notifications-menu,
+    body.zoho-portal .nxl-user-dropdown {
+        position: fixed !important;
+        left: 10px !important;
+        right: 10px !important;
+        top: calc(var(--zoho-header-total-h) + 6px) !important;
+        width: auto !important;
+        max-width: none !important;
+        transform: none !important;
+    }
+
+    .zoho-widget-body.padded {
+        padding: 12px !important;
+    }
+
+    .zoho-widget-body.padded .d-flex.flex-wrap.gap-2 {
+        width: 100%;
+    }
+
+    .zoho-widget-body.padded .zoho-header-btn {
+        flex: 1 1 calc(50% - 4px);
+        justify-content: center;
+        font-size: 11px;
+        padding: 0 8px;
+    }
+
+    body.zoho-portal .saas-announcement-card .card-body {
+        padding: 10px !important;
+    }
+
+    body.zoho-portal .modal-dialog {
+        margin: 0.75rem;
+    }
+}
+
+@media (max-width: 991px) {
+    .zoho-topbar-nav {
+        display: none;
+    }
+
+    .zoho-mobile-toggle {
+        display: inline-flex;
+    }
+}
+
+/* ── Hidden nav items (sidebar search) ── */
+.nxl-item.zoho-nav-hidden {
+    display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Zoho Module Pages (Employees, Payroll, etc.)
+   ═══════════════════════════════════════════════════════════════ */
+
+body.zoho-portal .page-header {
+    display: none !important;
+}
+
+.zoho-page-shell {
+    padding: 0;
+}
+
+.zoho-module-toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--zoho-surface);
+    border-bottom: 1px solid var(--zoho-border);
+    margin: 0 0 0;
+}
+
+.zoho-module-toolbar-main {
+    min-width: 0;
+}
+
+.zoho-module-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--zoho-text);
+    margin: 0 0 4px;
+    line-height: 1.25;
+}
+
+.zoho-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--zoho-muted);
+}
+
+.zoho-breadcrumb a {
+    color: var(--zoho-link);
+    text-decoration: none;
+}
+
+.zoho-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.zoho-breadcrumb-sep {
+    color: var(--zoho-muted);
+    opacity: 0.7;
+}
+
+.zoho-breadcrumb-current {
+    color: var(--zoho-text-secondary);
+}
+
+.zoho-module-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.zoho-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border: 1px solid var(--zoho-border);
+    border-radius: var(--zoho-radius);
+    background: var(--zoho-surface);
+    color: var(--zoho-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.zoho-btn-outline:hover {
+    border-color: var(--zoho-accent);
+    color: var(--zoho-accent);
+}
+
+.zoho-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 16px;
+    border: none;
+    border-radius: var(--zoho-radius);
+    background: var(--zoho-accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.zoho-btn-primary:hover {
+    background: var(--zoho-accent-hover);
+    color: #fff;
+}
+
+.zoho-module-card {
+    background: var(--zoho-surface);
+    border: 1px solid var(--zoho-border);
+    border-radius: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+.zoho-module-card .card,
+.zoho-module-card form > .card {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Zoho-style form tabs */
+.zoho-form-tabs {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 20px;
+    background: var(--zoho-surface);
+    border-bottom: 1px solid var(--zoho-border);
+    margin: 0;
+    list-style: none;
+}
+
+.zoho-form-tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    margin: 0;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--zoho-muted) !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.zoho-form-tabs .nav-link:hover {
+    color: var(--zoho-text) !important;
+}
+
+.zoho-form-tabs .nav-link.active {
+    color: var(--zoho-accent) !important;
+    border-bottom-color: var(--zoho-accent) !important;
+    background: transparent !important;
+}
+
+.zoho-form-body {
+    padding: 24px 20px 32px;
+    background: var(--zoho-surface);
+}
+
+body.zoho-portal .zoho-form-body .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary);
+    margin-bottom: 6px;
+}
+
+body.zoho-portal .zoho-form-body .form-control,
+body.zoho-portal .zoho-form-body .form-select {
+    height: 38px !important;
+    padding: 8px 12px !important;
+    border-radius: 4px !important;
+    background: #fff !important;
+    border: 1px solid var(--zoho-border) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+}
+
+body.zoho-portal .zoho-form-body .input-group-text {
+    border-radius: 4px 0 0 4px !important;
+    height: 38px;
+    padding: 0 10px;
+    background: #f8f9fb !important;
+    border: 1px solid var(--zoho-border) !important;
+    border-right: none !important;
+    color: var(--zoho-muted) !important;
+}
+
+body.zoho-portal .zoho-form-body .input-group .form-control {
+    border-radius: 0 4px 4px 0 !important;
+}
+
+body.zoho-portal .zoho-form-body label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary);
+    margin-bottom: 6px;
+}
+
+body.zoho-portal .zoho-form-body .form-control:focus,
+body.zoho-portal .zoho-form-body .form-select:focus {
+    border-color: var(--zoho-accent) !important;
+    box-shadow: 0 0 0 2px rgba(34, 132, 208, 0.12) !important;
+}
+
+body.zoho-portal .main-content.zoho-module-content {
+    padding: 0 !important;
+    background: var(--zoho-page-bg);
+}
+
+@media (max-width: 767.98px) {
+    .zoho-module-toolbar {
+        padding: 14px 14px;
+    }
+
+    .zoho-module-title {
+        font-size: 18px;
+    }
+
+    .zoho-module-toolbar-actions {
+        width: 100%;
+    }
+
+    .zoho-module-toolbar-actions .zoho-btn-outline,
+    .zoho-module-toolbar-actions .zoho-btn-primary {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .zoho-form-tabs {
+        padding: 0;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .zoho-form-tabs .nav-link {
+        white-space: nowrap;
+        padding: 12px 14px;
+        font-size: 12px !important;
+    }
+
+    .zoho-form-body {
+        padding: 16px 14px 24px;
+    }
+}
+
+/* ── Zoho list page (Employees, etc.) ── */
+.zoho-list-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.zoho-list-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 12px;
+    background: var(--zoho-page-bg);
+    border: 1px solid var(--zoho-border);
+    border-radius: var(--zoho-radius);
+    min-width: 220px;
+}
+
+.zoho-list-search i {
+    font-size: 14px;
+    color: var(--zoho-muted);
+    flex-shrink: 0;
+}
+
+.zoho-list-search input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--zoho-text);
+    min-width: 0;
+}
+
+.zoho-list-search input::placeholder {
+    color: var(--zoho-muted);
+}
+
+.zoho-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid var(--zoho-border);
+    border-radius: var(--zoho-radius);
+    background: var(--zoho-surface);
+    color: var(--zoho-text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.zoho-icon-btn:hover {
+    border-color: var(--zoho-accent);
+    color: var(--zoho-accent);
+    background: var(--zoho-surface);
+}
+
+.zoho-icon-btn-danger:hover {
+    border-color: var(--brand-danger);
+    color: var(--brand-danger);
+    background: var(--brand-danger-soft);
+}
+
+.zoho-list-mobile-search {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--zoho-border);
+    background: var(--zoho-surface);
+}
+
+.zoho-list-mobile-search .zoho-list-search {
+    width: 100%;
+    min-width: 0;
+}
+
+.zoho-filter-panel {
+    padding: 16px 20px;
+    background: #f4f7f9;
+    border-bottom: 1px solid var(--zoho-border);
+    position: relative;
+    z-index: 20;
+    overflow: visible;
+}
+
+.zoho-list-body {
+    background: var(--zoho-surface);
+}
+
+.zoho-list-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--zoho-border);
+    font-size: 12px;
+    color: var(--zoho-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.zoho-table-wrap {
+    overflow-x: auto;
+}
+
+.zoho-data-table {
+    margin: 0;
+    font-size: 13px;
+    color: var(--zoho-text);
+}
+
+.zoho-data-table thead th {
+    background: #f8f9fb;
+    border-bottom: 1px solid var(--zoho-border);
+    border-top: none;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--zoho-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.zoho-data-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--zoho-border);
+    vertical-align: middle;
+}
+
+.zoho-data-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.zoho-data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.zoho-data-table a,
+.zoho-link {
+    color: var(--zoho-link);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.zoho-data-table a:hover,
+.zoho-link:hover {
+    text-decoration: underline;
+}
+
+.zoho-list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--zoho-border);
+    background: var(--zoho-surface);
+}
+
+.zoho-list-pagination .pagination {
+    margin: 0;
+}
+
+@media (max-width: 767px) {
+    .zoho-list-toolbar-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .zoho-module-toolbar-actions .zoho-btn-primary {
+        flex: 1;
+        justify-content: center;
+        min-width: 140px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Brand-unified components (buttons, badges, soft variants)
+   Single primary + secondary palette — logo blue throughout
+   ═══════════════════════════════════════════════════════════════ */
+
+body.zoho-portal .btn-primary,
+body.zoho-portal .btn-success,
+body.zoho-portal .btn-info {
+    background: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+    color: #fff !important;
+}
+
+body.zoho-portal .btn-primary:hover,
+body.zoho-portal .btn-success:hover,
+body.zoho-portal .btn-info:hover {
+    background: var(--brand-primary-hover) !important;
+    border-color: var(--brand-primary-hover) !important;
+    color: #fff !important;
+}
+
+body.zoho-portal .btn-outline-primary {
+    color: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .btn-outline-primary:hover {
+    background: var(--brand-primary) !important;
+    color: #fff !important;
+}
+
+body.zoho-portal .btn-soft-primary,
+body.zoho-portal .bg-soft-primary {
+    background: var(--brand-primary-ghost) !important;
+    color: var(--brand-primary) !important;
+    border-color: var(--brand-primary-muted) !important;
+}
+
+body.zoho-portal .btn-soft-primary:hover,
+body.zoho-portal .bg-soft-primary:hover {
+    background: var(--brand-primary-soft) !important;
+    color: var(--brand-primary-hover) !important;
+}
+
+body.zoho-portal .btn-soft-info,
+body.zoho-portal .bg-soft-info,
+body.zoho-portal .btn-soft-success,
+body.zoho-portal .bg-soft-success {
+    background: var(--brand-primary-ghost) !important;
+    color: var(--brand-primary) !important;
+    border-color: var(--brand-primary-muted) !important;
+}
+
+body.zoho-portal .btn-soft-info:hover,
+body.zoho-portal .btn-soft-success:hover {
+    background: var(--brand-primary-soft) !important;
+    color: var(--brand-primary-hover) !important;
+}
+
+body.zoho-portal .btn-soft-secondary,
+body.zoho-portal .bg-soft-secondary {
+    background: var(--brand-secondary-soft) !important;
+    color: var(--brand-secondary) !important;
+    border-color: var(--brand-border) !important;
+}
+
+body.zoho-portal .btn-soft-danger,
+body.zoho-portal .bg-soft-danger {
+    background: var(--brand-danger-soft) !important;
+    color: var(--brand-danger) !important;
+    border-color: #ffcdd2 !important;
+}
+
+body.zoho-portal .text-primary {
+    color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .bg-primary {
+    background-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .badge.bg-primary,
+body.zoho-portal .badge.bg-info,
+body.zoho-portal .badge.bg-success {
+    background-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .form-check-input:checked {
+    background-color: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .pagination .page-link {
+    color: var(--brand-primary);
+    border-color: var(--brand-border);
+}
+
+body.zoho-portal .pagination .page-item.active .page-link {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+body.zoho-portal .pagination .page-link:hover {
+    color: var(--brand-primary-hover);
+    background: var(--brand-primary-soft);
+}
+
+body.zoho-portal .table thead th {
+    background: var(--brand-secondary-soft) !important;
+    color: var(--brand-text-secondary) !important;
+    border-color: var(--brand-border) !important;
+}
+
+body.zoho-portal .table-hover tbody tr:hover {
+    background: var(--brand-primary-ghost) !important;
+}
+
+body.zoho-portal .dropdown-item:active,
+body.zoho-portal .dropdown-item.active {
+    background: var(--brand-primary-soft) !important;
+    color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .nav-tabs .nav-link.active {
+    color: var(--brand-primary) !important;
+    border-bottom-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .progress-bar {
+    background-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .spinner-border.text-primary {
+    color: var(--brand-primary) !important;
+}
+
+/* Select2 — brand unified */
+body.zoho-portal .select2-container--default.select2-container--focus .select2-selection--single,
+body.zoho-portal .select2-container--default.select2-container--focus .select2-selection--multiple {
+    border-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .select2-container .select2-selection--multiple .select2-selection__choice {
+    background-color: var(--brand-primary) !important;
+}
+
+/* WGHRM dropdowns — brand unified */
+body.zoho-portal .wghrm-dropdown-trigger:hover,
+body.zoho-portal .wghrm-search-input:focus {
+    border-color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .wghrm-item:hover,
+body.zoho-portal .wghrm-item.selected {
+    background: var(--brand-primary-soft) !important;
+    color: var(--brand-primary) !important;
+}
+
+body.zoho-portal .wghrm-item-check {
+    color: var(--brand-primary) !important;
+}
+
+/* Avatar / icon action buttons in lists */
+body.zoho-portal .avatar-text.bg-primary {
+    background: var(--brand-primary) !important;
+}
+
+body.zoho-portal .avatar-text.bg-soft-primary {
+    background: var(--brand-primary-ghost) !important;
+    color: var(--brand-primary) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Zoho People UI — Listing, Filters, Forms
+   ═══════════════════════════════════════════════════════════════ */
+
+/* List page header */
+.zoho-people-list-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 20px;
+    background: var(--brand-surface);
+    border-bottom: 1px solid var(--brand-border);
+}
+
+.zoho-people-list-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--brand-text);
+    margin: 0 0 6px;
+    line-height: 1.2;
+}
+
+.zoho-people-view-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.zoho-people-view-name {
+    color: var(--brand-text-secondary);
+    font-weight: 500;
+}
+
+.zoho-people-view-edit {
+    color: var(--brand-primary);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.zoho-people-view-edit:hover {
+    text-decoration: underline;
+}
+
+.zoho-people-scope-links {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.zoho-people-scope-links a {
+    font-size: 12px;
+    color: var(--brand-text-muted);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.zoho-people-scope-links a:hover,
+.zoho-people-scope-links a.active {
+    color: var(--brand-primary);
+}
+
+.zoho-people-list-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* More options dropdown */
+.zoho-more-menu {
+    min-width: 200px;
+    padding: 6px 0 !important;
+    border: 1px solid var(--brand-border) !important;
+    border-radius: var(--zoho-radius-lg) !important;
+    box-shadow: var(--zoho-shadow-md) !important;
+}
+
+.zoho-more-menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--brand-text);
+}
+
+.zoho-more-menu .dropdown-item i {
+    width: 16px;
+    font-size: 14px;
+    color: var(--brand-text-muted);
+}
+
+.zoho-more-menu .dropdown-item:hover {
+    background: var(--brand-primary-ghost);
+    color: var(--brand-primary);
+}
+
+.zoho-more-menu .dropdown-item:hover i {
+    color: var(--brand-primary);
+}
+
+.zoho-more-menu .dropdown-divider {
+    margin: 4px 0;
+    border-color: var(--brand-border-light);
+}
+
+/* Filter drawer (right panel) */
+.zoho-filter-drawer {
+    width: 320px !important;
+    max-width: 90vw;
+    border-left: 1px solid var(--brand-border);
+    box-shadow: -4px 0 24px rgba(20, 50, 80, 0.1);
+}
+
+.zoho-filter-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--brand-border);
+    background: var(--brand-surface);
+}
+
+.zoho-filter-drawer-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--brand-text);
+    margin: 0;
+}
+
+.zoho-filter-drawer-close {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--brand-text-muted);
+    border-radius: var(--zoho-radius);
+    cursor: pointer;
+}
+
+.zoho-filter-drawer-close:hover {
+    background: var(--brand-secondary-soft);
+    color: var(--brand-text);
+}
+
+.zoho-filter-drawer-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--brand-border-light);
+    background: var(--brand-page-bg);
+}
+
+.zoho-filter-drawer-search i {
+    color: var(--brand-text-muted);
+    font-size: 14px;
+}
+
+.zoho-filter-drawer-search input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 13px;
+    color: var(--brand-text);
+}
+
+.zoho-filter-drawer-body {
+    padding: 0 !important;
+    overflow-y: auto;
+}
+
+.zoho-filter-drawer-footer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--brand-border);
+    background: var(--brand-surface);
+}
+
+.zoho-filter-drawer-footer .zoho-btn-primary,
+.zoho-filter-drawer-footer .zoho-btn-outline {
+    flex: 1;
+    justify-content: center;
+    height: 40px;
+}
+
+.zoho-filter-section {
+    border-bottom: 1px solid var(--brand-border-light);
+}
+
+.zoho-filter-section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    background: var(--brand-surface);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand-text);
+    cursor: pointer;
+    text-align: left;
+}
+
+.zoho-filter-section-toggle i {
+    font-size: 14px;
+    color: var(--brand-text-muted);
+    transition: transform 0.2s;
+}
+
+.zoho-filter-section-toggle[aria-expanded="true"] i {
+    transform: rotate(180deg);
+}
+
+.zoho-filter-field {
+    padding: 0 16px 14px;
+}
+
+.zoho-filter-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand-text-secondary);
+    margin-bottom: 6px;
+}
+
+.zoho-filter-input {
+    height: 40px !important;
+    border-radius: var(--zoho-radius) !important;
+    border: 1px solid var(--brand-border) !important;
+    background: var(--brand-surface) !important;
+    font-size: 13px !important;
+}
+
+.zoho-filter-checklist {
+    padding: 4px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.zoho-filter-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--brand-text);
+    cursor: pointer;
+    margin: 0;
+}
+
+.zoho-filter-check input {
+    accent-color: var(--brand-primary);
+}
+
+/* Table listing (Zoho People style) */
+.zoho-people-table-card {
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    margin: 0;
+}
+
+.zoho-people-table-card.zoho-list-loading {
+    opacity: 0.65;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+.zoho-data-table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: collapse;
+}
+
+.zoho-data-table thead th {
+    position: relative;
+    user-select: none;
+    padding: 10px 14px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--brand-text-secondary) !important;
+    background: var(--brand-page-bg) !important;
+    border-bottom: 1px solid var(--brand-border) !important;
+    vertical-align: middle !important;
+    white-space: nowrap;
+    text-align: left !important;
+}
+
+.zoho-data-table thead th:first-child,
+.zoho-data-table tbody td:first-child {
+    text-align: center !important;
+    width: 48px;
+}
+
+.zoho-data-table tbody td {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    vertical-align: middle !important;
+    border-bottom: 1px solid var(--brand-border-light) !important;
+    text-align: left !important;
+}
+
+.zoho-data-table tbody td.col-num {
+    text-align: center !important;
+    font-weight: 600;
+    color: var(--brand-text-secondary);
+}
+
+.zoho-data-table tbody td.col-attendance,
+.zoho-data-table tbody td.col-photo,
+.zoho-data-table thead th.col-attendance,
+.zoho-data-table thead th.col-photo {
+    text-align: center !important;
+}
+
+.zoho-data-table tbody tr:hover {
+    background: rgba(16, 112, 224, 0.03);
+}
+
+.zoho-emp-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    margin: 0 auto;
+}
+
+.zoho-emp-initial {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: rgba(16, 112, 224, 0.1);
+    color: var(--brand-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    margin: 0 auto;
+}
+
+.zoho-data-table .account-status {
+    height: 32px;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--zoho-radius);
+    max-width: 120px;
+}
+
+.zoho-data-table .zoho-link {
+    font-weight: 600;
+    text-decoration: none;
+    justify-content: flex-start !important;
+}
+
+.zoho-table-wrap {
+    overflow-x: auto;
+}
+
+.zoho-data-table .zoho-sort-icon {
+    display: inline-flex;
+    flex-direction: column;
+    margin-left: 4px;
+    vertical-align: middle;
+    opacity: 0.4;
+    line-height: 0.6;
+}
+
+.zoho-data-table .zoho-sort-icon i {
+    font-size: 10px;
+}
+
+.zoho-data-table thead th:hover .zoho-sort-icon {
+    opacity: 0.8;
+}
+
+.zoho-people-table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--brand-border);
+    background: var(--brand-surface);
+    font-size: 13px;
+}
+
+.zoho-record-count {
+    color: var(--brand-text-secondary);
+    font-weight: 500;
+}
+
+.zoho-record-count strong {
+    color: var(--brand-text);
+    font-weight: 700;
+}
+
+.zoho-people-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px;
+    min-height: 44px;
+    border-bottom: 1px solid var(--brand-border-light);
+    background: var(--brand-page-bg);
+}
+
+.zoho-people-table-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 280px;
+}
+
+.zoho-people-table-search input {
+    flex: 1;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--zoho-radius);
+    font-size: 13px;
+    background: var(--brand-surface);
+}
+
+/* Zoho People form (Add Candidate / Add Employee) */
+.zoho-people-form-card {
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-left: none;
+    border-right: none;
+    margin: 12px 16px 20px;
+    max-width: none;
+    width: auto;
+    box-shadow: 0 1px 3px rgba(26, 33, 56, 0.06);
+    display: flex;
+    flex-direction: column;
+}
+
+.zoho-people-form-card form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.zoho-people-form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--brand-border);
+}
+
+.zoho-people-form-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--brand-text);
+    margin: 0;
+}
+
+.zoho-form-close {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--brand-text-muted);
+    border-radius: var(--zoho-radius);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.zoho-form-close:hover {
+    background: var(--brand-secondary-soft);
+    color: var(--brand-text);
+}
+
+.zoho-people-form-body {
+    padding: 0;
+    flex: 0 0 auto;
+}
+
+.zoho-people-form-fields .tab-content {
+    min-height: 0;
+}
+
+.zoho-people-form-fields .tab-pane {
+    min-height: 0 !important;
+}
+
+.zoho-people-form-body .zoho-form-section-title {
+    padding: 12px 20px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--brand-text);
+    border-top: 1px solid var(--brand-border-light);
+    margin: 0;
+}
+
+.zoho-people-form-body .zoho-form-section-title:first-child {
+    border-top: none;
+}
+
+/* Two-column field grid — full-width form, 2 inputs per row */
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    margin: 0;
+    --bs-gutter-x: 0;
+    --bs-gutter-y: 0;
+    flex-wrap: unset !important;
+}
+
+/* Bank tab — 3 fields in one row on desktop */
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+@media (max-width: 991px) {
+    .zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid--3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 575px) {
+    .zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid--3 {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > .zoho-form-field-full {
+    grid-column: 1 / -1;
+}
+
+/* Horizontal label | field inside each grid cell */
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-md-3"],
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-md-4"],
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-md-6"],
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-lg-4"],
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-lg-6"] {
+    display: grid;
+    grid-template-columns: minmax(118px, 148px) 1fr;
+    align-items: center;
+    gap: 6px 14px;
+    width: auto !important;
+    max-width: none !important;
+    flex: unset !important;
+    padding: 7px 20px;
+    border-bottom: 1px solid var(--brand-border-light);
+    margin: 0 !important;
+    min-height: 52px;
+}
+
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-md-6"]:has(.form-check),
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > .zoho-form-field-radios,
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-md-6"]:has(textarea),
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > .zoho-form-field-full:has(textarea) {
+    align-items: center;
+}
+
+.zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > .zoho-form-field-full:has(textarea) {
+    align-items: start;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* Full-width blocks: compliance, photo — outside the label|field grid */
+.zoho-form-section-block {
+    border-top: 1px solid var(--brand-border-light);
+    padding: 0;
+}
+
+.zoho-form-section-block .zoho-form-section-title {
+    margin: 0;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--brand-border-light);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* Compliance section — paired rows, responsive label|value grid */
+.zoho-compliance-grid {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.zoho-compliance-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-bottom: 1px solid var(--brand-border-light);
+}
+
+.zoho-compliance-row--last {
+    border-bottom: none;
+}
+
+.zoho-compliance-cell {
+    display: grid;
+    grid-template-columns: minmax(118px, 148px) minmax(0, 1fr);
+    align-items: center;
+    gap: 6px 14px;
+    padding: 7px 20px;
+    min-height: 52px;
+    min-width: 0;
+    border-right: 1px solid var(--brand-border-light);
+}
+
+.zoho-compliance-row > .zoho-compliance-cell:last-child {
+    border-right: none;
+}
+
+.zoho-compliance-label {
+    margin: 0 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--brand-text-secondary, #616e88) !important;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.zoho-compliance-value {
+    min-width: 0;
+    width: 100%;
+}
+
+.zoho-compliance-cell .zoho-switch-wrap {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    width: 100%;
+}
+
+.zoho-compliance-cell .form-check.form-switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 0;
+    margin: 0;
+    width: 100%;
+}
+
+.zoho-compliance-cell .form-check-input {
+    width: 38px !important;
+    height: 22px !important;
+    margin: 0 !important;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.zoho-compliance-cell .form-check-input:checked {
+    background-color: var(--brand-primary, #1070e0);
+    border-color: var(--brand-primary, #1070e0);
+}
+
+.zoho-compliance-cell .form-check-label {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--brand-text-secondary, #616e88) !important;
+    margin: 0 !important;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.zoho-compliance-field {
+    width: 100%;
+    min-width: 0;
+}
+
+.zoho-compliance-field .input-group {
+    width: 100%;
+    min-width: 0;
+}
+
+.zoho-compliance-off-hint {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    color: var(--brand-text-muted, #94a3b8);
+    font-size: 13px;
+}
+
+.zoho-compliance-cell--photo .zoho-photo-inline {
+    width: 100%;
+    min-width: 0;
+}
+
+.zoho-compliance-cell--photo .zoho-photo-inline-btn {
+    max-width: 100%;
+}
+
+@media (max-width: 991px) {
+    .zoho-compliance-row {
+        grid-template-columns: 1fr;
+    }
+
+    .zoho-compliance-cell {
+        border-right: none;
+        border-bottom: 1px solid var(--brand-border-light);
+    }
+
+    .zoho-compliance-row > .zoho-compliance-cell:last-child {
+        border-bottom: none;
+    }
+}
+
+@media (max-width: 575px) {
+    .zoho-form-section-block .zoho-form-section-title {
+        padding: 10px 16px;
+    }
+
+    .zoho-compliance-cell {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        padding: 10px 16px;
+        align-items: start;
+    }
+
+    .zoho-compliance-cell .zoho-switch-wrap,
+    .zoho-compliance-off-hint {
+        min-height: auto;
+    }
+
+    .zoho-compliance-cell--photo .zoho-photo-inline-btn {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .zoho-compliance-cell--photo .zoho-photo-inline-text {
+        width: 100%;
+    }
+}
+
+.zoho-form-section-block .zoho-compliance-field .input-group {
+    border-radius: var(--zoho-radius) !important;
+    border: 1px solid var(--brand-border) !important;
+    margin-bottom: 0 !important;
+}
+
+.zoho-form-section-block .zoho-compliance-field .input-group-text {
+    background: var(--brand-page-bg) !important;
+    border: none !important;
+    border-right: 1px solid var(--brand-border-light) !important;
+}
+
+.zoho-form-section-block .zoho-compliance-field .form-control {
+    border: none !important;
+    box-shadow: none !important;
+    height: 40px !important;
+    font-size: 13px !important;
+}
+
+.zoho-form-section-block .zoho-compliance-field .input-group:focus-within {
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 0 2px var(--brand-primary-ring) !important;
+}
+
+.zoho-radio-group {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-height: 40px;
+}
+
+.zoho-radio-group .form-check {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zoho-radio-group .form-check-input {
+    margin: 0;
+    float: none;
+}
+
+.zoho-radio-group .form-check-label {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--brand-text-primary, #1a2138) !important;
+    margin: 0 !important;
+}
+
+.zoho-photo-field-cell .zoho-photo-inline {
+    width: 100%;
+}
+
+.zoho-photo-inline-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px dashed var(--brand-border, #e0e0e0);
+    border-radius: var(--zoho-radius, 4px);
+    background: var(--brand-page-bg, #f4f7f9);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.zoho-photo-inline-btn:hover {
+    border-color: var(--brand-primary, #1070e0);
+    background: var(--brand-primary-soft, #eef4fc);
+}
+
+.zoho-photo-inline-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--zoho-radius, 4px);
+    border: 1px solid var(--brand-border, #e0e0e0);
+    background: #fff;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoho-photo-inline-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.zoho-photo-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--brand-text-muted, #94a3b8);
+    font-size: 18px;
+}
+
+.zoho-photo-inline-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.zoho-photo-inline-text strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand-text-primary, #1a2138);
+}
+
+.zoho-photo-inline-text small {
+    font-size: 11px;
+    color: var(--brand-text-secondary, #616e88);
+}
+
+/* Dropdowns inside input-group — seamless Zoho select look */
+.zoho-people-form-fields .input-group .dropdown {
+    flex: 1 1 auto;
+    min-width: 0;
+    position: relative;
+}
+
+.zoho-people-form-fields .input-group .dropdown-menu {
+    width: 100%;
+    min-width: 100%;
+}
+
+.zoho-people-form-fields .wghrm-custom-select-btn {
+    width: 100% !important;
+    height: 40px !important;
+    min-width: 0 !important;
+    padding: 0 12px !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 var(--zoho-radius, 4px) var(--zoho-radius, 4px) 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    color: var(--brand-text-primary, #1a2138) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    text-align: left !important;
+}
+
+.zoho-people-form-fields .wghrm-custom-select-btn::after {
+    margin-left: 8px;
+    flex-shrink: 0;
+    opacity: 0.55;
+}
+
+.zoho-people-form-fields .wghrm-custom-select-btn:focus,
+.zoho-people-form-fields .wghrm-custom-select-btn:active,
+.zoho-people-form-fields .wghrm-custom-select-btn.show,
+.zoho-people-form-fields .wghrm-custom-select-btn[aria-expanded="true"] {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    color: var(--brand-text-primary, #1a2138) !important;
+}
+
+.zoho-people-form-fields .input-group:focus-within .wghrm-custom-select-btn {
+    color: var(--brand-text-primary, #1a2138) !important;
+}
+
+.zoho-people-form-fields .wghrm-custom-select-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.zoho-people-form-fields .wghrm-custom-dropdown-menu {
+    border: 1px solid var(--brand-border, #e0e0e0) !important;
+    border-radius: var(--zoho-radius, 4px) !important;
+    box-shadow: 0 6px 20px rgba(26, 33, 56, 0.1) !important;
+    padding: 6px !important;
+    margin-top: 4px !important;
+    max-height: 260px !important;
+    overflow-y: auto !important;
+    z-index: 1050 !important;
+}
+
+.zoho-people-form-fields .wghrm-custom-search-box {
+    padding: 4px 4px 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--brand-border-light, #eef1f4);
+}
+
+.zoho-people-form-fields .wghrm-custom-search-input {
+    width: 100% !important;
+    height: 36px !important;
+    padding: 0 10px !important;
+    border: 1px solid var(--brand-border, #e0e0e0) !important;
+    border-radius: var(--zoho-radius, 4px) !important;
+    font-size: 13px !important;
+    background: var(--brand-page-bg, #f4f7f9) !important;
+    outline: none !important;
+}
+
+.zoho-people-form-fields .wghrm-custom-search-input:focus {
+    border-color: var(--brand-primary, #1070e0) !important;
+    background: #fff !important;
+}
+
+.zoho-people-form-fields .wghrm-custom-dropdown-item {
+    border-radius: var(--zoho-radius, 4px) !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--brand-text-primary, #1a2138) !important;
+    margin-bottom: 2px !important;
+}
+
+.zoho-people-form-fields .wghrm-custom-dropdown-item:hover,
+.zoho-people-form-fields .wghrm-custom-dropdown-item.active {
+    background: var(--brand-primary-soft, #eef4fc) !important;
+    color: var(--brand-primary, #1070e0) !important;
+}
+
+.zoho-people-form-fields .tab-pane > .row {
+    --bs-gutter-x: 0;
+    --bs-gutter-y: 0;
+    margin: 0;
+}
+
+.zoho-people-form-fields label {
+    margin: 0 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--brand-text-secondary) !important;
+    text-align: left;
+}
+
+.zoho-people-form-fields .input-group,
+.zoho-people-form-fields .input-group.mb-3 {
+    margin-bottom: 0 !important;
+}
+
+.zoho-people-form-fields .input-group {
+    border-radius: var(--zoho-radius) !important;
+    border: 1px solid var(--brand-border) !important;
+}
+
+.zoho-people-form-fields .input-group-text {
+    background: var(--brand-page-bg) !important;
+    border: none !important;
+    border-right: 1px solid var(--brand-border-light) !important;
+    border-radius: var(--zoho-radius) 0 0 var(--zoho-radius) !important;
+}
+
+.zoho-people-form-fields .form-control,
+.zoho-people-form-fields .form-select {
+    border: none !important;
+    box-shadow: none !important;
+    height: 40px !important;
+    font-size: 13px !important;
+}
+
+.zoho-people-form-fields textarea.form-control {
+    height: auto !important;
+    min-height: 40px;
+    resize: vertical;
+}
+
+.zoho-people-form-fields .input-group:focus-within {
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 0 2px var(--brand-primary-ring) !important;
+}
+
+.zoho-people-form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--brand-border);
+    background: var(--brand-page-bg);
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+.zoho-people-form-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.zoho-people-form-footer .zoho-btn-primary,
+.zoho-people-form-footer .zoho-btn-outline {
+    height: 40px;
+    padding: 0 20px;
+}
+
+@media (max-width: 767px) {
+    .zoho-people-list-header {
+        padding: 12px 14px;
+    }
+
+    .zoho-people-list-header-right {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .zoho-people-form-card {
+        margin: 0 0 16px;
+    }
+
+    .zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-md-3"],
+    .zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-md-4"],
+    .zoho-people-form-fields .tab-pane .row.zoho-form-fields-grid > [class*="col-md-6"] {
+        grid-template-columns: 1fr;
+        padding: 12px 16px;
+    }
+
+    .zoho-people-form-fields label {
+        margin-bottom: 4px !important;
+    }
+}
+
+/* Employee detail / profile view (Zoho People) */
+.zoho-people-detail-card {
+    background: var(--zoho-surface, #fff);
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.zoho-people-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0);
+    background: var(--zoho-surface, #fff);
+}
+
+.zoho-people-detail-profile {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+}
+
+.zoho-people-detail-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 4px;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    background: #f4f7f9;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--zoho-primary, #1070e0);
+}
+
+.zoho-people-detail-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.zoho-people-detail-meta h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a2138;
+}
+
+.zoho-people-detail-meta .zoho-detail-sub {
+    font-size: 13px;
+    color: #616e88;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.zoho-people-detail-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.zoho-people-detail-body {
+    padding: 0;
+}
+
+.zoho-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+}
+
+.zoho-detail-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #eef1f4;
+    border-right: 1px solid #eef1f4;
+    min-height: 72px;
+}
+
+.zoho-detail-row:nth-child(3n) {
+    border-right: none;
+}
+
+.zoho-detail-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #616e88;
+    text-transform: none;
+}
+
+.zoho-detail-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a2138;
+    word-break: break-word;
+}
+
+.zoho-detail-value.is-highlight {
+    color: var(--zoho-primary, #1070e0);
+}
+
+.zoho-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 3px;
+    line-height: 1.5;
+}
+
+.zoho-badge-muted {
+    background: #eef1f4;
+    color: #616e88;
+}
+
+.zoho-badge-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.zoho-detail-span-full {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 991px) {
+    .zoho-detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .zoho-detail-row:nth-child(3n) {
+        border-right: 1px solid #eef1f4;
+    }
+
+    .zoho-detail-row:nth-child(2n) {
+        border-right: none;
+    }
+}
+
+@media (max-width: 575px) {
+    .zoho-people-detail-header {
+        flex-direction: column;
+    }
+
+    .zoho-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .zoho-detail-row {
+        border-right: none !important;
+    }
+}
+
+/* ── Company Broadcasts (dashboard feed) ── */
+.bc-panel {
+    position: relative;
+    background: var(--zoho-surface, #fff);
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: var(--zoho-radius-lg, 12px);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+}
+
+.bc-panel--has-unread {
+    border-color: #fcd9d9;
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.07);
+}
+
+.bc-accent-bar {
+    height: 3px;
+    background: linear-gradient(90deg, #ef4444 0%, #f97316 50%, #ef4444 100%);
+    background-size: 200% 100%;
+    animation: bc-accent-shift 4s ease infinite;
+}
+
+.bc-panel:not(.bc-panel--has-unread) .bc-accent-bar {
+    background: linear-gradient(90deg, #1070e0, #6366f1);
+    animation: none;
+}
+
+@keyframes bc-accent-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.bc-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid #eef1f5;
+    background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+}
+
+.bc-head-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
+.bc-head-icon {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.bc-panel--has-unread .bc-head-icon {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.bc-head-icon i {
+    width: 18px;
+    height: 18px;
+}
+
+.bc-pulse-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 2px solid #fff;
+    animation: bc-pulse 1.8s ease infinite;
+}
+
+@keyframes bc-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.75; }
+}
+
+.bc-head-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.bc-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+    line-height: 1.3;
+}
+
+.bc-unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.bc-subtitle {
+    margin: 4px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+    line-height: 1.45;
+}
+
+.bc-head-stats {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.bc-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--zoho-text-secondary, #434a5a);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.bc-stat strong {
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.bc-stat--alert {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.bc-stat--alert strong {
+    color: #dc2626;
+}
+
+.bc-stat--ok {
+    background: #ecfdf5;
+    color: #047857;
+    gap: 5px;
+}
+
+.bc-stat--ok i {
+    width: 13px;
+    height: 13px;
+}
+
+.bc-text-btn--link {
+    text-decoration: none;
+    color: var(--zoho-muted, #616e88);
+}
+
+.bc-text-btn--link:hover {
+    color: var(--zoho-accent, #1070e0);
+    background: #eff6ff;
+}
+
+.bc-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.bc-text-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--zoho-accent, #1070e0);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+}
+
+.bc-text-btn:hover {
+    background: #eff6ff;
+}
+
+.bc-text-btn i {
+    width: 14px;
+    height: 14px;
+}
+
+.bc-panel.is-collapsed .bc-toggle i {
+    transform: rotate(180deg);
+}
+
+.bc-toggle i {
+    transition: transform 0.2s ease;
+}
+
+.bc-filter-bar {
+    background: #fff;
+}
+
+.bc-tabs {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 20px;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.bc-tabs .bc-filter {
+    position: relative;
+    height: 42px;
+    padding: 0 4px;
+    margin-right: 20px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--zoho-muted, #616e88);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.bc-tabs .bc-filter::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: transparent;
+    border-radius: 2px 2px 0 0;
+    transition: background 0.15s ease;
+}
+
+.bc-tabs .bc-filter:hover {
+    color: var(--zoho-text, #1a1a2e);
+    background: transparent;
+}
+
+.bc-tabs .bc-filter.is-active {
+    color: var(--zoho-accent, #1070e0);
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.bc-tabs .bc-filter.is-active::after {
+    background: var(--zoho-accent, #1070e0);
+}
+
+.bc-filters {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 16px 0;
+}
+
+.bc-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--zoho-muted, #616e88);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.bc-filter:hover {
+    background: #fff;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.bc-filter.is-active {
+    background: #fff;
+    border-color: var(--zoho-border, #e0e0e0);
+    color: var(--zoho-accent, #1070e0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.bc-filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--zoho-text-secondary, #434a5a);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.bc-filter-count--alert {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.bc-feed {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 14px 16px 16px;
+    background: #f4f7f9;
+}
+
+.bc-feed::-webkit-scrollbar {
+    width: 5px;
+}
+
+.bc-feed::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.bc-item.bc-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 14px 14px 14px 16px;
+    border: 1px solid #e8edf3;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    cursor: default;
+    overflow: hidden;
+}
+
+.bc-item.bc-card:last-child {
+    margin-bottom: 0;
+}
+
+.bc-card-accent {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #1070e0, #6366f1);
+    border-radius: 10px 0 0 10px;
+}
+
+.bc-panel--has-unread .bc-item.is-unread .bc-card-accent {
+    background: linear-gradient(180deg, #ef4444, #f97316);
+}
+
+.bc-card-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.bc-card-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.bc-item.is-unread .bc-card-icon {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.bc-item.is-read .bc-card-icon {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.bc-card-icon i {
+    width: 16px;
+    height: 16px;
+}
+
+.bc-card-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.bc-card-aside {
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.bc-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eef1f5;
+    background: transparent;
+    transition: background 0.15s ease;
+    cursor: default;
+}
+
+.bc-item:last-child {
+    border-bottom: none;
+}
+
+.bc-item.is-unread {
+    cursor: pointer;
+}
+
+.bc-item.bc-card.is-unread:hover {
+    border-color: #bfdbfe;
+    box-shadow: 0 4px 12px rgba(16, 112, 224, 0.08);
+    transform: translateY(-1px);
+}
+
+.bc-panel--has-unread .bc-item.bc-card.is-unread:hover {
+    border-color: #fecaca;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.08);
+}
+
+.bc-item.is-read {
+    opacity: 1;
+}
+
+.bc-item.bc-card.is-read {
+    background: #fafbfc;
+    border-color: #eef1f5;
+}
+
+.bc-item-indicator {
+    flex-shrink: 0;
+    width: 10px;
+    padding-top: 6px;
+}
+
+.bc-item-dot {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #cbd5e1;
+}
+
+.bc-item.is-unread .bc-item-dot {
+    background: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.bc-item.is-read .bc-item-dot {
+    background: transparent;
+}
+
+.bc-item-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.bc-item-top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.bc-dept-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.bc-dept-chip--company,
+.bc-dept-chip--all {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.bc-dept-chip--hr {
+    background: #fce7f3;
+    color: #be185d;
+}
+
+.bc-dept-chip--payroll {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.bc-dept-chip--it,
+.bc-dept-chip--it-support {
+    background: #ecfeff;
+    color: #0e7490;
+}
+
+.bc-dept-chip--operations,
+.bc-dept-chip--business-operation {
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.bc-new-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #fef2f2;
+    color: #dc2626;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.bc-item-time {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+    white-space: nowrap;
+}
+
+.bc-item-message {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--zoho-text, #1a1a2e);
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.bc-item.is-read .bc-item-message {
+    color: var(--zoho-text-secondary, #434a5a);
+    font-weight: 400;
+}
+
+.bc-item-message--clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.bc-expand-btn {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--zoho-accent, #1070e0);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bc-expand-btn:hover {
+    text-decoration: underline;
+}
+
+.bc-mark-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.bc-mark-btn:hover {
+    background: var(--zoho-accent, #1070e0);
+    border-color: var(--zoho-accent, #1070e0);
+    color: #fff;
+}
+
+.bc-mark-btn i {
+    width: 14px;
+    height: 14px;
+}
+
+.bc-read-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.bc-read-icon i {
+    width: 16px;
+    height: 16px;
+}
+
+.bc-feed-empty,
+.bc-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 36px 20px;
+    text-align: center;
+}
+
+.bc-feed-empty i,
+.bc-empty-icon i {
+    width: 28px;
+    height: 28px;
+    color: var(--zoho-muted, #616e88);
+    opacity: 0.45;
+}
+
+.bc-feed-empty p,
+.bc-empty-desc {
+    margin: 0;
+    font-size: 13px;
+    color: var(--zoho-muted, #616e88);
+    font-weight: 500;
+}
+
+.bc-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    margin-bottom: 4px;
+}
+
+.bc-empty-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+@media (max-width: 767px) {
+    .bc-head {
+        flex-direction: column;
+        padding: 14px 16px 12px;
+    }
+
+    .bc-head-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .bc-text-btn span {
+        display: none;
+    }
+
+    .bc-tabs {
+        padding: 0 14px;
+    }
+
+    .bc-feed {
+        max-height: 320px;
+        padding: 10px 12px 12px;
+    }
+
+    .bc-item.bc-card {
+        padding: 12px;
+    }
+
+    .bc-card-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .bc-item-time {
+        width: 100%;
+        margin-left: 0;
+        order: 3;
+    }
+
+    .bc-item-top {
+        gap: 6px;
+    }
+
+    .bc-item-message {
+        font-size: 13px;
+    }
+}
+
+/* ── Broadcast panel: collapsed summary strip ── */
+.bc-panel.is-collapsed {
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+}
+
+.bc-panel.is-collapsed .bc-accent-bar {
+    height: 2px;
+}
+
+.bc-panel.is-collapsed .bc-head {
+    padding: 10px 16px;
+    border-bottom: none;
+    cursor: pointer;
+    align-items: center;
+}
+
+.bc-panel.is-collapsed .bc-head-main {
+    align-items: center;
+}
+
+.bc-panel.is-collapsed .bc-head-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+}
+
+.bc-panel.is-collapsed .bc-title {
+    font-size: 14px;
+}
+
+.bc-panel.is-collapsed .bc-subtitle {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: min(640px, 72vw);
+    color: var(--zoho-text-secondary, #434a5a);
+    font-style: italic;
+}
+
+.bc-panel.is-collapsed .bc-head-stats {
+    display: none;
+}
+
+.bc-panel.is-collapsed .bc-head-actions .bc-text-btn {
+    display: none;
+}
+
+.bc-panel.is-collapsed .bc-head:hover {
+    background: #fafbfc;
+}
+
+@media (max-width: 767px) {
+    .zoho-topbar-profile {
+        padding: 0 4px;
+        max-width: none;
+        border: none;
+        background: transparent;
+    }
+
+    .zoho-header-dropdown {
+        width: calc(100vw - 16px);
+    }
+
+    .zoho-page-date {
+        padding-left: 0;
+        border-left: none;
+    }
+}
+
+/* ── Zoho People header offcanvas (notifications & profile) ── */
+.zoho-header-offcanvas {
+    width: min(420px, 100vw) !important;
+    max-width: 100vw;
+    z-index: 1060 !important;
+    box-shadow: -10px 0 40px rgba(15, 23, 42, 0.14);
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+.zoho-notify-offcanvas {
+    width: min(380px, 100vw) !important;
+}
+
+.zoho-profile-offcanvas {
+    width: min(420px, 100vw) !important;
+}
+
+body.zoho-portal .offcanvas-backdrop.show {
+    z-index: 1055 !important;
+    opacity: 0.35;
+}
+
+.zoho-offcanvas-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 56px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0);
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.zoho-offcanvas-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.zoho-offcanvas-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--zoho-muted, #616e88);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.zoho-offcanvas-close:hover {
+    background: #f1f5f9;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.zoho-offcanvas-close i {
+    width: 18px;
+    height: 18px;
+}
+
+.zoho-offcanvas-close--light {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.zoho-offcanvas-close--light:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.zoho-notify-offcanvas-body {
+    overflow-y: auto;
+    background: #fafbfc;
+}
+
+.zoho-offcanvas-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 120px);
+    padding: 40px 24px;
+    text-align: center;
+}
+
+.zoho-offcanvas-empty-art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 88px;
+    height: 88px;
+    margin-bottom: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+    color: var(--zoho-accent, #1070e0);
+}
+
+.zoho-offcanvas-empty-art i {
+    width: 36px;
+    height: 36px;
+    opacity: 0.7;
+}
+
+.zoho-offcanvas-empty-title {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.zoho-offcanvas-empty-desc {
+    margin: 0;
+    max-width: 260px;
+    font-size: 13px;
+    color: var(--zoho-muted, #616e88);
+    line-height: 1.5;
+}
+
+.zoho-offcanvas-foot {
+    flex-shrink: 0;
+    padding: 14px 20px;
+    border-top: 1px solid #eef1f5;
+    background: #fff;
+    text-align: center;
+}
+
+.zoho-ui-drawer-footer {
+    flex-shrink: 0;
+}
+
+.zoho-offcanvas-foot-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--zoho-accent, #1070e0);
+    text-decoration: none;
+}
+
+.zoho-offcanvas-foot-link:hover {
+    text-decoration: underline;
+}
+
+/* Profile drawer hero (Zoho dark header) */
+.zoho-profile-offcanvas-hero {
+    position: relative;
+    padding: 20px 20px 16px;
+    background: linear-gradient(180deg, #1a3052 0%, #233759 100%);
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.zoho-profile-offcanvas-hero .zoho-offcanvas-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+}
+
+.zoho-profile-hero-user {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding-right: 36px;
+    margin-bottom: 18px;
+}
+
+.zoho-profile-hero-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
+}
+
+.zoho-profile-hero-avatar--initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.zoho-profile-hero-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.zoho-profile-hero-info strong {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.zoho-profile-hero-info > span {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.78);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.zoho-profile-hero-meta {
+    font-size: 11px !important;
+    color: rgba(255, 255, 255, 0.58) !important;
+}
+
+.zoho-profile-hero-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.zoho-profile-hero-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.zoho-profile-hero-action:hover {
+    color: #fff;
+}
+
+.zoho-profile-hero-action i {
+    width: 15px;
+    height: 15px;
+}
+
+.zoho-profile-hero-logout-form {
+    margin: 0;
+}
+
+.zoho-profile-hero-action--signout {
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.zoho-profile-offcanvas-body {
+    overflow-y: auto;
+    background: #fff;
+}
+
+.zoho-profile-nav {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+}
+
+.zoho-profile-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 20px;
+    color: var(--zoho-text-secondary, #434a5a);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.zoho-profile-nav-link:last-child {
+    border-bottom: none;
+}
+
+.zoho-profile-nav-link:hover {
+    background: #f8fafc;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.zoho-profile-nav-link > i:first-child {
+    width: 18px;
+    height: 18px;
+    color: var(--zoho-muted, #616e88);
+    flex-shrink: 0;
+}
+
+.zoho-profile-nav-link > span {
+    flex: 1;
+}
+
+.zoho-profile-nav-link > i:last-child {
+    width: 16px;
+    height: 16px;
+    color: #cbd5e1;
+    flex-shrink: 0;
+}
+
+.zoho-header-offcanvas .zoho-notify-item {
+    background: #fff;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.zoho-header-offcanvas .zoho-notify-item:hover {
+    background: #f8fafc;
+}

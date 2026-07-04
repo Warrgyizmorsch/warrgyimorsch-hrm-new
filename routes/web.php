@@ -48,8 +48,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard/summary', [DashboardController::class, 'getMonthlySummary'])->name('dashboard.summary');
-    Route::get('/dashboard/chart', [DashboardController::class, 'getChartData'])->name('dashboard.chart');
+    Route::get('/dashboard/leave-report', [DashboardController::class, 'fetchLeaveReport'])->name('dashboard.leave-report');
+    Route::get('/dashboard/late-arrivals', [DashboardController::class, 'fetchLateArrivals'])->name('dashboard.late-arrivals');
 
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
 
@@ -107,7 +107,10 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
-    
+    Route::get('/dashboard/summary', [DashboardController::class, 'getMonthlySummary'])->name('dashboard.summary');
+    Route::get('/dashboard/chart', [DashboardController::class, 'getChartData'])->name('dashboard.chart');
+    Route::get('/dashboard/full-year', [DashboardController::class, 'getFullYearBreakdown'])->name('dashboard.full-year');
+
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/employees/create', [EmployeeController::class, 'create'])->name('employees.create');
     Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');

@@ -224,7 +224,8 @@ class ReviewController extends Controller
             'reviewMonths',
             'selectedReviewMonth',
             'showAllReviewMonths',
-            'canViewReviewAnalytics'
+            'canViewReviewAnalytics',
+            'employeeRecord'
         ));
     }
 

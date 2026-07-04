@@ -1,102 +1,61 @@
 @extends('layouts.app')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/payroll-history.css') }}?v={{ filemtime(public_path('assets/css/payroll-history.css')) ?: time() }}">
+@endpush
+
 @section('content')
-    <div class="container-fluid px-0" style="background: #f8fafc; min-height: 100vh; font-family: 'Inter', sans-serif;">
-        <!-- Main Content Card -->
-        <div class="px-4">
-            <div class="card border-0 shadow-sm" style="border-radius: 12px; background: white;">
-                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center"
-                    style="border-radius: 12px 12px 0 0;">
-                    <div>
-                        <h5 class="fw-bold mb-0" style="color: #334155;">Payroll History</h5>
-                        <nav aria-label="breadcrumb">
-                            <ol class="breadcrumb mb-0">
-                                <li class="breadcrumb-item"><a href="#"
-                                        class="text-decoration-none text-muted small">Home</a></li>
-                                <li class="breadcrumb-item active small fw-bold" style="color: #3858f9;"
-                                    aria-current="page">History</li>
-                            </ol>
-                        </nav>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <!-- Share Salary Report -->
-                        <a href="javascript:void(0)" id="shareReportBtn"
-                            class="btn btn-icon btn-light-brand text-white bg-primary" title="Share Salary Report">
-                            <label>Share salary report</label>
-                        </a>
-
-                        <!-- Right Aligned Search & Actions -->
-                        <div class="d-none d-md-flex align-items-center"
-                            style="width: 280px; background: #f1f5f9; border-radius: 10px; border: 1px solid #e2e8f0; height: 40px; padding: 0 15px; transition: all 0.3s ease;">
-                            <i class="feather-search text-muted" style="font-size: 14px;"></i>
-                            <input type="text" id="tableSearch" onkeyup="searchTable(event)" placeholder="Search..."
-                                value="{{ request('search') }}"
-                                style="background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important; width: 100%; height: 100%; padding-left: 10px; font-size: 13px; font-weight: 500; color: #334155;">
-                        </div>
-
-                        <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-primary text-primary"
-                            data-bs-toggle="collapse" data-bs-target="#filterSection" title="Filter Records">
-                            <i class="feather-filter"></i>
-                        </a>
-
-                        <!-- <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-info text-info"
-                                                                onclick="exportPayroll('pdf')" title="Download All (PDF)">
-                                                                <i class="feather-download"></i>
-                                                            </a> -->
-                        <div class="relative inline-block" id="exportWrapper">
-                            <!-- Button -->
-                            <a href="javascript:void(0);" id="exportBtn"
-                                class="avatar-text avatar-md bg-soft-primary text-primary d-flex align-items-center justify-content-center">
-                                <i class="feather-download"></i>
-                            </a>
-
-                            <!-- Dropdown -->
-                            <div id="exportMenu" class="d-none position-absolute end-0 mt-2 bg-white border rounded shadow"
-                                style="width: 140px; z-index: 9999;">
-
-                                <button onclick="exportPayroll('pdf')" class="dropdown-item text-start">
-                                    📄 PDF
-                                </button>
-
-                                <button onclick="exportPayroll('excel')" class="dropdown-item text-start">
-                                    📊 Excel
-                                </button>
-
-                            </div>
-                        </div>
-
-                        <!-- <button type="button" class="avatar-text avatar-md bg-primary text-white border-0 shadow-sm"
-                            data-bs-toggle="offcanvas" data-bs-target="#payrollCalculationOffcanvas"
-                            title="New Calculation">
-                            <i class="feather-plus"></i>
-                        </button> -->
-                    </div>
+    @php
+        $payrollHeaderActions = '
+            <button type="button" class="zoho-btn-outline" id="shareReportBtn" title="Share salary report">
+                <i class="feather-share-2"></i> Share Report
+            </button>
+            <button type="button" class="zoho-icon-btn" data-bs-toggle="collapse" data-bs-target="#filterSection" title="Filter">
+                <i class="feather-filter"></i>
+            </button>
+            <div class="position-relative" id="exportWrapper">
+                <button type="button" class="zoho-icon-btn" id="exportBtn" title="Export">
+                    <i class="feather-download"></i>
+                </button>
+                <div id="exportMenu" class="d-none position-absolute end-0 mt-2 bg-white border rounded shadow payroll-export-menu" style="z-index: 9999;">
+                    <button type="button" onclick="exportPayroll(\'pdf\')" class="dropdown-item">PDF</button>
+                    <button type="button" onclick="exportPayroll(\'excel\')" class="dropdown-item">Excel</button>
                 </div>
+            </div>';
+    @endphp
 
-                <!-- salary report -->
-                <div id="salaryFormSection" class="card mt-4 p-4" style="display: none;">
-                    <h4>Salary Slip</h4>
+    <div class="zoho-page-shell payroll-history-page">
+        @include('layouts.partials.zoho-people-list-header', [
+            'title' => 'Payroll History',
+            'viewLabel' => 'All Records',
+            'scopeLinks' => [
+                ['label' => 'Home', 'url' => route('dashboard'), 'active' => false],
+                ['label' => 'History', 'url' => route('payroll.index'), 'active' => true],
+            ],
+            'primaryAction' => $payrollHeaderActions,
+        ])
 
-                    <form action="{{ route('payroll.sendDateRange') }}" method="POST">
-                        @csrf
-                        <!-- Employee Dropdown -->
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted mb-2">Select Employee</label>
+        <div class="main-content zoho-module-content">
+            {{-- Share salary report --}}
+            <div id="salaryFormSection" class="payroll-share-panel" style="display: none;">
+                <h4><i class="feather-mail me-2"></i>Share Salary Report</h4>
+                <form action="{{ route('payroll.sendDateRange') }}" method="POST">
+                    @csrf
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-muted mb-2">Employee</label>
                             <div class="dropdown">
-                                <button class="wghrm-custom-select-btn fw-bold dropdown-toggle" type="button"
-                                    data-bs-toggle="dropdown" data-bs-auto-close="outside" id="salaryEmployeeBtn"
-                                    style="border-radius: 8px; height: 45px !important; font-size: 14px; background: #fff; border: 1px solid #e2e8f0;">
-                                    Select
+                                <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" data-bs-auto-close="outside" id="salaryEmployeeBtn">
+                                    Select employee
                                 </button>
-                                <div class="dropdown-menu wghrm-custom-dropdown-menu" style="width: 100%;">
+                                <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
                                     <div class="wghrm-custom-search-box">
-                                        <input type="text" class="wghrm-custom-search-input"
-                                            placeholder="Search employee..." onkeyup="wghrmFilterItems(this)"
-                                            onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
+                                        <input type="text" class="wghrm-custom-search-input" placeholder="Search employee..."
+                                            onkeyup="wghrmFilterItems(this)" onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
                                     </div>
                                     @foreach(\App\Models\Employee::all() as $emp)
-                                        <a class="dropdown-item wghrm-custom-dropdown-item"
-                                            href="javascript:void(0);"
+                                        <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);"
                                             onclick="document.getElementById('salaryEmployeeId').value='{{ $emp->id }}'; document.getElementById('salaryEmployeeBtn').innerText='{{ addslashes($emp->name) }}'; bootstrap.Dropdown.getInstance(this.closest('.dropdown').querySelector('.dropdown-toggle')).hide();">
                                             {{ $emp->name }}
                                         </a>
@@ -105,137 +64,117 @@
                             </div>
                             <input type="hidden" id="salaryEmployeeId" name="employee_id" value="">
                         </div>
-
-                        <!-- Date From -->
-                        <div class="mb-3">
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted mb-2">From Date</label>
-                            <input type="date" name="from_date" class="form-control" style="height: 45px; border-radius: 8px;">
+                            <input type="date" name="from_date" class="form-control">
                         </div>
-
-                        <!-- Date To -->
-                        <div class="mb-3">
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted mb-2">To Date</label>
-                            <input type="date" name="to_date" class="form-control" style="height: 45px; border-radius: 8px;">
+                            <input type="date" name="to_date" class="form-control">
                         </div>
+                        <div class="col-md-1">
+                            <button type="submit" class="zoho-btn-primary w-100"><i class="feather-send"></i></button>
+                        </div>
+                    </div>
+                </form>
+            </div>
 
-                        <button type="submit" class="btn btn-primary w-100 fw-bold" style="height: 45px; border-radius: 8px; background: #3858f9; border: none;">GENERATE SLIP</button>
-                    </form>
-                </div>
-
-                <!-- Collapsible Filter Section -->
-                <div class="collapse" id="filterSection">
-                    <div class="card-body border-bottom bg-light bg-opacity-10 p-4">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted mb-2">Employee</label>
-                                <div class="dropdown">
-                                    <button class="wghrm-custom-select-btn fw-bold dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeFilterBtn"
-                                        style="border-radius: 8px; height: 47px !important;">
-                                        @php
-                                            $selectedEmp = \App\Models\Employee::find(request('employee_id'));
-                                        @endphp
-                                        {{ $selectedEmp ? $selectedEmp->name : 'All Employees' }}
-                                    </button>
-                                    <div class="dropdown-menu wghrm-custom-dropdown-menu">
-                                        <div class="wghrm-custom-search-box">
-                                            <input type="text" class="wghrm-custom-search-input"
-                                                placeholder="Search employee..." onkeyup="wghrmFilterItems(this)"
-                                                onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
-                                        </div>
-                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ !request('employee_id') ? 'active' : '' }}"
-                                            href="javascript:void(0);"
-                                            onclick="document.getElementById('employeeFilter').value=''; document.getElementById('employeeFilterBtn').innerText='All Employees';">All
-                                            Employees</a>
-                                        @foreach(\App\Models\Employee::all() as $emp)
-                                            <a class="dropdown-item wghrm-custom-dropdown-item {{ request('employee_id') == $emp->id ? 'active' : '' }}"
-                                                href="javascript:void(0);"
-                                                onclick="document.getElementById('employeeFilter').value='{{ $emp->id }}'; document.getElementById('employeeFilterBtn').innerText='{{ addslashes($emp->name) }}';">
-                                                {{ $emp->name }}
-                                            </a>
-                                        @endforeach
-                                    </div>
+            {{-- List filters --}}
+            <div class="collapse payroll-filter-panel" id="filterSection">
+                <div class="payroll-filter-grid">
+                    <div>
+                        <label class="form-label small fw-bold text-muted mb-2">Employee</label>
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeFilterBtn">
+                                @php $selectedEmp = \App\Models\Employee::find(request('employee_id')); @endphp
+                                {{ $selectedEmp ? $selectedEmp->name : 'All Employees' }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu">
+                                <div class="wghrm-custom-search-box">
+                                    <input type="text" class="wghrm-custom-search-input" placeholder="Search employee..."
+                                        onkeyup="wghrmFilterItems(this)" onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
                                 </div>
-                                <input type="hidden" id="employeeFilter" value="{{ request('employee_id') }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted mb-2">Month</label>
-                                <input type="month" id="monthFilter"
-                                    class="form-control border-0 bg-white py-0 px-3 shadow-sm fw-bold"
-                                    value="{{ request('month') }}" style="border-radius: 8px; height: 47px !important;">
-                            </div>
-                            <div class="col-md-4 d-flex gap-2">
-                                <button
-                                    class="btn btn-primary flex-grow-1 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
-                                    onclick="applyFilters()"
-                                    style="background: #3858f9; border: none; height: 47px !important; border-radius: 8px;">
-                                    <i class="feather-search"></i> APPLY
-                                </button>
-                                <button class="btn btn-light border px-3 shadow-none" onclick="resetFilters()"
-                                    style="height: 47px !important; border-radius: 8px;">
-                                    <i class="feather-refresh-cw" style="font-size: 14px;"></i>
-                                </button>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ !request('employee_id') ? 'active' : '' }}"
+                                    href="javascript:void(0);"
+                                    onclick="document.getElementById('employeeFilter').value=''; document.getElementById('employeeFilterBtn').innerText='All Employees';">All Employees</a>
+                                @foreach(\App\Models\Employee::all() as $emp)
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ request('employee_id') == $emp->id ? 'active' : '' }}"
+                                        href="javascript:void(0);"
+                                        onclick="document.getElementById('employeeFilter').value='{{ $emp->id }}'; document.getElementById('employeeFilterBtn').innerText='{{ addslashes($emp->name) }}';">
+                                        {{ $emp->name }}
+                                    </a>
+                                @endforeach
                             </div>
                         </div>
+                        <input type="hidden" id="employeeFilter" value="{{ request('employee_id') }}">
+                    </div>
+                    <div>
+                        <label class="form-label small fw-bold text-muted mb-2">Month</label>
+                        <input type="month" id="monthFilter" class="form-control" value="{{ request('month') }}">
+                    </div>
+                    <div class="payroll-calc-actions">
+                        <button type="button" class="zoho-btn-primary" onclick="applyFilters()">
+                            <i class="feather-search"></i> Apply
+                        </button>
+                        <button type="button" class="zoho-icon-btn" onclick="resetFilters()" title="Reset">
+                            <i class="feather-refresh-cw"></i>
+                        </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Calculation Filter Card -->
-                <div class="card border-0 shadow-sm mt-3 bg-light" style="border-radius: 12px;">
-                    <div class="card-header border-0 px-4 border-bottom text-center">
-                        <h6 class="fw-bold mb-0 text-dark">Setup Calculation Parameters</h6>
+            {{-- Calculation parameters --}}
+            <div class="payroll-calc-panel">
+                <div class="payroll-calc-panel-head">
+                    <div>
+                        <h3><i class="feather-calculator me-1"></i> Setup Calculation Parameters</h3>
+                        <p>Select employee and month to calculate or update payroll</p>
                     </div>
-                    <div class="card-body p-4 pt-0">
-                        <div class="row g-2 align-items-end">
-                            <div class="col-4">
-                                <label class="form-label small fw-bold text-muted mb-2">Employee</label>
-                                <div class="dropdown">
-                                    <button class="wghrm-custom-select-btn fw-bold dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeSelectBtn"
-                                        style="border-radius: 8px; height: 45px !important; font-size: 13px; background: #f1f5f9; border: none; box-shadow: none;">
-                                        Select
-                                    </button>
-                                    <div class="dropdown-menu wghrm-custom-dropdown-menu" style="width: 100%;">
-                                        <div class="wghrm-custom-search-box">
-                                            <input type="text" class="wghrm-custom-search-input"
-                                                placeholder="Search employee..." onkeyup="wghrmFilterItems(this)"
-                                                onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
-                                        </div>
-                                        @foreach(\App\Models\Employee::active()->get() as $emp)
-                                            <a class="dropdown-item wghrm-custom-dropdown-item"
-                                                href="javascript:void(0);"
-                                                onclick="document.getElementById('employeeSelect').value='{{ $emp->id }}'; document.getElementById('employeeSelectBtn').innerText='{{ addslashes($emp->name) }}'; bootstrap.Dropdown.getInstance(this.closest('.dropdown').querySelector('.dropdown-toggle')).hide();">
-                                                {{ $emp->name }}
-                                            </a>
-                                        @endforeach
+                </div>
+                <div class="payroll-calc-panel-body">
+                    <div class="payroll-calc-grid">
+                        <div class="payroll-calc-field">
+                            <label>Employee</label>
+                            <div class="dropdown">
+                                <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeSelectBtn">
+                                    Select employee
+                                </button>
+                                <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                                    <div class="wghrm-custom-search-box">
+                                        <input type="text" class="wghrm-custom-search-input" placeholder="Search employee..."
+                                            onkeyup="wghrmFilterItems(this)" onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
                                     </div>
+                                    @foreach(\App\Models\Employee::active()->get() as $emp)
+                                        <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);"
+                                            onclick="document.getElementById('employeeSelect').value='{{ $emp->id }}'; document.getElementById('employeeSelectBtn').innerText='{{ addslashes($emp->name) }}'; bootstrap.Dropdown.getInstance(this.closest('.dropdown').querySelector('.dropdown-toggle')).hide();">
+                                            {{ $emp->name }}
+                                        </a>
+                                    @endforeach
                                 </div>
-                                <input type="hidden" id="employeeSelect" value="">
                             </div>
-                            <div class="col-4 text-center">
-                                <label class="form-label small fw-bold text-muted mb-2">Month</label>
-                                <input type="month" id="monthSelect"
-                                    class="form-control border-0 bg-light py-2 px-2 shadow-none fw-bold text-center"
-                                    value="{{ date('Y-m', strtotime('-1 month')) }}" style="border-radius: 8px; height: 45px !important; font-size: 13px;">
-                            </div>
-                            <div class="col-4 ps-0 d-flex justify-content-between">
-                                <button
-                                    class="btn btn-primary w-50 fw-bold shadow-sm ms-5"
-                                    onclick="calculatePayroll()"
-                                    style="background: #3858f9; border: none; height: 45px !important; border-radius: 8px; font-size: 12px; letter-spacing: 0.5px;">
-                                    CALCULATE
-                                </button>
-                                <a href="{{ route('payroll.index') }}"
-                                    class="btn btn-soft-danger fw-bold d-flex align-items-center justify-content-center me-3"
-                                    style="border-radius: 8px; height: 44px; width: 80px; font-size: 13px;">
-                                RESET</a>
-                            </div>
+                            <input type="hidden" id="employeeSelect" value="">
+                        </div>
+                        <div class="payroll-calc-field">
+                            <label>Month</label>
+                            <input type="month" id="monthSelect" class="form-control"
+                                value="{{ date('Y-m', strtotime('-1 month')) }}">
+                        </div>
+                        <div class="payroll-calc-actions">
+                            <button type="button" class="zoho-btn-primary" onclick="calculatePayroll()">
+                                <i class="feather-zap"></i> Calculate
+                            </button>
+                            <a href="{{ route('payroll.index') }}" class="zoho-btn-outline">Reset</a>
                         </div>
                     </div>
                 </div>
 
-                <!-- Calculation Result -->
-                <div id="calculationResult" style="display: none;">
+                <div class="payroll-calc-result-wrap">
+                    <div id="noCalculation" style="display: none;"></div>
+                    <input type="hidden" id="payrollIdForUpdate" value="">
+                    <input type="hidden" id="isEditMode" value="false">
+                    <div id="calculationResult" style="display: none;">
                     <div class="row g-3">
                         <!-- Earnings -->
                         <div class="col-12">
@@ -403,169 +342,152 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- SHOW ENTRIES -->
-                <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2 mt-3">
-                    <span class="text-muted small fw-bold text-uppercase">Show</span>
-                    <div class="dropdown">
-                        <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown" id="showEntriesBtn"
-                            style="width: 80px; height: 44px; padding: 0 15px;">
-                            {{ $perPage ?? 20 }}
-                        </button>
-                        <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
-                            <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
-                            <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
-                            <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
-                        </div>
+            {{-- Payroll list table --}}
+            <div class="zoho-people-table-card">
+                <div class="zoho-people-table-toolbar d-none d-lg-flex">
+                    <div class="zoho-people-table-search">
+                        <i class="feather-search"></i>
+                        <input type="text" id="tableSearch" onkeyup="searchTable(event)" placeholder="Search in list..."
+                            value="{{ request('search') }}">
                     </div>
-                    <span class="text-muted small fw-bold text-uppercase">entries</span>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead style="background: #ffffff; border-bottom: 1px solid #f1f5f9;">
-                            <tr>
-                                <th class="ps-4 py-3 text-muted small fw-bold text-uppercase" style="width: 80px;">SR. NO.
-                                </th>
-                                <th class="py-3 text-muted small fw-bold text-uppercase">EMPLOYEE NAME</th>
-                                <th class="py-3 text-muted small fw-bold text-uppercase text-center">MONTH</th>
-                                <th class="py-3 text-muted small fw-bold text-uppercase text-center">PAYABLE DAYS</th>
-                                <th class="py-3 text-muted small fw-bold text-uppercase text-end">GROSS SALARY</th>
-                                <th class="py-3 text-muted small fw-bold text-uppercase text-end">DEDUCTIONS</th>
-                                <th class="py-3 text-muted small fw-bold text-uppercase text-end">NET SALARY</th>
-                                <th class="py-3 text-muted small fw-bold text-uppercase text-center" style="width: 140px;">
-                                    STATUS</th>
-                                <th class="pe-4 py-3 text-muted small fw-bold text-uppercase text-center"
-                                    style="width: 150px;">ACTION</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($payrolls as $index => $payroll)
-                                <tr class="hover-row border-bottom">
-                                    <td class="ps-4 py-4 fw-bold text-muted">{{ $index + 1 }}</td>
-                                    <td>
-                                        <div class="fw-bold text-dark fs-6">{{ $payroll->employee->name }}</div>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="text-muted small fw-bold">{{ $payroll->month }}</span>
-                                    </td>
-                                    <td class="text-center fw-bold">{{ $payroll->payable_days }}</td>
-                                    <!-- <td class="text-end fw-bold text-dark">₹{{ number_format($payroll->gross_salary, 2) }}</td> -->
-                                    <!-- <td class="text-end fw-bold text-danger">₹{{ number_format($payroll->deductions, 2) }}</td> -->
-                                    <!-- <td class="text-end fw-bold text-primary" style="font-size: 15px;">
-                                        ₹{{ number_format($payroll->net_salary, 2) }}</td> -->
-                                    <td class="text-center">
-                                        @php
-                                            $statusClass = 'bg-soft-warning text-warning';
-                                            if ($payroll->status == 'paid')
-                                                $statusClass = 'bg-soft-success text-success';
-                                            elseif ($payroll->status == 'rejected')
-                                                $statusClass = 'bg-soft-danger text-danger';
-                                        @endphp
-                                        <div class="dropdown">
-                                            <span class="badge {{ $statusClass }} dropdown-toggle cursor-pointer"
-                                                data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false"
-                                                style="padding: 7px 14px; border-radius: 9px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; min-width: 105px; display: inline-block; text-align: center;">
-                                                {{ $payroll->status }}
-                                            </span>
-                                            <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2"
-                                                style="border-radius: 16px; min-width: 160px; z-index: 9999999 !important; border: 1px solid rgba(0,0,0,0.05) !important; position: absolute !important;">
-                                                <li><a class="dropdown-item fw-bold text-warning rounded-3 py-2 px-3 mb-1"
-                                                        href="javascript:void(0);"
-                                                        onclick="updateStatus({{ $payroll->id }}, 'pending')"
-                                                        style="font-size: 13px;">Pending</a></li>
-                                                <li><a class="dropdown-item fw-bold text-success rounded-3 py-2 px-3 mb-1"
-                                                        href="javascript:void(0);"
-                                                        onclick="updateStatus({{ $payroll->id }}, 'paid')"
-                                                        style="font-size: 13px;">Paid</a></li>
-                                                <li><a class="dropdown-item fw-bold text-danger rounded-3 py-2 px-3"
-                                                        href="javascript:void(0);"
-                                                        onclick="updateStatus({{ $payroll->id }}, 'rejected')"
-                                                        style="font-size: 13px;">Rejected</a></li>
-                                            </ul>
-                                        </div>
-                                    </td>
-                                    <td class="pe-4 text-center">
-                                        <div class="d-flex justify-content-center gap-2">
-                                            <a href="javascript:void(0);"
-                                                class="avatar-text avatar-md bg-soft-primary text-primary"
-                                                onclick="viewPayroll({{ $payroll->id }})" title="View">
-                                                <i class="feather-eye"></i>
-                                            </a>
-                                            <a href="javascript:void(0);"
-                                                class="avatar-text avatar-md bg-soft-primary text-primary"
-                                                onclick="editPayroll({{ $payroll->id }})" title="Edit">
-                                                <i class="feather-edit"></i>
-                                            </a>
-                                            <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-info text-info"
-                                                onclick="downloadSlip({{ $payroll->id }}, 'pdf')" title="Download PDF">
-                                                <i class="feather-download"></i>
-                                            </a>
-                                            <a href="javascript:void(0);"
-                                                class="avatar-text avatar-md bg-soft-danger text-danger"
-                                                onclick="deletePayroll({{ $payroll->id }})" title="Delete">
-                                                <i class="feather-trash-2"></i>
-                                            </a>
-                                            @php
-                                                $roleSlug = auth()->user()->role;
-                                                $roleId = DB::table('roles_master')
-                                                    ->where('slug', $roleSlug)
-                                                    ->value('id');
-
-                                                $isAdmin = in_array($roleId, [1, 2, 3, 4]);
-                                            @endphp
-                                            <a href="javascript:void(0);"
-                                                class="avatar-text avatar-md bg-soft-secondary text-secondary comment-btn {{ (!$payroll->is_read && $isAdmin) ? 'blink' : '' }}"
-                                                data-id="{{ $payroll->id }}" data-remark="{{ $payroll->remarks ?? '' }}"
-                                                data-role="{{ auth()->user()->role }}" title="Comment">
-                                                <i class="feather-message-square"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="9" class="text-center py-5">
-                                        <div class="py-5">
-                                            <i class="bi bi-calculator text-muted" style="font-size: 3rem; opacity: 0.2;"></i>
-                                            <p class="text-muted mt-3 fw-bold">No payroll records found.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                    <div class="modal fade" id="commentModal" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content" style="border-radius: 12px;">
-
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Add Comment</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-
-                                <div class="modal-body">
-                                    <textarea id="remarksField" class="form-control" rows="4"
-                                        placeholder="Write comment..."></textarea>
-                                    <input type="hidden" id="userRole">
-                                    <input type="hidden" id="payrollId">
-                                </div>
-
-                                <div class="modal-footer">
-                                    <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                                    <button id="saveBtn" class="btn btn-primary" onclick="saveComment()">Save</button>
-                                </div>
-
+                    <div class="zoho-list-bar mb-0 border-0 bg-transparent p-0">
+                        <span class="text-muted small fw-bold text-uppercase">Show</span>
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" id="showEntriesBtn"
+                                style="width: 80px; height: 38px; padding: 0 12px;">
+                                {{ $perPage ?? 20 }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 10px;">
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
                             </div>
                         </div>
+                        <span class="text-muted small fw-bold text-uppercase">entries</span>
                     </div>
                 </div>
-                @if($payrolls->hasPages())
-                    <div class="card-footer bg-white border-0 py-3 payroll-pagination">
-                        {{ $payrolls->appends(request()->query())->links('pagination::bootstrap-5') }}
+
+                <div class="card-body p-0 zoho-list-body">
+                    <div class="table-responsive zoho-table-wrap">
+                        <table class="table zoho-data-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="col-num">Sr. No.</th>
+                                    <th>Employee Name</th>
+                                    <th class="text-center">Month</th>
+                                    <th class="text-center">Payable Days</th>
+                                    <th class="text-end">Gross Salary</th>
+                                    <th class="text-end">Deductions</th>
+                                    <th class="text-end">Net Salary</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($payrolls as $index => $payroll)
+                                    @php
+                                        $statusKey = strtolower($payroll->status ?? 'pending');
+                                        $statusBadgeClass = match ($statusKey) {
+                                            'paid' => 'payroll-status-badge--paid',
+                                            'rejected' => 'payroll-status-badge--rejected',
+                                            default => 'payroll-status-badge--pending',
+                                        };
+                                        $roleSlug = auth()->user()->role;
+                                        $roleId = DB::table('roles_master')->where('slug', $roleSlug)->value('id');
+                                        $isAdmin = in_array($roleId, [1, 2, 3, 4]);
+                                    @endphp
+                                    <tr>
+                                        <td class="text-muted fw-semibold">{{ ($payrolls->currentPage() - 1) * $payrolls->perPage() + $loop->iteration }}</td>
+                                        <td><span class="payroll-emp-name">{{ $payroll->employee->name }}</span></td>
+                                        <td class="text-center"><span class="text-muted small fw-semibold">{{ $payroll->month }}</span></td>
+                                        <td class="text-center fw-semibold">{{ $payroll->payable_days }}</td>
+                                        <td class="text-end payroll-amount">₹{{ number_format($payroll->gross_salary ?? 0, 2) }}</td>
+                                        <td class="text-end payroll-amount payroll-amount--deduction">₹{{ number_format($payroll->deductions ?? 0, 2) }}</td>
+                                        <td class="text-end payroll-amount payroll-amount--net">₹{{ number_format($payroll->net_salary ?? 0, 2) }}</td>
+                                        <td class="text-center">
+                                            <div class="dropdown">
+                                                <span class="payroll-status-badge {{ $statusBadgeClass }} dropdown-toggle"
+                                                    data-bs-toggle="dropdown" data-bs-boundary="viewport">
+                                                    {{ $payroll->status }}
+                                                </span>
+                                                <ul class="dropdown-menu dropdown-menu-end zoho-more-menu">
+                                                    <li><a class="dropdown-item" href="javascript:void(0);" onclick="updateStatus({{ $payroll->id }}, 'pending')">Pending</a></li>
+                                                    <li><a class="dropdown-item" href="javascript:void(0);" onclick="updateStatus({{ $payroll->id }}, 'paid')">Paid</a></li>
+                                                    <li><a class="dropdown-item" href="javascript:void(0);" onclick="updateStatus({{ $payroll->id }}, 'rejected')">Rejected</a></li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="payroll-row-actions">
+                                                <button type="button" class="zoho-icon-btn" onclick="viewPayroll({{ $payroll->id }})" title="View">
+                                                    <i class="feather-eye"></i>
+                                                </button>
+                                                <div class="dropdown">
+                                                    <button type="button" class="zoho-icon-btn" data-bs-toggle="dropdown" title="More actions">
+                                                        <i class="feather-more-horizontal"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end zoho-more-menu">
+                                                        <li><a class="dropdown-item" href="javascript:void(0);" onclick="editPayroll({{ $payroll->id }})"><i class="feather-edit me-2"></i>Edit</a></li>
+                                                        <li><a class="dropdown-item" href="javascript:void(0);" onclick="downloadSlip({{ $payroll->id }}, 'pdf')"><i class="feather-download me-2"></i>Download PDF</a></li>
+                                                        <li><a class="dropdown-item text-danger" href="javascript:void(0);" onclick="deletePayroll({{ $payroll->id }})"><i class="feather-trash-2 me-2"></i>Delete</a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item comment-btn {{ (!$payroll->is_read && $isAdmin) ? 'blink' : '' }}"
+                                                                href="javascript:void(0);"
+                                                                data-id="{{ $payroll->id }}"
+                                                                data-remark="{{ $payroll->remarks ?? '' }}"
+                                                                data-role="{{ auth()->user()->role }}">
+                                                                <i class="feather-message-square me-2"></i>Comment
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="9">
+                                            <div class="payroll-empty-state">
+                                                <i class="feather-file-text"></i>
+                                                <p>No payroll records found.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
-                @endif
+
+                    @if($payrolls->hasPages())
+                        <div class="card-footer bg-white border-0 py-3 payroll-pagination">
+                            {{ $payrolls->appends(request()->query())->links('pagination::bootstrap-5') }}
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="modal fade" id="commentModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content" style="border-radius: 12px;">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add Comment</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <textarea id="remarksField" class="form-control" rows="4" placeholder="Write comment..."></textarea>
+                            <input type="hidden" id="userRole">
+                            <input type="hidden" id="payrollId">
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                            <button id="saveBtn" class="btn btn-primary" onclick="saveComment()">Save</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

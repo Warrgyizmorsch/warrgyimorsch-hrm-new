@@ -1,0 +1,259 @@
+/* Payroll History — Pro SaaS / Zoho list style */
+.payroll-history-page .zoho-module-content {
+    padding-top: 16px;
+}
+
+.payroll-calc-panel {
+    background: var(--zoho-surface, #fff);
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: var(--zoho-radius-lg, 10px);
+    box-shadow: var(--zoho-shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.payroll-calc-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--zoho-border-light, #eef1f4);
+    background: #fafbfc;
+}
+
+.payroll-calc-panel-head h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.payroll-calc-panel-head p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.payroll-calc-panel-body {
+    padding: 16px 18px 18px;
+}
+
+.payroll-calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 200px auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.payroll-calc-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.payroll-calc-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.payroll-calc-actions .zoho-btn-primary,
+.payroll-calc-actions .zoho-btn-outline {
+    height: 38px;
+    white-space: nowrap;
+}
+
+.payroll-share-panel {
+    background: var(--zoho-surface, #fff);
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: var(--zoho-radius-lg, 10px);
+    padding: 18px;
+    margin-bottom: 16px;
+}
+
+.payroll-share-panel h4 {
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.payroll-filter-panel {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0);
+    padding: 16px 18px;
+}
+
+.payroll-filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 200px auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.payroll-history-page .wghrm-custom-select-btn {
+    background: #fff;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    box-shadow: none;
+    border-radius: 8px;
+    color: var(--zoho-text-secondary, #434a5a);
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 38px !important;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+}
+
+.payroll-history-page input[type="month"],
+.payroll-history-page input[type="date"] {
+    height: 38px !important;
+    border: 1px solid var(--zoho-border, #e0e0e0) !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--zoho-text, #1a1a2e) !important;
+    background: #fff !important;
+    box-shadow: none !important;
+}
+
+.payroll-history-page input[type="month"]:focus,
+.payroll-history-page input[type="date"]:focus {
+    border-color: var(--zoho-accent, #1070e0) !important;
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.12) !important;
+}
+
+.payroll-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.payroll-status-badge--pending {
+    background: #fff7ed;
+    color: #c2410c;
+    border-color: #fed7aa;
+}
+
+.payroll-status-badge--paid {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #a7f3d0;
+}
+
+.payroll-status-badge--rejected {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.payroll-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.payroll-export-menu {
+    min-width: 140px;
+    padding: 6px 0 !important;
+    border: 1px solid var(--zoho-border, #e0e0e0) !important;
+    border-radius: var(--zoho-radius, 6px) !important;
+    box-shadow: var(--zoho-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1)) !important;
+}
+
+.payroll-export-menu .dropdown-item {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+}
+
+.payroll-history-page .zoho-data-table tbody td {
+    vertical-align: middle;
+}
+
+.payroll-emp-name {
+    font-weight: 700;
+    color: var(--zoho-link, #1070e0);
+    font-size: 14px;
+}
+
+.payroll-amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.payroll-amount--deduction {
+    color: #dc2626;
+}
+
+.payroll-amount--net {
+    color: var(--zoho-accent, #1070e0);
+    font-weight: 700;
+}
+
+.payroll-empty-state {
+    padding: 48px 16px;
+    text-align: center;
+    color: var(--zoho-muted, #616e88);
+}
+
+.payroll-empty-state i {
+    width: 40px;
+    height: 40px;
+    opacity: 0.35;
+    margin-bottom: 10px;
+}
+
+.payroll-calc-result-wrap {
+    padding: 0 18px 18px;
+}
+
+.payroll-history-page .table-responsive {
+    overflow: visible !important;
+}
+
+.payroll-history-page .dropdown-menu {
+    z-index: 1055 !important;
+}
+
+.comment-btn.blink {
+    animation: payroll-blink 1s infinite;
+}
+
+@keyframes payroll-blink {
+    50% { opacity: 0.35; }
+}
+
+@media (max-width: 991px) {
+    .payroll-calc-grid,
+    .payroll-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .payroll-calc-actions {
+        width: 100%;
+    }
+
+    .payroll-calc-actions .zoho-btn-primary,
+    .payroll-calc-actions .zoho-btn-outline {
+        flex: 1;
+        justify-content: center;
+    }
+}

@@ -65,7 +65,7 @@
             .emp-mobile-id {
                 font-size: 11px;
                 font-weight: 700;
-                color: #3858f9;
+                color: #1070e0;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 margin-top: 4px;
@@ -130,185 +130,45 @@
             }
         }
     </style>
-    <div class="container-fluid py-4">
-        <!-- HEADER -->
-        <!-- Main Content Card -->
-        <div class="card border-0 shadow-sm" style="border-radius: 12px; background: white;">
-            <div class="card-header bg-white border-bottom py-4 d-flex justify-content-between align-items-center"
-                style="border-radius: 12px 12px 0 0;">
-                <div class="mb-2 mb-lg-0">
-                    <h5 class="fw-bold mb-1" style="color: #1e293b; font-size: 20px;">Employee Management</h5>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item d-none d-sm-inline-block"><a href="#" class="text-decoration-none text-muted small">Home</a></li>
-                            <li class="breadcrumb-item active small fw-bold" style="color: #3858f9;" aria-current="page">List</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="d-flex align-items-center gap-2 flex-wrap justify-content-center">
-                    <div class="d-none d-lg-flex align-items-center me-2"
-                        style="width: 220px; background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0; height: 44px; padding: 0 15px;">
-                        <i class="feather-search text-muted" style="font-size: 14px;"></i>
-                        <input type="text" class="employee-page-search-input" value="{{ $search ?? '' }}" onkeyup="syncAndFilter(this)" placeholder="Search..."
-                            style="background: transparent; border: none; outline: none; width: 100%; padding-left: 10px; font-size: 13px; font-weight: 600;">
-                    </div>
-                    
-                    <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-primary text-primary"
-                        data-bs-toggle="collapse" data-bs-target="#filterSection" title="Filter" style="width: 44px; height: 44px; border-radius: 12px;">
-                        <i class="feather-filter"></i>
-                    </a>
 
-                    <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-info text-info"
-                        onclick="location.reload()" title="Refresh" style="width: 44px; height: 44px; border-radius: 12px;">
-                        <i class="feather-refresh-cw"></i>
-                    </a>
+    <div class="zoho-page-shell">
+        @php
+            $employeePrimaryAction = in_array(strtolower(auth()->user()->role), ['admin', 'super_admin', 'super admin'])
+                ? '<a href="' . route('employees.create') . '" class="zoho-btn-primary"><i class="feather-plus"></i> Add Employee</a>'
+                : '';
+            $employeeExtraActions = '';
+        @endphp
 
-                    @if(in_array(strtolower(auth()->user()->role), ['admin', 'super_admin', 'super admin']))
-                        <a href="{{ route('employees.export') }}" class="avatar-text avatar-md bg-soft-success text-success"
-                            title="Export" style="width: 44px; height: 44px; border-radius: 12px;">
-                            <i class="feather-download"></i>
-                        </a>
+        @include('layouts.partials.zoho-people-list-header', [
+            'title' => 'Employees',
+            'viewLabel' => 'All Employees',
+            'scopeLinks' => [
+                ['label' => 'View All Data', 'url' => route('employees.index'), 'active' => true],
+            ],
+            'primaryAction' => $employeePrimaryAction,
+            'showFilter' => true,
+            'moreMenu' => view('employees.partials.more-options')->render(),
+            'extraActions' => $employeeExtraActions,
+        ])
 
-                        <a href="{{ route('employees.create') }}" class="avatar-text avatar-md bg-primary text-white shadow-sm"
-                            title="Add" style="width: 44px; height: 44px; border-radius: 12px;">
-                            <i class="feather-plus"></i>
-                        </a>
-
-                        <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-danger text-danger"
-                            id="deleteSelectedBtn" onclick="deleteSelectedEmployees()" title="Delete Selected" style="width: 44px; height: 44px; border-radius: 12px;">
-                            <i class="feather-trash-2"></i>
-                        </a>
-                    @endif
-
-                    <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-secondary text-secondary d-lg-none" 
-                        onclick="$('#mobileSearchSection').toggleClass('d-none')" style="width: 44px; height: 44px; border-radius: 12px;">
-                        <i class="feather-search"></i>
-                    </a>
-                </div>
-            </div>
+        <div class="main-content zoho-module-content">
+        <div class="zoho-people-table-card" id="employeeListPanel">
 
             <!-- Mobile Search Bar -->
-            <div id="mobileSearchSection" class="d-none d-lg-none bg-light p-3 border-bottom">
-                <div class="input-group">
-                    <span class="input-group-text bg-white border-0"><i class="feather-search"></i></span>
-                    <input type="text" class="form-control border-0 employee-page-search-input" value="{{ $search ?? '' }}" onkeyup="syncAndFilter(this)" placeholder="Search employees...">
+            <div id="mobileSearchSection" class="d-none d-lg-none zoho-list-mobile-search">
+                <div class="zoho-list-search">
+                    <i class="feather-search"></i>
+                    <input type="text" class="employee-page-search-input" value="{{ $search ?? '' }}" onkeyup="syncAndFilter(this)" placeholder="Search employees...">
                 </div>
             </div>
 
-                <!-- Collapsible Filter Section -->
-                <div class="collapse" id="filterSection" style="overflow: visible !important;">
-                    <div class="card-body border-bottom bg-light bg-opacity-10 p-4" style="overflow: visible !important; position: relative; z-index: 999;">
-                        <div class="row g-3" style="overflow: visible !important;">
-                            <div class="col-md-3" style="overflow: visible !important;">
-                                <label class="form-label fw-bold small text-muted text-uppercase">Employee Name / ID</label>
-                                <div class="wghrm-search-dropdown" id="employeeFilterDropdown">
-                                    <div class="wghrm-dropdown-trigger" style="height: 44px; border-radius: 8px; background: #fff !important;">
-                                        @php $selectedEmployeeOption = $employeeFilterOptions->firstWhere('id', $employeeFilter); @endphp
-                                        <span class="wghrm-trigger-text fw-bold text-dark">
-                                            {{ $selectedEmployeeOption
-                                                ? $selectedEmployeeOption->name . ' (' . ($selectedEmployeeOption->employee_code ?? $selectedEmployeeOption->id) . ')'
-                                                : 'All Employees' }}
-                                        </span>
-                                        <i data-feather="chevron-down" style="width: 16px; height: 16px;"></i>
-                                    </div>
-                                    <div class="wghrm-dropdown-menu" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12); z-index: 9999; padding: 10px; display: none; min-width: 100%; pointer-events: auto;">
-                                        <div class="wghrm-search-container">
-                                            <i data-feather="search" class="wghrm-search-icon"></i>
-                                            <input type="text" class="wghrm-search-input" placeholder="Search employee...">
-                                        </div>
-                                        <div class="wghrm-items-list">
-                                            <div class="wghrm-item {{ empty($employeeFilter) ? 'selected' : '' }}" data-value="" data-text="All Employees">
-                                                <span class="wghrm-item-text">All Employees</span>
-                                                <i data-feather="check" class="wghrm-item-check" style="width: 14px; height: 14px;"></i>
-                                            </div>
-                                            @foreach ($employeeFilterOptions as $employee)
-                                                @php
-                                                    $employeeLabel = trim(($employee->name ?? 'Unknown') . ' (' . ($employee->employee_code ?? $employee->id) . ')');
-                                                @endphp
-                                                <div class="wghrm-item {{ (string) $employeeFilter === (string) $employee->id ? 'selected' : '' }}" data-value="{{ $employee->id }}" data-text="{{ $employeeLabel }}">
-                                                    <span class="wghrm-item-text">{{ $employeeLabel }}</span>
-                                                    <i data-feather="check" class="wghrm-item-check" style="width: 14px; height: 14px;"></i>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                    <input type="hidden" id="filterEmployeeName" value="{{ $employeeFilter ?? '' }}">
-                                </div>
-                            </div>
-                            <div class="col-md-3" style="overflow: visible !important;">
-                                <label class="form-label fw-bold small text-muted text-uppercase">Role</label>
-                                <div class="wghrm-search-dropdown" id="roleFilterDropdown">
-                                    <div class="wghrm-dropdown-trigger" style="height: 44px; border-radius: 8px; background: #fff !important;">
-                                        <span class="wghrm-trigger-text fw-bold text-dark">{{ $roleFilter ? ucfirst(str_replace('_', ' ', $roleFilter)) : 'All Roles' }}</span>
-                                        <i data-feather="chevron-down" style="width: 16px; height: 16px;"></i>
-                                    </div>
-                                    <div class="wghrm-dropdown-menu" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12); z-index: 9999; padding: 10px; display: none; min-width: 100%; pointer-events: auto;">
-                                        <div class="wghrm-search-container">
-                                            <i data-feather="search" class="wghrm-search-icon"></i>
-                                            <input type="text" class="wghrm-search-input" placeholder="Search role...">
-                                        </div>
-                                        <div class="wghrm-items-list">
-                                            <div class="wghrm-item {{ empty($roleFilter) ? 'selected' : '' }}" data-value="" data-text="All Roles">
-                                                <span class="wghrm-item-text">All Roles</span>
-                                                <i data-feather="check" class="wghrm-item-check" style="width: 14px; height: 14px;"></i>
-                                            </div>
-                                            @foreach (\App\Models\Role::all() as $role)
-                                                <div class="wghrm-item {{ strtolower($role->slug) === strtolower($roleFilter ?? '') ? 'selected' : '' }}" data-value="{{ strtolower($role->slug) }}" data-text="{{ $role->name }}">
-                                                    <span class="wghrm-item-text">{{ $role->name }}</span>
-                                                    <i data-feather="check" class="wghrm-item-check" style="width: 14px; height: 14px;"></i>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                    <input type="hidden" id="filterRole" value="{{ $roleFilter ?? '' }}">
-                                </div>
-                            </div>
-                            <div class="col-md-3" style="overflow: visible !important;">
-                                <label class="form-label fw-bold small text-muted text-uppercase">Department</label>
-                                <div class="wghrm-search-dropdown" id="departmentFilterDropdown">
-                                    <div class="wghrm-dropdown-trigger" style="height: 44px; border-radius: 8px; background: #fff !important;">
-                                        <span class="wghrm-trigger-text fw-bold text-dark">{{ $departmentFilter ? ucfirst(str_replace('_', ' ', $departmentFilter)) : 'All Departments' }}</span>
-                                        <i data-feather="chevron-down" style="width: 16px; height: 16px;"></i>
-                                    </div>
-                                    <div class="wghrm-dropdown-menu" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12); z-index: 9999; padding: 10px; display: none; min-width: 100%; pointer-events: auto;">
-                                        <div class="wghrm-search-container">
-                                            <i data-feather="search" class="wghrm-search-icon"></i>
-                                            <input type="text" class="wghrm-search-input" placeholder="Search department...">
-                                        </div>
-                                        <div class="wghrm-items-list">
-                                            <div class="wghrm-item {{ empty($departmentFilter) ? 'selected' : '' }}" data-value="" data-text="All Departments">
-                                                <span class="wghrm-item-text">All Departments</span>
-                                                <i data-feather="check" class="wghrm-item-check" style="width: 14px; height: 14px;"></i>
-                                            </div>
-                                            @foreach (\App\Models\Department::all() as $dept)
-                                                <div class="wghrm-item {{ strtolower($dept->name) === strtolower($departmentFilter ?? '') ? 'selected' : '' }}" data-value="{{ strtolower($dept->name) }}" data-text="{{ $dept->name }}">
-                                                    <span class="wghrm-item-text">{{ $dept->name }}</span>
-                                                    <i data-feather="check" class="wghrm-item-check" style="width: 14px; height: 14px;"></i>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                    <input type="hidden" id="filterDepartment" value="{{ $departmentFilter ?? '' }}">
-                                </div>
-                            </div>
-                            <div class="col-md-3 d-flex gap-2 align-items-end">
-                                <button
-                                    class="btn btn-primary flex-grow-1 fw-bold shadow-sm d-flex align-items-center justify-content-center"
-                                    onclick="applyFilters()"
-                                    style="background: #3858f9; border: none; height: 44px; border-radius: 8px;">
-                                    <i class="feather-check-circle me-1"></i> APPLY
-                                </button>
-                                <a href="{{ route('employees.index') }}"
-                                    class="btn btn-soft-danger fw-bold d-flex align-items-center justify-content-center"
-                                    style="border-radius: 8px; height: 44px; width: 80px; font-size: 13px;">Reset</a>
-                            </div>
+                <div class="card-body p-0 zoho-list-body">
+                    <div class="zoho-people-table-toolbar d-none d-lg-flex">
+                        <div class="zoho-people-table-search">
+                            <i class="feather-search"></i>
+                            <input type="text" class="employee-page-search-input" value="{{ $search ?? '' }}" onkeyup="syncAndFilter(this)" placeholder="Search in list...">
                         </div>
-                    </div>
-                </div>
-
-                <div class="card-body p-0">
-                    <!-- SHOW ENTRIES -->
-                    <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
+                        <div class="zoho-list-bar mb-0 border-0 bg-transparent p-0">
                         <span class="text-muted small fw-bold text-uppercase">Show</span>
                         <div class="dropdown">
                             <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
@@ -323,36 +183,37 @@
                             </div>
                         </div>
                         <span class="text-muted small fw-bold text-uppercase">entries</span>
+                        </div>
                     </div>
 
                     <!-- DESKTOP TABLE VIEW -->
-                    <div class="table-responsive d-none d-lg-block" style="overflow: visible !important;">
-                        <table class="table align-middle table-hover" id="employeeTable" style="margin-bottom: 50px;">
-                            <thead class="bg-light">
-                                <tr style="height: 60px;">
-                                    <th style="width:70px; padding: 15px; text-align: center;"><input type="checkbox" id="selectAll"></th>
-                                    <th style="width:120px; padding: 15px; font-size: 14px; text-align: center;">SR. NO.</th>
-                                    <th style="width:200px; padding: 15px; font-size: 14px; text-align: center;">NAME</th>
-                                    <th style="width:180px; padding: 15px; font-size: 14px; text-align: center;">ROLE</th>
-                                    <th style="width:200px; padding: 15px; font-size: 14px; text-align: center;">DEPARTMENT</th>
-                                    <th style="width:140px; padding: 15px; font-size: 14px; text-align: center;">ATTENDANCE</th>
-                                    <th style="width:140px; padding: 15px; font-size: 14px; text-align: center;">PHOTO</th>
-                                    <th style="width:140px; padding: 15px; font-size: 14px; text-align: center;">ACCOUNT STATUS</th>
+                    <div class="table-responsive d-none d-lg-block zoho-table-wrap">
+                        <table class="table zoho-data-table" id="employeeTable">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="selectAll"></th>
+                                    <th class="col-num">Sr. No. <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
+                                    <th>Name <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
+                                    <th>Role <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
+                                    <th>Department <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
+                                    <th class="col-attendance">Attendance</th>
+                                    <th class="col-photo">Photo</th>
+                                    <th class="col-status">Status <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($employees as $key => $emp)
-                                    <tr class="fade-row" id="emp-row-{{ $emp->id }}" style="height: 60px; vertical-align: middle;"
+                                    <tr class="fade-row" id="emp-row-{{ $emp->id }}"
                                         data-employee-id="{{ $emp->id }}" data-employee-dept="{{ $emp->department }}"
                                         data-employee-role="{{ $emp->role }}"
                                         data-employee-search="{{ strtolower($emp->name . ' ' . ($emp->employee_code ?? $emp->id)) }}">
-                                        <td style="padding: 12px; text-align: center;"><input type="checkbox" class="emp-checkbox" data-id="{{ $emp->id }}"></td>
-                                        <td class="fw-bold" style="padding: 12px; font-size: 15px; text-align: center;">{{ $employees->firstItem() + $key }}</td>
-                                        <td style="padding: 12px; text-align: center;">
+                                        <td><input type="checkbox" class="emp-checkbox" data-id="{{ $emp->id }}"></td>
+                                        <td class="col-num">{{ $employees->firstItem() + $key }}</td>
+                                        <td>
                                             <div class="dropdown">
-                                                <a href="javascript:void(0)" class="fw-bold d-flex align-items-center justify-content-center" role="button" data-bs-toggle="dropdown">
-                                                    <span style="font-size:15px;">{{ $emp->name }}</span>
-                                                    <span class="ms-2 text-muted" style="font-size:12px;">({{ $emp->employee_code }})</span>
+                                                <a href="javascript:void(0)" class="zoho-link d-flex align-items-center" role="button" data-bs-toggle="dropdown">
+                                                    <span>{{ $emp->name }}</span>
+                                                    <span class="ms-2 text-muted">({{ $emp->employee_code }})</span>
                                                 </a>
                                                 <ul class="dropdown-menu shadow-lg border-0 p-2" style="border-radius:12px;">
                                                     <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="viewEmployee({{ $emp->id }})"><i class="feather-eye"></i> View Details</a></li>
@@ -363,17 +224,21 @@
                                                 </ul>
                                             </div>
                                         </td>
-                                        <td style="padding: 12px; font-size: 15px; text-align: center;">{{ ucfirst(str_replace('_', ' ', $emp->role)) }}</td>
-                                        <td style="padding: 12px; font-size: 15px; text-align: center;">{{ ucfirst(str_replace('_', ' ', $emp->department)) }}</td>
-                                        <td class="text-center"><a href="javascript:void(0)" onclick="openAttendanceModal({{ $emp->id }}, '{{ $emp->name }}')" style="color: #3858f9; font-size: 20px;"><i class="bi bi-calendar3-event"></i></a></td>
-                                        <td class="text-center">
-                                            @if($emp->photo)
-                                                <img src="{{ asset('storage/' . $emp->photo) }}" style="width:45px;height:45px;border-radius:10px;object-fit:cover;">
-                                            @else
-                                                <div style="width:45px;height:45px;background:rgba(99, 102, 241, 0.1);color:#6366f1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;margin:0 auto;">{{ substr($emp->name, 0, 1) }}</div>
-                                            @endif
+                                        <td>{{ ucfirst(str_replace('_', ' ', $emp->role)) }}</td>
+                                        <td>{{ ucfirst(str_replace('_', ' ', $emp->department)) }}</td>
+                                        <td class="col-attendance"><a href="javascript:void(0)" class="zoho-link" onclick="openAttendanceModal({{ $emp->id }}, '{{ $emp->name }}')"><i class="bi bi-calendar3-event"></i></a></td>
+                                        <td class="col-photo">
+                                            <div class="zoho-emp-photo-wrap">
+                                                @if($emp->photo)
+                                                    <img src="{{ asset('storage/' . $emp->photo) }}" class="zoho-emp-avatar" alt=""
+                                                        onerror="this.classList.add('d-none');this.parentElement.querySelector('.zoho-emp-initial').classList.remove('d-none');">
+                                                    <div class="zoho-emp-initial d-none">{{ strtoupper(substr($emp->name, 0, 1)) }}</div>
+                                                @else
+                                                    <div class="zoho-emp-initial">{{ strtoupper(substr($emp->name, 0, 1)) }}</div>
+                                                @endif
+                                            </div>
                                         </td>
-                                        <td>
+                                        <td class="col-status">
                                             <select class="form-select account-status" data-user-id="{{ $emp->user->id ?? $emp->id }}">
                                                 <option value="active"
                                                     {{ ($emp->user->account_status ?? 'active') == 'active' ? 'selected' : '' }}>
@@ -387,7 +252,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="7" class="text-center py-4 text-muted">No employees found.</td></tr>
+                                    <tr><td colspan="8" class="text-center py-5 text-muted">No employees found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -452,22 +317,33 @@
                         @endforelse
                     </div>
 
-                    <!-- PAGINATION -->
-                    @if($employees->hasPages())
-                        <div class="card-footer bg-white border-0 py-3 attendance-pagination">
-                            {{ $employees->appends(request()->query())->links('pagination::bootstrap-5') }}
-                        </div>
-                    @endif
+                    <!-- FOOTER: record count + pagination -->
+                    <div class="zoho-people-table-footer">
+                        <span class="zoho-record-count">Total Record Count: <strong>{{ $employees->total() }}</strong></span>
+                        @if($employees->hasPages())
+                            <div class="zoho-list-pagination">
+                                {{ $employees->appends(request()->query())->links('pagination::bootstrap-5') }}
+                            </div>
+                        @endif
+                    </div>
 
                 </div>
-            </div>
-
         </div>
+        </div>
+
+        <!-- FILTER DRAWER (Zoho People style) -->
+        @include('layouts.partials.zoho-filter-drawer', [
+            'filterContent' => view('employees.partials.filter-drawer-content', [
+                'employeeFilterOptions' => $employeeFilterOptions,
+                'employeeFilter' => $employeeFilter ?? '',
+                'roleFilter' => $roleFilter ?? '',
+                'departmentFilter' => $departmentFilter ?? '',
+            ])->render(),
+            'resetUrl' => route('employees.index'),
+        ])
 
         <!-- ICONS -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-
-        </div>
 
         <!-- RIGHT SIDE MODAL FOR EMPLOYEE DETAILS -->
         <div class="offcanvas offcanvas-end custom-side-modal" tabindex="-1" id="employeeModal"
@@ -522,7 +398,7 @@
             <div class="modal-dialog modal-dialog-centered modal-lg">
                 <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                     <div class="modal-header p-4"
-                        style="background: linear-gradient(135deg, #3858f9 0%, #2563eb 100%); display: flex; justify-content: space-between; align-items: center; border: none;">
+                        style="background: linear-gradient(135deg, #1070e0 0%, #0d5fc0 100%); display: flex; justify-content: space-between; align-items: center; border: none;">
                         <div class="d-flex align-items-center gap-3">
                             <div
                                 style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
@@ -615,7 +491,7 @@
                 text-align: left !important;
             }
             .wghrm-custom-select-btn:focus {
-                border-color: #3858f9 !important;
+                border-color: #1070e0 !important;
                 box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.1) !important;
                 outline: none !important;
             }
@@ -654,7 +530,7 @@
             }
             .wghrm-custom-dropdown-item:hover, .wghrm-custom-dropdown-item.active {
                 background: #f1f5f9 !important;
-                color: #3858f9 !important;
+                color: #1070e0 !important;
             }
 
             .wghrm-search-dropdown {
@@ -681,7 +557,7 @@
             }
 
             .wghrm-dropdown-trigger.open {
-                border-color: #3858f9;
+                border-color: #1070e0;
                 box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.08);
             }
 
@@ -746,7 +622,7 @@
             }
 
             .wghrm-search-dropdown .wghrm-search-input:focus {
-                border-color: #3858f9;
+                border-color: #1070e0;
                 box-shadow: 0 0 0 3px rgba(56, 88, 249, 0.08);
             }
 
@@ -773,7 +649,7 @@
             .wghrm-item:hover,
             .wghrm-item.selected {
                 background: #f1f5f9;
-                color: #3858f9;
+                color: #1070e0;
             }
 
             .wghrm-item-check {
@@ -1014,7 +890,7 @@
 
             .nav-tab.active {
                 color: #ffffff;
-                background: #3858f9;
+                background: #1070e0;
                 box-shadow: 0 8px 20px rgba(56, 88, 249, 0.25);
             }
 
@@ -1058,7 +934,7 @@
             }
 
             .detail-card:hover {
-                border-color: #3858f9;
+                border-color: #1070e0;
                 background: #f8fafc;
                 transform: translateY(-2px);
             }
@@ -1075,7 +951,7 @@
                 align-items: center;
                 justify-content: center;
                 font-size: 18px;
-                color: #3858f9;
+                color: #1070e0;
                 background: rgba(56, 88, 249, 0.08);
                 flex-shrink: 0;
             }
@@ -1186,7 +1062,7 @@
             }
 
             .attendance-record-card:hover {
-                border-color: #6366f1;
+                border-color: #1070e0;
                 background: #f8fafc;
             }
 
@@ -1422,7 +1298,7 @@
                                                                                 <!-- Statutory details will follow -->
 
                                                                                 <!-- STATUTORY DETAILS (Merged into Personal) -->
-                                                                                <div class="detail-card full-width" style="border-left: 4px solid #6366f1;">
+                                                                                <div class="detail-card full-width" style="border-left: 4px solid #1070e0;">
                                                                                     <div class="detail-content">
                                                                                         <label class="detail-label text-primary">Statutory Enrollment</label>
                                                                                         <div class="d-flex flex-column gap-3 mt-2">
@@ -1548,7 +1424,7 @@
                     text: "You won't be able to revert this!",
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#3858f9',
+                    confirmButtonColor: '#1070e0',
                     cancelButtonColor: '#64748b',
                     confirmButtonText: 'Yes, delete it!',
                     cancelButtonText: 'No, cancel',
@@ -1772,21 +1648,6 @@
                     });
             }
 
-            // Toggle Filter Section
-            function toggleFilter() {
-                const filterSection = document.getElementById('filterSection');
-                if (filterSection.style.display === 'none') {
-                    filterSection.style.display = 'block';
-                } else {
-                    filterSection.style.display = 'none';
-                }
-            }
-
-            // Reset Filter
-            function resetFilter() {
-                document.getElementById('filterSection').style.display = 'none';
-            }
-
             function buildEmployeeFilterUrl() {
                 const url = new URL(window.location.href);
                 const employeeId = document.getElementById('filterEmployeeName')?.value || '';
@@ -1825,7 +1686,12 @@
 
             // Apply Filters
             function applyFilters() {
-                window.location.href = buildEmployeeFilterUrl();
+                const drawerEl = document.getElementById('zohoFilterDrawer');
+                if (drawerEl) {
+                    const drawer = bootstrap.Offcanvas.getInstance(drawerEl);
+                    if (drawer) drawer.hide();
+                }
+                loadEmployeeListAjax(buildEmployeeFilterUrl());
             }
 
             // Clear Filters
@@ -1848,7 +1714,7 @@
                     text: `Delete ${employeeIds.length} employee(s)? This action cannot be undone.`,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#3858f9',
+                    confirmButtonColor: '#1070e0',
                     cancelButtonColor: '#64748b',
                     confirmButtonText: 'Yes, delete it!',
                     cancelButtonText: 'No, cancel',
@@ -2008,19 +1874,130 @@
                 });
             }
 
-            // Unified Search Sync & Filter
+            // Unified Search Sync & Filter (AJAX — no full page reload)
             let employeeSearchTimer;
+            let employeeListAbortController = null;
+            const employeesIndexPath = @json(parse_url(route('employees.index'), PHP_URL_PATH));
+
+            async function loadEmployeeListAjax(url, options = {}) {
+                const updateHistory = options.updateHistory !== false;
+                const panel = document.getElementById('employeeListPanel');
+                if (!panel) return;
+
+                if (employeeListAbortController) {
+                    employeeListAbortController.abort();
+                }
+                employeeListAbortController = new AbortController();
+
+                panel.classList.add('zoho-list-loading');
+
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html',
+                        },
+                        signal: employeeListAbortController.signal,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load employees');
+                    }
+
+                    const html = await response.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                    const tbody = doc.querySelector('#employeeTable tbody');
+                    const currentTbody = document.querySelector('#employeeTable tbody');
+                    if (tbody && currentTbody) {
+                        currentTbody.innerHTML = tbody.innerHTML;
+                    }
+
+                    const mobile = doc.querySelector('#employeeCardsMobile');
+                    const currentMobile = document.querySelector('#employeeCardsMobile');
+                    if (mobile && currentMobile) {
+                        currentMobile.innerHTML = mobile.innerHTML;
+                    }
+
+                    const footer = doc.querySelector('.zoho-people-table-footer');
+                    const currentFooter = document.querySelector('.zoho-people-table-footer');
+                    if (footer && currentFooter) {
+                        currentFooter.innerHTML = footer.innerHTML;
+                    }
+
+                    const showBtn = doc.querySelector('#showEntriesBtn');
+                    const currentShowBtn = document.querySelector('#showEntriesBtn');
+                    if (showBtn && currentShowBtn) {
+                        currentShowBtn.textContent = showBtn.textContent.trim();
+                    }
+
+                    const searchParam = new URL(url, window.location.origin).searchParams.get('search') || '';
+                    document.querySelectorAll('.employee-page-search-input').forEach(function (input) {
+                        input.value = searchParam;
+                    });
+
+                    const selectAll = document.getElementById('selectAll');
+                    if (selectAll) {
+                        selectAll.checked = false;
+                    }
+
+                    if (updateHistory) {
+                        history.pushState({ employeeList: true }, '', url);
+                    }
+
+                    if (typeof feather !== 'undefined') {
+                        feather.replace();
+                    }
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        console.error('Employee list load failed:', error);
+                    }
+                } finally {
+                    panel.classList.remove('zoho-list-loading');
+                }
+            }
 
             function syncAndFilter(el) {
                 const val = el.value;
-                document.querySelectorAll('.employee-page-search-input').forEach(input => {
-                    if (input !== el) input.value = val;
+                document.querySelectorAll('.employee-page-search-input').forEach(function (input) {
+                    if (input !== el) {
+                        input.value = val;
+                    }
                 });
+
                 window.clearTimeout(employeeSearchTimer);
-                employeeSearchTimer = window.setTimeout(() => {
-                    window.location.href = buildEmployeeFilterUrl();
-                }, 350);
+                employeeSearchTimer = window.setTimeout(function () {
+                    loadEmployeeListAjax(buildEmployeeFilterUrl());
+                }, 400);
             }
+
+            window.addEventListener('popstate', function () {
+                loadEmployeeListAjax(window.location.href, { updateHistory: false });
+            });
+
+            document.addEventListener('click', function (event) {
+                const link = event.target.closest('#employeeListPanel a[href]');
+                if (!link) return;
+
+                const href = link.getAttribute('href');
+                if (!href || href.startsWith('javascript') || link.target === '_blank') return;
+
+                let url;
+                try {
+                    url = new URL(link.href, window.location.origin);
+                } catch (e) {
+                    return;
+                }
+
+                if (url.pathname !== employeesIndexPath) return;
+
+                const inFooter = link.closest('.zoho-people-table-footer');
+                const inPerPage = link.closest('.zoho-people-table-toolbar .wghrm-custom-dropdown-menu');
+                if (!inFooter && !inPerPage) return;
+
+                event.preventDefault();
+                loadEmployeeListAjax(link.href);
+            });
 
             document.addEventListener('DOMContentLoaded', function () {
                 console.log('=== DOMContentLoaded fired ===');
@@ -2071,6 +2048,21 @@
                     }
                 });
             });
+
+            // Filter drawer: search filter fields
+            document.getElementById('zohoFilterDrawerSearch')?.addEventListener('input', function (e) {
+                const term = e.target.value.toLowerCase();
+                document.querySelectorAll('#zohoFilterDrawer [data-filter-field]').forEach(function (field) {
+                    const label = (field.querySelector('.zoho-filter-label')?.textContent || field.textContent || '').toLowerCase();
+                    field.style.display = !term || label.includes(term) ? '' : 'none';
+                });
+            });
+
+            document.getElementById('zohoFilterDrawer')?.addEventListener('shown.bs.offcanvas', function () {
+                if (typeof feather !== 'undefined') feather.replace();
+            });
         </script>
+
+    </div>{{-- /.zoho-page-shell --}}
 
 @endsection

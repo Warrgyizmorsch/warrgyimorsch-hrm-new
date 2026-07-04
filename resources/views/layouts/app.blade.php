@@ -16,6 +16,9 @@
     <link rel="stylesheet" href="{{ asset('assets/vendors/css/vendors.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendors/css/daterangepicker.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/theme.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/zoho-portal.css') }}">
+
+    @stack('styles')
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,6 +30,15 @@
     <style>
         :root {
             --bs-body-font-family: 'Inter', sans-serif !important;
+            --brand-nav: #1a2138;
+            --brand-primary: #1070e0;
+            --brand-primary-hover: #0d5fc0;
+            --brand-primary-soft: #e6f1fc;
+            --brand-primary-ghost: rgba(16, 112, 224, 0.08);
+            --brand-primary-ring: rgba(16, 112, 224, 0.2);
+            --brand-secondary: #5c6575;
+            --brand-border: #e0e0e0;
+            --brand-page-bg: #f4f7f9;
         }
 
         body,
@@ -51,15 +63,15 @@
         }
 
         .btn-soft-primary {
-            background: rgba(56, 88, 249, 0.08) !important;
-            color: #3858f9 !important;
-            border: 1.5px solid rgba(56, 88, 249, 0.2) !important;
+            background: var(--brand-primary-ghost) !important;
+            color: var(--brand-primary) !important;
+            border: 1.5px solid var(--brand-primary-soft) !important;
         }
 
         .btn-soft-primary:hover {
-            background: #3858f9 !important;
+            background: var(--brand-primary) !important;
             color: #fff !important;
-            border-color: #3858f9 !important;
+            border-color: var(--brand-primary) !important;
         }
 
         .btn-soft-success {
@@ -91,9 +103,10 @@
             box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2) !important;
         }
 
-        .table-responsive {
-            overflow: visible !important;
-            /* Allow dropdowns to pop out */
+        @media (min-width: 992px) {
+            .table-responsive {
+                overflow: visible !important;
+            }
         }
 
         /* Global Premium Input Styling */
@@ -111,8 +124,8 @@
         }
         .form-control:focus, .form-select:focus {
             background-color: #fff !important;
-            border-color: #3858f9 !important;
-            box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.1) !important;
+            border-color: var(--brand-primary) !important;
+            box-shadow: 0 0 0 4px var(--brand-primary-ring) !important;
         }
         textarea.form-control { height: auto !important; }
 
@@ -143,10 +156,10 @@
         .select2-container--default.select2-container--focus .select2-selection--single,
         .select2-container--default.select2-container--focus .select2-selection--multiple {
             background-color: #fff !important;
-            border-color: #3858f9 !important;
+            border-color: var(--brand-primary) !important;
         }
         .select2-container .select2-selection--multiple .select2-selection__choice {
-            background-color: #3858f9 !important;
+            background-color: var(--brand-primary) !important;
             border: none !important;
             color: #fff !important;
             border-radius: 6px !important;
@@ -198,8 +211,8 @@
         }
 
         .status-in-process {
-            background: rgba(56, 88, 249, 0.1) !important;
-            color: #3858f9 !important;
+            background: var(--brand-primary-ghost) !important;
+            color: var(--brand-primary) !important;
         }
 
         .status-completed {
@@ -258,8 +271,8 @@
         }
 
         .priority-normal {
-            background: rgba(56, 88, 249, 0.1) !important;
-            color: #3858f9 !important;
+            background: var(--brand-primary-ghost) !important;
+            color: var(--brand-primary) !important;
         }
 
         /* Lead Select UI */
@@ -291,8 +304,8 @@
         }
 
         .lead-select-btn:hover {
-            border-color: #3858f9;
-            background: #f8fafc;
+            border-color: var(--brand-primary);
+            background: var(--brand-primary-ghost);
         }
 
         .premium-attachment-link {
@@ -300,8 +313,8 @@
             align-items: center;
             justify-content: center;
             padding: 5px 12px;
-            background: rgba(56, 88, 249, 0.08);
-            color: #3858f9;
+            background: var(--brand-primary-ghost);
+            color: var(--brand-primary);
             font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
@@ -309,13 +322,13 @@
             border-radius: 6px;
             transition: all 0.3s;
             text-decoration: none !important;
-            border: 1px solid rgba(56, 88, 249, 0.15);
+            border: 1px solid var(--brand-primary-soft);
         }
 
         .premium-attachment-link:hover {
-            background: #3858f9;
+            background: var(--brand-primary);
             color: #fff !important;
-            box-shadow: 0 4px 12px rgba(56, 88, 249, 0.25);
+            box-shadow: 0 4px 12px var(--brand-primary-ring);
             transform: translateY(-1px);
         }
 
@@ -342,7 +355,7 @@
         }
 
         .wghrm-dropdown-trigger:hover {
-            border-color: #3858f9 !important;
+            border-color: var(--brand-primary) !important;
             background-color: #fff !important;
         }
 
@@ -391,9 +404,9 @@
         }
 
         .wghrm-search-input:focus {
-            border-color: #3858f9;
+            border-color: var(--brand-primary);
             background: white;
-            box-shadow: 0 0 0 4px rgba(56, 88, 249, 0.1);
+            box-shadow: 0 0 0 4px var(--brand-primary-ring);
         }
 
         .wghrm-search-icon {
@@ -491,13 +504,13 @@
         }
 
         .wghrm-item:hover {
-            background: #f0f4ff;
-            color: #3858f9;
+            background: var(--brand-primary-soft);
+            color: var(--brand-primary);
         }
 
         .wghrm-item.selected {
-            background: #eef2ff;
-            color: #3858f9;
+            background: var(--brand-primary-soft);
+            color: var(--brand-primary);
             font-weight: 700;
         }
 
@@ -506,7 +519,7 @@
         }
 
         .wghrm-item-check {
-            color: #3858f9;
+            color: var(--brand-primary);
             display: none;
         }
 
@@ -524,7 +537,7 @@
     </style>
 </head>
 
-<body>
+<body class="zoho-portal @if(request()->routeIs('dashboard')) zoho-has-subheader @endif">
 
     {{-- Sidebar / Navigation --}}
     @include('layouts.nav')
@@ -549,7 +562,9 @@
     <script src="{{ asset('assets/vendors/js/circle-progress.min.js') }}"></script>
 
     <script src="{{ asset('assets/js/common-init.min.js') }}"></script>
+    @unless(request()->routeIs('dashboard'))
     <script src="{{ asset('assets/js/dashboard-init.min.js') }}"></script>
+    @endunless
     <script src="{{ asset('assets/js/theme-customizer-init.min.js') }}"></script>
 
     <script>
@@ -639,7 +654,7 @@
                 text: "You won't be able to revert this!",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#3858f9',
+                confirmButtonColor: '#1070e0',
                 cancelButtonColor: '#64748b',
                 confirmButtonText: 'Yes, delete it!',
                 cancelButtonText: 'No, cancel',
