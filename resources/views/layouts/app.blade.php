@@ -562,6 +562,19 @@
     <script src="{{ asset('assets/vendors/js/circle-progress.min.js') }}"></script>
 
     <script src="{{ asset('assets/js/common-init.min.js') }}"></script>
+    <script>
+        $(function () {
+            function keepZohoSidebarExpanded() {
+                if (!$('body').hasClass('zoho-portal')) {
+                    return;
+                }
+                $('html').removeClass('minimenu');
+            }
+
+            keepZohoSidebarExpanded();
+            $(window).on('resize', keepZohoSidebarExpanded);
+        });
+    </script>
     @unless(request()->routeIs('dashboard'))
     <script src="{{ asset('assets/js/dashboard-init.min.js') }}"></script>
     @endunless

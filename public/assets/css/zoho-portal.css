@@ -1612,6 +1612,54 @@ body.zoho-sidebar-open {
     display: none !important;
 }
 
+/* Disable theme minimenu collapse — Zoho sidebar stays full width with labels */
+html.minimenu body.zoho-portal .nxl-navigation {
+    width: var(--zoho-sidebar-w) !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation .nxl-mtext,
+html.minimenu body.zoho-portal .nxl-navigation .nxl-arrow,
+html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-search,
+html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-scroll,
+html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-user,
+html.minimenu body.zoho-portal .nxl-navigation .nxl-caption label {
+    display: block !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation .nxl-link {
+    display: flex !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation .nxl-mtext {
+    display: inline !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation .navbar-content {
+    width: 100% !important;
+    position: static !important;
+    background: transparent !important;
+    border-right: none !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content {
+    position: static !important;
+    width: 100% !important;
+    background: transparent !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation .nxl-caption:before {
+    content: none !important;
+    display: none !important;
+}
+
+html.minimenu body.zoho-portal .nxl-container {
+    margin-left: var(--zoho-sidebar-w) !important;
+}
+
+html.minimenu body.zoho-portal .nxl-header {
+    left: var(--zoho-sidebar-w) !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Zoho Module Pages (Employees, Payroll, etc.)
    ═══════════════════════════════════════════════════════════════ */

@@ -8,48 +8,14 @@
             background-size: 12px 12px !important;
         }
     </style>
-    <!-- [ page-header ] start -->
-    <div class="page-header">
-        <div class="page-header-left d-flex align-items-center">
-            <div class="page-header-title">
-                <h5 class="m-b-10" style="color: #3858f9; font-weight: 700;">Task History</h5>
-            </div>
-            <ul class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
-                <li class="breadcrumb-item active">Daily Tasks</li>
-            </ul>
-        </div>
-        <div class="page-header-right ms-auto">
-            <div class="page-header-right-items">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <a href="javascript:void(0);" class="avatar-text avatar-md bg-primary text-white shadow-sm"
-                            style="border-radius: 10px;" data-bs-toggle="offcanvas" data-bs-target="#taskOffcanvas"
-                            onclick="resetTaskForm()" title="Create Task">
-                            <i class="feather-plus"></i>
-                        </a>
-                        <a href="javascript:void(0);" class="avatar-text avatar-md bg-soft-primary text-primary shadow-sm"
-                            style="border-radius: 10px;" data-bs-toggle="collapse" data-bs-target="#taskFilterSection"
-                            title="Filter Tasks">
-                            <i class="feather-filter"></i>
-                        </a>
-                        <a href="javascript:void(0);"
-                            class="avatar-text avatar-md bg-soft-secondary text-secondary shadow-sm"
-                            style="border-radius: 10px;" onclick="location.reload()" title="Refresh">
-                            <i class="feather-refresh-cw"></i>
-                        </a>
-                        <a href="javascript:void(0);" id="btn-bulk-delete-tasks"
-                            class="avatar-text avatar-md bg-soft-danger text-danger shadow-sm"
-                            style="border-radius: 10px; display: none;" onclick="bulkDelete()"
-                            title="Delete Selected Tasks">
-                            <i class="feather-trash-2"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- [ page-header ] end -->
+    @include('layouts.partials.zoho-module-toolbar', [
+        'title' => 'Task History',
+        'breadcrumbs' => [
+            ['url' => route('dashboard'), 'label' => 'Home'],
+            ['label' => 'Daily Tasks'],
+        ],
+        'actions' => view('projects.tasks.partials.toolbar-actions')->render(),
+    ])
 
     <!-- [ main-content ] start -->
     <div class="main-content pt-4">
