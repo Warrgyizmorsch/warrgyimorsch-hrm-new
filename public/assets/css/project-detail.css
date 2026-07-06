@@ -1,0 +1,746 @@
+/* Project detail page — Zoho / Jira style */
+.project-detail-page .zoho-module-content {
+    padding: 20px 24px 32px;
+}
+
+/* Reuse PM tokens from projects list */
+.project-detail-page .pm-status,
+.project-detail-page .pm-badge,
+.project-detail-page .pm-tag {
+    display: inline-flex;
+    align-items: center;
+}
+
+.project-detail-page .pm-status {
+    min-height: 28px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.project-detail-page .pm-status--pending { background: #f1f5f9; color: #475569; }
+.project-detail-page .pm-status--process { background: #eff6ff; color: #2563eb; }
+.project-detail-page .pm-status--completed { background: #f0fdf4; color: #16a34a; }
+.project-detail-page .pm-status--hold { background: #fffbeb; color: #d97706; }
+.project-detail-page .pm-status--review { background: #ecfeff; color: #0891b2; }
+.project-detail-page .pm-status--rework { background: #fef2f2; color: #dc2626; }
+.project-detail-page .pm-status--default { background: #f8fafc; color: #64748b; }
+
+.project-detail-page .pm-badge {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.project-detail-page .pm-badge--overdue { background: #fef2f2; color: #dc2626; }
+.project-detail-page .pm-badge--due-soon { background: #fffbeb; color: #d97706; }
+.project-detail-page .pm-badge--muted { background: #f1f5f9; color: #64748b; }
+.project-detail-page .pm-badge--info { background: #eff6ff; color: #2563eb; }
+
+.project-detail-page .pm-tag {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.project-detail-page .pm-tag--tech { background: #f1f5f9; color: #475569; }
+.project-detail-page .pm-tag--dept { background: #eff6ff; color: #1d4ed8; }
+.project-detail-page .pm-tag--muted { background: #f8fafc; color: #94a3b8; }
+
+/* Hero */
+.pd-hero {
+    margin-bottom: 18px;
+    padding: 20px 22px;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 14px;
+    background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+}
+
+.pd-hero-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.pd-progress-ring {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+}
+
+.pd-progress-ring svg {
+    transform: rotate(-90deg);
+}
+
+.pd-progress-ring__value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1070e0;
+}
+
+.pd-hero-meta {
+    min-width: 0;
+    flex: 1;
+}
+
+.pd-hero-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.pd-hero-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.pd-hero-submeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-hero-submeta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pd-hero-submeta i {
+    width: 13px;
+    height: 13px;
+}
+
+.pd-timer {
+    font-weight: 700;
+    color: #1070e0;
+}
+
+.pd-insights-row {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.pd-insight-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 14px;
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.pd-insight-card strong {
+    font-size: 20px;
+    line-height: 1.1;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-insight-card span {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-insight-card--success strong { color: #16a34a; }
+.pd-insight-card--process strong { color: #2563eb; }
+.pd-insight-card--pending strong { color: #64748b; }
+
+/* Tabs */
+.pd-tabs-wrap {
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0);
+}
+
+.pd-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border: none;
+}
+
+.pd-tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-tabs .nav-link:hover {
+    color: #1070e0;
+}
+
+.pd-tabs .nav-link.active {
+    color: #1070e0;
+    border-bottom-color: #1070e0;
+    background: transparent;
+}
+
+.pd-tab-badge {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: #1070e0;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.pd-tab-content {
+    padding-top: 4px;
+}
+
+/* Cards */
+.pd-card {
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+}
+
+.pd-card-head {
+    padding: 16px 18px;
+    border-bottom: 1px solid #eef1f5;
+    background: #fafbfc;
+}
+
+.pd-card-head--split {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.pd-card-head h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-card-subtitle {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-head-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-card-body {
+    padding: 18px;
+}
+
+/* Meta grid */
+.pd-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.pd-meta-item {
+    padding: 12px 14px;
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    background: #fafbfc;
+}
+
+.pd-meta-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-meta-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-section h3 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-description {
+    font-size: 14px;
+    line-height: 1.65;
+    color: #475569;
+}
+
+.pd-description ul,
+.pd-description ol {
+    padding-left: 20px;
+    margin-bottom: 10px;
+}
+
+.pd-doc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.pd-doc-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    background: #fafbfc;
+    text-decoration: none;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.pd-doc-card:hover {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.pd-doc-card i {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.pd-doc-card span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Progress sidebar */
+.pd-progress-block {
+    margin-bottom: 16px;
+}
+
+.pd-progress-block__label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-progress-block__label strong {
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-progress-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: #eef1f5;
+    overflow: hidden;
+}
+
+.pd-progress-bar span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: #1070e0;
+}
+
+.pd-progress-bar--muted span {
+    background: #94a3b8;
+}
+
+.pd-chart {
+    margin-top: 8px;
+}
+
+/* Team */
+.pd-team-section + .pd-team-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed #eef1f5;
+}
+
+.pd-team-label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-team-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.pd-team-person--compact strong {
+    font-size: 13px;
+}
+
+.pd-team-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.pd-team-avatar--lead {
+    background: #1070e0;
+    color: #fff;
+}
+
+.pd-team-person strong {
+    display: block;
+    font-size: 13px;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-team-person small {
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-empty-line {
+    margin: 0;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+/* Quick actions */
+.pd-quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pd-action-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pd-action-link:hover {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1070e0;
+}
+
+.pd-action-link--danger:hover {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.pd-action-link i {
+    width: 15px;
+    height: 15px;
+}
+
+/* Tasks table */
+.project-detail-page .zoho-data-table {
+    font-size: 13px;
+}
+
+.project-detail-page .zoho-data-table thead th {
+    padding: 11px 16px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88) !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0) !important;
+}
+
+.project-detail-page .zoho-data-table tbody td {
+    padding: 12px 16px !important;
+    vertical-align: middle !important;
+    border-bottom: 1px solid #eef1f5 !important;
+}
+
+.project-detail-page .zoho-data-table tbody tr:hover {
+    background: rgba(16, 112, 224, 0.03);
+}
+
+.pd-task-title {
+    display: block;
+    font-size: 13px;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-task-desc {
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+}
+
+/* Activity feed */
+.pd-activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pd-activity-day {
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.pd-activity-day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eef1f5;
+    background: #fafbfc;
+}
+
+.pd-activity-day-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.pd-activity-day-title i {
+    width: 14px;
+    height: 14px;
+    color: #1070e0;
+}
+
+.pd-activity-task {
+    padding: 16px;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.pd-activity-task:last-child {
+    border-bottom: none;
+}
+
+.pd-activity-task-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.pd-activity-task-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.pd-activity-task-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pd-activity-task-meta {
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-activity-task-desc {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-left: 3px solid #1070e0;
+    border-radius: 0 8px 8px 0;
+    background: #f8fafc;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.pd-activity-event {
+    margin-left: 42px;
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    background: #fafbfc;
+}
+
+.pd-activity-event-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.pd-activity-event-head i {
+    width: 12px;
+    height: 12px;
+}
+
+.pd-activity-event-body {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #475569;
+}
+
+.pd-activity-event-body ul {
+    padding-left: 18px;
+    margin-bottom: 8px;
+}
+
+.pd-attach-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 10px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pd-attach-btn i {
+    width: 12px;
+    height: 12px;
+}
+
+/* Empty state */
+.pd-empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pd-empty-state i {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+    color: #cbd5e1;
+}
+
+.pd-empty-state p {
+    margin-bottom: 14px;
+    font-weight: 600;
+}
+
+@media (max-width: 1200px) {
+    .pd-insights-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .pd-meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .project-detail-page .zoho-module-content {
+        padding: 16px;
+    }
+
+    .pd-hero-main {
+        flex-direction: column;
+    }
+
+    .pd-insights-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pd-meta-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pd-activity-event {
+        margin-left: 0;
+    }
+}

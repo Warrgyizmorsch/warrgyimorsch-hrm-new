@@ -7,19 +7,154 @@ use App\Models\Holiday;
 use App\Models\LeaveAllotment;
 use App\Models\LeaveApplication;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class LeaveBalanceService
 {
-    public function getEmployeeBalanceSummary(int $employeeId): array
+    /**
+     * Batch balance calculation for listing pages (avoids N+1 queries).
+     *
+     * @return array<int, array<string, float>>
+     */
+    public function getBulkEmployeeBalanceSummaries(iterable $employees, Carbon $monthDate): array
     {
-        $totalAllotted = (float) LeaveAllotment::where('employee_id', $employeeId)->sum('leave_count');
-        $totalTaken = $this->getDeductibleLeaveDaysForEmployee($employeeId);
+        $employees = collect($employees)->filter()->values();
+        if ($employees->isEmpty()) {
+            return [];
+        }
 
-        return [
-            'total_allotted' => $totalAllotted,
-            'total_taken' => $totalTaken,
-            'balance' => $totalAllotted - $totalTaken,
+        $targetMonth = $monthDate->copy()->startOfMonth();
+        $employeeIds = $employees->pluck('id')->all();
+
+        $allotmentsByEmployee = LeaveAllotment::whereIn('employee_id', $employeeIds)
+            ->get()
+            ->groupBy('employee_id');
+
+        $leavesByEmployee = LeaveApplication::whereIn('employee_id', $employeeIds)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $targetMonth->copy()->endOfMonth()->toDateString())
+            ->orderBy('start_date')
+            ->get()
+            ->groupBy('employee_id');
+
+        $rangeStart = $targetMonth->copy()->startOfYear();
+        foreach ($employees as $employee) {
+            $employeeAllotments = $allotmentsByEmployee->get($employee->id, collect());
+            $employeeLeaves = $leavesByEmployee->get($employee->id, collect());
+            $firstMonth = $this->resolveFirstLeaveBalanceMonth(
+                $targetMonth,
+                $employeeAllotments,
+                $employeeLeaves
+            );
+            if ($firstMonth->lt($rangeStart)) {
+                $rangeStart = $firstMonth->copy();
+            }
+        }
+
+        $holidayLookup = $this->buildHolidayLookup(
+            $rangeStart,
+            $targetMonth->copy()->endOfMonth()
+        );
+
+        $summaries = [];
+        foreach ($employees as $employee) {
+            $employeeAllotments = $allotmentsByEmployee->get($employee->id, collect());
+            $employeeLeaves = $leavesByEmployee->get($employee->id, collect());
+            $allotmentMap = $this->buildAllotmentMap($employeeAllotments);
+            $usedByMonth = $this->buildMonthlyUsedMap(
+                $employeeLeaves,
+                $targetMonth->copy()->endOfMonth(),
+                $holidayLookup
+            );
+
+            $opening = $this->computeOpeningBalance(
+                $targetMonth,
+                $employeeAllotments,
+                $allotmentMap,
+                $employeeLeaves,
+                $usedByMonth
+            );
+
+            $monthKey = $targetMonth->format('Y') . '-' . ((int) $targetMonth->format('m'));
+            $used = (float) ($usedByMonth[$monthKey] ?? 0);
+            $closing = max(0, $opening - $used);
+
+            $summaries[$employee->id] = [
+                'total_allotted' => $opening,
+                'total_taken' => $used,
+                'balance' => $closing,
+                'unpaid_leave_days' => max(0, $used - $opening),
+                'monthly_allotment' => $this->allottedFromMap($allotmentMap, $targetMonth),
+            ];
+        }
+
+        return $summaries;
+    }
+
+    public function getEmployeeBalanceSummary(int $employeeId, ?Carbon $monthDate = null): array
+    {
+        $employee = Employee::find($employeeId);
+        if (!$employee) {
+            return [
+                'total_allotted' => 0,
+                'total_taken' => 0,
+                'balance' => 0,
+                'unpaid_leave_days' => 0,
+                'monthly_allotment' => 0,
+            ];
+        }
+
+        $monthDate = ($monthDate ?? now())->copy()->startOfMonth();
+        $summaries = $this->getBulkEmployeeBalanceSummaries(collect([$employee]), $monthDate);
+
+        return $summaries[$employee->id] ?? [
+            'total_allotted' => 0,
+            'total_taken' => 0,
+            'balance' => 0,
+            'unpaid_leave_days' => 0,
+            'monthly_allotment' => 0,
         ];
+    }
+
+    public function buildMonthlyBalanceTimeline(int $employeeId): array
+    {
+        $employee = Employee::find($employeeId);
+        if (!$employee) {
+            return [];
+        }
+
+        $monthlyAllotments = LeaveAllotment::where('employee_id', $employeeId)
+            ->orderBy('year')
+            ->orderBy('month')
+            ->get();
+
+        $rows = [];
+        $carryForward = 0.0;
+
+        foreach ($monthlyAllotments as $allotment) {
+            $monthDate = Carbon::createFromDate((int) $allotment->year, (int) $allotment->month, 1)->startOfMonth();
+            $used = $this->getDeductibleLeaveDaysBetween(
+                $employee,
+                $monthDate->copy()->startOfMonth(),
+                $monthDate->copy()->endOfMonth()
+            );
+
+            $monthResult = $this->closeMonthBalance($carryForward, (float) $allotment->leave_count, $used);
+
+            $rows[] = [
+                'type' => strtoupper($monthDate->format('F')) . " ({$allotment->year})",
+                'allotted' => (float) $allotment->leave_count,
+                'used' => $used,
+                'available' => $monthResult['closing'],
+                'unpaid_leave' => $monthResult['unpaid_leave'],
+                'carry_forward' => $monthResult['carry_forward'],
+                'reference' => 'Monthly Quota',
+            ];
+
+            $carryForward = $monthResult['carry_forward'];
+        }
+
+        return array_reverse($rows);
     }
 
     public function getDeductibleLeaveDaysForEmployee(int $employeeId, ?int $year = null, ?int $month = null): float
@@ -49,40 +184,53 @@ class LeaveBalanceService
 
     public function getPayrollLeaveSummary(Employee $employee, Carbon $monthDate): array
     {
-        $monthStart = $monthDate->copy()->startOfMonth();
-        $monthEnd = $monthDate->copy()->endOfMonth();
-        $availableBalance = $this->getAvailableLeaveBalanceForMonth($employee, $monthDate);
-        $currentMonthLeaveDays = $this->getDeductibleLeaveDaysBetween($employee, $monthStart, $monthEnd);
-        $paidLeaveDays = min($currentMonthLeaveDays, $availableBalance);
+        $monthDate = $monthDate->copy()->startOfMonth();
+        $summary = $this->getBulkEmployeeBalanceSummaries(collect([$employee]), $monthDate);
+        $row = $summary[$employee->id] ?? [
+            'total_allotted' => 0,
+            'total_taken' => 0,
+            'balance' => 0,
+            'unpaid_leave_days' => 0,
+        ];
 
         return [
-            'available_balance' => $availableBalance,
-            'current_month_leave_days' => $currentMonthLeaveDays,
-            'paid_leave_days' => $paidLeaveDays,
-            'unpaid_leave_days' => max(0, $currentMonthLeaveDays - $paidLeaveDays),
+            'available_balance' => $row['total_allotted'],
+            'current_month_leave_days' => $row['total_taken'],
+            'paid_leave_days' => min($row['total_taken'], $row['total_allotted']),
+            'unpaid_leave_days' => $row['unpaid_leave_days'],
         ];
     }
 
     public function getAvailableLeaveBalanceForMonth(Employee $employee, Carbon $monthDate): float
     {
-        $targetMonth = $monthDate->copy()->startOfMonth();
-        $cursor = $this->getFirstLeaveBalanceMonth($employee, $targetMonth);
-        $balance = 0.0;
+        $summary = $this->getBulkEmployeeBalanceSummaries(collect([$employee]), $monthDate->copy()->startOfMonth());
 
-        while ($cursor->lt($targetMonth)) {
-            $balance += $this->getLeaveAllottedForMonth($employee, $cursor);
+        return (float) ($summary[$employee->id]['total_allotted'] ?? 0);
+    }
 
-            $leaveDays = $this->getDeductibleLeaveDaysBetween(
-                $employee,
-                $cursor->copy()->startOfMonth(),
-                $cursor->copy()->endOfMonth()
-            );
+    /**
+     * Close a leave month: excess usage becomes salary deduction (unpaid leave), never negative balance.
+     * Any positive closing balance carries forward to the next month.
+     */
+    private function closeMonthBalance(float $carryIn, float $allotment, float $used): array
+    {
+        $opening = $carryIn + $allotment;
+        $paidLeave = min($used, $opening);
+        $unpaidLeave = max(0, $used - $opening);
+        $closing = max(0, $opening - $used);
 
-            $balance -= min($leaveDays, $balance);
-            $cursor->addMonth();
-        }
+        return [
+            'opening' => $opening,
+            'paid_leave' => $paidLeave,
+            'unpaid_leave' => $unpaidLeave,
+            'closing' => $closing,
+            'carry_forward' => $this->resolveCarryForward($closing),
+        ];
+    }
 
-        return $balance + $this->getLeaveAllottedForMonth($employee, $targetMonth);
+    private function resolveCarryForward(float $closingBalance): float
+    {
+        return $closingBalance > 0 ? $closingBalance : 0.0;
     }
 
     public function getDeductibleLeaveDaysBetween(Employee $employee, Carbon $startDate, Carbon $endDate): float
@@ -218,14 +366,32 @@ class LeaveBalanceService
 
     private function getLeaveAllottedForMonth(Employee $employee, Carbon $monthDate): float
     {
+        $monthNum = (int) $monthDate->format('m');
+
         return (float) LeaveAllotment::where('employee_id', $employee->id)
             ->where('year', $monthDate->format('Y'))
-            ->whereIn('month', [$monthDate->format('m'), (string) (int) $monthDate->format('m')])
+            ->whereIn('month', [
+                $monthDate->format('m'),
+                sprintf('%02d', $monthNum),
+                (string) $monthNum,
+            ])
             ->sum('leave_count');
     }
 
-    private function getHolidayDatesBetween(Carbon $startDate, Carbon $endDate): array
+    private function getHolidayDatesBetween(Carbon $startDate, Carbon $endDate, ?array $holidayLookup = null): array
     {
+        if ($holidayLookup !== null) {
+            $dates = [];
+            for ($date = $startDate->copy()->startOfDay(); $date->lte($endDate); $date->addDay()) {
+                $key = $date->toDateString();
+                if (isset($holidayLookup[$key])) {
+                    $dates[] = $key;
+                }
+            }
+
+            return $dates;
+        }
+
         return Holiday::whereBetween('date', [
                 $startDate->toDateString(),
                 $endDate->toDateString(),
@@ -233,5 +399,152 @@ class LeaveBalanceService
             ->pluck('date')
             ->map(fn ($date) => Carbon::parse($date)->toDateString())
             ->all();
+    }
+
+    private function buildHolidayLookup(Carbon $startDate, Carbon $endDate): array
+    {
+        return Holiday::whereBetween('date', [
+                $startDate->toDateString(),
+                $endDate->toDateString(),
+            ])
+            ->pluck('date')
+            ->mapWithKeys(fn ($date) => [Carbon::parse($date)->toDateString() => true])
+            ->all();
+    }
+
+    /**
+     * @return array<string, float> keys like "2026-7"
+     */
+    private function buildAllotmentMap(Collection $allotments): array
+    {
+        $map = [];
+        foreach ($allotments as $allotment) {
+            $key = ((int) $allotment->year) . '-' . ((int) $allotment->month);
+            $map[$key] = ($map[$key] ?? 0) + (float) $allotment->leave_count;
+        }
+
+        return $map;
+    }
+
+    private function allottedFromMap(array $allotmentMap, Carbon $monthDate): float
+    {
+        $key = $monthDate->format('Y') . '-' . ((int) $monthDate->format('m'));
+
+        return (float) ($allotmentMap[$key] ?? 0);
+    }
+
+    private function resolveFirstLeaveBalanceMonth(
+        Carbon $fallbackMonth,
+        Collection $allotments,
+        Collection $leaves
+    ): Carbon {
+        $dates = [$fallbackMonth->copy()->startOfMonth()];
+
+        $firstAllotment = $allotments->sortBy(fn ($row) => sprintf('%04d-%02d', (int) $row->year, (int) $row->month))->first();
+        if ($firstAllotment) {
+            $dates[] = Carbon::createFromDate((int) $firstAllotment->year, (int) $firstAllotment->month, 1)->startOfMonth();
+        }
+
+        $firstLeaveDate = $leaves->sortBy('start_date')->value('start_date');
+        if ($firstLeaveDate) {
+            $dates[] = Carbon::parse($firstLeaveDate)->startOfMonth();
+        }
+
+        return collect($dates)->sortBy(fn (Carbon $date) => $date->timestamp)->first();
+    }
+
+    private function computeOpeningBalance(
+        Carbon $targetMonth,
+        Collection $allotments,
+        array $allotmentMap,
+        Collection $leaves,
+        array $usedByMonth
+    ): float {
+        $cursor = $this->resolveFirstLeaveBalanceMonth($targetMonth, $allotments, $leaves);
+        $balance = 0.0;
+
+        while ($cursor->lt($targetMonth)) {
+            $monthKey = $cursor->format('Y') . '-' . ((int) $cursor->format('m'));
+            $monthResult = $this->closeMonthBalance(
+                $balance,
+                $this->allottedFromMap($allotmentMap, $cursor),
+                (float) ($usedByMonth[$monthKey] ?? 0)
+            );
+
+            $balance = $monthResult['carry_forward'];
+            $cursor->addMonth();
+        }
+
+        return $balance + $this->allottedFromMap($allotmentMap, $targetMonth);
+    }
+
+    /**
+     * @return array<string, float> keys like "2026-7"
+     */
+    private function buildMonthlyUsedMap(
+        Collection $leaves,
+        Carbon $rangeEnd,
+        array $holidayLookup
+    ): array {
+        if ($leaves->isEmpty()) {
+            return [];
+        }
+
+        $firstLeave = $leaves->sortBy('start_date')->first();
+        $rangeStart = Carbon::parse($firstLeave->start_date)->startOfMonth();
+
+        $leaveDates = $this->buildDeductibleLeaveDates($leaves, $rangeStart, $rangeEnd, $holidayLookup);
+        $usedByMonth = [];
+
+        foreach ($leaveDates as $dateStr => $days) {
+            $monthKey = Carbon::parse($dateStr)->format('Y') . '-' . ((int) Carbon::parse($dateStr)->format('m'));
+            $usedByMonth[$monthKey] = ($usedByMonth[$monthKey] ?? 0) + $days;
+        }
+
+        return $usedByMonth;
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    private function buildDeductibleLeaveDates(
+        Collection $leaves,
+        Carbon $startDate,
+        Carbon $endDate,
+        ?array $holidayLookup = null
+    ): array {
+        $leaveDates = [];
+
+        foreach ($leaves as $leave) {
+            if (!$this->isDeductibleLeave($leave)) {
+                continue;
+            }
+
+            $leaveStart = Carbon::parse($leave->start_date)->startOfDay()->max($startDate->copy()->startOfDay());
+            $leaveEnd = Carbon::parse($leave->end_date ?: $leave->start_date)->startOfDay()->min($endDate->copy()->startOfDay());
+
+            if ($leaveEnd->lt($leaveStart)) {
+                continue;
+            }
+
+            if ($this->isHalfDayLeave($leave)) {
+                $leaveDates[$leaveStart->toDateString()] = ($leaveDates[$leaveStart->toDateString()] ?? 0) + 0.5;
+                continue;
+            }
+
+            $holidayDates = $this->getHolidayDatesBetween($leaveStart, $leaveEnd, $holidayLookup);
+
+            for ($date = $leaveStart->copy(); $date->lte($leaveEnd); $date->addDay()) {
+                if ($date->isSunday() || in_array($date->toDateString(), $holidayDates, true)) {
+                    continue;
+                }
+
+                $leaveDates[$date->toDateString()] = ($leaveDates[$date->toDateString()] ?? 0) + 1;
+            }
+        }
+
+        ksort($leaveDates);
+
+        return $leaveDates;
     }
 }

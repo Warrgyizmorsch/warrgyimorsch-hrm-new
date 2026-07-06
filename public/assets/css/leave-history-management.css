@@ -1,0 +1,1146 @@
+/* Leave History — Pro SaaS / Zoho style */
+.leave-history-page .zoho-module-content {
+    padding: 20px 24px 28px;
+}
+
+.leave-history-page .zoho-people-view-meta {
+    margin-bottom: 2px;
+}
+
+.leave-history-page .zoho-people-scope-links {
+    margin-top: 10px;
+    gap: 14px;
+}
+
+.lh-stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.lh-stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 64px;
+    padding: 12px 16px;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: var(--zoho-radius-lg, 10px);
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.lh-stat-chip__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    flex-shrink: 0;
+}
+
+.lh-stat-chip__icon i {
+    width: 16px;
+    height: 16px;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.lh-stat-chip__content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+}
+
+.lh-stat-chip__value {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.lh-stat-chip__label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.lh-stat-chip--pending .lh-stat-chip__icon {
+    background: #fef3c7;
+}
+
+.lh-stat-chip--pending .lh-stat-chip__icon i {
+    color: #d97706;
+}
+
+.lh-stat-chip--pending {
+    border-color: #fde68a;
+    background: #fffbeb;
+}
+
+.lh-stat-chip--pending .lh-stat-chip__value {
+    color: #d97706;
+}
+
+.lh-stat-chip--approved .lh-stat-chip__icon {
+    background: #dcfce7;
+}
+
+.lh-stat-chip--approved .lh-stat-chip__icon i {
+    color: #16a34a;
+}
+
+.lh-stat-chip--approved {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.lh-stat-chip--approved .lh-stat-chip__value {
+    color: #16a34a;
+}
+
+.lh-stat-chip--rejected .lh-stat-chip__icon {
+    background: #fee2e2;
+}
+
+.lh-stat-chip--rejected .lh-stat-chip__icon i {
+    color: #dc2626;
+}
+
+.lh-stat-chip--rejected {
+    border-color: #fecaca;
+    background: #fffafa;
+}
+
+.lh-stat-chip--rejected .lh-stat-chip__value {
+    color: #dc2626;
+}
+
+.lh-filter-card {
+    background: #fff;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: var(--zoho-radius-lg, 10px);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+    padding: 18px 20px 20px;
+    margin-bottom: 20px;
+}
+
+.lh-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 14px 16px;
+    align-items: end;
+}
+
+.lh-filter-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lh-filter-input,
+.lh-filter-field .form-control,
+.leave-history-page .lh-filter-field .wghrm-dropdown-trigger {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+}
+
+.leave-history-page .lh-filter-field .wghrm-dropdown-trigger {
+    display: flex !important;
+    align-items: center !important;
+}
+
+.lh-filter-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.lh-filter-actions .zoho-btn-primary,
+.lh-filter-actions .zoho-btn-outline {
+    flex: 1;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lh-table-card {
+    overflow: hidden;
+}
+
+.leave-history-page .lh-table-toolbar {
+    padding: 12px 16px;
+    min-height: 52px;
+    gap: 12px;
+}
+
+.lh-table-toolbar-left {
+    gap: 10px;
+}
+
+.lh-table-toolbar-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-muted, #616e88);
+    white-space: nowrap;
+}
+
+.lh-per-page-select {
+    width: 72px !important;
+    height: 34px !important;
+    padding: 0 8px !important;
+    font-size: 13px !important;
+}
+
+.leave-history-page .lh-table-search {
+    max-width: 300px;
+    flex: 1;
+}
+
+.leave-history-page .lh-table-search input {
+    height: 36px !important;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+}
+
+.leave-history-page .zoho-data-table {
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.leave-history-page .zoho-data-table thead th {
+    padding: 11px 16px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88) !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0) !important;
+    vertical-align: middle !important;
+}
+
+.leave-history-page .zoho-data-table tbody td {
+    padding: 14px 16px !important;
+    vertical-align: middle !important;
+    border-bottom: 1px solid #eef1f5 !important;
+}
+
+.leave-history-page .zoho-data-table tbody tr:hover {
+    background: rgba(16, 112, 224, 0.03);
+}
+
+.lh-col-sr {
+    width: 56px;
+    text-align: center;
+}
+
+.lh-col-center {
+    text-align: center;
+}
+
+.lh-col-center .lh-status,
+.lh-col-center .lh-cat,
+.lh-col-center .lh-days-pill {
+    margin: 0 auto;
+}
+
+.lh-col-employee {
+    min-width: 140px;
+}
+
+.lh-col-type {
+    min-width: 120px;
+    white-space: nowrap;
+}
+
+.lh-col-duration {
+    min-width: 150px;
+}
+
+.lh-col-action {
+    width: 120px;
+    text-align: center;
+}
+
+.lh-emp-link {
+    font-weight: 600;
+    color: var(--zoho-accent, #1070e0);
+    text-decoration: none;
+}
+
+.lh-emp-link:hover {
+    text-decoration: underline;
+}
+
+.lh-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 92px;
+    min-height: 26px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: capitalize;
+}
+
+.lh-status--pending { background: #f1f5f9; color: #475569; }
+.lh-status--approved { background: #eff6ff; color: #1d4ed8; }
+.lh-status--on_hold { background: #fffbeb; color: #d97706; }
+.lh-status--rejected,
+.lh-status--unauthorised { background: #fef2f2; color: #dc2626; }
+.lh-status--unpaid { background: #fef2f2; color: #b91c1c; }
+
+.lh-cat {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 98px;
+    min-height: 26px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    text-align: center;
+}
+
+.lh-cat--paid { background: #eff6ff; color: #1d4ed8; }
+.lh-cat--sick { background: #fef2f2; color: #dc2626; }
+.lh-cat--casual { background: #f0fdf4; color: #16a34a; }
+.lh-cat--half { background: #fffbeb; color: #d97706; }
+.lh-cat--early { background: #ecfeff; color: #0891b2; }
+.lh-cat--wfh { background: #f0fdf4; color: #15803d; }
+.lh-cat--default { background: #f8fafc; color: #475569; }
+
+.lh-duration-main {
+    font-weight: 600;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.lh-duration-sub {
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lh-days-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.lh-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.lh-list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 16px;
+    border-top: 1px solid #eef1f5;
+    background: #fafbfc;
+}
+
+.lh-list-footer-info {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+}
+
+/* ── Apply For Leave drawer ── */
+.lv-apply-drawer {
+    width: min(500px, 100vw) !important;
+    box-shadow: -12px 0 48px rgba(15, 23, 42, 0.12) !important;
+}
+
+.lv-apply-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    min-height: 64px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eef1f5;
+    background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+}
+
+.lv-apply-head__brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.lv-apply-head__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1070e0 0%, #0d5bb8 100%);
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(16, 112, 224, 0.28);
+}
+
+.lv-apply-head__icon i {
+    width: 20px;
+    height: 20px;
+}
+
+.lv-apply-head__copy {
+    min-width: 0;
+}
+
+.lv-apply-head__title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+    line-height: 1.25;
+}
+
+.lv-apply-head__subtitle {
+    margin: 2px 0 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+    line-height: 1.4;
+}
+
+.lv-apply-drawer-body {
+    padding: 0;
+    background: #f4f6f9;
+}
+
+.lv-apply-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 16px 20px;
+}
+
+.lv-apply-applicant {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid #eef1f5;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.lv-applicant-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+}
+
+.lv-applicant-card__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.lv-applicant-card__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.lv-applicant-card__info strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lv-applicant-card__info span {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lv-apply-date-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #eef1f5;
+    flex-shrink: 0;
+}
+
+.lv-apply-date-badge__label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lv-apply-date-badge strong {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.lv-apply-block {
+    padding: 14px 16px 16px;
+    border: 1px solid #eef1f5;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.lv-apply-block--last {
+    margin-bottom: 0;
+}
+
+.lv-apply-block__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.lv-apply-block__title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.lv-apply-block__hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lv-apply-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.lv-apply-optional {
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lv-apply-field {
+    margin-bottom: 12px;
+}
+
+.lv-apply-field:last-child {
+    margin-bottom: 0;
+}
+
+.lv-apply-applicant .lv-apply-field {
+    flex: 1;
+    margin-bottom: 0;
+    min-width: 0;
+}
+
+.lv-apply-input,
+.lv-apply-drawer .wghrm-dropdown-trigger.lv-apply-input {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    border: 1px solid #dce3ec !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    line-height: 1.4 !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lv-apply-drawer .wghrm-dropdown-trigger.lv-apply-input {
+    display: flex !important;
+    align-items: center !important;
+}
+
+.lv-apply-input:focus,
+.lv-apply-drawer .wghrm-dropdown-trigger.lv-apply-input:focus,
+.lv-apply-drawer .wghrm-dropdown-trigger.open {
+    border-color: var(--zoho-accent, #1070e0) !important;
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.1) !important;
+}
+
+.lv-apply-textarea {
+    min-height: 88px !important;
+    height: auto !important;
+    padding: 10px 12px !important;
+    border: 1px solid #dce3ec !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    resize: vertical;
+}
+
+.lv-apply-textarea:focus {
+    border-color: var(--zoho-accent, #1070e0) !important;
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.1) !important;
+}
+
+/* Category chips */
+.lv-cat-picker {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.lv-cat-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1.5px solid #dce3ec;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary, #434a5a);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+.lv-cat-chip i {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    opacity: 0.75;
+}
+
+.lv-cat-chip:hover {
+    border-color: #b8c5d6;
+    background: #f8fafc;
+}
+
+.lv-cat-chip.is-selected {
+    border-color: var(--zoho-accent, #1070e0);
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.1);
+}
+
+.lv-cat-chip.is-selected i {
+    opacity: 1;
+}
+
+.lv-cat-chip:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+}
+
+.lv-cat-chip--paid.is-selected { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+.lv-cat-chip--sick.is-selected { border-color: #dc2626; background: #fef2f2; color: #b91c1c; }
+.lv-cat-chip--casual.is-selected { border-color: #16a34a; background: #f0fdf4; color: #15803d; }
+.lv-cat-chip--early.is-selected { border-color: #0891b2; background: #ecfeff; color: #0e7490; }
+.lv-cat-chip--wfh.is-selected { border-color: #7c3aed; background: #f5f3ff; color: #6d28d9; }
+
+/* Day type segment */
+.lv-day-type-segment {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 4px;
+    border-radius: 12px;
+    background: #f1f5f9;
+}
+
+.lv-day-type-segment input[type="radio"] {
+    display: none;
+}
+
+.lv-day-type-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    margin: 0;
+    border: 1.5px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--zoho-muted, #616e88);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.lv-day-type-option i {
+    width: 15px;
+    height: 15px;
+}
+
+.lv-day-type-segment input:checked + .lv-day-type-option {
+    border-color: #dce3ec;
+    background: #fff;
+    color: var(--zoho-accent, #1070e0);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+/* Duration panel */
+.lv-apply-duration-panel {
+    padding: 14px 16px 16px;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
+    box-shadow: 0 1px 3px rgba(16, 112, 224, 0.06);
+}
+
+.lv-duration-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.lv-duration-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #dbeafe;
+}
+
+.lv-duration-summary__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.lv-duration-summary__label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.lv-duration-summary__hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lv-duration-summary__value {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--zoho-accent, #1070e0);
+    white-space: nowrap;
+}
+
+/* Footer */
+.lv-apply-drawer-foot {
+    padding: 14px 16px 18px;
+    border-top: 1px solid #eef1f5;
+    background: #fff;
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.04);
+}
+
+.lv-apply-footer-actions {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 10px;
+}
+
+.lv-apply-cancel-btn,
+.lv-apply-submit-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@media (max-width: 575.98px) {
+    .lv-apply-applicant {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .lv-apply-date-badge {
+        align-items: flex-start;
+    }
+
+    .lv-cat-picker,
+    .lv-duration-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lv-apply-footer-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+.lh-side-drawer {
+    width: min(640px, 100vw) !important;
+}
+
+.lh-view-drawer {
+    width: min(760px, 100vw) !important;
+}
+
+.lh-action-drawer-body,
+.lh-view-drawer-body {
+    background: #f8fafc;
+}
+
+.lh-action-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border: 1px solid #eef1f5;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.lh-action-meta-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+    margin-bottom: 4px;
+}
+
+.lh-action-meta-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.lh-balance-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.lh-balance-badge--ok {
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.lh-balance-badge--zero {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.lh-view-drawer-head {
+    padding-top: 18px;
+    padding-bottom: 18px;
+}
+
+.lh-view-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+    font-size: 20px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.lh-view-subtitle {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lh-view-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    background: #fff;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.lh-view-tabs .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 14px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+    background: transparent;
+}
+
+.lh-view-tabs .nav-link.active {
+    color: var(--zoho-accent, #1070e0);
+    border-bottom-color: var(--zoho-accent, #1070e0);
+    background: transparent;
+}
+
+.lh-detail-card {
+    background: #fff;
+    border: 1px solid #eef1f5;
+    border-radius: 12px;
+    padding: 14px 16px;
+    height: 100%;
+}
+
+.lh-detail-card label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.lh-detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.lh-detail-highlight {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.lh-detail-card--message {
+    min-height: 120px;
+}
+
+.lh-detail-message {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--zoho-text-secondary, #434a5a);
+    white-space: pre-line;
+}
+
+.lh-timeframe-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+}
+
+.lh-timeframe-label {
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+    margin-bottom: 2px;
+}
+
+.lh-timeframe-sub {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.lh-timeframe-arrow {
+    color: var(--zoho-muted, #616e88);
+}
+
+.lh-timeframe-arrow i {
+    width: 16px;
+    height: 16px;
+}
+
+.lh-history-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.lh-history-table-wrap {
+    background: #fff;
+    border: 1px solid #eef1f5;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.lh-history-row--future {
+    background: #f8fbff;
+}
+
+.lh-upcoming-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.lh-custom-toast {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 280px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+
+.lh-custom-toast.toast-show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.lh-custom-toast.toast-success {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #bbf7d0;
+}
+
+.lh-custom-toast.toast-error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.lh-custom-toast .toast-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.lh-custom-toast.toast-success .toast-icon {
+    background: #10b981;
+    color: #fff;
+}
+
+.lh-custom-toast.toast-error .toast-icon {
+    background: #ef4444;
+    color: #fff;
+}
+
+@media (max-width: 1199.98px) {
+    .lh-stat-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .lh-filter-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .leave-history-page .zoho-module-content {
+        padding: 16px;
+    }
+
+    .lh-stat-row {
+        grid-template-columns: 1fr;
+    }
+
+    .lh-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lh-filter-actions {
+        flex-direction: column;
+    }
+
+    .leave-history-page .lh-table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .leave-history-page .lh-table-search {
+        max-width: none;
+    }
+}

@@ -9,6 +9,7 @@ use App\Models\Holiday;
 use App\Models\LeaveApplication;
 use App\Models\LeaveAllotment;
 use App\Models\Broadcast;
+use App\Services\LeaveBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -16,6 +17,10 @@ use Carbon\CarbonInterface;
 
 class DashboardController extends Controller
 {
+    public function __construct(private LeaveBalanceService $leaveBalanceService)
+    {
+    }
+
     private function getHolidayDatesBetween(Carbon $from, Carbon $to): array
     {
         return Holiday::whereBetween('date', [
@@ -487,18 +492,12 @@ class DashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $totalAllottedLeave = LeaveAllotment::where('employee_id', $employeeId)->sum('leave_count');
-        $totalUtilizedLeave = $this->getEmployeeLeaveTaken($employeeId);
-        $currentMonthUtilizedLeave = $this->getEmployeeLeaveTaken(
-            $employeeId,
-            Carbon::now()->startOfMonth(),
-            Carbon::now()->endOfMonth()
-        );
-        $currentMonthAllottedLeave = LeaveAllotment::where('employee_id', $employeeId)
-            ->where('month', Carbon::now()->format('m'))
-            ->where('year', Carbon::now()->format('Y'))
-            ->sum('leave_count');
-        $availableLeaveBalance = $totalAllottedLeave - $totalUtilizedLeave;
+        $leaveSummary = $this->leaveBalanceService->getEmployeeBalanceSummary($employeeId);
+        $totalAllottedLeave = $leaveSummary['total_allotted'];
+        $totalUtilizedLeave = $leaveSummary['total_taken'];
+        $availableLeaveBalance = $leaveSummary['balance'];
+        $currentMonthUtilizedLeave = $leaveSummary['total_taken'];
+        $currentMonthAllottedLeave = $leaveSummary['monthly_allotment'];
 
         // Total Journy
         if ($employee && $employee->date_of_joining) {

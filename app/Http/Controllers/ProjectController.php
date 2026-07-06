@@ -34,7 +34,13 @@ class ProjectController extends Controller
             $perPage = 20;
         }
 
-        $query = Project::with(['tasks.employee']);
+        $view = $request->query('view', 'list');
+        if (!in_array($view, ['list', 'board'], true)) {
+            $view = 'list';
+        }
+
+        $query = Project::query()->with(['tasks.employee']);
+
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
@@ -43,26 +49,98 @@ class ProjectController extends Controller
                       ->orWhere('department', 'like', '%' . $department . '%');
                 });
             } else {
-                $query->whereRaw('1=0'); // Force empty if no department
+                $query->whereRaw('1=0');
             }
         }
-        $projects = $query->latest()->paginate($perPage)->withQueryString();
-        
-        $employees = \App\Models\Employee::active()->get();
-        // if ($isAdmin) {
-        // } elseif ($isTeamLeader) {
-        //     $department = $user->employee->department ?? null;
-        //     if ($department) {
-        //         $employees = \App\Models\Employee::active()->where('department', $department)->get();
-        //     } else {
-        //         $employees = collect();
-        //     }
-        // } else {
-        //     $employees = \App\Models\Employee::active()->where('id', $user->employee_id)->get();
-        // }
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', '%' . $search . '%')
+                  ->orWhere('technology', 'LIKE', '%' . $search . '%')
+                  ->orWhere('description', 'LIKE', '%' . $search . '%');
+            });
+        }
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $status = $request->status;
+            $legacyMap = [
+                'Pending' => ['Pending', 'Not Started'],
+                'In Process' => ['In Process', 'In Progress'],
+                'Completed' => ['Completed', 'Finished'],
+            ];
+            $statuses = $legacyMap[$status] ?? [$status];
+            $query->whereIn('status', $statuses);
+        }
+
+        if ($request->filled('department')) {
+            $departmentFilter = $request->department;
+            $query->where(function ($q) use ($departmentFilter) {
+                $q->whereJsonContains('department', $departmentFilter)
+                  ->orWhere('department', 'like', '%' . $departmentFilter . '%');
+            });
+        }
+
+        $sort = $request->query('sort', 'latest');
+        match ($sort) {
+            'name' => $query->orderBy('name'),
+            'due_soon' => $query->orderByRaw('end_date IS NULL')->orderBy('end_date'),
+            'oldest' => $query->oldest(),
+            default => $query->latest(),
+        };
+
+        $statsBase = clone $query;
+        $projectStats = [
+            'total' => (clone $statsBase)->count(),
+            'pending' => (clone $statsBase)->whereIn('status', ['Pending', 'Not Started'])->count(),
+            'in_process' => (clone $statsBase)->whereIn('status', ['In Process', 'In Progress'])->count(),
+            'review' => (clone $statsBase)->where('status', 'Review')->count(),
+            'on_hold' => (clone $statsBase)->where('status', 'On Hold')->count(),
+            'rework' => (clone $statsBase)->where('status', 'Rework')->count(),
+            'completed' => (clone $statsBase)->whereIn('status', ['Completed', 'Finished'])->count(),
+        ];
+
+        $projectInsights = [
+            'active' => $projectStats['pending'] + $projectStats['in_process'] + $projectStats['review'] + $projectStats['rework'],
+            'overdue' => (clone $statsBase)
+                ->whereNotNull('end_date')
+                ->whereDate('end_date', '<', now())
+                ->whereNotIn('status', ['Completed', 'Finished'])
+                ->count(),
+            'due_this_week' => (clone $statsBase)
+                ->whereNotNull('end_date')
+                ->whereBetween('end_date', [now()->startOfDay(), now()->addDays(7)->endOfDay()])
+                ->whereNotIn('status', ['Completed', 'Finished'])
+                ->count(),
+        ];
+
+        $query->withCount([
+            'tasks',
+            'tasks as completed_tasks_count' => fn ($q) => $q->whereIn('status', ['Completed', 'Done', 'completed', 'done']),
+        ]);
+
+        if ($view === 'board') {
+            $projects = $query->limit(200)->get();
+        } else {
+            $projects = (clone $query)->paginate($perPage)->withQueryString();
+        }
+
+        $employees = \App\Models\Employee::active()->get();
+        $employeesById = $employees->keyBy('id');
         $departments = \App\Models\Department::all();
-        return view('projects.index', compact('projects', 'employees', 'departments', 'isAdmin', 'perPage'));
+
+        return view('projects.index', compact(
+            'projects',
+            'employees',
+            'employeesById',
+            'departments',
+            'isAdmin',
+            'perPage',
+            'view',
+            'projectStats',
+            'projectInsights',
+            'sort'
+        ));
     }
 
     public function create()
@@ -160,20 +238,34 @@ class ProjectController extends Controller
     public function show(Project $project)
     {
         $employees = \App\Models\Employee::active()->get();
+        $employeesById = $employees->keyBy('id');
         $departments = \App\Models\Department::all();
 
-        // 1. Get all tasks created for this project
+        $project->loadCount([
+            'tasks',
+            'tasks as completed_tasks_count' => fn ($q) => $q->whereIn('status', ['Completed', 'Done', 'completed', 'done']),
+            'tasks as pending_tasks_count' => fn ($q) => $q->whereIn('status', ['Pending', 'Not Started', 'pending']),
+            'tasks as in_process_tasks_count' => fn ($q) => $q->whereIn('status', ['In Process', 'In Progress', 'in process']),
+        ]);
+
         $tasks = DailyTask::where('project_id', $project->id)
             ->with(['employee', 'creator', 'followUps'])
+            ->latest()
             ->get();
 
+        $totalHoursWorked = 0;
         $dayGroups = [];
 
         foreach ($tasks as $task) {
-            // Task Creation Event
+            foreach ($task->followUps as $fu) {
+                if (preg_match('/[+-]?([0-9]*[.])?[0-9]+/', $fu->time_taken ?? '', $matches)) {
+                    $totalHoursWorked += (float) $matches[0];
+                }
+            }
+
             $date = $task->created_at->format('d M Y');
             $dayGroups[$date][$task->id]['task'] = $task;
-            $dayGroups[$date][$task->id]['events'][] = (object)[
+            $dayGroups[$date][$task->id]['events'][] = (object) [
                 'type' => 'creation',
                 'created_at' => $task->created_at,
                 'description' => $task->description,
@@ -181,11 +273,10 @@ class ProjectController extends Controller
                 'time_taken' => null,
             ];
 
-            // Follow-up (Progress) Events
             foreach ($task->followUps as $fu) {
                 $fuDate = $fu->created_at->format('d M Y');
                 $dayGroups[$fuDate][$task->id]['task'] = $task;
-                $dayGroups[$fuDate][$task->id]['events'][] = (object)[
+                $dayGroups[$fuDate][$task->id]['events'][] = (object) [
                     'type' => 'progress',
                     'created_at' => $fu->created_at,
                     'description' => $fu->work_description,
@@ -196,29 +287,57 @@ class ProjectController extends Controller
             }
         }
 
-        // Sort events within each task by time and calculate daily task totals
         foreach ($dayGroups as $date => &$tasksInDay) {
             foreach ($tasksInDay as $taskId => &$data) {
                 $dailyTaskTime = 0;
                 foreach ($data['events'] as $event) {
-                    if ($event->type == 'progress' && $event->time_taken) {
-                        $dailyTaskTime += (float)$event->time_taken;
+                    if ($event->type === 'progress' && $event->time_taken) {
+                        $dailyTaskTime += (float) $event->time_taken;
                     }
                 }
                 $data['daily_total_time'] = $dailyTaskTime;
 
-                usort($data['events'], function($a, $b) {
-                    return $b->created_at <=> $a->created_at; // Latest first
-                });
+                usort($data['events'], fn ($a, $b) => $b->created_at <=> $a->created_at);
             }
         }
+        unset($tasksInDay, $data);
 
-        // Sort days descending
-        uksort($dayGroups, function($a, $b) {
-            return strtotime($b) - strtotime($a);
-        });
+        uksort($dayGroups, fn ($a, $b) => strtotime($b) - strtotime($a));
 
-        return view('projects.show', compact('project', 'employees', 'departments', 'dayGroups'));
+        $leaderIds = is_array($project->leaders) ? $project->leaders : [];
+        $memberIds = is_array($project->members) ? $project->members : [];
+        $projectLeads = $employees->whereIn('id', $leaderIds)->values();
+        $projectMembers = $employees->whereIn('id', $memberIds)->values();
+
+        $taskStats = [
+            'total' => (int) $project->tasks_count,
+            'completed' => (int) $project->completed_tasks_count,
+            'pending' => (int) $project->pending_tasks_count,
+            'in_process' => (int) $project->in_process_tasks_count,
+        ];
+
+        $projectMetrics = [
+            'progress' => $project->display_progress,
+            'timeline_progress' => $project->progress,
+            'total_hours' => round($totalHoursWorked, 1),
+            'team_size' => $projectLeads->count() + $projectMembers->count(),
+            'days_remaining' => $project->end_date && !$project->is_overdue && !in_array(strtolower($project->normalized_status), ['completed', 'finished'])
+                ? now()->startOfDay()->diffInDays($project->end_date, false)
+                : null,
+        ];
+
+        return view('projects.show', compact(
+            'project',
+            'employees',
+            'employeesById',
+            'departments',
+            'dayGroups',
+            'tasks',
+            'taskStats',
+            'projectMetrics',
+            'projectLeads',
+            'projectMembers'
+        ));
     }
 
     public function edit(Project $project)
@@ -291,20 +410,27 @@ class ProjectController extends Controller
     public function updateField(Request $request, Project $project)
     {
         $fields = ['status', 'members', 'leaders'];
-        $role = strtoupper(auth()->user()->role ?? 'USER');
-        $isLead = false;
-        if (is_array($project->leaders)) {
-            $isLead = in_array(auth()->user()->employee_id, $project->leaders);
-        }
+        $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
+        $isAdmin = in_array($role, [
+            'super_admin',
+            'manager',
+            'hr_executive',
+            'hr_intern',
+            'business_operation_head',
+        ]);
+        $isLead = is_array($project->leaders)
+            && in_array(auth()->user()->employee_id, $project->leaders, true);
 
         foreach ($fields as $field) {
-            if ($request->has($field)) {
-                // Only Admin or Lead can change status
-                if ($field === 'status' && $role !== 'ADMIN' && $role !== 'SUPER ADMIN' && !$isLead) {
-                    continue;
-                }
-                $project->$field = $request->$field;
+            if (!$request->has($field)) {
+                continue;
             }
+
+            if ($field === 'status' && !$isAdmin && !$isLead) {
+                continue;
+            }
+
+            $project->$field = $request->$field;
         }
 
         $project->save();

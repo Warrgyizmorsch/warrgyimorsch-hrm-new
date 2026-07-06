@@ -1,0 +1,1197 @@
+/* Projects Management — Pro PM (Zoho / Jira / Asana style) */
+.projects-page .zoho-module-content {
+    padding: 20px 24px 28px;
+}
+
+.pm-stat-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.pm-stat-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    min-height: 58px;
+    padding: 10px 14px;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 10px;
+    background: #fff;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.pm-stat-chip:hover {
+    border-color: #b8c5d6;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.pm-stat-chip.is-active {
+    border-color: var(--zoho-accent, #1070e0);
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.1);
+}
+
+.pm-stat-chip__value {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pm-stat-chip__label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pm-stat-chip--pending.is-active { border-color: #64748b; background: #f8fafc; }
+.pm-stat-chip--process.is-active { border-color: #2563eb; background: #eff6ff; }
+.pm-stat-chip--review.is-active { border-color: #0891b2; background: #ecfeff; }
+.pm-stat-chip--hold.is-active { border-color: #d97706; background: #fffbeb; }
+.pm-stat-chip--rework.is-active { border-color: #dc2626; background: #fef2f2; }
+.pm-stat-chip--completed.is-active { border-color: #16a34a; background: #f0fdf4; }
+
+.pm-filter-card {
+    background: #fff;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+}
+
+.pm-filter-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 14px 16px;
+    align-items: end;
+}
+
+.pm-filter-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pm-filter-input {
+    height: 40px !important;
+    min-height: 40px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+}
+
+.pm-filter-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.pm-filter-actions .zoho-btn-primary,
+.pm-filter-actions .zoho-btn-outline {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+}
+
+.pm-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.pm-view-toggle {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.pm-view-toggle a,
+.pm-view-toggle button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-muted, #616e88);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pm-view-toggle a.is-active,
+.pm-view-toggle button.is-active {
+    background: #fff;
+    color: var(--zoho-accent, #1070e0);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.pm-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pm-bulk-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.pm-bulk-bar.is-visible {
+    display: inline-flex;
+}
+
+.pm-table-card {
+    background: #fff;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+}
+
+.pm-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eef1f5;
+    background: #fafbfc;
+}
+
+.pm-table-toolbar-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-muted, #616e88);
+}
+
+.projects-page #projectList thead th {
+    padding: 11px 16px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88) !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0) !important;
+    vertical-align: middle !important;
+}
+
+.projects-page #projectList tbody td {
+    padding: 12px 16px !important;
+    vertical-align: middle !important;
+    border-bottom: 1px solid #eef1f5 !important;
+}
+
+.projects-page #projectList tbody tr:hover {
+    background: rgba(16, 112, 224, 0.03);
+}
+
+.pm-project-cell {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.pm-progress-ring {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+}
+
+.pm-progress-ring svg {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+}
+
+.pm-progress-ring__icon {
+    position: absolute;
+    inset: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid #eef1f5;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.pm-progress-ring__icon i {
+    width: 18px;
+    height: 18px;
+}
+
+.pm-progress-ring__pct {
+    position: absolute;
+    bottom: -2px;
+    right: -4px;
+    min-width: 28px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: var(--zoho-accent, #1070e0);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.pm-project-meta {
+    min-width: 0;
+    flex: 1;
+}
+
+.pm-project-name {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+    text-decoration: none;
+}
+
+.pm-project-name:hover {
+    color: var(--zoho-accent, #1070e0);
+}
+
+.pm-project-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.pm-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.pm-tag--tech { background: #f1f5f9; color: #475569; }
+.pm-tag--dept { background: #eff6ff; color: #1d4ed8; }
+.pm-tag--tasks { background: #f0fdf4; color: #15803d; }
+
+.pm-project-desc {
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.pm-project-date {
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pm-project-date i {
+    width: 12px;
+    height: 12px;
+}
+
+.pm-member-avatars {
+    display: flex;
+    align-items: center;
+}
+
+.pm-member-avatar {
+    width: 28px;
+    height: 28px;
+    margin-left: -6px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.pm-member-avatar:first-child {
+    margin-left: 0;
+}
+
+.pm-member-avatar--more {
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 9px;
+}
+
+.pm-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.pm-action-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.pm-action-btn i {
+    width: 15px;
+    height: 15px;
+}
+
+.pm-action-btn--view { background: #eff6ff; color: #2563eb; }
+.pm-action-btn--tasks { background: #f0fdf4; color: #16a34a; }
+.pm-action-btn--detail { background: #eff6ff; color: #1070e0; }
+.pm-action-btn--edit { background: #ecfeff; color: #0891b2; }
+.pm-action-btn--delete { background: #fef2f2; color: #dc2626; }
+.pm-action-btn--info { background: #fffbeb; color: #d97706; }
+
+.pm-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+}
+
+.pm-list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 16px;
+    border-top: 1px solid #eef1f5;
+    background: #fafbfc;
+}
+
+.pm-list-footer-info {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--zoho-muted, #616e88);
+}
+
+/* Kanban board */
+.pm-kanban-wrap {
+    display: none;
+}
+
+.pm-kanban-wrap.is-active {
+    display: block;
+}
+
+.pm-list-wrap.is-hidden {
+    display: none;
+}
+
+.pm-kanban-board {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(220px, 1fr));
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    min-height: 420px;
+}
+
+.pm-kanban-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    max-height: calc(100vh - 280px);
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #eef1f5;
+}
+
+.pm-kanban-col__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #eef1f5;
+    background: #fff;
+    border-radius: 12px 12px 0 0;
+}
+
+.pm-kanban-col__title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.pm-kanban-col__count {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.pm-kanban-col__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pm-kanban-card {
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #eef1f5;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    cursor: grab;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.pm-kanban-card:hover {
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.pm-kanban-card.is-dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.pm-kanban-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.pm-kanban-card__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pm-kanban-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1070e0;
+    text-decoration: none;
+}
+
+.pm-kanban-link i {
+    width: 13px;
+    height: 13px;
+}
+
+.pm-kanban-card__title {
+    display: block;
+    margin-bottom: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+    text-decoration: none;
+}
+
+.pm-kanban-card__title:hover {
+    color: var(--zoho-accent, #1070e0);
+}
+
+.pm-kanban-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.pm-kanban-card__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.pm-kanban-progress {
+    flex: 1;
+    height: 4px;
+    border-radius: 999px;
+    background: #eef1f5;
+    overflow: hidden;
+}
+
+.pm-kanban-progress span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--zoho-accent, #1070e0);
+}
+
+.pm-kanban-col--pending .pm-kanban-col__title { color: #64748b; }
+.pm-kanban-col--process .pm-kanban-col__title { color: #2563eb; }
+.pm-kanban-col--review .pm-kanban-col__title { color: #0891b2; }
+.pm-kanban-col--hold .pm-kanban-col__title { color: #d97706; }
+.pm-kanban-col--rework .pm-kanban-col__title { color: #dc2626; }
+.pm-kanban-col--completed .pm-kanban-col__title { color: #16a34a; }
+
+.pm-kanban-col--pending .pm-kanban-col__head { border-top: 3px solid #64748b; }
+.pm-kanban-col--process .pm-kanban-col__head { border-top: 3px solid #2563eb; }
+.pm-kanban-col--review .pm-kanban-col__head { border-top: 3px solid #0891b2; }
+.pm-kanban-col--hold .pm-kanban-col__head { border-top: 3px solid #d97706; }
+.pm-kanban-col--rework .pm-kanban-col__head { border-top: 3px solid #dc2626; }
+.pm-kanban-col--completed .pm-kanban-col__head { border-top: 3px solid #16a34a; }
+
+.pm-kanban-drop-hover {
+    background: #eff6ff !important;
+    outline: 2px dashed #93c5fd;
+    outline-offset: -4px;
+}
+
+/* Status + lead dropdowns — compact */
+.projects-page .lead-select-btn {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 12px;
+    border-radius: 8px;
+    border: 1px solid #dce3ec;
+    background: #fff;
+}
+
+.projects-page .btn-status {
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    border: none;
+}
+
+/* Insights strip */
+.pm-insights-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.pm-insight-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 72px;
+    padding: 14px 16px;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+}
+
+.pm-insight-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: #1070e0;
+}
+
+.pm-insight-card__icon i {
+    width: 18px;
+    height: 18px;
+}
+
+.pm-insight-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pm-insight-card__body strong {
+    font-size: 22px;
+    line-height: 1.1;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.pm-insight-card__body span {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pm-insight-card--active .pm-insight-card__icon { background: #eff6ff; color: #2563eb; }
+.pm-insight-card--danger .pm-insight-card__icon { background: #fef2f2; color: #dc2626; }
+.pm-insight-card--warning .pm-insight-card__icon { background: #fffbeb; color: #d97706; }
+
+/* Native selects — no Select2 */
+.projects-page .pm-native-select {
+    appearance: auto;
+    cursor: pointer;
+}
+
+/* Table shell */
+.pm-table-scroll {
+    overflow: visible;
+}
+
+.pm-table-toolbar-left,
+.pm-table-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.pm-toolbar-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.pm-toolbar-pill--danger {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.pm-toolbar-pill i {
+    width: 12px;
+    height: 12px;
+}
+
+.pm-quick-search {
+    position: relative;
+    min-width: 220px;
+}
+
+.pm-quick-search i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.pm-quick-search input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 34px;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fff;
+}
+
+.pm-quick-search input:focus {
+    outline: none;
+    border-color: #1070e0;
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.1);
+}
+
+/* Zoho data table */
+.projects-page .zoho-data-table {
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.projects-page .zoho-data-table thead th {
+    padding: 11px 14px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88) !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0) !important;
+    white-space: nowrap;
+}
+
+.projects-page .zoho-data-table tbody td {
+    padding: 12px 14px !important;
+    vertical-align: middle !important;
+    border-bottom: 1px solid #eef1f5 !important;
+}
+
+.projects-page .zoho-data-table tbody tr:hover {
+    background: rgba(16, 112, 224, 0.03);
+}
+
+.pm-col-check { width: 44px; }
+.pm-col-project { min-width: 280px; }
+.pm-col-lead { min-width: 150px; }
+.pm-col-team { min-width: 170px; }
+.pm-col-status { width: 130px; }
+.pm-col-dates { min-width: 130px; white-space: nowrap; }
+.pm-col-actions { width: 210px; }
+
+.pm-row {
+    border-left: 3px solid transparent;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pm-row:hover {
+    border-left-color: #1070e0;
+}
+
+/* Project cell refinements */
+.pm-project-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.pm-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.pm-badge--overdue { background: #fef2f2; color: #dc2626; }
+.pm-badge--due-soon { background: #fffbeb; color: #d97706; }
+.pm-badge--muted { background: #f1f5f9; color: #64748b; }
+.pm-badge--info { background: #eff6ff; color: #2563eb; }
+
+.pm-tag--link {
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.pm-tag--link:hover {
+    filter: brightness(0.95);
+}
+
+.pm-tag--muted {
+    background: #f8fafc;
+    color: #94a3b8;
+}
+
+.pm-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pm-timeline span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pm-timeline i {
+    width: 12px;
+    height: 12px;
+}
+
+/* Team + status controls */
+.pm-team-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    max-width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #dce3ec;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    text-align: left;
+}
+
+.pm-team-btn::after {
+    margin-left: auto;
+}
+
+.pm-team-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 10px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.pm-member-stack {
+    display: inline-flex;
+    align-items: center;
+}
+
+.pm-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 30px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.pm-status--pending { background: #f1f5f9; color: #475569; }
+.pm-status--process { background: #eff6ff; color: #2563eb; }
+.pm-status--completed { background: #f0fdf4; color: #16a34a; }
+.pm-status--hold { background: #fffbeb; color: #d97706; }
+.pm-status--review { background: #ecfeff; color: #0891b2; }
+.pm-status--rework { background: #fef2f2; color: #dc2626; }
+.pm-status--default { background: #f8fafc; color: #64748b; }
+
+.pm-dropdown-menu {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12) !important;
+    padding: 8px !important;
+    max-height: 320px;
+    overflow-y: auto;
+    z-index: 99999 !important;
+}
+
+.pm-dropdown-menu--compact {
+    min-width: 160px;
+}
+
+.pm-dropdown-search {
+    padding: 4px 4px 8px;
+    border-bottom: 1px solid #eef1f5;
+    margin-bottom: 4px;
+    list-style: none;
+}
+
+.pm-dropdown-search-input {
+    height: 36px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+}
+
+.pm-dropdown-item {
+    border-radius: 8px !important;
+    margin: 2px 0 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+}
+
+.pm-dropdown-item.active,
+.pm-dropdown-item:hover {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+}
+
+.pm-status-option--pending:hover { background: #f1f5f9 !important; color: #475569 !important; }
+.pm-status-option--in-process:hover { background: #eff6ff !important; color: #2563eb !important; }
+.pm-status-option--completed:hover { background: #f0fdf4 !important; color: #16a34a !important; }
+.pm-status-option--on-hold:hover { background: #fffbeb !important; color: #d97706 !important; }
+.pm-status-option--review:hover { background: #ecfeff !important; color: #0891b2 !important; }
+.pm-status-option--rework:hover { background: #fef2f2 !important; color: #dc2626 !important; }
+
+/* Row action icons */
+.projects-page .pm-row-actions {
+    gap: 4px;
+}
+
+.projects-page .zoho-icon-btn--warning:hover { border-color: #d97706; color: #d97706; background: #fffbeb; }
+.projects-page .zoho-icon-btn--success:hover { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
+.projects-page .zoho-icon-btn--primary:hover { border-color: #1070e0; color: #1070e0; background: #eff6ff; }
+.projects-page .zoho-icon-btn--info:hover { border-color: #0891b2; color: #0891b2; background: #ecfeff; }
+.projects-page .zoho-icon-btn--edit:hover { border-color: #6366f1; color: #6366f1; background: #eef2ff; }
+.projects-page .zoho-icon-btn--danger:hover { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+
+/* Empty state */
+.pm-empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pm-empty-state i {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+    color: #cbd5e1;
+}
+
+.pm-empty-state p {
+    margin-bottom: 14px;
+    font-weight: 600;
+}
+
+.pm-empty-inline {
+    padding: 16px;
+    border-radius: 10px;
+    background: #f8fafc;
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+}
+
+/* Modals */
+.pm-modal .modal-content {
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+}
+
+.pm-modal .modal-header {
+    border-bottom: 1px solid #eef1f5;
+    padding: 18px 20px;
+}
+
+.pm-modal .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.pm-modal .modal-body {
+    padding: 20px;
+}
+
+.pm-modal .modal-footer {
+    border-top: 0;
+    padding: 0 20px 20px;
+}
+
+.pm-modal-label,
+.pm-modal-subtitle {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+}
+
+.pm-modal-panel {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 12px 14px;
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    background: #f8fafc;
+    font-size: 13px;
+}
+
+.pm-modal-divider {
+    border-style: dashed;
+    border-color: #e2e8f0;
+    margin: 20px 0;
+}
+
+.pm-doc-chip,
+.pm-team-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #eef1f5;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pm-team-chip--muted {
+    background: #f8fafc;
+}
+
+.pm-task-analysis {
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.pm-analysis-group { margin-bottom: 24px; }
+.pm-analysis-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.pm-analysis-head small {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+}
+
+.pm-analysis-day {
+    margin-left: 12px;
+    padding-left: 14px;
+    border-left: 2px dashed #cbd5e1;
+    margin-bottom: 16px;
+}
+
+.pm-analysis-day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.pm-analysis-task {
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.pm-analysis-task-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.pm-analysis-update {
+    margin-bottom: 8px;
+    padding-left: 8px;
+    border-left: 2px solid #dbeafe;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.pm-analysis-update-meta {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+/* Dropdown overflow fix */
+.projects-page .pm-table-card,
+.projects-page .pm-table-scroll,
+.projects-page .table-responsive {
+    overflow: visible !important;
+}
+
+@media (max-width: 1400px) {
+    .pm-stat-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .pm-insights-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991.98px) {
+    .pm-stat-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pm-filter-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .pm-insights-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .pm-kanban-board {
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .projects-page .zoho-module-content {
+        padding: 16px;
+    }
+
+    .pm-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pm-stat-row {
+        grid-template-columns: 1fr;
+    }
+
+    .pm-insights-row {
+        grid-template-columns: 1fr;
+    }
+}

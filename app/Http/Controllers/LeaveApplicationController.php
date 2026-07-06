@@ -183,12 +183,19 @@ class LeaveApplicationController extends Controller
             $perPage = 20;
         }
 
+        $leaveStats = [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'approved' => (clone $query)->where('status', 'approved')->count(),
+            'rejected' => (clone $query)->whereIn('status', ['rejected', 'unauthorised'])->count(),
+        ];
+
         $leaves = $query->orderBy('created_at', 'desc')->paginate($perPage);
         $holidays = Holiday::pluck('date')
             ->map(fn ($date) => Carbon::parse($date)->format('Y-m-d'))
             ->values();
 
-        return view('leave.history', compact('leaves', 'employees', 'holidays', 'perPage'));
+        return view('leave.history', compact('leaves', 'employees', 'holidays', 'perPage', 'leaveStats', 'isAdmin', 'isTeamLeader'));
     }
 
     public function store(Request $request)

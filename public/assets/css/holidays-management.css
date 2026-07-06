@@ -1,0 +1,349 @@
+/* Holidays Master — Pro SaaS / Zoho list style */
+.holidays-page .zoho-module-content {
+    padding-top: 16px;
+}
+
+.holidays-page .zoho-data-table {
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.holidays-page .zoho-data-table thead th {
+    padding: 9px 16px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88) !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid var(--zoho-border, #e0e0e0) !important;
+}
+
+.holidays-page .zoho-data-table tbody td {
+    padding: 11px 16px !important;
+    font-size: 13px !important;
+    vertical-align: middle !important;
+    border-bottom: 1px solid #eef1f5 !important;
+}
+
+.holidays-page .zoho-data-table tbody tr:hover {
+    background: rgba(16, 112, 224, 0.03);
+}
+
+.holidays-page .zoho-people-table-toolbar {
+    min-height: 42px;
+    padding: 8px 16px;
+}
+
+.holidays-page .zoho-people-table-search input {
+    height: 34px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Stat chips */
+.hol-stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.hol-stat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: var(--zoho-radius-lg, 10px);
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.hol-stat-chip strong {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.hol-stat-chip i {
+    width: 15px;
+    height: 15px;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.hol-stat-chip--upcoming {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.hol-stat-chip--upcoming strong {
+    color: #1d4ed8;
+}
+
+.hol-stat-chip--next {
+    flex: 1;
+    min-width: 220px;
+    border-color: #fde68a;
+    background: #fffbeb;
+}
+
+.hol-stat-chip--next strong {
+    color: #b45309;
+    font-size: 13px;
+}
+
+/* Add holiday form card */
+.hol-form-card {
+    background: #fff;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: var(--zoho-radius-lg, 10px);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+    height: 100%;
+}
+
+.hol-form-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #eef1f5;
+    background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+}
+
+.hol-form-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.hol-form-card-icon i {
+    width: 18px;
+    height: 18px;
+}
+
+.hol-form-card-head h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.hol-form-card-head p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.hol-form-card-body {
+    padding: 18px;
+}
+
+.hol-form-field {
+    margin-bottom: 14px;
+}
+
+.hol-form-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.hol-form-field .form-control {
+    height: 40px !important;
+    border: 1px solid var(--zoho-border, #e0e0e0) !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+}
+
+.hol-form-field .form-control:focus {
+    border-color: var(--zoho-accent, #1070e0) !important;
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.12) !important;
+}
+
+.hol-form-card-foot {
+    padding: 0 18px 18px;
+}
+
+/* Table cells */
+.hol-title-cell {
+    font-weight: 600;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.hol-date-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #eef1f5;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.hol-date-badge i {
+    width: 14px;
+    height: 14px;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.hol-date-badge--past {
+    opacity: 0.65;
+}
+
+.hol-date-badge--today {
+    background: #ecfdf5;
+    border-color: #bbf7d0;
+    color: #047857;
+}
+
+.hol-date-badge--today i {
+    color: #16a34a;
+}
+
+.hol-date-badge--upcoming {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+}
+
+.hol-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.hol-row-actions .zoho-icon-btn {
+    width: 32px;
+    height: 32px;
+}
+
+.hol-row-actions .zoho-icon-btn--danger:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.hol-empty-state {
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.hol-empty-state-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 12px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: var(--zoho-muted, #616e88);
+}
+
+.hol-empty-state-icon i {
+    width: 24px;
+    height: 24px;
+}
+
+.hol-empty-state h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.hol-empty-state p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.hol-list-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #eef1f5;
+    background: #fafbfc;
+}
+
+/* Edit page */
+.hol-edit-page .zoho-module-content {
+    padding-top: 16px;
+    max-width: 640px;
+}
+
+.hol-edit-card {
+    background: #fff;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: var(--zoho-radius-lg, 10px);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+}
+
+.hol-edit-card-head {
+    padding: 16px 20px;
+    border-bottom: 1px solid #eef1f5;
+    background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+}
+
+.hol-edit-card-head h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.hol-edit-card-head p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.hol-edit-card-body {
+    padding: 20px;
+}
+
+.hol-edit-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid #eef1f5;
+    background: #fafbfc;
+}
+
+@media (max-width: 991.98px) {
+    .hol-stat-chip--next {
+        flex: 1 1 100%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .holidays-page .zoho-people-table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .holidays-page .zoho-list-bar {
+        justify-content: flex-start;
+    }
+}

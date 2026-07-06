@@ -108,59 +108,14 @@ class ProfileController extends Controller
         ];
 
         if ($employee) {
-            // Allotment: Treating the leave_count as a monthly quota
-            $total_allotted = LeaveAllotment::where('employee_id', $employee->id)->sum('leave_count');
-
-            $total_used = $this->leaveBalanceService->getDeductibleLeaveDaysForEmployee($employee->id);
-            // echo $total_used;exit;
+            $currentSummary = $this->leaveBalanceService->getEmployeeBalanceSummary($employee->id);
             $totalLeaveCycle = [
-                'allotted' => $total_allotted,
-                'used' => $total_used,
-                'available' => max(0, $total_allotted - $total_used),
+                'allotted' => $currentSummary['total_allotted'],
+                'used' => $currentSummary['total_taken'],
+                'available' => $currentSummary['balance'],
             ];
 
-            // Monthly Rows
-            $monthlyAllotments = LeaveAllotment::where('employee_id', $employee->id)
-                ->orderBy('year', 'asc')
-                ->orderBy('month', 'asc')
-                ->get();
-
-            $monthlyBalances = [];
-            $carryForward = 0;
-
-            foreach ($monthlyAllotments as $allotment) {
-
-                $used = $this->leaveBalanceService->getDeductibleLeaveDaysForEmployee(
-                    $employee->id,
-                    (int) $allotment->year,
-                    (int) $allotment->month
-                );
-
-                $available = max(
-                    0,
-                    $carryForward + $allotment->leave_count - $used
-                );
-
-                $monthlyBalances[] = [
-                    'type' => strtoupper(date(
-                        'F',
-                        mktime(0, 0, 0, $allotment->month, 1)
-                    )) . " ({$allotment->year})",
-                    'allotted' => $allotment->leave_count,
-                    'used' => $used,
-                    'available' => $available,
-                    'reference' => 'Monthly Quota'
-                ];
-
-                $carryForward = $available;
-            }
-
-            // Reverse so latest month appears first
-            $monthlyBalances = array_reverse($monthlyBalances);
-
-            foreach ($monthlyBalances as $row) {
-                $balances[] = $row;
-            }
+            $balances = $this->leaveBalanceService->buildMonthlyBalanceTimeline($employee->id);
         }
 
         return view('profile.leave-balance', [

@@ -1,88 +1,101 @@
 @extends('layouts.app')
 
-@section('content')
-<div class="container-fluid px-0" style="background: #f8fafc; min-height: 100vh; font-family: 'Inter', sans-serif;">
-    <!-- Top Header -->
-    <div class="px-4 py-3 bg-white border-bottom shadow-sm mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <div>
-                    <h5 class="fw-bold mb-0" style="color: #334155;">Leave Management</h5>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="#" class="text-decoration-none text-muted small">Home</a></li>
-                            <li class="breadcrumb-item active small fw-bold" style="color: #3858f9;" aria-current="page">Leave Balance List</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <div class="d-flex align-items-center gap-3 pe-2">
-                <!-- Standard Search Bar -->
-                <div class="input-group d-none d-md-flex" style="width: 250px;">
-                    <span class="input-group-text bg-light border-0"><i class="feather-search text-muted"></i></span>
-                    <input type="text" id="balanceSearch" class="form-control bg-light border-0 shadow-none" placeholder="Search employee..." onkeyup="filterBalances()">
-                </div>
-                
-                <a href="{{ route('leave.allotment') }}" class="btn btn-primary fw-bold small shadow-sm d-flex align-items-center" style="background: #3858f9; border: none; border-radius: 8px; height: 38px;">
-                    <i class="feather-plus-circle me-2"></i> ADD ALLOTMENT
-                </a>
-            </div>
-        </div>
-    </div>
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/leave-allotment-management.css') }}?v={{ filemtime(public_path('assets/css/leave-allotment-management.css')) ?: time() }}">
+@endpush
 
-    <div class="px-4">
-        <div class="card border-0 shadow-sm" style="border-radius: 12px; background: white; overflow: hidden;">
-            <div class="card-header bg-white border-bottom p-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="fw-bold mb-1 text-dark">Employee Leave Balances</h6>
-                        <p class="text-muted small mb-0">Summary of total leaves allotted and taken per employee.</p>
-                    </div>
+@section('content')
+@php
+    $totalEmployees = count($balances);
+    $totalAllotted = collect($balances)->sum('total_allotted');
+    $totalTaken = collect($balances)->sum('total_taken');
+    $avgBalance = $totalEmployees > 0 ? collect($balances)->avg('balance') : 0;
+    $headerActions = '<a href="' . route('leave.allotment') . '" class="zoho-btn-primary"><i class="feather-plus-circle"></i> Add Allotment</a>';
+@endphp
+
+<div class="zoho-page-shell leave-balance-page">
+    @include('layouts.partials.zoho-people-list-header', [
+        'title' => 'Leave Balance',
+        'viewLabel' => 'Employee Leave Balances',
+        'scopeLinks' => [
+            ['label' => 'Home', 'url' => route('dashboard'), 'active' => false],
+            ['label' => 'Leave', 'url' => route('leave.history'), 'active' => false],
+            ['label' => 'Balance', 'url' => route('leave.balance'), 'active' => true],
+        ],
+        'primaryAction' => $headerActions,
+    ])
+
+    <div class="main-content zoho-module-content">
+        <div class="la-stat-row">
+            <span class="la-stat-chip">
+                <i class="feather-users"></i>
+                <span><strong>{{ $totalEmployees }}</strong> Employees</span>
+            </span>
+            <span class="la-stat-chip">
+                <i class="feather-layers"></i>
+                <span><strong>{{ number_format($totalAllotted, 1) }}</strong> Total allotted</span>
+            </span>
+            <span class="la-stat-chip">
+                <i class="feather-minus-circle"></i>
+                <span><strong>{{ number_format($totalTaken, 1) }}</strong> Total used</span>
+            </span>
+            <span class="la-stat-chip la-stat-chip--month">
+                <i class="feather-trending-up"></i>
+                <span><strong>{{ number_format($avgBalance, 1) }}</strong> Avg. balance</span>
+            </span>
+        </div>
+
+        <div class="zoho-people-table-card">
+            <div class="zoho-people-table-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                    <h3 class="mb-0" style="font-size:14px;font-weight:700;">Employee Leave Balances</h3>
+                    <p class="mb-0 text-muted small">Summary of total leaves allotted and taken per employee</p>
+                </div>
+                <div class="zoho-people-table-search">
+                    <i class="feather-search"></i>
+                    <input type="text" id="balancePageSearch" placeholder="Search employee...">
                 </div>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="balanceTable">
-                        <thead class="bg-light">
-                            <tr class="small text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">
-                                <th class="ps-4 py-3" style="width: 80px;">Sr.No</th>
+
+            <div class="card-body p-0 zoho-list-body">
+                <div class="table-responsive zoho-table-wrap">
+                    <table class="table zoho-data-table mb-0" id="balanceTable">
+                        <thead>
+                            <tr>
+                                <th style="width:70px;">Sr.No</th>
                                 <th>Employee</th>
                                 <th class="text-center">Leave Taken / Allotted</th>
-                                <th class="text-center pe-4" style="width: 200px;">Current Balance</th>
+                                <th class="text-center" style="width:180px;">Current Balance</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($balances as $index => $b)
-                                <tr class="border-bottom">
-                                    <td class="ps-4">
-                                        <span class="text-muted fw-bold">{{ $index + 1 }}</span>
-                                    </td>
+                                @php
+                                    $percent = $b->total_allotted > 0 ? min(($b->total_taken / $b->total_allotted) * 100, 100) : 0;
+                                @endphp
+                                <tr class="balance-row">
+                                    <td><span class="text-muted fw-semibold">{{ $index + 1 }}</span></td>
                                     <td>
-                                        <div class="d-flex align-items-center gap-3">
-                                            <div class="avatar-text avatar-md bg-soft-primary text-primary fw-bold">
-                                                {{ substr($b->name, 0, 1) }}
-                                            </div>
+                                        <div class="la-emp-cell">
+                                            <span class="la-emp-avatar">{{ strtoupper(substr($b->name, 0, 1)) }}</span>
                                             <div>
-                                                <span class="d-block fw-bold text-dark">{{ $b->name }}</span>
-                                                <span class="text-muted small" style="font-size: 11px;">#EC{{ str_pad($b->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                                <span class="la-emp-name d-block">{{ $b->name }}</span>
+                                                <span class="text-muted" style="font-size:11px;">#EC{{ str_pad($b->id, 4, '0', STR_PAD_LEFT) }}</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <div class="d-inline-flex align-items-center gap-2">
-                                            <span class="fw-bold text-danger">{{ number_format($b->total_taken, 1) }}</span>
-                                            <span class="text-muted">/</span>
-                                            <span class="fw-bold text-primary">{{ number_format($b->total_allotted, 1) }}</span>
+                                        <div class="la-ratio">
+                                            <span class="used">{{ number_format($b->total_taken, 1) }}</span>
+                                            <span class="sep">/</span>
+                                            <span class="total">{{ number_format($b->total_allotted, 1) }}</span>
                                         </div>
-                                        <div class="progress mt-2" style="height: 4px; border-radius: 10px; width: 100px; margin: 0 auto;">
-                                            @php 
-                                                $percent = $b->total_allotted > 0 ? min(($b->total_taken / $b->total_allotted) * 100, 100) : 0;
-                                            @endphp
-                                            <div class="progress-bar {{ $percent > 80 ? 'bg-danger' : 'bg-primary' }}" role="progressbar" style="width: {{ $percent }}%"></div>
+                                        <div class="la-usage-bar">
+                                            <span class="{{ $percent > 80 ? 'is-high' : '' }}" style="width: {{ $percent }}%;"></span>
                                         </div>
                                     </td>
-                                    <td class="text-center pe-4">
-                                        <span class="badge {{ $b->balance >= 0 ? 'bg-soft-success text-success' : 'bg-soft-danger text-danger' }} fw-bold px-3 py-2" style="font-size: 13px; border-radius: 8px;">
+                                    <td class="text-center">
+                                        <span class="la-balance-pill la-balance-pill--ok">
                                             {{ number_format($b->balance, 1) }} Days
                                         </span>
                                     </td>
@@ -90,8 +103,10 @@
                             @empty
                                 <tr>
                                     <td colspan="4" class="text-center py-5 text-muted">
-                                        <i class="feather-info fs-1 opacity-25"></i>
-                                        <p class="mt-2 fw-bold">No leave balances found.</p>
+                                        <div class="la-empty-state">
+                                            <i class="feather-inbox"></i>
+                                            <p>No leave balances found.</p>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforelse
@@ -104,21 +119,12 @@
 </div>
 
 <script>
-    function filterBalances() {
-        const input = document.getElementById('balanceSearch');
-        const filter = input.value.toLowerCase();
-        const rows = document.getElementById('balanceTable').getElementsByTagName('tr');
-        for (let i = 1; i < rows.length; i++) {
-            const text = rows[i].getElementsByTagName('td')[1].innerText.toLowerCase();
-            rows[i].style.display = text.indexOf(filter) > -1 ? '' : 'none';
-        }
-    }
+    document.getElementById('balancePageSearch')?.addEventListener('input', function () {
+        const term = (this.value || '').trim().toLowerCase();
+        document.querySelectorAll('#balanceTable tbody tr.balance-row').forEach(function (row) {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(term) ? '' : 'none';
+        });
+    });
 </script>
-
-<style>
-    .bg-soft-primary { background-color: rgba(56, 88, 249, 0.08); }
-    .bg-soft-success { background-color: rgba(34, 197, 94, 0.08); }
-    .bg-soft-danger { background-color: rgba(239, 68, 68, 0.08); }
-    .avatar-md { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
-</style>
 @endsection

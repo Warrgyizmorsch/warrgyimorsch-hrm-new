@@ -71,6 +71,41 @@ class Project extends Model
         return $this->hasMany(DailyTask::class);
     }
 
+    public function getNormalizedStatusAttribute(): string
+    {
+        $status = $this->status ?? 'Pending';
+
+        return match ($status) {
+            'Not Started' => 'Pending',
+            'In Progress' => 'In Process',
+            'Finished' => 'Completed',
+            default => $status,
+        };
+    }
+
+    public function getTaskProgressAttribute(): int
+    {
+        if (in_array(strtolower($this->normalized_status), ['completed', 'finished'])) {
+            return 100;
+        }
+
+        $totalTasks = (int) ($this->tasks_count ?? $this->tasks()->count());
+        if ($totalTasks === 0) {
+            return (int) $this->progress;
+        }
+
+        $completedTasks = (int) ($this->completed_tasks_count ?? $this->tasks()
+            ->whereIn('status', ['Completed', 'Done', 'completed', 'done'])
+            ->count());
+
+        return min(100, (int) round(($completedTasks / $totalTasks) * 100));
+    }
+
+    public function getDisplayProgressAttribute(): int
+    {
+        return $this->task_progress;
+    }
+
     public function getProgressAttribute()
     {
         // If explicitly set to completed status, it's 100%
@@ -103,9 +138,31 @@ class Project extends Model
         return 0;
     }
 
-    public function getStatusColorAttribute()
+    public function getIsOverdueAttribute(): bool
     {
-        return match ($this->status) {
+        if (!$this->end_date || in_array(strtolower($this->normalized_status), ['completed', 'finished'])) {
+            return false;
+        }
+
+        return $this->end_date->isPast();
+    }
+
+    public function getStatusToneAttribute(): string
+    {
+        return match ($this->normalized_status) {
+            'Pending' => 'pending',
+            'In Process' => 'process',
+            'Completed' => 'completed',
+            'On Hold' => 'hold',
+            'Review' => 'review',
+            'Rework' => 'rework',
+            default => 'default',
+        };
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match ($this->normalized_status) {
             'Pending' => 'bg-soft-pending text-pending',
             'In Process' => 'bg-soft-process text-process',
             'Completed' => 'bg-soft-completed text-completed',

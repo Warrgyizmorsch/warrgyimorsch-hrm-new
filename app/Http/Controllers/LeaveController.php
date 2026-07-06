@@ -28,6 +28,11 @@ class LeaveController extends Controller
         $selectedMonth = $request->get('month', Carbon::now()->format('m'));
         $year = Carbon::now()->format('Y');
         $month = $selectedMonth;
+        $monthVariants = array_values(array_unique([
+            (string) $month,
+            sprintf('%02d', (int) $month),
+            (string) (int) $month,
+        ]));
 
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
@@ -47,13 +52,13 @@ class LeaveController extends Controller
 
         if ($isAdmin) {
             $employees = Employee::active()->whereDate('date_of_joining', '<', $selectedMonthStart)->orderBy('name', 'asc')->get();
-            $allotments = LeaveAllotment::where('month', $month)
+            $allotments = LeaveAllotment::whereIn('month', $monthVariants)
                 ->where('year', $year)
                 ->get()
                 ->keyBy('employee_id');
 
             $history = LeaveAllotment::with('employee')
-                ->where('month', $month)
+                ->whereIn('month', $monthVariants)
                 ->where('year', $year)
                 ->orderBy('year', 'desc')
                 ->orderBy('month', 'desc')
@@ -65,14 +70,14 @@ class LeaveController extends Controller
                 $employees = Employee::active()->where('department', $department)->whereDate('date_of_joining', '<', $selectedMonthStart)->orderBy('name', 'asc')->get();
                 $employeeIds = $employees->pluck('id');
                 
-                $allotments = LeaveAllotment::where('month', $month)
+                $allotments = LeaveAllotment::whereIn('month', $monthVariants)
                     ->where('year', $year)
                     ->whereIn('employee_id', $employeeIds)
                     ->get()
                     ->keyBy('employee_id');
 
                 $history = LeaveAllotment::with('employee')
-                    ->where('month', $month)
+                    ->whereIn('month', $monthVariants)
                     ->where('year', $year)
                     ->whereIn('employee_id', $employeeIds)
                     ->orderBy('year', 'desc')
@@ -87,14 +92,14 @@ class LeaveController extends Controller
         } else {
             $employee_id = $user->employee_id;
             $employees = Employee::active()->where('id', $employee_id)->get();
-            $allotments = LeaveAllotment::where('month', $month)
+            $allotments = LeaveAllotment::whereIn('month', $monthVariants)
                 ->where('year', $year)
                 ->where('employee_id', $employee_id)
                 ->get()
                 ->keyBy('employee_id');
 
             $history = LeaveAllotment::with('employee')
-                ->where('month', $month)
+                ->whereIn('month', $monthVariants)
                 ->where('year', $year)
                 ->where('employee_id', $employee_id)
                 ->orderBy('year', 'desc')
@@ -104,11 +109,15 @@ class LeaveController extends Controller
         }
 
         if ($isTeamLeader) {
-            $balances = $this->calculateBalances($employees);
+            $monthDate = Carbon::createFromDate((int) $year, (int) $month, 1);
+            $balances = $this->calculateBalances($employees, $monthDate);
             return view('leave.team_balance', compact('balances', 'selectedMonth'));
         }
 
-        return view('leave.allotment', compact('employees', 'allotments', 'selectedMonth', 'history', 'isAdmin'));
+        $monthDate = Carbon::createFromDate((int) $year, (int) $month, 1);
+        $balances = $this->calculateBalances($employees, $monthDate);
+
+        return view('leave.allotment', compact('employees', 'allotments', 'selectedMonth', 'history', 'isAdmin', 'balances'));
     }
 
     public function storeAllotment(Request $request)
@@ -173,23 +182,31 @@ class LeaveController extends Controller
         return Excel::download(new LeaveBalancesExport($balances), $filename);
     }
 
-    private function calculateBalances($employees = null)
+    private function calculateBalances($employees = null, ?Carbon $monthDate = null)
     {
         $employees = $employees ?? Employee::active()->orderBy('name', 'asc')->get();
+        $monthDate = ($monthDate ?? now())->copy()->startOfMonth();
+        $summaries = $this->leaveBalanceService->getBulkEmployeeBalanceSummaries($employees, $monthDate);
         $balances = [];
 
         foreach ($employees as $employee) {
-            $totalAllotted = LeaveAllotment::where('employee_id', $employee->id)->sum('leave_count');
-            $totalTaken = $this->leaveBalanceService->getDeductibleLeaveDaysForEmployee($employee->id);
+            $summary = $summaries[$employee->id] ?? [
+                'total_allotted' => 0,
+                'total_taken' => 0,
+                'balance' => 0,
+                'unpaid_leave_days' => 0,
+            ];
 
             $balances[] = (object) [
                 'id' => $employee->id,
                 'name' => $employee->name,
-                'total_allotted' => $totalAllotted,
-                'total_taken' => $totalTaken,
-                'balance' => $totalAllotted - $totalTaken
+                'total_allotted' => $summary['total_allotted'],
+                'total_taken' => $summary['total_taken'],
+                'balance' => $summary['balance'],
+                'unpaid_leave_days' => $summary['unpaid_leave_days'],
             ];
         }
+
         return $balances;
     }
 }
