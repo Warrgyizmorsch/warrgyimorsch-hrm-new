@@ -59,16 +59,15 @@
                                             if (str_contains($item['status'], 'Absent')) $badgeClass = 'bg-soft-danger text-danger';
                                             elseif (str_contains($item['status'], 'Leave')) $badgeClass = 'bg-soft-info text-info';
                                             elseif (str_contains($item['status'], 'Half')) $badgeClass = 'bg-soft-warning text-warning';
+                                            elseif (str_contains($item['status'], 'Early') || str_contains($item['status'], 'Wfh') || str_contains($item['status'], 'Activity')) $badgeClass = 'bg-soft-info text-info';
                                             elseif (str_contains($item['status'], 'Sunday') || str_contains($item['status'], 'Holiday')) $badgeClass = 'bg-soft-secondary text-secondary';
                                         @endphp
                                         <tr style="height: 70px; border-bottom: 1px solid #f1f5f9;">
                                             <td class="ps-4 fw-bold text-muted" style="font-size: 13px;">{{ $index + 1 }}</td>
                                             <td class="fw-bold text-dark" style="font-size: 14px;">
                                                 {{ $item['date'] }}
-                                                @if(str_contains($item['date'], '(Sat)'))
-                                                    <span class="badge bg-soft-primary text-primary ms-2">
-                                                        Activity
-                                                    </span>
+                                                @if(!empty($item['is_activity']))
+                                                    <span class="badge bg-soft-primary text-primary ms-2">Activity</span>
                                                 @endif
                                             </td>
                                             <td class="text-center text-muted fw-semibold" style="font-size: 13px;">{{ $item['punch_in'] }}</td>

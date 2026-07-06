@@ -369,21 +369,35 @@ class EmployeeController extends Controller
 
         // Fetch data
         $attendances = \App\Models\Attendance::where('employee_id', $employeeId)
-            ->whereBetween('attendance_date', [$startDate, $endDate])
+            ->whereBetween('attendance_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orderBy('attendance_date', 'desc')
             ->get()
-            ->keyBy(fn($item) => $item->attendance_date->format('Y-m-d'));
+            ->keyBy(fn ($item) => $item->attendance_date->format('Y-m-d'));
 
         $holidays = \App\Models\Holiday::whereBetween('date', [$startDate, $endDate])
             ->get()
             ->keyBy(fn($item) => \Carbon\Carbon::parse($item->date)->format('Y-m-d'));
 
         $leaves = \App\Models\LeaveApplication::where('employee_id', $employeeId)
-            ->whereIn('status', ['approved', 'unauthorised'])
+            ->whereIn('status', ['approved', 'unauthorised', 'on_hold'])
             ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('start_date', [$startDate, $endDate])
-                ->orWhereBetween('end_date', [$startDate, $endDate]);
+                $q->whereDate('start_date', '<=', $endDate)
+                    ->where(function ($q2) use ($startDate) {
+                        $q2->whereDate('end_date', '>=', $startDate)
+                            ->orWhere(function ($q3) use ($startDate) {
+                                $q3->whereNull('end_date')->whereDate('start_date', '>=', $startDate);
+                            });
+                    });
             })
             ->get();
+
+        $activityDays = \App\Models\Attendance::computeActivityDays(
+            $attendances->pluck('attendance_date')
+                ->map(fn ($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
+                ->unique()
+                ->values()
+                ->all()
+        );
 
         $history = [];
 
@@ -392,8 +406,7 @@ class EmployeeController extends Controller
             $dayStr = $date->format('Y-m-d');
             $record = $attendances->get($dayStr);
             $holiday = $holidays->get($dayStr);
-            // dd($holiday);
-            $onLeave = $leaves->first(fn($l) =>
+            $onLeave = $leaves->first(fn ($l) =>
                 $date->between($l->start_date, $l->end_date ?? $l->start_date)
             );
 
@@ -401,35 +414,25 @@ class EmployeeController extends Controller
             $statusClass = 'danger';
             $punch_in = '--:--';
             $punch_out = '--:--';
-            $total_hours = '0.0 hrs';
+            $total_hours = '--';
+            $isActivity = false;
 
-            if ($holiday) {
+            if ($record) {
+                $punch_in = \App\Models\Attendance::formatPunchTime($record->check_in) ?? '--:--';
+                $punch_out = \App\Models\Attendance::formatPunchTime($record->check_out) ?? '--:--';
+                $total_hours = \App\Models\Attendance::formatTotalHours($record->total_hours);
+
+                $resolved = $record->resolveHistoryStatus(
+                    $employee,
+                    (bool) $holiday,
+                    (bool) ($activityDays[$dayStr] ?? false)
+                );
+                $status = $resolved['label'];
+                $statusClass = $resolved['class'];
+                $isActivity = $resolved['is_activity'] ?? false;
+            } elseif ($holiday) {
                 $status = 'Holiday';
-                $statusClass = 'primary';
-
-            } elseif ($record) {
-                $punch_in = $record->check_in ? \Carbon\Carbon::parse($record->check_in)->format('h:i A') : '--:--';
-                $punch_out = $record->check_out ? \Carbon\Carbon::parse($record->check_out)->format('h:i A') : '--:--';
-                // $total_hours = number_format((float)$record->total_hours, 1) . ' hrs';
-                $totalHoursDecimal = (float) $record->total_hours;
-                $hours = floor($totalHoursDecimal);
-                $minutes = round(($totalHoursDecimal - $hours) * 60);
-                $total_hours = "{$hours}h {$minutes}m";
-
-                if ((!$record->check_in && $record->check_out) || ($record->check_in && !$record->check_out)) {
-                    $status = 'Missing Punch';
-                    $statusClass = 'warning';
-                } elseif ($record->total_hours < 8 && $record->total_hours > 3) {
-                    $status = 'Half Day';
-                    $statusClass = 'warning';
-                } else if($record->total_hours < 3) {
-                    $status = 'Absent';
-                    $statusClass = 'danger';
-                }
-                else {
-                    $status = 'Present';
-                    $statusClass = 'success';
-                }
+                $statusClass = 'secondary';
             } elseif ($onLeave) {
                 $status = 'Leave';
                 $statusClass = 'info';
@@ -444,7 +447,8 @@ class EmployeeController extends Controller
                 'statusClass' => $statusClass,
                 'punch_in' => $punch_in,
                 'punch_out' => $punch_out,
-                'total_hours' => $total_hours
+                'total_hours' => $total_hours,
+                'is_activity' => $isActivity,
             ];
         }
 

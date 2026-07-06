@@ -747,7 +747,8 @@
 
         function formatTime(time) {
             if (!time) return '--';
-            let [h, m] = time.split(':');
+            const raw = time.includes(' ') ? time.split(' ')[1] : time;
+            let [h, m] = raw.split(':');
             h = parseInt(h, 10);
             const ampm = h >= 12 ? 'PM' : 'AM';
             h = h % 12 || 12;
