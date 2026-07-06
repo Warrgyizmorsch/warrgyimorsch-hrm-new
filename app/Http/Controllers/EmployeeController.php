@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Role;
+use App\Services\AttendanceHistoryService;
 
 class EmployeeController extends Controller
 {
@@ -367,94 +368,15 @@ class EmployeeController extends Controller
             $endDate = \Carbon\Carbon::today();
         }
 
-        // Fetch data
-        $attendances = \App\Models\Attendance::where('employee_id', $employeeId)
-            ->whereBetween('attendance_date', [$startDate->toDateString(), $endDate->toDateString()])
-            ->orderBy('attendance_date', 'desc')
-            ->get()
-            ->keyBy(fn ($item) => $item->attendance_date->format('Y-m-d'));
-
-        $holidays = \App\Models\Holiday::whereBetween('date', [$startDate, $endDate])
-            ->get()
-            ->keyBy(fn($item) => \Carbon\Carbon::parse($item->date)->format('Y-m-d'));
-
-        $leaves = \App\Models\LeaveApplication::where('employee_id', $employeeId)
-            ->whereIn('status', ['approved', 'unauthorised', 'on_hold'])
-            ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereDate('start_date', '<=', $endDate)
-                    ->where(function ($q2) use ($startDate) {
-                        $q2->whereDate('end_date', '>=', $startDate)
-                            ->orWhere(function ($q3) use ($startDate) {
-                                $q3->whereNull('end_date')->whereDate('start_date', '>=', $startDate);
-                            });
-                    });
-            })
-            ->get();
-
-        $activityDays = \App\Models\Attendance::computeActivityDays(
-            $attendances->pluck('attendance_date')
-                ->map(fn ($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
-                ->unique()
-                ->values()
-                ->all()
+        $history = app(AttendanceHistoryService::class)->buildMonthlyHistory(
+            (int) $employeeId,
+            $startDate,
+            $endDate
         );
-
-        $history = [];
-
-        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
-
-            $dayStr = $date->format('Y-m-d');
-            $record = $attendances->get($dayStr);
-            $holiday = $holidays->get($dayStr);
-            $onLeave = $leaves->first(fn ($l) =>
-                $date->between($l->start_date, $l->end_date ?? $l->start_date)
-            );
-
-            $status = 'Absent';
-            $statusClass = 'danger';
-            $punch_in = '--:--';
-            $punch_out = '--:--';
-            $total_hours = '--';
-            $isActivity = false;
-
-            if ($record) {
-                $punch_in = \App\Models\Attendance::formatPunchTime($record->check_in) ?? '--:--';
-                $punch_out = \App\Models\Attendance::formatPunchTime($record->check_out) ?? '--:--';
-                $total_hours = \App\Models\Attendance::formatTotalHours($record->total_hours);
-
-                $resolved = $record->resolveHistoryStatus(
-                    $employee,
-                    (bool) $holiday,
-                    (bool) ($activityDays[$dayStr] ?? false)
-                );
-                $status = $resolved['label'];
-                $statusClass = $resolved['class'];
-                $isActivity = $resolved['is_activity'] ?? false;
-            } elseif ($holiday) {
-                $status = 'Holiday';
-                $statusClass = 'secondary';
-            } elseif ($onLeave) {
-                $status = 'Leave';
-                $statusClass = 'info';
-            } elseif ($date->isSunday()) {
-                $status = 'Sunday';
-                $statusClass = 'secondary';
-            }
-
-            $history[] = [
-                'date' => $date->format('d M, Y (D)'),
-                'status' => $status,
-                'statusClass' => $statusClass,
-                'punch_in' => $punch_in,
-                'punch_out' => $punch_out,
-                'total_hours' => $total_hours,
-                'is_activity' => $isActivity,
-            ];
-        }
 
         return view('payroll.attendance-history', [
             'employee' => $employee,
-            'history' => array_reverse($history),
+            'history' => $history,
             'selectedMonth' => "$year-$month"
         ]);
     }

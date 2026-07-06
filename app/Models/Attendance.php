@@ -18,8 +18,6 @@ class Attendance extends Model
 
     protected $casts = [
         'attendance_date' => 'date',
-        'check_in' => 'datetime:H:i:s',
-        'check_out' => 'datetime:H:i:s',
         'total_hours' => 'float',
     ];
 
@@ -33,6 +31,38 @@ class Attendance extends Model
         return $this->belongsTo(Employee::class);
     }
 
+    /**
+     * Read punch time directly from DB (TIME column) — avoids timezone shifts from Carbon casts.
+     */
+    public function getRawPunchTime(string $field): ?string
+    {
+        if (!in_array($field, ['check_in', 'check_out'], true)) {
+            return null;
+        }
+
+        $raw = $this->attributes[$field] ?? $this->getRawOriginal($field);
+        if (blank($raw)) {
+            return null;
+        }
+
+        $raw = (string) $raw;
+        if (str_contains($raw, ' ')) {
+            $raw = explode(' ', $raw)[1];
+        }
+
+        return substr($raw, 0, 8);
+    }
+
+    public function formattedCheckIn(): ?string
+    {
+        return self::formatPunchTime($this->getRawPunchTime('check_in'));
+    }
+
+    public function formattedCheckOut(): ?string
+    {
+        return self::formatPunchTime($this->getRawPunchTime('check_out'));
+    }
+
     public static function extractTimeValue($value): ?string
     {
         if (blank($value)) {
@@ -40,7 +70,7 @@ class Attendance extends Model
         }
 
         $raw = $value instanceof Carbon
-            ? $value->format('H:i:s')
+            ? $value->copy()->utc()->format('H:i:s')
             : (string) $value;
 
         if (str_contains($raw, ' ')) {
@@ -80,7 +110,7 @@ class Attendance extends Model
                 }
 
                 $totalPresent++;
-                $punchTime = substr(self::extractTimeValue($att->check_out) ?? '', 0, 5);
+                $punchTime = substr($att->getRawPunchTime('check_out') ?? '', 0, 5);
 
                 if ($punchTime >= '15:00' && $punchTime < '17:30') {
                     $earlyOuts++;
@@ -96,12 +126,12 @@ class Attendance extends Model
     }
 
     /**
-     * Resolve display status — mirrors payroll/employeeWise renderTable() logic.
+     * Resolve display status — exact mirror of payroll employeeWise renderTable().
      */
-    public function resolveHistoryStatus(Employee $employee, bool $isHoliday = false, bool $isActivityDay = false): array
+    public function resolvePayrollDisplayStatus(bool $isHoliday = false, bool $isActivityDay = false): array
     {
         $status = strtolower($this->status ?? '');
-        $checkOutHm = substr(self::extractTimeValue($this->check_out) ?? '', 0, 5);
+        $checkOutHm = substr($this->getRawPunchTime('check_out') ?? '', 0, 5);
 
         $isEarly = false;
         $isHalfDayPunch = false;
@@ -115,43 +145,60 @@ class Attendance extends Model
         }
 
         if ($isHoliday && $status === 'absent') {
-            return ['label' => 'Holiday', 'class' => 'secondary', 'is_activity' => false];
+            return ['label' => 'Holiday', 'class' => self::classForStatusLabel('Holiday'), 'is_activity' => false];
         }
 
         if ($isActivityDay && ($isEarly || in_array($status, ['early_out', 'early_leave'], true) || ($status === 'half_day' && !$isHalfDayPunch))) {
-            return ['label' => 'Present Activity', 'class' => 'info', 'is_activity' => true];
+            return ['label' => 'Present Activity', 'class' => self::classForStatusLabel('Present Activity'), 'is_activity' => true];
         }
 
         if ($isEarly) {
-            return ['label' => 'Early Out', 'class' => 'info', 'is_activity' => false];
+            return ['label' => 'Early Out', 'class' => self::classForStatusLabel('Early Out'), 'is_activity' => false];
         }
 
         if ($isHalfDayPunch || $status === 'half_day') {
-            return ['label' => 'Half Day', 'class' => 'warning', 'is_activity' => false];
+            return ['label' => 'Half Day', 'class' => self::classForStatusLabel('Half Day'), 'is_activity' => false];
         }
 
-        if ($status === 'wfh') {
-            return ['label' => 'Wfh', 'class' => 'info', 'is_activity' => false];
+        $label = match ($status) {
+            'wfh' => 'Wfh',
+            'early_out', 'early_leave' => 'Early Out',
+            'missing_punch' => 'Missing Punch',
+            'unpaid_leave' => 'Unpaid Leave',
+            'half_day' => 'Half Day',
+            default => ucfirst(str_replace('_', ' ', $status ?: 'Absent')),
+        };
+
+        if ($label === 'Early out' || $label === 'Early leave') {
+            $label = 'Early Out';
         }
 
         return [
-            'label' => $this->displayStatusLabel($isHoliday),
-            'class' => $this->displayStatusClass($isHoliday),
+            'label' => $label,
+            'class' => self::classForStatusLabel($label),
             'is_activity' => false,
         ];
     }
 
-    /**
-     * Format a TIME/datetime punch value for display (matches payroll employee-wise view).
-     */
-    public static function formatPunchTime($value): ?string
+    /** @deprecated Use resolvePayrollDisplayStatus() */
+    public function resolveHistoryStatus(Employee $employee, bool $isHoliday = false, bool $isActivityDay = false): array
     {
-        if (blank($value)) {
+        return $this->resolvePayrollDisplayStatus($isHoliday, $isActivityDay);
+    }
+
+    public static function formatPunchTime(?string $rawTime): ?string
+    {
+        if (blank($rawTime)) {
             return null;
         }
 
-        $raw = self::extractTimeValue($value);
-        if (!$raw || !preg_match('/^(\d{1,2}):(\d{2})/', $raw, $matches)) {
+        $raw = (string) $rawTime;
+        if (str_contains($raw, ' ')) {
+            $raw = explode(' ', $raw)[1];
+        }
+
+        $raw = substr($raw, 0, 8);
+        if (!preg_match('/^(\d{1,2}):(\d{2})/', $raw, $matches)) {
             return null;
         }
 
@@ -203,20 +250,25 @@ class Attendance extends Model
         };
     }
 
-    public function displayStatusClass(?bool $isHoliday = false): string
+    public static function classForStatusLabel(string $label): string
     {
-        $label = strtolower($this->displayStatusLabel($isHoliday));
+        $normalized = strtolower($label);
 
         return match (true) {
-            str_contains($label, 'present') => 'success',
-            str_contains($label, 'half') => 'warning',
-            str_contains($label, 'missing') => 'warning',
-            str_contains($label, 'early') => 'info',
-            str_contains($label, 'late') => 'info',
-            str_contains($label, 'leave'), str_contains($label, 'wfh') => 'info',
-            str_contains($label, 'holiday'), str_contains($label, 'sunday') => 'secondary',
-            str_contains($label, 'absent'), str_contains($label, 'unauthorised') => 'danger',
+            str_contains($normalized, 'activity') => 'info',
+            str_contains($normalized, 'half') => 'warning',
+            str_contains($normalized, 'missing') => 'warning',
+            str_contains($normalized, 'early') => 'info',
+            str_contains($normalized, 'leave'), str_contains($normalized, 'wfh') => 'info',
+            str_contains($normalized, 'holiday'), str_contains($normalized, 'sunday') => 'secondary',
+            str_contains($normalized, 'absent'), str_contains($normalized, 'unauthorised') => 'danger',
+            str_contains($normalized, 'present') => 'success',
             default => 'secondary',
         };
+    }
+
+    public function displayStatusClass(?bool $isHoliday = false): string
+    {
+        return self::classForStatusLabel($this->displayStatusLabel($isHoliday));
     }
 }
