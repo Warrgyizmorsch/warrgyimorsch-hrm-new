@@ -50,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/leave-report', [DashboardController::class, 'fetchLeaveReport'])->name('dashboard.leave-report');
     Route::get('/dashboard/late-arrivals', [DashboardController::class, 'fetchLateArrivals'])->name('dashboard.late-arrivals');
+    Route::post('/dashboard/birthday-wish/dismiss', [DashboardController::class, 'dismissBirthdayWish'])->name('dashboard.birthday-wish.dismiss');
 
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
 

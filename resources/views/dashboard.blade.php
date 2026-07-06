@@ -947,27 +947,7 @@
             }
         }
     </style>
-    @if($celebration['isBirthdayToday'])
-        <div class="celebration-banner birthday">
-            <div class="animation-container">
-                <span class="balloon b1">🎈</span>
-                <span class="balloon b2">🎈</span>
-                <span class="balloon b3">🎈</span>
-                <span class="balloon b4">🎈</span>
-                <span class="confetti-piece cp1"></span>
-                <span class="confetti-piece cp2"></span>
-                <span class="confetti-piece cp3"></span>
-                <span class="confetti-piece cp4"></span>
-                <span class="confetti-piece cp5"></span>
-            </div>
-
-            <div class="celebration-icon">🎂</div>
-            <div class="celebration-content">
-                <h3>Happy Birthday, {{ $employee->name }}! 🎉</h3>
-                <p>Wishing you a wonderful day filled with happiness, success, and great health.</p>
-            </div>
-        </div>
-    @endif
+    @include('partials.birthday-wish-card', ['employee' => $employee, 'celebration' => $celebration])
 
     @if($celebration['isAnniversaryToday'])
         <div class="celebration-banner anniversary">

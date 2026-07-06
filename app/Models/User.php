@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'employee_id',
         'account_status',
+        'birthday_wish_dismissed_year',
     ];
 
     /**

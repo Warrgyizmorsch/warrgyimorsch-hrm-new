@@ -1168,35 +1168,107 @@ class DashboardController extends Controller
 
     private function getTodayCelebration($employee)
     {
-        $today = \Carbon\Carbon::today()->startOfDay();
-        $dob =      $employee->date_of_birth ?? ''  ;
-        // ---------------- Birthday ----------------
-        $birthday = \Carbon\Carbon::parse($dob)->year(now()->year);
+        $today = Carbon::today()->startOfDay();
+        $currentYear = now()->year;
 
-        if ($birthday->isPast() && !$birthday->isToday()) {
-            $birthday->addYear();
+        $isBirthdayToday = false;
+        $isBirthdayThisMonth = false;
+        $showBirthdayCard = false;
+        $birthday = null;
+        $birthdayFormatted = null;
+        $daysUntilBirthday = null;
+        $daysSinceBirthday = null;
+
+        if ($employee && !empty($employee->date_of_birth)) {
+            $dob = Carbon::parse($employee->date_of_birth);
+            $birthdayThisYear = $dob->copy()->year($currentYear)->startOfDay();
+
+            $isBirthdayToday = $birthdayThisYear->isToday();
+            $isBirthdayThisMonth = $dob->month === now()->month;
+            $birthday = $birthdayThisYear;
+            $birthdayFormatted = $birthdayThisYear->format('d M');
+            $daysUntilBirthday = $today->lt($birthdayThisYear)
+                ? $today->diffInDays($birthdayThisYear)
+                : 0;
+            $daysSinceBirthday = $today->gt($birthdayThisYear)
+                ? $birthdayThisYear->diffInDays($today)
+                : 0;
+
+            $withinBirthdayWindow = false;
+            if ($isBirthdayThisMonth) {
+                if ($today->lte($birthdayThisYear)) {
+                    $withinBirthdayWindow = true;
+                } else {
+                    $withinBirthdayWindow = $daysSinceBirthday <= 7;
+                }
+            }
+
+            $dismissedYear = auth()->user()->birthday_wish_dismissed_year;
+            $showBirthdayCard = $withinBirthdayWindow
+                && ($dismissedYear === null || (int) $dismissedYear < $currentYear);
         }
 
-        $isBirthdayToday = $birthday->isToday();
+        $isAnniversaryToday = false;
+        $anniversary = null;
+        $years = 0;
 
-        // ---------------- Anniversary ----------------
-        $joiningDate = \Carbon\Carbon::parse($employee->date_of_joining);
-        $anniversary = $joiningDate->copy()->year(now()->year);
+        if ($employee && !empty($employee->date_of_joining)) {
+            $joiningDate = Carbon::parse($employee->date_of_joining);
+            $anniversary = $joiningDate->copy()->year($currentYear);
 
-        if ($anniversary->isPast() && !$anniversary->isToday()) {
-            $anniversary->addYear();
+            if ($anniversary->isPast() && !$anniversary->isToday()) {
+                $anniversary->addYear();
+            }
+
+            $years = $joiningDate->diffInYears($anniversary);
+            $isAnniversaryToday = $anniversary->isToday() && $years > 0;
         }
-
-        $years = $joiningDate->diffInYears($anniversary);
-        $isAnniversaryToday = $anniversary->isToday() && $years > 0;
 
         return [
             'isBirthdayToday' => $isBirthdayToday,
-            'isAnniversaryToday' => $isAnniversaryToday,
+            'isBirthdayThisMonth' => $isBirthdayThisMonth,
+            'showBirthdayCard' => $showBirthdayCard,
             'birthday' => $birthday,
+            'birthdayFormatted' => $birthdayFormatted,
+            'daysUntilBirthday' => $daysUntilBirthday,
+            'daysSinceBirthday' => $daysSinceBirthday,
+            'isAnniversaryToday' => $isAnniversaryToday,
             'anniversary' => $anniversary,
             'years' => $years,
         ];
+    }
+
+    public function dismissBirthdayWish(Request $request)
+    {
+        $user = $request->user();
+        $employee = Employee::active()->where('id', $user->employee_id)->first();
+
+        if (!$employee || empty($employee->date_of_birth)) {
+            return response()->json(['success' => false, 'message' => 'Birthday not found.'], 422);
+        }
+
+        $dob = Carbon::parse($employee->date_of_birth);
+        $today = Carbon::today()->startOfDay();
+        $birthdayThisYear = $dob->copy()->year(now()->year)->startOfDay();
+
+        $withinBirthdayWindow = false;
+        if ($dob->month === now()->month) {
+            if ($today->lte($birthdayThisYear)) {
+                $withinBirthdayWindow = true;
+            } else {
+                $withinBirthdayWindow = $birthdayThisYear->diffInDays($today) <= 7;
+            }
+        }
+
+        if (!$withinBirthdayWindow) {
+            return response()->json(['success' => false, 'message' => 'Birthday card is not active right now.'], 422);
+        }
+
+        $user->update([
+            'birthday_wish_dismissed_year' => now()->year,
+        ]);
+
+        return response()->json(['success' => true]);
     }
 
     /**
