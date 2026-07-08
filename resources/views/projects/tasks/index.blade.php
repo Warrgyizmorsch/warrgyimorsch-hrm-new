@@ -404,14 +404,14 @@
 
 @section('modals')
     <!-- SIDE PANEL: CREATE/EDIT TASK -->
-    <div class="offcanvas offcanvas-end dt-task-offcanvas shadow-lg h-100" tabindex="-1" id="taskOffcanvas" aria-labelledby="taskOffcanvasLabel">
+    <div class="offcanvas offcanvas-end dt-task-offcanvas shadow-lg" tabindex="-1" id="taskOffcanvas" aria-labelledby="taskOffcanvasLabel">
         <div class="offcanvas-header zoho-offcanvas-head border-bottom">
             <h5 class="offcanvas-title zoho-offcanvas-title" id="taskOffcanvasLabel">Add Main Task</h5>
             <button type="button" class="zoho-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="Close">
                 <i class="feather-x"></i>
             </button>
         </div>
-        <form id="taskForm" class="d-flex flex-column h-100">
+        <form id="taskForm" class="d-flex flex-column flex-grow-1 min-h-0">
                 @csrf
                 <div id="methodField"></div>
                 <input type="hidden" name="id" id="taskId">
@@ -510,11 +510,8 @@
                             @endif
                             <div class="dt-field">
                                 <label>Task Description</label>
-                                <div class="dt-input-wrap">
-                                    <i class="feather-align-left"></i>
-                                    <textarea name="description" id="taskDesc" class="form-control" rows="3"
-                                        placeholder="Brief plan for the day..."></textarea>
-                                </div>
+                                <textarea name="description" id="taskDesc" class="form-control dt-desc-editor" rows="3"
+                                    placeholder="Brief plan for the day..."></textarea>
                             </div>
                             <div class="dt-field mb-0">
                                 <label>Attachment (Optional)</label>
@@ -531,7 +528,7 @@
                 <div class="dt-offcanvas-foot">
                     <button type="button" class="zoho-btn-outline flex-fill" data-bs-dismiss="offcanvas">Cancel</button>
                     <button type="button" id="submitTaskBtn" class="zoho-btn-primary flex-fill">
-                        <i class="feather-save"></i> Save Main Task
+                        <i class="feather-save"></i> Submit Task
                     </button>
                 </div>
             </form>

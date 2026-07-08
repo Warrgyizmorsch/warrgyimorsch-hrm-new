@@ -581,6 +581,21 @@
 .dt-task-offcanvas {
     width: min(520px, 100vw) !important;
     border-left: none;
+    display: flex !important;
+    flex-direction: column;
+    max-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.dt-task-offcanvas .offcanvas-header {
+    flex-shrink: 0;
+}
+
+.dt-task-offcanvas #taskForm {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .dt-task-offcanvas .offcanvas-body {
@@ -702,6 +717,14 @@
     padding: 14px 18px;
     border-top: 1px solid #eef1f5;
     background: #fff;
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+}
+
+.dt-desc-editor {
+    width: 100%;
 }
 
 /* Work Progress Modal */
