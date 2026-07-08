@@ -152,14 +152,6 @@ class ReviewController extends Controller
         $groupedReviews = $query->get()
             ->groupBy(fn ($review) => $review->employee_id . '|' . $review->month)
             ->map(function ($group) {
-                $selfAssessmentTotal = function ($review): float {
-                    if (!$review) {
-                        return 0;
-                    }
-
-                    return (float) $review->self_total;
-                };
-
                 $firstHalf = $group->first(fn ($review) => strcasecmp($review->period, 'First Half') === 0);
                 $secondHalf = $group->first(fn ($review) => strcasecmp($review->period, 'Second Half') === 0);
                 $firstReview = $group->first();
@@ -170,14 +162,15 @@ class ReviewController extends Controller
                     'month' => $firstReview->month,
                     'firstHalf' => $firstHalf,
                     'secondHalf' => $secondHalf,
-                    'combined_total' => $selfAssessmentTotal($firstHalf) + $selfAssessmentTotal($secondHalf),
+                    'combined_total' => $this->resolveSelfReviewTotal($firstHalf) + $this->resolveSelfReviewTotal($secondHalf),
+                    'system_review_total' => $this->resolveSystemReviewTotal($firstHalf) + $this->resolveSystemReviewTotal($secondHalf),
                 ];
             })
             ->map(function ($group) {
                 $group->objective = $this->buildObjectiveReviewResult(
                     (int) ($group->employee->id ?? 0),
                     $group->month,
-                    (float) $group->combined_total
+                    (float) $group->system_review_total
                 );
 
                 return $group;
@@ -227,6 +220,32 @@ class ReviewController extends Controller
             'canViewReviewAnalytics',
             'employeeRecord'
         ));
+    }
+
+    protected function resolveSelfReviewTotal(?EmployeeReview $review): float
+    {
+        if (!$review) {
+            return 0;
+        }
+
+        return (float) $review->self_total;
+    }
+
+    protected function resolveSystemReviewTotal(?EmployeeReview $review): float
+    {
+        if (!$review) {
+            return 0;
+        }
+
+        if ((float) $review->admin_total > 0) {
+            return (float) $review->admin_total;
+        }
+
+        if ((float) $review->author_total > 0) {
+            return (float) $review->author_total;
+        }
+
+        return 0;
     }
 
     private function buildObjectiveReviewResult(int $employeeId, string $month, float $reviewTotal): array

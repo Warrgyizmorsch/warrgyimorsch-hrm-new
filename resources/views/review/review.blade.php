@@ -576,11 +576,11 @@
                 ];
                 $breakdownRows = [
                     [
-                        'criteria' => 'Monthly self-assessment',
-                        'basis' => '1-15 self score + 16-30 self score',
-                        'raw' => $scoreText($reviewGroup->combined_total),
+                        'criteria' => 'Team Leader assessment',
+                        'basis' => '1-15 team leader score + 16-30 team leader score',
+                        'raw' => $scoreText($reviewGroup->system_review_total),
                         'cap' => '100',
-                        'marks' => '+' . $scoreText($reviewGroup->combined_total),
+                        'marks' => '+' . $scoreText($reviewGroup->system_review_total),
                     ],
                     [
                         'criteria' => 'Late arrivals',
@@ -619,8 +619,8 @@
                     ],
                     [
                         'criteria' => 'Final system result',
-                        'basis' => 'self-assessment - total penalties + total bonuses',
-                        'raw' => $scoreText($reviewGroup->combined_total) . ' - ' . $scoreText($objective['penalty'] ?? 0) . ' + ' . $scoreText($objective['bonus'] ?? 0),
+                        'basis' => 'team leader assessment - total penalties + total bonuses',
+                        'raw' => $scoreText($reviewGroup->system_review_total) . ' - ' . $scoreText($objective['penalty'] ?? 0) . ' + ' . $scoreText($objective['bonus'] ?? 0),
                         'cap' => '0 to 100',
                         'marks' => $scoreText($objective['score'] ?? 0) . ' / 100',
                     ],
@@ -651,6 +651,7 @@
                                 <div><b>Department</b><span>{{ $reviewGroup->employee->department ?? 'N/A' }}</span></div>
                                 <div><b>Rank</b><span>#{{ $objective['rank'] ?? '-' }}</span></div>
                                 <div><b>Self Assessment</b><span>{{ $scoreText($reviewGroup->combined_total) }}/100</span></div>
+                                <div><b>Team Leader Assessment</b><span>{{ $scoreText($reviewGroup->system_review_total) }}/100</span></div>
                             </div>
 
                             <h6 class="review-report-section-title">Objective Parameters</h6>
