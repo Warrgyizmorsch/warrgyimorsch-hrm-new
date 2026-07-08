@@ -27,7 +27,7 @@ class AttendanceImport implements ToCollection
 
             if (!$employeeCode || !$dateTimeRaw) continue;
 
-            $employee = Employee::where('employee_code', $employeeCode)->first();
+            $employee = Employee::with('user')->where('employee_code', $employeeCode)->first();
 
             if (!$employee) {
                 \Log::warning('Employee not found', [
@@ -46,6 +46,10 @@ class AttendanceImport implements ToCollection
                 }
             } catch (\Exception $e) {
                 \Log::error('Date parse failed', ['value' => $dateTimeRaw]);
+                continue;
+            }
+
+            if ($this->isAfterLastWorkingDay($employee, $dateTime)) {
                 continue;
             }
 
@@ -94,7 +98,7 @@ class AttendanceImport implements ToCollection
         // Mark absent / approved leave / WFH for employees who have no punch on imported dates
         $allDates = array_unique($allDates);
 
-        $employees = Employee::all();
+        $employees = Employee::active()->get();
 
         foreach ($employees as $employee) {
             foreach ($allDates as $date) {
@@ -182,6 +186,24 @@ class AttendanceImport implements ToCollection
                 ]);
             }
         }
+    }
+
+    /**
+     * Guard against stale imported punches for employees who have already left.
+     */
+    private function isAfterLastWorkingDay(Employee $employee, Carbon $punchDate): bool
+    {
+        $user = $employee->user;
+
+        if (!$user || $user->account_status !== 'inactive') {
+            return false;
+        }
+
+        if (!$user->last_working_day) {
+            return true;
+        }
+
+        return $punchDate->toDateString() > $user->last_working_day->toDateString();
     }
 
     private function getAttendanceDateByShift(Carbon $punch, $shiftStart, $shiftEnd)

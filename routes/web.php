@@ -17,6 +17,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\VacancyController;
+use App\Http\Controllers\CandidateController;
 use App\Http\Controllers\ZKTController;
 use App\Http\Controllers\AssetController;
 
@@ -216,10 +217,17 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     Route::get('/payroll/attendance/details', [PayrollController::class, 'getAttendanceDetails'])->name('payroll.attendance.details');
     Route::get('/job-vacancy', [VacancyController::class, 'show'])->name('vacancy.show');
     Route::post('/job-vacancy/store', [VacancyController::class, 'store'])->name('job.store');
+    Route::get('/job-vacancy/{id}/edit', [VacancyController::class, 'edit'])->name('vacancy.edit');
+    Route::put('/job-vacancy/{id}', [VacancyController::class, 'update'])->name('vacancy.update');
+    Route::delete('/job-vacancy/{id}', [VacancyController::class, 'destroy'])->name('vacancy.destroy');
+    Route::post('/job-vacancy/bulk-delete', [VacancyController::class, 'bulkDestroy'])->name('vacancy.bulk-delete');
     Route::post('/job-applications/update-status/{id}', [VacancyController::class, 'updateStatus']);
     Route::get('/job-requirement', [VacancyController::class, 'showRequirements'])->name('requirement.show');
     Route::post('/job-requirement/store', [VacancyController::class, 'storeRequirement'])->name('requirement.store');
+    Route::delete('/job-requirement/{id}', [VacancyController::class, 'destroyRequirement'])->name('requirement.destroy');
     Route::post('/job-requirement/update-status', [VacancyController::class, 'updateStatusofRequirement'])->name('requirements.update-status');
+    Route::get('/candidates', [CandidateController::class, 'index'])->name('candidates.index');
+    Route::get('/candidates/{id}', [CandidateController::class, 'show'])->name('candidates.show');
 
     Route::get('/broadcast', [BroadcastController::class, 'index'])->name('broadcasts.index');
   

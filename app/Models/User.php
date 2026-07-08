@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'employee_id',
         'account_status',
+        'last_working_day',
         'birthday_wish_dismissed_year',
     ];
 
@@ -48,6 +49,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'last_working_day' => 'date',
         ];
     }
 

@@ -11,14 +11,37 @@ class JobRequirement extends Model
 
     protected $fillable = [
         'role_id',
+        'department_id',
         'priority',
         'date',
         'candidate_type',
         'minimum_experience',
-        'skills'
+        'positions_count',
+        'skills',
+        'status',
     ];
 
     protected $casts = [
         'skills' => 'array',
     ];
+
+    public function designation()
+    {
+        return $this->belongsTo(Designation::class, 'role_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function applications()
+    {
+        return $this->hasMany(JobApplication::class, 'job_requirement_id');
+    }
+
+    public function hiredApplicationsCount(): int
+    {
+        return $this->applications()->where('status', 'hired')->count();
+    }
 }

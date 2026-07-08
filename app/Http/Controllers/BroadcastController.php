@@ -6,6 +6,7 @@ use App\Models\Department;
 use Carbon\Carbon;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BroadcastController extends Controller
 {
@@ -18,9 +19,28 @@ class BroadcastController extends Controller
             $perPage = 20;
         }
 
-        $broadcasts = Broadcast::orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
+        $query = Broadcast::withCount('readByUsers')->orderBy('created_at', 'desc');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('message', 'like', "%{$search}%")
+                    ->orWhere('department', 'like', "%{$search}%");
+            });
+        }
+
+        $broadcasts = $query->paginate($perPage)->withQueryString();
         $departments = Department::orderBy('name', 'asc')->get();
-        return view('broadcast.index', compact('broadcasts', 'departments', 'perPage'));
+
+        $totalBroadcasts = Broadcast::count();
+        $sentThisMonth = Broadcast::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count();
+        $totalReads = DB::table('broadcast_user')->count();
+        $avgReads = $totalBroadcasts > 0 ? round($totalReads / $totalBroadcasts, 1) : 0;
+
+        return view('broadcast.index', compact(
+            'broadcasts', 'departments', 'perPage',
+            'totalBroadcasts', 'sentThisMonth', 'totalReads', 'avgReads'
+        ));
     }
 
     // Save standard entries

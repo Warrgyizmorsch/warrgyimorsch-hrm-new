@@ -565,7 +565,7 @@
             // AJAX navigation for pagination and entries dropdown inside container
             document.addEventListener('click', function(e) {
                 const ajaxLink = e.target.closest('#attendanceTableContainer a');
-                if (ajaxLink && (ajaxLink.closest('.pagination') || ajaxLink.closest('.dropdown-menu'))) {
+                if (ajaxLink && (ajaxLink.closest('.pagination') || ajaxLink.closest('.wghrm-custom-dropdown-menu'))) {
                     const targetUrl = ajaxLink.getAttribute('href');
                     if (targetUrl && targetUrl !== 'javascript:void(0)' && !targetUrl.startsWith('#')) {
                         e.preventDefault();

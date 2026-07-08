@@ -39,6 +39,7 @@
                                         <i class="bi bi-hash"></i>
                                         <input type="text" name="employee_code" class="form-control" placeholder="Enter employee code"
                                             value="{{ old('employee_code') }}">
+                                        <input type="hidden" name="from_job_application_id" value="{{ old('from_job_application_id') }}">
                                     </div>
                                 </div>
                                 <div class="hrm-field">

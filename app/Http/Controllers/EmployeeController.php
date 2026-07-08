@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Role;
+use App\Models\JobApplication;
 use App\Services\AttendanceHistoryService;
 
 class EmployeeController extends Controller
@@ -189,6 +190,12 @@ class EmployeeController extends Controller
 
                 // Create employee
                 $employee = Employee::create($data);
+
+                // Link back to the recruitment pipeline if this employee was created from a hired application
+                if ($request->filled('from_job_application_id')) {
+                    JobApplication::where('id', $request->from_job_application_id)
+                        ->update(['hired_employee_id' => $employee->id]);
+                }
 
                 // Create User for login if email is present
                 if ($request->filled('email')) {
@@ -554,13 +561,24 @@ class EmployeeController extends Controller
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'status' => 'required|in:active,inactive',
+            'last_working_day' => 'nullable|date',
         ]);
 
         $user = User::findOrFail($request->user_id);
 
-        $user->update([
-            'account_status' => $request->status
-        ]);
+        if ($request->status === 'inactive') {
+            $user->update([
+                'account_status' => 'inactive',
+                'last_working_day' => $request->filled('last_working_day')
+                    ? $request->last_working_day
+                    : now()->toDateString(),
+            ]);
+        } else {
+            $user->update([
+                'account_status' => 'active',
+                'last_working_day' => null,
+            ]);
+        }
 
         return response()->json([
             'success' => true,

@@ -36,7 +36,7 @@ class PayrollController extends Controller
         $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
         $isTeamLeader = in_array($role, ['team_leader']);
 
-        $query = Attendance::query();
+        $query = Attendance::query()->visible();
 
         $query->join('employees', 'attendances.employee_id', '=', 'employees.id');
         $query->whereDate('attendances.attendance_date', '<=', now()->toDateString());
@@ -140,7 +140,7 @@ class PayrollController extends Controller
             $isTeamLeader = in_array($role, ['team_leader']);
 
             $date = $request->date;
-            $query = Attendance::with('employee')->where('attendance_date', $date);
+            $query = Attendance::with('employee')->visible()->where('attendance_date', $date);
 
             if ($isTeamLeader) {
                 $department = $user->employee->department ?? null;
@@ -198,7 +198,7 @@ class PayrollController extends Controller
         $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
         $isTeamLeader = in_array($role, ['team_leader']);
 
-        $query = Attendance::with('employee')->join('employees', 'attendances.employee_id', '=', 'employees.id');
+        $query = Attendance::with('employee')->visible()->join('employees', 'attendances.employee_id', '=', 'employees.id');
 
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
@@ -1046,6 +1046,7 @@ class PayrollController extends Controller
     public function editByDate($attendance_date)
     {
         $attendances = Attendance::with('employee')
+            ->visible()
             ->whereDate('attendance_date', $attendance_date)
             ->get();
 
@@ -1093,6 +1094,32 @@ class PayrollController extends Controller
 
             return $employee;
         });
+
+        // Punch-aware priority: judge by actual check-in/check-out presence first (not just the
+        // stored status label, which can be blank/stale), so problem rows always float to the top.
+        $punchlessStatuses = ['wfh', 'leave', 'half_day_leave', 'unpaid_leave'];
+
+        $employees = $employees
+            ->sortBy(function ($employee) use ($punchlessStatuses) {
+                $hasCheckIn = filled($employee->old_check_in);
+                $hasCheckOut = filled($employee->old_check_out);
+                $status = $employee->old_status;
+
+                if ($hasCheckIn xor $hasCheckOut) {
+                    $priority = 0; // one punch missing
+                } elseif (!$hasCheckIn && !$hasCheckOut && !in_array($status, $punchlessStatuses, true)) {
+                    $priority = 1; // both punches missing (absent / unauthorised / unmarked)
+                } elseif ($status === 'wfh') {
+                    $priority = 2;
+                } elseif ($status === 'present') {
+                    $priority = 3;
+                } else {
+                    $priority = 4; // leave, half day, late, etc.
+                }
+
+                return sprintf('%d-%s', $priority, strtolower($employee->name));
+            })
+            ->values();
 
         return view('payroll.add-attendance', [
             'employees' => $employees,
@@ -1314,6 +1341,7 @@ class PayrollController extends Controller
         $employees = $empQuery->get();
 
         $query = Attendance::query()
+            ->visible()
             ->join('employees', 'attendances.employee_id', '=', 'employees.id')
             ->select(array_merge(
                 [

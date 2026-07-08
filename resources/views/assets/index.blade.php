@@ -26,7 +26,7 @@
 
     <div class="main-content pt-4" style="font-family: 'Inter', sans-serif;">
         <!-- Switcher Tabs -->
-        <div class="d-flex justify-content-start mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
             <div class="tickets-switcher" style="display: inline-flex; background: #f1f5f9; padding: 5px; border-radius: 30px; gap: 4px; border: 1px solid #e2e8f0; overflow-x: auto; max-width: 100%;">
                 <button class="switcher-btn active" id="tab-inventory-btn" onclick="switchAssetTab('inventory')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s; white-space: nowrap;">
                     Asset Inventory
@@ -47,6 +47,11 @@
                     Returned Assets
                 </button>
             </div>
+            <a href="javascript:void(0);" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm flex-shrink-0"
+                style="border-radius: 10px; background: #3858f9; border: none; height: 44px;"
+                data-bs-toggle="modal" data-bs-target="#addAssetModal">
+                <i class="feather-plus"></i> Add Asset
+            </a>
         </div>
 
         <!-- Inventory Tab Section -->

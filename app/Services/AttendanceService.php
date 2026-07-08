@@ -19,9 +19,13 @@ class AttendanceService
             $employeeCode = $row['employee_code'];
             $dateTime = Carbon::parse($row['timestamp']);
 
-            $employee = Employee::where('employee_code', $employeeCode)->first();
+            $employee = Employee::with('user')->where('employee_code', $employeeCode)->first();
 
             if (!$employee) {
+                continue;
+            }
+
+            if ($this->isAfterLastWorkingDay($employee, $dateTime)) {
                 continue;
             }
 
@@ -49,6 +53,24 @@ class AttendanceService
                 ]
             );
         }
+    }
+
+    /**
+     * Guard against stale punches for employees who have already left.
+     */
+    private function isAfterLastWorkingDay(Employee $employee, Carbon $punchDate): bool
+    {
+        $user = $employee->user;
+
+        if (!$user || $user->account_status !== 'inactive') {
+            return false;
+        }
+
+        if (!$user->last_working_day) {
+            return true;
+        }
+
+        return $punchDate->toDateString() > $user->last_working_day->toDateString();
     }
 
     /**

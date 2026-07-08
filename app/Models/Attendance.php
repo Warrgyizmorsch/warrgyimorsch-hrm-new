@@ -32,6 +32,38 @@ class Attendance extends Model
     }
 
     /**
+     * Hide attendance dated after an inactive employee's last working day.
+     * Employees marked inactive without a recorded last working day are hidden entirely
+     * (last_working_day is always set by EmployeeController::updateAccountStatus).
+     */
+    public function scopeVisible($query)
+    {
+        $cutoffs = User::where('account_status', 'inactive')
+            ->whereNotNull('employee_id')
+            ->pluck('last_working_day', 'employee_id');
+
+        if ($cutoffs->isEmpty()) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($cutoffs) {
+            $q->whereNotIn('employee_id', $cutoffs->keys())
+                ->orWhere(function ($orQ) use ($cutoffs) {
+                    foreach ($cutoffs as $employeeId => $lastWorkingDay) {
+                        $orQ->orWhere(function ($inner) use ($employeeId, $lastWorkingDay) {
+                            $inner->where('employee_id', $employeeId);
+                            if ($lastWorkingDay) {
+                                $inner->whereDate('attendance_date', '<=', $lastWorkingDay);
+                            } else {
+                                $inner->whereRaw('1 = 0');
+                            }
+                        });
+                    }
+                });
+        });
+    }
+
+    /**
      * Read punch time directly from DB (TIME column) — avoids timezone shifts from Carbon casts.
      */
     public function getRawPunchTime(string $field): ?string

@@ -252,6 +252,9 @@
             padding: 30px;
             font-family: 'Outfit', sans-serif;
             box-sizing: border-box;
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
         }
 
         /* Fix for squashed layout on mobile */
@@ -425,9 +428,10 @@
         /* Grid */
         .premium-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 32px;
             max-width: 1400px;
+            width: 100%;
             margin: 0 auto;
         }
 
@@ -435,6 +439,7 @@
         .premium-card-wrapper {
             perspective: 2000px;
             transition: all 0.3s ease;
+            min-width: 0;
         }
 
         .premium-card {
@@ -447,6 +452,8 @@
             box-shadow: var(--shadow-soft);
             border: 1px solid #f1f5f9;
             min-height: 380px;
+            min-width: 0;
+            width: 100%;
             display: flex;
             flex-direction: column;
         }
@@ -592,15 +599,16 @@
             border: 1px solid #e2e8f0;
             border-radius: 12px;
             padding: 14px;
-            font-size: 16px;
+            font-size: 14px;
             color: #334155;
             line-height: 1.5;
-            height: 180px;
-            max-height: 100px;
+            min-height: 90px;
+            max-height: 130px;
             overflow-y: auto;
             white-space: normal;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         /* Custom Scrollbar for Description Box */

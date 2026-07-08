@@ -262,6 +262,12 @@
                                     <span class="nxl-mtext">Job Requirement</span>
                                 </a>
                             </li>
+                            <li class="nxl-item">
+                                <a href="{{ route('candidates.index') }}" class="nxl-link">
+                                    <span class="nxl-micon"><i class="feather-users"></i></span>
+                                    <span class="nxl-mtext">Candidates</span>
+                                </a>
+                            </li>
                         </ul>
                     </li>
                 @endif

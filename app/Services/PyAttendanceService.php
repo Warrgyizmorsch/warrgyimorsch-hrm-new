@@ -23,7 +23,7 @@ class PyAttendanceService
                 continue;
             }
 
-            $employee = Employee::where('employee_code', $employeeCode)->first();
+            $employee = Employee::with('user')->where('employee_code', $employeeCode)->first();
 
             if (!$employee) {
                 \Log::warning('Employee not found', [
@@ -35,6 +35,10 @@ class PyAttendanceService
             try {
                 $dateTime = Carbon::parse($dateTimeRaw);
             } catch (\Exception $e) {
+                continue;
+            }
+
+            if ($this->isAfterLastWorkingDay($employee, $dateTime)) {
                 continue;
             }
 
@@ -82,7 +86,7 @@ class PyAttendanceService
         }
 
         $allDates = array_unique($allDates);
-        $employees = Employee::all();
+        $employees = Employee::active()->get();
 
         foreach ($employees as $employee) {
             foreach ($allDates as $date) {
@@ -155,6 +159,24 @@ class PyAttendanceService
                 ]);
             }
         }
+    }
+
+    /**
+     * Guard against stale biometric punches for employees who have already left.
+     */
+    private function isAfterLastWorkingDay(Employee $employee, Carbon $punchDate): bool
+    {
+        $user = $employee->user;
+
+        if (!$user || $user->account_status !== 'inactive') {
+            return false;
+        }
+
+        if (!$user->last_working_day) {
+            return true;
+        }
+
+        return $punchDate->toDateString() > $user->last_working_day->toDateString();
     }
 
 }

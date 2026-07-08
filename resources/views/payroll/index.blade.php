@@ -54,7 +54,7 @@
                                         <input type="text" class="wghrm-custom-search-input" placeholder="Search employee..."
                                             onkeyup="wghrmFilterItems(this)" onclick="event.stopPropagation();" onkeydown="event.stopPropagation();">
                                     </div>
-                                    @foreach(\App\Models\Employee::all() as $emp)
+                                    @foreach(\App\Models\Employee::active()->orderBy('name')->get() as $emp)
                                         <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);"
                                             onclick="document.getElementById('salaryEmployeeId').value='{{ $emp->id }}'; document.getElementById('salaryEmployeeBtn').innerText='{{ addslashes($emp->name) }}'; bootstrap.Dropdown.getInstance(this.closest('.dropdown').querySelector('.dropdown-toggle')).hide();">
                                             {{ $emp->name }}
@@ -98,7 +98,7 @@
                                 <a class="dropdown-item wghrm-custom-dropdown-item {{ !request('employee_id') ? 'active' : '' }}"
                                     href="javascript:void(0);"
                                     onclick="document.getElementById('employeeFilter').value=''; document.getElementById('employeeFilterBtn').innerText='All Employees';">All Employees</a>
-                                @foreach(\App\Models\Employee::all() as $emp)
+                                @foreach(\App\Models\Employee::active()->orderBy('name')->get() as $emp)
                                     <a class="dropdown-item wghrm-custom-dropdown-item {{ request('employee_id') == $emp->id ? 'active' : '' }}"
                                         href="javascript:void(0);"
                                         onclick="document.getElementById('employeeFilter').value='{{ $emp->id }}'; document.getElementById('employeeFilterBtn').innerText='{{ addslashes($emp->name) }}';">

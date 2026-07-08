@@ -2169,24 +2169,24 @@
             });
 
 
-            $(document).on('change', '.account-status', function () {
-                let status = $(this).val();
-                let userId = $(this).data('user-id');
+            function submitAccountStatus(select, status, lastWorkingDay) {
+                let userId = $(select).data('user-id');
                 $.ajax({
                     url: "{{ route('users.update-accountStatus') }}",
                     type: "POST",
                     data: {
                         _token: $('meta[name="csrf-token"]').attr('content'),
                         user_id: userId,
-                        status: status
+                        status: status,
+                        last_working_day: lastWorkingDay || null
                     },
-                    
                     success: function(response) {
                         if (typeof toastr !== 'undefined') {
                             toastr.success(response.message);
                         } else {
                             alert(response.message);
                         }
+                        setTimeout(() => window.location.reload(), 600);
                     },
                     error: function() {
                         if (typeof toastr !== 'undefined') {
@@ -2196,6 +2196,42 @@
                         }
                     }
                 });
+            }
+
+            $(document).on('change', '.account-status', function () {
+                const select = this;
+                const status = $(select).val();
+                const previousStatus = status === 'inactive' ? 'active' : 'inactive';
+
+                if (status === 'inactive') {
+                    Swal.fire({
+                        title: 'Mark employee as left?',
+                        html: 'Attendance and payroll will stop counting them after this date.',
+                        input: 'date',
+                        inputLabel: 'Last working day',
+                        inputValue: new Date().toISOString().slice(0, 10),
+                        inputAttributes: { max: new Date().toISOString().slice(0, 10) },
+                        showCancelButton: true,
+                        confirmButtonColor: '#1070e0',
+                        cancelButtonColor: '#64748b',
+                        confirmButtonText: 'Mark inactive',
+                        cancelButtonText: 'Cancel',
+                        reverseButtons: true,
+                        customClass: {
+                            confirmButton: 'btn btn-primary px-4',
+                            cancelButton: 'btn btn-light-brand px-4 me-3'
+                        },
+                        buttonsStyling: false
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            submitAccountStatus(select, 'inactive', result.value);
+                        } else {
+                            $(select).val(previousStatus);
+                        }
+                    });
+                } else {
+                    submitAccountStatus(select, 'active', null);
+                }
             });
 
             // Filter drawer: search filter fields

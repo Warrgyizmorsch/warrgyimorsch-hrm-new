@@ -184,9 +184,13 @@
                                                 <option value="" {{ !$statusVal ? 'selected' : '' }}>— Select —</option>
                                                 <option value="present" {{ $statusVal == 'present' ? 'selected' : '' }}>Present</option>
                                                 <option value="absent" {{ $statusVal == 'absent' ? 'selected' : '' }}>Absent</option>
+                                                <option value="missing_punch" {{ $statusVal == 'missing_punch' ? 'selected' : '' }}>Missing Punch</option>
                                                 <option value="half_day" {{ $statusVal == 'half_day' ? 'selected' : '' }}>Half Day</option>
+                                                <option value="half_day_leave" {{ $statusVal == 'half_day_leave' ? 'selected' : '' }}>Half Day Leave</option>
                                                 <option value="wfh" {{ $statusVal == 'wfh' ? 'selected' : '' }}>WFH</option>
                                                 <option value="leave" {{ $statusVal == 'leave' ? 'selected' : '' }}>Leave</option>
+                                                <option value="unpaid_leave" {{ $statusVal == 'unpaid_leave' ? 'selected' : '' }}>Unpaid Leave</option>
+                                                <option value="unauthorised" {{ $statusVal == 'unauthorised' ? 'selected' : '' }}>Unauthorised</option>
                                                 <option value="late" {{ $statusVal == 'late' ? 'selected' : '' }}>Late</option>
                                                 <option value="activity" {{ $statusVal == 'activity' ? 'selected' : '' }}>Activity</option>
                                                 <option value="early_leave" {{ $statusVal == 'early_leave' ? 'selected' : '' }}>Early Leave</option>
