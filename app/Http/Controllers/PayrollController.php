@@ -8,6 +8,8 @@ use App\Models\LeaveApplication;
 use App\Models\LeaveAllotment;
 use App\Models\Employee;
 use App\Models\Holiday;
+use App\Services\AttendanceHistoryService;
+use App\Services\AttendanceStatusService;
 use App\Services\LeaveBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -153,37 +155,33 @@ class PayrollController extends Controller
 
             $details = $query->get();
             $holiday = Holiday::whereDate('date', $date)->first();
-            if ($holiday) {
-                $details->each(function ($attendance) use ($holiday) {
+            $dateKey = $date ? Carbon::parse($date)->format('Y-m-d') : null;
+            $activityDays = $dateKey ? Attendance::computeActivityDays([$dateKey]) : [];
+            $isActivityDay = (bool) ($activityDays[$dateKey] ?? false);
+
+            $details->each(function ($attendance) use ($holiday, $isActivityDay) {
+                if ($holiday) {
                     $attendance->is_holiday = true;
                     $attendance->holiday_title = $holiday->title;
-                });
-            }
-
-            $earlyOuts = 0;
-            $totalPresent = 0;
-            foreach ($details as $att) {
-                if ($att->status && in_array(strtolower($att->status), ['present', 'early_out', 'early_leave'])) {
-                    if ($att->check_out && $att->employee && $att->employee->time_out) {
-                        $totalPresent++;
-                        try {
-                            $punchTime = date('H:i', strtotime($att->check_out));
-                            if ($punchTime >= '15:00' && $punchTime < '17:30') {
-                                $earlyOuts++;
-                            }
-                        } catch (\Exception $e) {
-                        }
-                    }
                 }
-            }
 
-            $isActivity = ($totalPresent > 2 && ($earlyOuts / $totalPresent) >= 0.7);
+                $resolved = AttendanceStatusService::resolveDisplayStatus(
+                    $attendance,
+                    (bool) $holiday,
+                    $isActivityDay
+                );
+
+                $attendance->display_status = $resolved['label'];
+                $attendance->display_status_key = $resolved['key'];
+                $attendance->display_status_class = $resolved['class'];
+                $attendance->is_activity = $resolved['is_activity'];
+            });
 
             return response()->json([
                 'success' => true,
                 'date' => $date ? Carbon::parse($date)->format('d M Y') : '',
                 'data' => $details,
-                'is_activity' => $isActivity
+                'is_activity' => $isActivityDay
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -326,6 +324,7 @@ class PayrollController extends Controller
             $checkOut = !empty($emp['check_out']) ? $emp['check_out'] : null;
 
             $totalHours = 0;
+            $status = strtolower($emp['status'] ?? 'present');
 
             if ($checkIn && $checkOut) {
                 try {
@@ -340,14 +339,7 @@ class PayrollController extends Controller
                     }
 
                     $totalHours = round($diffMinutes / 60, 2);
-                    // ✅ Apply your attendance logic
-                    if ($totalHours >= 8.5) {
-                        $status = 'present';
-                    } elseif ($totalHours >= 4) {
-                        $status = 'half_day';
-                    } else {
-                        $status = 'absent';
-                    }
+                    $status = AttendanceStatusService::resolveStoredStatus($status, $totalHours, true);
                 } catch (\Exception $e) {
                     $totalHours = 0;
                 }
@@ -359,7 +351,7 @@ class PayrollController extends Controller
                 'check_in' => !empty($emp['check_in']) ? $emp['check_in'] : null,
                 'check_out' => !empty($emp['check_out']) ? $emp['check_out'] : null,
                 'total_hours' => $totalHours,
-                'status' => $emp['status'],
+                'status' => $status,
             ]);
         }
 
@@ -390,63 +382,37 @@ class PayrollController extends Controller
             $year = $date->year;
             $monthNum = $date->month;
             $totalDays = $date->daysInMonth;
-            // echo $totalDays;exit;
-            // 📊 Get Attendance
+
+            $leaveSummary = $this->getPayrollLeaveSummary($employee, $date);
+            $historyService = app(AttendanceHistoryService::class);
+            $monthStart = $date->copy()->startOfMonth();
+            $monthEnd = $date->copy()->endOfMonth();
+            $history = $historyService->buildMonthlyHistory((int) $employeeId, $monthStart, $monthEnd);
+            $attendanceDays = $historyService->calculateAttendancePayableDays(
+                (int) $employeeId,
+                $monthStart,
+                $monthEnd
+            );
+
+            // Paid leave already counted in attendance (e.g. half-day leave = 0.5) must not be added twice.
+            $halfDayLeaveAlreadyPaid = 0.0;
+            foreach ($history as $row) {
+                if (($row['status_key'] ?? '') === 'half_day_leave') {
+                    $halfDayLeaveAlreadyPaid += 0.5;
+                }
+            }
+            $leaveDays = max(0, (float) ($leaveSummary['paid_leave_days'] ?? 0) - $halfDayLeaveAlreadyPaid);
+            $overtimeMinutes = 0;
+            $overtimeDays = 0;
+            $overtimeHours = 0;
+            $shiftMinutes = $this->getEmployeeShiftMinutes($employee);
             $records = Attendance::where('employee_id', $employeeId)
                 ->whereYear('attendance_date', $year)
                 ->whereMonth('attendance_date', $monthNum)
                 ->get();
 
-            $leaveSummary = $this->getPayrollLeaveSummary($employee, $date);
-            $leaveDays = $leaveSummary['paid_leave_days'];
-            $leaves = collect();
-
-            $leaveDays = 0;
-            foreach ($leaves as $leave) {
-
-                // If already stored → best case
-                if (!empty($leave->total_days)) {
-                    $leaveDays += $leave->total_days;
-                } else {
-
-                    // fallback (date diff)
-                    $days = $leave->start_date->diffInDays($leave->end_date) + 1;
-                    $leaveDays += $days;
-                }
-            }
-
-            $attendanceDays = 0;
-            $overtimeMinutes = 0;
-            $overtimeDays = 0;
-            $overtimeHours = 0;
-            $shiftMinutes = $this->getEmployeeShiftMinutes($employee);
             foreach ($records as $r) {
-
-                switch ($r->status) {
-
-                    case 'present':
-                    case 'wfh':
-                    case 'late':
-                    case 'missing_punch':
-                    case 'missing_punch':
-                    case 'early_leave':
-                    case 'overtime':
-                        $attendanceDays += 1;
-                        break;
-
-                    case 'half_day':
-                        $attendanceDays += 0.5;
-                        break;
-
-                    case 'absent':
-                    case 'unpaid':
-                    case 'unpaid_leave':
-                    case 'unauthorised':
-                    default:
-                        break;
-                }
-                // 🔥 OVERTIME LOGIC
-
+                // Overtime is still derived from raw attendance hours.
                 if ($r->total_hours > 0) {
                     $workedMinutes = $r->total_hours * 60;
 
@@ -454,24 +420,10 @@ class PayrollController extends Controller
                         $overtimeMinutes += ($workedMinutes - $shiftMinutes);
                     }
                 }
-
             }
 
             $overtimeHours = $overtimeMinutes / 60;
-
-            // Convert to days (for reference)
             $overtimeDays = $overtimeMinutes / $shiftMinutes;
-
-
-            // Leaves
-            $leaveDays = 0;
-
-            foreach ($leaves as $leave) {
-                $leaveDays += $leave->total_days ??
-                    ($leave->start_date->diffInDays($leave->end_date) + 1);
-            }
-
-            $leaveDays = $leaveSummary['paid_leave_days'];
 
             // Final
             $payableDays = min($attendanceDays + $leaveDays, $totalDays);
@@ -490,46 +442,50 @@ class PayrollController extends Controller
                 ($employee->other_allowance ?? 0)
             );
 
-            // Per day salary
+            // Per day salary (base components only — overtime is added separately)
             $perDaySalary = $monthlySalary / $totalDays;
 
-            // Gross Salary
-            $grossSalary = $perDaySalary * $payableDays;
+            // Base gross from payable days (capped at calendar days in month)
+            $baseGrossSalary = $perDaySalary * $payableDays;
+
+            // Overtime pay: 1.5× basic hourly rate (Keka-style — separate from payable days)
+            $shiftHours = max($shiftMinutes / 60, 1);
+            $hourlyBasicRate = ($employee->basic_salary / $totalDays) / $shiftHours;
+            $overtimePay = round($hourlyBasicRate * $overtimeHours * 1.5, 2);
+
+            $grossSalary = $baseGrossSalary + $overtimePay;
 
             // Override (HR control)
             if ($overrideSalary) {
                 $grossSalary = $overrideSalary;
+                $overtimePay = 0;
+                $baseGrossSalary = $overrideSalary;
             }
 
             // 📉 STEP 3: Deductions
+            $otherDeduction = (float) ($request->other_deduction ?? 0);
             $pf = 0;
             $esi = 0;
 
-            $pf = $request->pf ?? $pf;
-            $esi = $request->esi ?? $esi;
-            $otherDeduction = $request->other_deduction ?? 0;
-
-            $totalDeductions = $pf + $esi + $otherDeduction;
-
-            // PF (12% of basic portion only)
+            // PF (12% of earned basic for payable days)
             if ($employee->pf) {
-                $basicMonthly = ($employee->basic_salary ?? 0) / 12;
-                $pf = ($basicMonthly / $totalDays * $payableDays) * 0.12;
+                $earnedBasic = ($employee->basic_salary / $totalDays) * $payableDays;
+                $pf = $earnedBasic * 0.12;
             }
 
-            // ESI (only if salary <= 21000)
-            if ($employee->esi == 0 && $grossSalary <= 21000) {
+            // ESI (0.75% of gross when enabled and gross <= 21000)
+            if ($employee->esi && $grossSalary <= 21000) {
                 $esi = $grossSalary * 0.0075;
             }
 
-            $totalDeductions = $pf + $esi;
+            $totalDeductions = $pf + $esi + $otherDeduction;
 
             // 💵 STEP 4: Net Salary
             $netSalary = max(0, $grossSalary - $totalDeductions);
 
-            // 📉 Salary Loss
+            // 📉 Salary Loss (LOP on base salary only, not overtime)
             $fullMonthSalary = $monthlySalary;
-            $salaryLoss = $fullMonthSalary - $grossSalary;
+            $salaryLoss = $fullMonthSalary - $baseGrossSalary;
 
             // 📦 Final Data
             $payrollData = [
@@ -538,8 +494,11 @@ class PayrollController extends Controller
                 'emp_name' => $employee->name,
                 'overtime_hours' => round($overtimeHours, 2),
                 'overtime_days' => round($overtimeDays, 2),
+                'overtime_pay' => $overtimePay,
+                'base_gross_salary' => round($baseGrossSalary, 2),
                 // Attendance
                 'payable_days' => $payableDays,
+                'attendance_payable_days' => round($attendanceDays, 2),
                 'unpaid_days' => round($unpaidDays, 2),
                 'paid_leave_days' => round($leaveSummary['paid_leave_days'], 2),
                 'unpaid_leave_days' => round($leaveSummary['unpaid_leave_days'], 2),
@@ -570,6 +529,10 @@ class PayrollController extends Controller
                 'net_salary' => round($netSalary, 2),
 
                 'status' => 'pending',
+                'total_days' => $totalDays,
+                'perdaysalary' => round($perDaySalary, 2),
+                'pf_enabled' => (bool) $employee->pf,
+                'esi_enabled' => (bool) $employee->esi,
             ];
 
             // echo "<pre>";print_r($payrollData);exit;
@@ -1031,18 +994,14 @@ class PayrollController extends Controller
      * Export attendance records (Professional Monthly Excel Grid)
      */
     public function exportAttendance(Request $request)
-        {
-            $start = $request->start_date;
-            $end = $request->end_date;
-            $employeeId = $request->employee_id;
+    {
+        $filename = 'attendance_export.xlsx';
 
-            $filename = 'attendance_export.xlsx';
-
-            return Excel::download(
-                new \App\Exports\AttendanceExport($start, $end, $employeeId),
-                $filename
-            );
-        }
+        return Excel::download(
+            new \App\Exports\AttendanceExport($request),
+            $filename
+        );
+    }
     /**
      * Update payroll status
      */
@@ -1203,8 +1162,12 @@ class PayrollController extends Controller
 
             $attendance->check_in = $checkIn;
             $attendance->check_out = $checkOut;
-            $attendance->status = $emp['status'];
             $attendance->total_hours = $totalHours;
+            $attendance->status = AttendanceStatusService::resolveStoredStatus(
+                $emp['status'] ?? $attendance->status ?? 'absent',
+                $totalHours,
+                (bool) ($checkIn && $checkOut)
+            );
 
             $attendance->save();
         }
@@ -1379,15 +1342,14 @@ class PayrollController extends Controller
             $query->where('employees.name', 'like', "%{$search}%");
         }
 
-        // FILTER BY START DATE
-        if ($request->filled('start_date')) {
-            $query->whereDate('attendances.attendance_date', '>=', $request->start_date);
-        }
+        // FILTER BY START DATE / END DATE / QUICK RANGE (single resolved range for list + counts)
+        $historyService = app(AttendanceHistoryService::class);
+        [$listStartDate, $listEndDate] = $historyService->resolveDateRange($request);
+        $listTotalDays = $historyService->countCalendarDays($listStartDate, $listEndDate);
+        $includePaidLeave = $historyService->shouldIncludePaidLeaveForRange($listStartDate, $listEndDate);
 
-        // FILTER BY END DATE
-        if ($request->filled('end_date')) {
-            $query->whereDate('attendances.attendance_date', '<=', $request->end_date);
-        }
+        $query->whereDate('attendances.attendance_date', '>=', $listStartDate->toDateString())
+            ->whereDate('attendances.attendance_date', '<=', $listEndDate->toDateString());
 
         $perPage = (int) $request->query('per_page', 20);
         $allowedPerPage = [20, 50, 100];
@@ -1401,9 +1363,50 @@ class PayrollController extends Controller
             ->paginate($perPage)
             ->appends($request->all());
 
-        
+        $attendance->setCollection(
+            $attendance->getCollection()->map(function ($row) use (
+                $historyService,
+                $listStartDate,
+                $listEndDate,
+                $listTotalDays,
+                $includePaidLeave
+            ) {
+                $history = $historyService->buildMonthlyHistory((int) $row->employee_id, $listStartDate, $listEndDate);
+                $summary = $historyService->buildMonthlySummary($history);
+                $attendancePayableDays = $historyService->calculateAttendancePayableDays(
+                    (int) $row->employee_id,
+                    $listStartDate,
+                    $listEndDate
+                );
+                $employee = Employee::find($row->employee_id);
+                $paidLeaveDays = 0.0;
+                if ($includePaidLeave && $employee) {
+                    $leaveSummary = $this->getPayrollLeaveSummary($employee, $listStartDate->copy()->startOfMonth());
+                    $paidLeaveDays = (float) ($leaveSummary['paid_leave_days'] ?? 0);
+                }
+                $counts = $historyService->summaryToListCounts(
+                    $summary,
+                    $attendancePayableDays,
+                    $paidLeaveDays,
+                    $listTotalDays,
+                    $includePaidLeave
+                );
 
-        return view('payroll.employeeWise', compact('attendance', 'employees', 'perPage'));
+                foreach ($counts as $key => $value) {
+                    $row->{$key} = $value;
+                }
+
+                return $row;
+            })
+        );
+
+        return view('payroll.employeeWise', compact(
+            'attendance',
+            'employees',
+            'perPage',
+            'listStartDate',
+            'listEndDate'
+        ));
     }
 
     public function employeeWiseDetails(Request $request)
@@ -1413,8 +1416,6 @@ class PayrollController extends Controller
             $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
             $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
             $isTeamLeader = in_array($role, ['team_leader']);
-
-            $query = Attendance::with('employee')->where('employee_id', $request->employee_id);
 
             // Security check for Team Leader
             if ($isTeamLeader) {
@@ -1427,66 +1428,16 @@ class PayrollController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unauthorized access.'], 403);
             }
 
-            if ($request->filled('start_date')) {
-                $query->whereDate('attendance_date', '>=', $request->start_date);
-            }
-
-            if ($request->filled('end_date')) {
-                $query->whereDate('attendance_date', '<=', $request->end_date);
-            }
-
-            $records = $query->orderBy('attendance_date', 'desc')->get();
-            $holidayMap = Holiday::whereIn('date', $records->pluck('attendance_date')->unique())
-                ->pluck('title', 'date');
-
-            $records->each(function ($attendance) use ($holidayMap) {
-                $dateKey = Carbon::parse($attendance->attendance_date)->format('Y-m-d');
-                if ($holidayMap->has($dateKey)) {
-                    $attendance->is_holiday = true;
-                    $attendance->holiday_title = $holidayMap->get($dateKey);
-                }
-            });
-
-            // Calculate activity days efficiently (avoid N+1)
-            $activityDays = [];
-            $allDates = $records->pluck('attendance_date')->unique()->toArray();
-
-            if (!empty($allDates)) {
-                $allDailyAtts = Attendance::with('employee')
-                    ->whereIn('attendance_date', $allDates)
-                    ->get()
-                    ->groupBy('attendance_date');
-
-                foreach ($allDailyAtts as $date => $dailyAtts) {
-                    $earlyOuts = 0;
-                    $totalPresent = 0;
-                    foreach ($dailyAtts as $att) {
-                        if ($att->status && in_array(strtolower($att->status), ['present', 'early_out', 'early_leave'])) {
-                            if ($att->check_out && $att->employee && $att->employee->time_out) {
-                                $totalPresent++;
-                                try {
-                                    $punchTime = date('H:i', strtotime($att->check_out));
-                                    if ($punchTime >= '15:00' && $punchTime < '17:30') {
-                                        $earlyOuts++;
-                                    }
-                                } catch (\Exception $e) {
-                                }
-                            }
-                        }
-                    }
-                    if ($totalPresent > 2 && ($earlyOuts / $totalPresent) >= 0.7) {
-                        $activityDays[$date] = true;
-                    }
-                }
-            }
-
+            $historyService = app(AttendanceHistoryService::class);
+            [$startDate, $endDate] = $historyService->resolveDateRange($request, (int) $request->employee_id, true);
             $employeeName = Employee::active()->where('id', $request->employee_id)->value('name');
 
             return response()->json([
                 'success' => true,
                 'employee_name' => $employeeName,
-                'data' => $records,
-                'activity_days' => $activityDays
+                'data' => $historyService->buildDetailPayload((int) $request->employee_id, $startDate, $endDate),
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -1519,6 +1470,7 @@ class PayrollController extends Controller
             $checkOut = $request->check_out[$id] ?? null;
 
             $totalHours = null;
+            $status = strtolower($request->status[$id] ?? 'absent');
 
             // Calculate total working hours
             if ($checkIn && $checkOut) {
@@ -1532,12 +1484,13 @@ class PayrollController extends Controller
 
                 $minutes = $inTime->diffInMinutes($outTime);
                 $totalHours = round($minutes / 60, 2);
+                $status = AttendanceStatusService::resolveStoredStatus($status, $totalHours, true);
             }
 
             Attendance::where('id', $id)->update([
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
-                'status' => $request->status[$id] ?? 'absent',
+                'status' => $status,
                 'total_hours' => $totalHours
             ]);
         }
@@ -1885,12 +1838,21 @@ class PayrollController extends Controller
     private function attendanceAggregateSelectColumns(): array
     {
         $holiday = $this->attendanceHolidayExistsSql();
+        $fullDay = AttendanceStatusService::punchDerivedFullDaySql();
+        $halfDay = AttendanceStatusService::punchDerivedHalfDaySql();
 
         return [
-            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status IN ('present', 'late') OR (attendances.status = 'absent' AND {$holiday}) THEN attendances.id END) as present_count"),
+            DB::raw("COUNT(DISTINCT CASE
+                WHEN attendances.status IN ('present', 'late', 'wfh', 'missing_punch', 'early_out', 'early_leave', 'overtime')
+                    OR ({$fullDay})
+                    OR (attendances.status = 'absent' AND {$holiday})
+                THEN attendances.id END) as present_count"),
             DB::raw('COUNT(DISTINCT CASE WHEN attendances.total_hours > 9.5 THEN attendances.id END) as overtime_count'),
-            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'half_day' THEN attendances.id END) as half_day_count"),
-            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'leave' THEN attendances.id END) as leave_count"),
+            DB::raw("COUNT(DISTINCT CASE
+                WHEN attendances.status = 'half_day_leave'
+                    OR ({$halfDay})
+                THEN attendances.id END) as half_day_count"),
+            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status IN ('leave', 'half_day_leave', 'unpaid_leave') THEN attendances.id END) as leave_count"),
             DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'absent' AND NOT ({$holiday}) THEN attendances.id END) as absent_count"),
             DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'wfh' THEN attendances.id END) as wfh_count"),
             DB::raw($this->attendanceEarlyOutCountSql() . ' as early_count'),
@@ -1899,27 +1861,16 @@ class PayrollController extends Controller
 
     private function attendanceEarlyOutCountSql(): string
     {
+        $fullDay = AttendanceStatusService::FULL_DAY_HOURS;
+
         return "COUNT(DISTINCT CASE
-            WHEN attendances.status IN ('early_leave', 'early_out') THEN attendances.id
-            WHEN attendances.check_out IS NOT NULL AND (
-                (
-                    attendances.status IN ('present', 'late')
-                    AND employees.time_out IS NOT NULL
-                    AND TIME(attendances.check_out) <= SUBTIME(TIME(employees.time_out), '00:30:00')
-                )
-                OR (
-                    attendances.status = 'half_day'
-                    AND employees.time_in IS NOT NULL
-                    AND employees.time_out IS NOT NULL
-                    AND TIME(attendances.check_out) <= SUBTIME(
-                        ADDTIME(
-                            TIME(employees.time_in),
-                            SEC_TO_TIME(TIME_TO_SEC(TIMEDIFF(employees.time_out, employees.time_in)) / 2)
-                        ),
-                        '00:30:00'
-                    )
-                )
-            ) THEN attendances.id
+            WHEN attendances.status IN ('early_leave', 'early_out', 'present_activity') THEN attendances.id
+            WHEN attendances.check_in IS NOT NULL
+                AND attendances.check_out IS NOT NULL
+                AND COALESCE(attendances.total_hours, 0) >= {$fullDay}
+                AND TIME(attendances.check_out) >= '15:00:00'
+                AND TIME(attendances.check_out) < '17:30:00'
+            THEN attendances.id
         END)";
     }
 }

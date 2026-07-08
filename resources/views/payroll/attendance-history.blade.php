@@ -34,6 +34,36 @@
             </div>
         </div>
 
+        @if(!empty($history))
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2 att-history-summary">
+                        @php
+                            $chips = [
+                                ['label' => 'Present', 'count' => $summary['present'] ?? 0, 'class' => 'bg-soft-success text-success'],
+                                ['label' => 'Half Day', 'count' => $summary['half_day'] ?? 0, 'class' => 'bg-soft-warning text-warning'],
+                                ['label' => 'Leave', 'count' => $summary['leave'] ?? 0, 'class' => 'bg-soft-info text-info'],
+                                ['label' => 'WFH', 'count' => $summary['wfh'] ?? 0, 'class' => 'bg-soft-primary text-primary'],
+                                ['label' => 'Early Out', 'count' => $summary['early_out'] ?? 0, 'class' => 'bg-soft-info text-info'],
+                                ['label' => 'Absent', 'count' => $summary['absent'] ?? 0, 'class' => 'bg-soft-danger text-danger'],
+                                ['label' => 'Missing Punch', 'count' => $summary['missing_punch'] ?? 0, 'class' => 'bg-soft-warning text-warning'],
+                                ['label' => 'Unpaid Leave', 'count' => $summary['unpaid_leave'] ?? 0, 'class' => 'bg-soft-danger text-danger'],
+                                ['label' => 'Holiday', 'count' => $summary['holiday'] ?? 0, 'class' => 'bg-soft-secondary text-secondary'],
+                            ];
+                        @endphp
+                        @foreach($chips as $chip)
+                            @if(($chip['count'] ?? 0) > 0)
+                                <span class="badge px-3 py-2 rounded-pill fw-bold {{ $chip['class'] }}" style="font-size: 11px;">
+                                    {{ $chip['label'] }} <strong>{{ $chip['count'] }}</strong>
+                                </span>
+                            @endif
+                        @endforeach
+                    </div>
+                    <p class="text-muted small mb-0 mt-2">Full day = 8h 30m+ · Half day = 4h to under 8h 30m (by working hours)</p>
+                </div>
+            </div>
+        @endif
+
         <!-- Attendance List -->
         <div class="row">
             <div class="col-12">
@@ -55,12 +85,14 @@
                                 <tbody>
                                     @forelse($history as $index => $item)
                                         @php
-                                            $badgeClass = 'bg-soft-success text-success';
-                                            if (str_contains($item['status'], 'Absent')) $badgeClass = 'bg-soft-danger text-danger';
-                                            elseif (str_contains($item['status'], 'Leave')) $badgeClass = 'bg-soft-info text-info';
-                                            elseif (str_contains($item['status'], 'Half')) $badgeClass = 'bg-soft-warning text-warning';
-                                            elseif (str_contains($item['status'], 'Early') || str_contains($item['status'], 'Wfh') || str_contains($item['status'], 'Activity')) $badgeClass = 'bg-soft-info text-info';
-                                            elseif (str_contains($item['status'], 'Sunday') || str_contains($item['status'], 'Holiday')) $badgeClass = 'bg-soft-secondary text-secondary';
+                                            $badgeMap = [
+                                                'success' => 'bg-soft-success text-success',
+                                                'danger' => 'bg-soft-danger text-danger',
+                                                'warning' => 'bg-soft-warning text-warning',
+                                                'info' => 'bg-soft-info text-info',
+                                                'secondary' => 'bg-soft-secondary text-secondary',
+                                            ];
+                                            $badgeClass = $badgeMap[$item['statusClass'] ?? ''] ?? 'bg-soft-secondary text-secondary';
                                         @endphp
                                         <tr style="height: 70px; border-bottom: 1px solid #f1f5f9;">
                                             <td class="ps-4 fw-bold text-muted" style="font-size: 13px;">{{ $index + 1 }}</td>
@@ -100,27 +132,32 @@
                 <div class="d-md-none">
                     @forelse($history as $index => $item)
                         @php
-                            $badgeClass = 'bg-soft-success text-success';
-                            $statusIcon = 'feather-check-circle';
-                            if (str_contains($item['status'], 'Absent')) {
-                                $badgeClass = 'bg-soft-danger text-danger';
-                                $statusIcon = 'feather-x-circle';
-                            } elseif (str_contains($item['status'], 'Leave')) {
-                                $badgeClass = 'bg-soft-info text-info';
-                                $statusIcon = 'feather-info';
-                            } elseif (str_contains($item['status'], 'Half')) {
-                                $badgeClass = 'bg-soft-warning text-warning';
-                                $statusIcon = 'feather-clock';
-                            } elseif (str_contains($item['status'], 'Sunday') || str_contains($item['status'], 'Holiday')) {
-                                $badgeClass = 'bg-soft-secondary text-secondary';
-                                $statusIcon = 'feather-calendar';
-                            }
+                            $badgeMap = [
+                                'success' => 'bg-soft-success text-success',
+                                'danger' => 'bg-soft-danger text-danger',
+                                'warning' => 'bg-soft-warning text-warning',
+                                'info' => 'bg-soft-info text-info',
+                                'secondary' => 'bg-soft-secondary text-secondary',
+                            ];
+                            $badgeClass = $badgeMap[$item['statusClass'] ?? ''] ?? 'bg-soft-secondary text-secondary';
+                            $statusIcon = match ($item['statusClass'] ?? '') {
+                                'danger' => 'feather-x-circle',
+                                'warning' => 'feather-clock',
+                                'info' => 'feather-info',
+                                'secondary' => 'feather-calendar',
+                                default => 'feather-check-circle',
+                            };
                         @endphp
                         <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px; background: white;">
                             <div class="card-body p-4">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                     <div style="flex: 1;">
-                                        <h6 class="fw-bold text-dark mb-2" style="font-size: 15px;">{{ $item['date'] }}</h6>
+                                        <h6 class="fw-bold text-dark mb-2" style="font-size: 15px;">
+                                            {{ $item['date'] }}
+                                            @if(!empty($item['is_activity']))
+                                                <span class="badge bg-soft-primary text-primary ms-1">Activity</span>
+                                            @endif
+                                        </h6>
                                         <span class="badge {{ $badgeClass }} rounded-pill px-3 py-1 fw-bold" style="font-size: 10px; text-transform: uppercase;">
                                             <i class="{{ $statusIcon }} me-1"></i> {{ $item['status'] }}
                                         </span>

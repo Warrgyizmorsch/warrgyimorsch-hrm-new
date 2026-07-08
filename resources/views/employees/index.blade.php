@@ -196,6 +196,7 @@
                                     <th>Name <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
                                     <th>Role <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
                                     <th>Department <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
+                                    <th class="text-center">PF / ESI / INS</th>
                                     <th class="col-attendance">Attendance</th>
                                     <th class="col-photo">Photo</th>
                                     <th class="col-status">Status <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
@@ -203,19 +204,24 @@
                             </thead>
                             <tbody>
                                 @forelse($employees as $key => $emp)
-                                    <tr class="fade-row" id="emp-row-{{ $emp->id }}"
+                                    @php
+                                        $isInactive = ($emp->user->account_status ?? 'active') === 'inactive';
+                                    @endphp
+                                    <tr class="fade-row {{ $isInactive ? 'employee-row-inactive' : '' }}" id="emp-row-{{ $emp->id }}"
                                         data-employee-id="{{ $emp->id }}" data-employee-dept="{{ $emp->department }}"
                                         data-employee-role="{{ $emp->role }}"
                                         data-employee-search="{{ strtolower($emp->name . ' ' . ($emp->employee_code ?? $emp->id)) }}">
                                         <td><input type="checkbox" class="emp-checkbox" data-id="{{ $emp->id }}"></td>
                                         <td class="col-num">{{ $employees->firstItem() + $key }}</td>
                                         <td>
-                                            <div class="dropdown">
-                                                <a href="javascript:void(0)" class="zoho-link d-flex align-items-center" role="button" data-bs-toggle="dropdown">
+                                            <div class="dropdown employee-name-dropdown">
+                                                <a href="javascript:void(0)" class="zoho-link d-flex align-items-center" role="button"
+                                                    data-bs-toggle="dropdown"
+                                                    data-bs-popper-config='{"strategy":"fixed","modifiers":[{"name":"preventOverflow","options":{"boundary":"viewport","padding":8}},{"name":"flip","options":{"fallbackPlacements":["top-start","bottom-start"]}}]}'>
                                                     <span>{{ $emp->name }}</span>
                                                     <span class="ms-2 text-muted">({{ $emp->employee_code }})</span>
                                                 </a>
-                                                <ul class="dropdown-menu shadow-lg border-0 p-2" style="border-radius:12px;">
+                                                <ul class="dropdown-menu shadow-lg border-0 p-2 employee-name-dropdown-menu" style="border-radius:12px;">
                                                     <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="viewEmployee({{ $emp->id }})"><i class="feather-eye"></i> View Details</a></li>
                                                     @if(in_array(strtolower(auth()->user()->role), ['admin', 'super_admin', 'super admin']))
                                                         <li><a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('employees.edit', $emp->id) }}"><i class="feather-edit-3"></i> Edit Profile</a></li>
@@ -226,6 +232,9 @@
                                         </td>
                                         <td>{{ ucfirst(str_replace('_', ' ', $emp->role)) }}</td>
                                         <td>{{ ucfirst(str_replace('_', ' ', $emp->department)) }}</td>
+                                        <td class="text-center">
+                                            @include('employees.partials.list-benefit-badges', ['employee' => $emp])
+                                        </td>
                                         <td class="col-attendance"><a href="javascript:void(0)" class="zoho-link" onclick="openAttendanceModal({{ $emp->id }}, '{{ $emp->name }}')"><i class="bi bi-calendar3-event"></i></a></td>
                                         <td class="col-photo">
                                             <div class="zoho-emp-photo-wrap">
@@ -239,7 +248,10 @@
                                             </div>
                                         </td>
                                         <td class="col-status">
-                                            <select class="form-select account-status" data-user-id="{{ $emp->user->id ?? $emp->id }}">
+                                            @if($isInactive)
+                                                <span class="employee-inactive-label">Deactivated</span>
+                                            @endif
+                                            <select class="form-select account-status {{ $isInactive ? 'account-status--inactive' : '' }}" data-user-id="{{ $emp->user->id ?? $emp->id }}">
                                                 <option value="active"
                                                     {{ ($emp->user->account_status ?? 'active') == 'active' ? 'selected' : '' }}>
                                                     Active
@@ -252,7 +264,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="8" class="text-center py-5 text-muted">No employees found.</td></tr>
+                                    <tr><td colspan="9" class="text-center py-5 text-muted">No employees found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -261,7 +273,10 @@
                     <!-- MOBILE CARD VIEW -->
                     <div class="d-lg-none px-2 pt-3" id="employeeCardsMobile">
                         @forelse($employees as $emp)
-                            <div class="employee-card-mobile fade-row" data-employee-id="{{ $emp->id }}" 
+                            @php
+                                $isInactive = ($emp->user->account_status ?? 'active') === 'inactive';
+                            @endphp
+                            <div class="employee-card-mobile fade-row {{ $isInactive ? 'employee-row-inactive' : '' }}" data-employee-id="{{ $emp->id }}" 
                                  data-employee-name="{{ strtolower($emp->name . ' ' . ($emp->employee_code ?? $emp->id)) }}"
                                  data-employee-dept="{{ strtolower($emp->department) }}" 
                                  data-employee-role="{{ strtolower($emp->role) }}">
@@ -293,6 +308,15 @@
                                         <span class="detail-label">Department</span>
                                         <span class="detail-value text-truncate">{{ ucfirst(str_replace('_', ' ', $emp->department)) }}</span>
                                     </div>
+                                    <div class="detail-item detail-item--full">
+                                        <span class="detail-label">Benefits</span>
+                                        @include('employees.partials.list-benefit-badges', ['employee' => $emp])
+                                    </div>
+                                    @if($isInactive)
+                                        <div class="detail-item detail-item--full">
+                                            <span class="employee-inactive-label">Deactivated Account</span>
+                                        </div>
+                                    @endif
                                 </div>
 
                                 <div class="emp-mobile-actions">
@@ -338,8 +362,13 @@
                 'employeeFilter' => $employeeFilter ?? '',
                 'roleFilter' => $roleFilter ?? '',
                 'departmentFilter' => $departmentFilter ?? '',
+                'statusFilter' => $statusFilter ?? '',
+                'pfFilter' => $pfFilter ?? '',
+                'esiFilter' => $esiFilter ?? '',
+                'insuranceFilter' => $insuranceFilter ?? '',
             ])->render(),
             'resetUrl' => route('employees.index'),
+            'resetAction' => 'clearFilters()',
         ])
 
         <!-- ICONS -->
@@ -471,6 +500,15 @@
             /* Card overflow for dropdowns */
             .card {
                 overflow: visible !important;
+            }
+
+            /* Employee name action menu — avoid clipping inside table scroll wrapper */
+            #employeeListPanel .table-responsive.zoho-table-wrap {
+                overflow: visible;
+            }
+
+            #employeeListPanel .employee-name-dropdown-menu {
+                z-index: 1080 !important;
             }
             
             /* Fixed Dropdown Search & Select UI */
@@ -767,6 +805,75 @@
                     flex-direction: column;
                     width: 100%;
                 }
+            }
+
+            .emp-benefit-badges {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            .emp-benefit-chip {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 34px;
+                padding: 3px 8px;
+                border-radius: 999px;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.3px;
+                line-height: 1.2;
+            }
+
+            .emp-benefit-chip--yes {
+                background: rgba(34, 197, 94, 0.12);
+                color: #15803d;
+                border: 1px solid rgba(34, 197, 94, 0.25);
+            }
+
+            .emp-benefit-chip--yes i {
+                width: 12px;
+                height: 12px;
+                stroke-width: 3px;
+            }
+
+            .emp-benefit-empty {
+                color: #94a3b8;
+                font-size: 13px;
+            }
+
+            .employee-row-inactive {
+                opacity: 0.72;
+                background-color: #fafafa !important;
+            }
+
+            .employee-row-inactive td {
+                color: #64748b !important;
+            }
+
+            .employee-inactive-label {
+                display: inline-block;
+                margin-bottom: 6px;
+                padding: 2px 8px;
+                border-radius: 999px;
+                background: rgba(239, 68, 68, 0.1);
+                color: #b91c1c;
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+            }
+
+            .account-status--inactive {
+                border-color: #fecaca !important;
+                background: #fff5f5 !important;
+            }
+
+            .detail-item--full {
+                grid-column: 1 / -1;
             }
 
             .table th,
@@ -1654,37 +1761,33 @@
                 const globalSearch = (document.querySelector('.employee-page-search-input')?.value || '').trim();
                 const department = document.getElementById('filterDepartment')?.value || '';
                 const role = document.getElementById('filterRole')?.value || '';
+                const status = document.getElementById('filterStatus')?.value || '';
+                const pf = document.getElementById('filterPf')?.value || '';
+                const esi = document.getElementById('filterEsi')?.value || '';
+                const insurance = document.getElementById('filterInsurance')?.value || '';
 
-                if (employeeId) {
-                    url.searchParams.set('employee_id', employeeId);
-                } else {
-                    url.searchParams.delete('employee_id');
-                }
+                const setOrDelete = (key, value) => {
+                    if (value) {
+                        url.searchParams.set(key, value);
+                    } else {
+                        url.searchParams.delete(key);
+                    }
+                };
 
-                if (globalSearch) {
-                    url.searchParams.set('search', globalSearch);
-                } else {
-                    url.searchParams.delete('search');
-                }
-
-                if (department) {
-                    url.searchParams.set('department', department);
-                } else {
-                    url.searchParams.delete('department');
-                }
-
-                if (role) {
-                    url.searchParams.set('role', role);
-                } else {
-                    url.searchParams.delete('role');
-                }
+                setOrDelete('employee_id', employeeId);
+                setOrDelete('search', globalSearch);
+                setOrDelete('department', department);
+                setOrDelete('role', role);
+                setOrDelete('status', status);
+                setOrDelete('pf', pf);
+                setOrDelete('esi', esi);
+                setOrDelete('insurance', insurance);
 
                 url.searchParams.set('page', '1');
 
                 return url.toString();
             }
 
-            // Apply Filters
             function applyFilters() {
                 const drawerEl = document.getElementById('zohoFilterDrawer');
                 if (drawerEl) {
@@ -1694,10 +1797,12 @@
                 loadEmployeeListAjax(buildEmployeeFilterUrl());
             }
 
-            // Clear Filters
             function clearFilters() {
                 window.location.href = "{{ route('employees.index') }}";
             }
+
+            window.applyFilters = applyFilters;
+            window.clearFilters = clearFilters;
 
             // Delete Selected Employees (Bulk Delete)
             function deleteSelectedEmployees() {
@@ -1948,6 +2053,8 @@
                     if (typeof feather !== 'undefined') {
                         feather.replace();
                     }
+
+                    initializeEmployeeNameDropdowns();
                 } catch (error) {
                     if (error.name !== 'AbortError') {
                         console.error('Employee list load failed:', error);
@@ -1999,24 +2106,66 @@
                 loadEmployeeListAjax(link.href);
             });
 
+            function initializeEmployeeNameDropdowns() {
+                if (typeof bootstrap === 'undefined') {
+                    return;
+                }
+
+                document.querySelectorAll('#employeeTable .employee-name-dropdown [data-bs-toggle="dropdown"]').forEach(function (toggle) {
+                    const existing = bootstrap.Dropdown.getInstance(toggle);
+                    if (existing) {
+                        existing.dispose();
+                    }
+
+                    new bootstrap.Dropdown(toggle, {
+                        popperConfig: function (defaultConfig) {
+                            const config = typeof defaultConfig === 'function'
+                                ? defaultConfig()
+                                : (defaultConfig || {});
+
+                            return Object.assign({}, config, {
+                                strategy: 'fixed',
+                                modifiers: [
+                                    ...(config.modifiers || []),
+                                    {
+                                        name: 'preventOverflow',
+                                        options: { boundary: 'viewport', padding: 8 },
+                                    },
+                                    {
+                                        name: 'flip',
+                                        options: { fallbackPlacements: ['top-start', 'bottom-start'] },
+                                    },
+                                ],
+                            });
+                        },
+                    });
+                });
+            }
+
+            function initializeEmployeeFilterDropdowns() {
+                initializeSearchDropdown('employeeFilterDropdown', 'filterEmployeeName', 'All Employees');
+                initializeSearchDropdown('roleFilterDropdown', 'filterRole', 'All Roles');
+                initializeSearchDropdown('departmentFilterDropdown', 'filterDepartment', 'All Departments');
+                initializeSearchDropdown('statusFilterDropdown', 'filterStatus', 'All Status');
+                initializeSearchDropdown('pfFilterDropdown', 'filterPf', 'All');
+                initializeSearchDropdown('esiFilterDropdown', 'filterEsi', 'All');
+                initializeSearchDropdown('insuranceFilterDropdown', 'filterInsurance', 'All');
+            }
+
             document.addEventListener('DOMContentLoaded', function () {
-                console.log('=== DOMContentLoaded fired ===');
-                
-                // Reset all dropdowns to initial closed state
-                console.log('Resetting all dropdowns to closed state...');
                 document.querySelectorAll('.wghrm-dropdown-menu').forEach(menu => {
                     menu.style.display = 'none';
                 });
                 document.querySelectorAll('.wghrm-dropdown-trigger').forEach(trigger => {
                     trigger.classList.remove('open');
                 });
-                
-                console.log('Initializing dropdowns...');
-                initializeSearchDropdown('employeeFilterDropdown', 'filterEmployeeName', 'All Employees');
-                initializeSearchDropdown('roleFilterDropdown', 'filterRole', 'All Roles');
-                initializeSearchDropdown('departmentFilterDropdown', 'filterDepartment', 'All Departments');
-                
-                console.log('=== Initialization complete ===');
+
+                initializeEmployeeFilterDropdowns();
+                initializeEmployeeNameDropdowns();
+
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
             });
 
 

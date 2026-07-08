@@ -89,17 +89,20 @@
                             <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
                                 data-bs-toggle="dropdown" data-bs-auto-close="outside" id="quickRangeBtn">
                                 @php
-                                    $range = request('range');
+                                    $activeRange = request('range');
+                                    if (!$activeRange && !request()->filled('start_date') && !request()->filled('end_date')) {
+                                        $activeRange = 'lastMonth';
+                                    }
                                     $label = 'All Time';
-                                    if ($range == 'today') $label = 'Today';
-                                    elseif ($range == 'yesterday') $label = 'Yesterday';
-                                    elseif ($range == 'week') $label = 'This Week';
-                                    elseif ($range == 'month') $label = 'This Month';
-                                    elseif ($range == 'lastMonth') $label = 'Last Month';
-                                    elseif ($range == '3months') $label = 'Last 3 Months';
-                                    elseif ($range == '6months') $label = 'Last 6 Months';
-                                    elseif ($range == '1year') $label = 'Last 1 Year';
-                                    elseif ($range == 'custom') $label = 'Custom Date';
+                                    if ($activeRange == 'today') $label = 'Today';
+                                    elseif ($activeRange == 'yesterday') $label = 'Yesterday';
+                                    elseif ($activeRange == 'week') $label = 'This Week';
+                                    elseif ($activeRange == 'month') $label = 'This Month';
+                                    elseif ($activeRange == 'lastMonth') $label = 'Last Month';
+                                    elseif ($activeRange == '3months') $label = 'Last 3 Months';
+                                    elseif ($activeRange == '6months') $label = 'Last 6 Months';
+                                    elseif ($activeRange == '1year') $label = 'Last 1 Year';
+                                    elseif ($activeRange == 'custom') $label = 'Custom Date';
                                 @endphp
                                 {{ $label }}
                             </button>
@@ -108,28 +111,28 @@
                                     <input type="text" class="wghrm-custom-search-input" placeholder="Search range..." onkeyup="wghrmFilterItems(this)">
                                 </div>
                                 <div class="wghrm-items-container">
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ !$range ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('', 'All Time')">All Time</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'today' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('today', 'Today')">Today</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'yesterday' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('yesterday', 'Yesterday')">Yesterday</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'week' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('week', 'This Week')">This Week</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'month' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('month', 'This Month')">This Month</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'lastMonth' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('lastMonth', 'Last Month')">Last Month</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '3months' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('3months', 'Last 3 Months')">Last 3 Months</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '6months' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('6months', 'Last 6 Months')">Last 6 Months</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == '1year' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('1year', 'Last 1 Year')">Last 1 Year</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $range == 'custom' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('custom', 'Custom Date')">Custom Date</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange === 'all' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('all', 'All Time')">All Time</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == 'today' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('today', 'Today')">Today</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == 'yesterday' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('yesterday', 'Yesterday')">Yesterday</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == 'week' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('week', 'This Week')">This Week</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == 'month' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('month', 'This Month')">This Month</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == 'lastMonth' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('lastMonth', 'Last Month')">Last Month</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == '3months' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('3months', 'Last 3 Months')">Last 3 Months</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == '6months' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('6months', 'Last 6 Months')">Last 6 Months</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == '1year' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('1year', 'Last 1 Year')">Last 1 Year</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ $activeRange == 'custom' ? 'active' : '' }}" href="javascript:void(0);" onclick="selectQuickRange('custom', 'Custom Date')">Custom Date</a>
                                 </div>
                             </div>
                         </div>
-                        <input type="hidden" id="quickRange" value="{{ request('range') }}">
+                        <input type="hidden" id="quickRange" value="{{ $activeRange ?? '' }}">
                     </div>
                     <div class="attendance-filter-field">
                         <label>Start Date</label>
-                        <input type="date" id="startDate" class="form-control" value="{{ request('start_date') }}">
+                        <input type="date" id="startDate" class="form-control" value="{{ request('start_date', $listStartDate->toDateString()) }}">
                     </div>
                     <div class="attendance-filter-field">
                         <label>End Date</label>
-                        <input type="date" id="endDate" class="form-control" value="{{ request('end_date') }}">
+                        <input type="date" id="endDate" class="form-control" value="{{ request('end_date', $listEndDate->toDateString()) }}">
                     </div>
                     <div class="attendance-filter-actions">
                         <button type="button" class="zoho-btn-primary" onclick="applyFilters()">
@@ -203,6 +206,9 @@
                                                         <span class="att-stat-chip att-stat-chip--absent" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'absent')">Absent <strong>{{ $att->absent_count }}</strong></span>
                                                         <span class="att-stat-chip att-stat-chip--wfh" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'wfh')">WFH <strong>{{ $att->wfh_count }}</strong></span>
                                                         <span class="att-stat-chip att-stat-chip--early" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'early_out')">Early Out <strong>{{ $att->early_count }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--missing" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'missing_punch')">Missing Punch <strong>{{ $att->missing_punch_count ?? 0 }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--weekly" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'weekly_off')">Weekly Off <strong>{{ $att->weekly_off_count ?? 0 }}</strong></span>
+                                                        <span class="att-stat-chip att-stat-chip--payable" title="Capped at days in filter. Full month: Present + Half×0.5 + Missing Punch + Paid Leave.">Payable <strong>{{ $att->payable_days ?? 0 }}</strong></span>
                                                     </div>
                                                 </td>
                                                 <td class="text-end">
@@ -253,6 +259,9 @@
                                     <span class="att-stat-chip att-stat-chip--absent" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'absent')">Absent <strong>{{ $att->absent_count }}</strong></span>
                                     <span class="att-stat-chip att-stat-chip--wfh" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'wfh')">WFH <strong>{{ $att->wfh_count }}</strong></span>
                                     <span class="att-stat-chip att-stat-chip--early" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'early_out')">Early Out <strong>{{ $att->early_count }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--missing" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'missing_punch')">Missing Punch <strong>{{ $att->missing_punch_count ?? 0 }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--weekly" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'weekly_off')">Weekly Off <strong>{{ $att->weekly_off_count ?? 0 }}</strong></span>
+                                    <span class="att-stat-chip att-stat-chip--payable" title="Capped at days in filter. Full month: Present + Half×0.5 + Missing Punch + Paid Leave.">Payable <strong>{{ $att->payable_days ?? 0 }}</strong></span>
                                 </div>
                             </div>
                         @empty
@@ -363,6 +372,10 @@
                     break;
                 case 'custom':
                     return;
+                case 'all':
+                    startInput.value = '';
+                    endInput.value = '';
+                    return;
             }
 
             startInput.value = start.getFullYear() + '-' +
@@ -442,6 +455,10 @@
             const quickRange = document.getElementById('quickRange');
 
             if (startInput && endInput && quickRange) {
+                if (quickRange.value && quickRange.value !== 'all' && quickRange.value !== 'custom') {
+                    updateDateRange(quickRange.value);
+                }
+
                 [startInput, endInput].forEach(el => {
                     el.addEventListener('change', () => {
                         quickRange.value = 'custom';
@@ -568,10 +585,12 @@
         function openAttendanceDetails(employeeId, employeeName = '', filterStatus = null) {
             const start = document.getElementById('startDate').value;
             const end = document.getElementById('endDate').value;
+            const range = document.getElementById('quickRange').value;
 
             let url = `/payroll/attendance/employee-wise-details?employee_id=${employeeId}`;
             if (start) url += `&start_date=${start}`;
             if (end) url += `&end_date=${end}`;
+            if (range) url += `&range=${encodeURIComponent(range)}`;
 
             fetch(url)
                 .then(res => res.json())
@@ -583,16 +602,19 @@
 
                         const statusLabel = document.getElementById('statusIndicator');
                         if (statusLabel) {
+                            const rangeText = data.start_date && data.end_date
+                                ? `${data.start_date} to ${data.end_date}`
+                                : 'all records';
                             if (filterStatus) {
-                                statusLabel.innerText = `Showing ${filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1).replace('_', ' ')} records`;
+                                statusLabel.innerText = `Showing ${filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1).replace('_', ' ')} (${rangeText})`;
                                 document.getElementById('showAllBtn').style.display = 'inline-flex';
                             } else {
-                                statusLabel.innerText = 'Showing all records';
+                                statusLabel.innerText = `Showing all days (${rangeText})`;
                                 document.getElementById('showAllBtn').style.display = 'none';
                             }
                         }
 
-                        renderTable(data.data, filterStatus, data.activity_days);
+                        renderTable(data.data, filterStatus);
 
                         const offcanvasEl = document.getElementById('attendanceDetailOffcanvas');
                         if (offcanvasEl) {
@@ -605,63 +627,71 @@
                 });
         }
 
-        function renderTable(rows, filterStatus, activityDays = {}) {
+        function displayClassToBadge(displayClass) {
+            const map = {
+                success: 'att-detail-status--present',
+                danger: 'att-detail-status--absent',
+                warning: 'att-detail-status--half',
+                info: 'att-detail-status--info',
+                secondary: 'att-detail-status--present',
+            };
+            return map[displayClass] || 'att-detail-status--info';
+        }
+
+        function matchesStatusFilter(item, filterStatus) {
+            const key = (item.display_status_key || item.status || '').toLowerCase();
+
+            switch (filterStatus) {
+                case 'present':
+                    return ['present', 'present_activity', 'late'].includes(key);
+                case 'half_day':
+                    return key === 'half_day' || key === 'half_day_leave';
+                case 'leave':
+                    return ['leave', 'half_day_leave', 'unpaid_leave'].includes(key);
+                case 'absent':
+                    return key === 'absent';
+                case 'late':
+                    return key === 'late';
+                case 'wfh':
+                    return key === 'wfh';
+                case 'missing_punch':
+                    return key === 'missing_punch';
+                case 'unpaid_leave':
+                    return ['unpaid_leave', 'unauthorised'].includes(key);
+                case 'early_out':
+                    return ['early_out', 'early_leave'].includes(key) || matchesEarlyOut(item);
+                case 'overtime':
+                    return matchesOvertime(item);
+                case 'weekly_off':
+                    return ['sunday', 'holiday'].includes(key);
+                default:
+                    return true;
+            }
+        }
+
+        function renderTable(rows, filterStatus) {
             const body = document.getElementById('offcanvasTableBody');
             const cardsBody = document.getElementById('offcanvasCardsBody');
             body.innerHTML = '';
             cardsBody.innerHTML = '';
 
             let count = 0;
-            rows.forEach((item, index) => {
-                let match = !filterStatus;
-                const isHoliday = !!item.is_holiday;
-                if (filterStatus === 'present' && (['present', 'late'].includes(item.status) || (isHoliday && item.status === 'absent'))) match = true;
-                if (filterStatus === 'half_day' && item.status === 'half_day') match = true;
-                if (filterStatus === 'leave' && item.status === 'leave') match = true;
-                if (filterStatus === 'absent' && item.status === 'absent' && !isHoliday) match = true;
-                if (filterStatus === 'late' && item.status === 'late') match = true;
-                if (filterStatus === 'overtime' && matchesOvertime(item)) match = true;
-                if (filterStatus === 'wfh' && item.status === 'wfh') match = true;
-                if (filterStatus === 'early_out' && matchesEarlyOut(item)) match = true;
+            rows.forEach((item) => {
+                const match = !filterStatus || matchesStatusFilter(item, filterStatus);
 
                 if (match) {
                     count++;
-                    let statusDisplay = item.status;
-                    let badgeClass = getStatusBadge(item.status);
+                    const dateDisplay = item.date || formatDate(item.attendance_date);
+                    const statusDisplay = item.display_status || (item.status || '').replace(/_/g, ' ');
+                    const badgeClass = item.display_status_class
+                        ? displayClassToBadge(item.display_status_class)
+                        : getStatusBadge(item.display_status_key || item.status);
+                    const hoursDisplay = item.total_hours_label || formatHours(item.total_hours);
+                    const activityBadge = item.is_activity
+                        ? '<span class="badge bg-soft-primary text-primary ms-1">Activity</span>'
+                        : '';
 
-                    let isEarly = false;
-                    let isHalfDayPunch = false;
-
-                    if (item.check_out) {
-                        const checkOutTime = item.check_out.includes(' ') ? item.check_out.split(' ')[1] : item.check_out;
-                        if (checkOutTime < '15:00') {
-                            isHalfDayPunch = true;
-                        } else if (checkOutTime < '17:30') {
-                            isEarly = true;
-                        }
-                    }
-
-                    const isActivityDay = activityDays[item.attendance_date] || false;
-
-                    if (isHoliday && item.status === 'absent') {
-                        statusDisplay = 'Holiday';
-                        badgeClass = 'att-detail-status--present';
-                    } else if (isActivityDay && (isEarly || item.status === 'early_out' || item.status === 'early_leave' || (item.status === 'half_day' && !isHalfDayPunch))) {
-                        statusDisplay = 'Present Activity';
-                        badgeClass = 'att-detail-status--info';
-                    } else if (isEarly) {
-                        statusDisplay = 'Early Out';
-                        badgeClass = 'att-detail-status--info';
-                    } else if (isHalfDayPunch || item.status === 'half_day') {
-                        statusDisplay = 'Half Day';
-                        badgeClass = 'att-detail-status--half';
-                    } else {
-                        statusDisplay = item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' ');
-                        if (statusDisplay === 'Early out' || statusDisplay === 'Early leave') statusDisplay = 'Early Out';
-                        badgeClass = getStatusBadge(item.status);
-                    }
-
-                    const adminActions = isAdmin ? `
+                    const adminActions = (isAdmin && item.id) ? `
                         <div class="attendance-row-actions">
                             <button type="button" class="zoho-icon-btn" onclick="editSingleAttendance(${item.id}, '${item.employee_id}')" title="Edit">
                                 <i class="feather-edit"></i>
@@ -674,12 +704,12 @@
                     body.innerHTML += `
                         <tr>
                             <td class="text-muted fw-semibold">${count}</td>
-                            <td class="fw-bold">${formatDate(item.attendance_date)}</td>
+                            <td class="fw-bold">${dateDisplay}</td>
                             <td class="text-center att-detail-time">${item.check_in ? formatTime(item.check_in) : '--'}</td>
                             <td class="text-center att-detail-time">${item.check_out ? formatTime(item.check_out) : '--'}</td>
-                            <td class="text-center att-detail-hours">${formatHours(item.total_hours)}</td>
+                            <td class="text-center att-detail-hours">${hoursDisplay}</td>
                             <td class="text-center">
-                                <span class="att-detail-status ${badgeClass}">${statusDisplay}</span>
+                                <span class="att-detail-status ${badgeClass}">${statusDisplay}</span>${activityBadge}
                             </td>
                             <td class="text-center">${adminActions}</td>
                         </tr>`;
@@ -689,7 +719,7 @@
                             <div class="att-detail-mobile-card-head">
                                 <div>
                                     <div class="att-detail-mobile-label">Date</div>
-                                    <div class="fw-bold text-dark">${formatDate(item.attendance_date)}</div>
+                                    <div class="fw-bold text-dark">${dateDisplay}${activityBadge}</div>
                                 </div>
                                 <span class="att-detail-status ${badgeClass}">${statusDisplay}</span>
                             </div>
@@ -704,10 +734,10 @@
                                 </div>
                                 <div class="text-center">
                                     <div class="att-detail-mobile-label">Hours</div>
-                                    <div class="att-detail-hours">${formatHours(item.total_hours)}</div>
+                                    <div class="att-detail-hours">${hoursDisplay}</div>
                                 </div>
                             </div>
-                            ${isAdmin ? `
+                            ${(isAdmin && item.id) ? `
                             <div class="att-detail-mobile-actions">
                                 <button type="button" class="zoho-btn-outline" onclick="editSingleAttendance(${item.id}, '${item.employee_id}')">
                                     <i class="feather-edit"></i> Edit
@@ -725,7 +755,7 @@
                 document.getElementById('statusIndicator').innerHTML = `Showing: <strong>${filterStatus.replace('_', ' ')}</strong> (${count} found)`;
             } else {
                 document.getElementById('showAllBtn').style.display = 'none';
-                document.getElementById('statusIndicator').innerText = 'Showing all records';
+                document.getElementById('statusIndicator').innerText = `Showing all days (${rows.length} total)`;
             }
         }
 
@@ -759,11 +789,18 @@
             switch ((status || '').toLowerCase()) {
                 case 'present':
                 case 'holiday':
+                case 'present_activity':
+                case 'sunday':
                     return 'att-detail-status--present';
                 case 'absent':
+                case 'unauthorised':
                     return 'att-detail-status--absent';
                 case 'half_day':
+                case 'half_day_leave':
                     return 'att-detail-status--half';
+                case 'leave':
+                case 'unpaid_leave':
+                case 'missing_punch':
                 case 'activity':
                 case 'early_leave':
                 case 'early_out':
@@ -821,6 +858,7 @@
             const start = document.getElementById('startDate').value;
             const end = document.getElementById('endDate').value;
             const employeeId = document.getElementById('employee_id').value;
+            const range = document.getElementById('quickRange').value;
 
             fetch('{{ route("payroll.attendance.export") }}', {
                 method: 'POST',
@@ -831,7 +869,8 @@
                 body: JSON.stringify({
                     start_date: start,
                     end_date: end,
-                    employee_id: employeeId
+                    employee_id: employeeId,
+                    range: range
                 })
             })
             .then(response => response.blob())

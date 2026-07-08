@@ -65,28 +65,7 @@ class PyAttendanceService
             $employee = $entry['employee'];
             $punches = $entry['punches'];
 
-            usort($punches, function ($a, $b) {
-                return $a->timestamp <=> $b->timestamp;
-            });
-
-            $first = $punches[0];
-            $last  = count($punches) > 1 ? $punches[count($punches) - 1] : null;
-            $fullDayMinutes = 8 * 60 + 30;
-
-            if (!$last) {
-                $workedMinutes = 0;
-                $status = 'missing_punch';
-            } else {
-                $workedMinutes = $first->diffInMinutes($last);
-
-                if ($workedMinutes >= $fullDayMinutes) {
-                    $status = 'present';
-                } elseif ($workedMinutes >= 4 * 60) {
-                    $status = 'half_day';
-                } else {
-                    $status = 'absent';
-                }
-            }
+            $resolved = AttendanceService::resolveForEmployee($punches, $employee);
 
             Attendance::updateOrCreate(
                 [
@@ -94,10 +73,10 @@ class PyAttendanceService
                     'attendance_date' => $entry['attendance_date'],
                 ],
                 [
-                    'check_in'    => $first->format('H:i:s'),
-                    'check_out'   => $last ? $last->format('H:i:s') : null,
-                    'total_hours' => round($workedMinutes / 60, 2),
-                    'status'      => $status,
+                    'check_in' => $resolved['check_in'],
+                    'check_out' => $resolved['check_out'],
+                    'total_hours' => $resolved['total_hours'],
+                    'status' => $resolved['status'],
                 ]
             );
         }

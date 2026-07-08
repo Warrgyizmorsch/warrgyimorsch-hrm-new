@@ -109,9 +109,34 @@ class DailyTaskController extends Controller
             $perPage = 20;
         }
 
+        $statsBase = clone $query;
+        $todayCount = (clone $statsBase)->whereDate('start_date', today())->count();
+        $pendingCount = (clone $statsBase)->where('status', 'Pending')->count();
+        $taskIds = (clone $statsBase)->pluck('id');
+        $loggedHours = TaskFollowUp::whereIn('daily_task_id', $taskIds)->sum('time_taken');
+        $lh = floor($loggedHours);
+        $lm = round(($loggedHours - $lh) * 60);
+        $loggedParts = [];
+        if ($lh > 0) {
+            $loggedParts[] = $lh . 'h';
+        }
+        if ($lm > 0) {
+            $loggedParts[] = $lm . 'm';
+        }
+        $loggedHoursDisplay = count($loggedParts) > 0 ? implode(' ', $loggedParts) : '0m';
+
         $tasks = $query->latest()->paginate($perPage)->withQueryString();
 
-        return view('projects.tasks.index', compact('tasks', 'projects', 'employees', 'isAdmin', 'perPage'));
+        return view('projects.tasks.index', compact(
+            'tasks',
+            'projects',
+            'employees',
+            'isAdmin',
+            'perPage',
+            'todayCount',
+            'pendingCount',
+            'loggedHoursDisplay'
+        ));
     }
 
     public function store(Request $request)

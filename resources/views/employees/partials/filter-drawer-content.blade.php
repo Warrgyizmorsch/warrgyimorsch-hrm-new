@@ -1,3 +1,16 @@
+@php
+    $statusLabels = [
+        '' => 'All Status',
+        'active' => 'Active',
+        'inactive' => 'Deactivated',
+    ];
+    $benefitLabels = [
+        '' => 'All',
+        'yes' => 'Eligible',
+        'no' => 'Not Eligible',
+    ];
+@endphp
+
 <div class="zoho-filter-section" data-filter-section>
     <button type="button" class="zoho-filter-section-toggle" data-bs-toggle="collapse" data-bs-target="#filterSystemDefined">
         <span>System Defined Filters</span>
@@ -70,7 +83,7 @@
             <label class="zoho-filter-label">Department</label>
             <div class="wghrm-search-dropdown" id="departmentFilterDropdown">
                 <div class="wghrm-dropdown-trigger zoho-filter-input">
-                    <span class="wghrm-trigger-text">{{ $departmentFilter ? ucfirst(str_replace('_', ' ', $departmentFilter)) : 'All Departments' }}</span>
+                    <span class="wghrm-trigger-text">{{ $departmentFilter ?: 'All Departments' }}</span>
                     <i data-feather="chevron-down"></i>
                 </div>
                 <div class="wghrm-dropdown-menu">
@@ -84,7 +97,7 @@
                             <i data-feather="check" class="wghrm-item-check"></i>
                         </div>
                         @foreach (\App\Models\Department::all() as $dept)
-                            <div class="wghrm-item {{ strtolower($dept->name) === strtolower($departmentFilter ?? '') ? 'selected' : '' }}" data-value="{{ strtolower($dept->name) }}" data-text="{{ $dept->name }}">
+                            <div class="wghrm-item {{ (string) $departmentFilter === (string) $dept->name ? 'selected' : '' }}" data-value="{{ $dept->name }}" data-text="{{ $dept->name }}">
                                 <span class="wghrm-item-text">{{ $dept->name }}</span>
                                 <i data-feather="check" class="wghrm-item-check"></i>
                             </div>
@@ -94,21 +107,94 @@
                 <input type="hidden" id="filterDepartment" value="{{ $departmentFilter ?? '' }}">
             </div>
         </div>
+        <div class="zoho-filter-field" data-filter-field>
+            <label class="zoho-filter-label">Account Status</label>
+            <div class="wghrm-search-dropdown" id="statusFilterDropdown">
+                <div class="wghrm-dropdown-trigger zoho-filter-input">
+                    <span class="wghrm-trigger-text">{{ $statusLabels[$statusFilter ?? ''] ?? 'All Status' }}</span>
+                    <i data-feather="chevron-down"></i>
+                </div>
+                <div class="wghrm-dropdown-menu">
+                    <div class="wghrm-items-list">
+                        @foreach ($statusLabels as $value => $label)
+                            <div class="wghrm-item {{ (string) ($statusFilter ?? '') === (string) $value ? 'selected' : '' }}" data-value="{{ $value }}" data-text="{{ $label }}">
+                                <span class="wghrm-item-text">{{ $label }}</span>
+                                <i data-feather="check" class="wghrm-item-check"></i>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <input type="hidden" id="filterStatus" value="{{ $statusFilter ?? '' }}">
+            </div>
+        </div>
     </div>
 </div>
 
 <div class="zoho-filter-section" data-filter-section>
     <button type="button" class="zoho-filter-section-toggle" data-bs-toggle="collapse" data-bs-target="#filterByFields">
-        <span>Filter By Fields</span>
+        <span>Benefits Eligibility</span>
         <i class="feather-chevron-down"></i>
     </button>
     <div class="collapse show" id="filterByFields">
-        <div class="zoho-filter-checklist" data-filter-field>
-            <label class="zoho-filter-check"><input type="checkbox" checked disabled> Name</label>
-            <label class="zoho-filter-check"><input type="checkbox" checked disabled> Role</label>
-            <label class="zoho-filter-check"><input type="checkbox" checked disabled> Department</label>
-            <label class="zoho-filter-check"><input type="checkbox" checked disabled> Status</label>
-            <label class="zoho-filter-check"><input type="checkbox" checked disabled> Employee Code</label>
+        <div class="zoho-filter-field" data-filter-field>
+            <label class="zoho-filter-label">PF Eligible</label>
+            <div class="wghrm-search-dropdown" id="pfFilterDropdown">
+                <div class="wghrm-dropdown-trigger zoho-filter-input">
+                    <span class="wghrm-trigger-text">{{ $benefitLabels[$pfFilter ?? ''] ?? 'All' }}</span>
+                    <i data-feather="chevron-down"></i>
+                </div>
+                <div class="wghrm-dropdown-menu">
+                    <div class="wghrm-items-list">
+                        @foreach ($benefitLabels as $value => $label)
+                            <div class="wghrm-item {{ (string) ($pfFilter ?? '') === (string) $value ? 'selected' : '' }}" data-value="{{ $value }}" data-text="{{ $label }}">
+                                <span class="wghrm-item-text">{{ $label }}</span>
+                                <i data-feather="check" class="wghrm-item-check"></i>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <input type="hidden" id="filterPf" value="{{ $pfFilter ?? '' }}">
+            </div>
+        </div>
+        <div class="zoho-filter-field" data-filter-field>
+            <label class="zoho-filter-label">ESI Eligible</label>
+            <div class="wghrm-search-dropdown" id="esiFilterDropdown">
+                <div class="wghrm-dropdown-trigger zoho-filter-input">
+                    <span class="wghrm-trigger-text">{{ $benefitLabels[$esiFilter ?? ''] ?? 'All' }}</span>
+                    <i data-feather="chevron-down"></i>
+                </div>
+                <div class="wghrm-dropdown-menu">
+                    <div class="wghrm-items-list">
+                        @foreach ($benefitLabels as $value => $label)
+                            <div class="wghrm-item {{ (string) ($esiFilter ?? '') === (string) $value ? 'selected' : '' }}" data-value="{{ $value }}" data-text="{{ $label }}">
+                                <span class="wghrm-item-text">{{ $label }}</span>
+                                <i data-feather="check" class="wghrm-item-check"></i>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <input type="hidden" id="filterEsi" value="{{ $esiFilter ?? '' }}">
+            </div>
+        </div>
+        <div class="zoho-filter-field" data-filter-field>
+            <label class="zoho-filter-label">Insurance Eligible</label>
+            <div class="wghrm-search-dropdown" id="insuranceFilterDropdown">
+                <div class="wghrm-dropdown-trigger zoho-filter-input">
+                    <span class="wghrm-trigger-text">{{ $benefitLabels[$insuranceFilter ?? ''] ?? 'All' }}</span>
+                    <i data-feather="chevron-down"></i>
+                </div>
+                <div class="wghrm-dropdown-menu">
+                    <div class="wghrm-items-list">
+                        @foreach ($benefitLabels as $value => $label)
+                            <div class="wghrm-item {{ (string) ($insuranceFilter ?? '') === (string) $value ? 'selected' : '' }}" data-value="{{ $value }}" data-text="{{ $label }}">
+                                <span class="wghrm-item-text">{{ $label }}</span>
+                                <i data-feather="check" class="wghrm-item-check"></i>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <input type="hidden" id="filterInsurance" value="{{ $insuranceFilter ?? '' }}">
+            </div>
         </div>
     </div>
 </div>

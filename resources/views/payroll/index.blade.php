@@ -187,7 +187,7 @@
                                     <div class="col-lg col-md-6">
                                         <label class="form-label small text-muted">Payable Days</label>
                                         <input type="number" step="0.01" id="inputPayableDays"
-                                            class="form-control">
+                                            class="form-control" title="Can exceed month days when adding overtime/extra payable days manually">
                                     </div>
 
                                     <div class="col-lg col-md-6">
@@ -214,6 +214,9 @@
                                             class="form-control">
                                     </div>
                                 </div>
+
+                                <div id="overtime_box" class="mt-3" style="display:none;"></div>
+                                <div id="payrollBreakdownBox" class="small text-muted mt-2" style="display:none;"></div>
                             </div>
                         </div>
 
@@ -404,9 +407,9 @@
                                         <td><span class="payroll-emp-name">{{ $payroll->employee->name }}</span></td>
                                         <td class="text-center"><span class="text-muted small fw-semibold">{{ $payroll->month }}</span></td>
                                         <td class="text-center fw-semibold">{{ $payroll->payable_days }}</td>
-                                        <td class="text-end payroll-amount">₹{{ number_format($payroll->gross_salary ?? 0, 2) }}</td>
-                                        <td class="text-end payroll-amount payroll-amount--deduction">₹{{ number_format($payroll->deductions ?? 0, 2) }}</td>
-                                        <td class="text-end payroll-amount payroll-amount--net">₹{{ number_format($payroll->net_salary ?? 0, 2) }}</td>
+                                        <td class="text-end payroll-amount">***</td>
+                                        <td class="text-end payroll-amount payroll-amount--deduction">***</td>
+                                        <td class="text-end payroll-amount payroll-amount--net">***</td>
                                         <td class="text-center">
                                             <div class="dropdown">
                                                 <span class="payroll-status-badge {{ $statusBadgeClass }} dropdown-toggle"
@@ -1153,6 +1156,9 @@
 
    function recalculate(event) {
         const sourceId = event?.target?.id || '';
+        if (sourceId === 'inputPayableDays') {
+            isManualDays = true;
+        }
         let basic = parseFloat(document.getElementById('inputBasic')?.value) || 0;
         let hra = parseFloat(document.getElementById('inputHRA')?.value) || 0;
         let conv = parseFloat(document.getElementById('inputConveyance')?.value) || 0;
@@ -1167,9 +1173,16 @@
         }
         totalDays = totalDays || 30;
 
-        let payableDays = parseFloat(document.getElementById('inputPayableDays')?.value) || 0;
-        payableDays = Math.min(payableDays, totalDays);
-        let gross = (fullSalary / totalDays) * payableDays; 
+        let rawPayableDays = parseFloat(document.getElementById('inputPayableDays')?.value) || 0;
+        // Auto-calculated days stay capped at month length; manual HR override can exceed for OT/extra days.
+        let payableDays = isManualDays ? rawPayableDays : Math.min(rawPayableDays, totalDays);
+        let extraDays = Math.max(0, payableDays - totalDays);
+        let baseGross = (fullSalary / totalDays) * payableDays;
+        // When HR sets payable days manually above month days, do not also stack auto OT pay (avoid double pay).
+        let overtimePay = (isManualDays && extraDays > 0)
+            ? 0
+            : Number(currentPayrollData?.overtime_pay || 0);
+        let gross = baseGross + overtimePay; 
 
         if (document.getElementById('overrideCheck')?.checked) {
             let override = parseFloat(document.getElementById('overrideAmount').value);
@@ -1200,12 +1213,24 @@
         if(document.getElementById('tableTotalDeductions')) document.getElementById('tableTotalDeductions').innerText = '₹ ' + totalDeduction.toFixed(2);
         if(document.getElementById('tableNetSalary')) document.getElementById('tableNetSalary').innerText = '₹ ' + net.toFixed(2);
 
-        if(document.getElementById('resultPayableDays')) document.getElementById('resultPayableDays').innerText = payableDays;
-        let unpaidDays = totalDays - payableDays;
+        if(document.getElementById('resultPayableDays')) document.getElementById('resultPayableDays').innerText = rawPayableDays;
+        let unpaidDays = Math.max(0, totalDays - payableDays);
         if(document.getElementById('resultUnpaidDays')) document.getElementById('resultUnpaidDays').innerText = unpaidDays.toFixed(2);
 
-        let salaryLoss = fullSalary - gross;
+        let salaryLoss = payableDays >= totalDays ? 0 : Math.max(0, fullSalary - baseGross);
         if(document.getElementById('resultSalaryLoss')) document.getElementById('resultSalaryLoss').innerText = '₹ ' + salaryLoss.toFixed(2);
+
+        const breakdownBox = document.getElementById('payrollBreakdownBox');
+        if (breakdownBox && currentPayrollData) {
+            const attDays = Number(currentPayrollData.attendance_payable_days ?? 0);
+            const paidLeave = Number(currentPayrollData.paid_leave_days ?? 0);
+            const otHours = Number(currentPayrollData.overtime_hours ?? 0);
+            breakdownBox.style.display = 'block';
+            const extraLabel = extraDays > 0 ? ` (+${extraDays} extra)` : '';
+            breakdownBox.innerHTML = `Base: ${payableDays}/${totalDays} days${extraLabel} → ₹ ${baseGross.toFixed(2)}`
+                + (!isManualDays && otHours > 0 ? ` · OT ${otHours}h → ₹ ${overtimePay.toFixed(2)}` : '')
+                + (attDays && !isManualDays ? ` · Attendance ${attDays} + Leave ${paidLeave}` : '');
+        }
     }
 
     function calculatePayroll() {
@@ -1265,10 +1290,12 @@
 
             if (otHours > 0) {
                 overtimeBox.innerHTML = `
-                    <div class="alert alert-info mb-3">
-                        <strong>${p.emp_name}</strong> worked 
-                        <strong>${otHours}</strong> hrs 
-                        (<strong>${otDays}</strong> days) extra this month
+                    <div class="alert alert-info mb-0">
+                        <strong>${p.emp_name}</strong> worked
+                        <strong>${otHours}</strong> hrs
+                        (<strong>${otDays.toFixed(2)}</strong> extra shift-days) this month.
+                        Overtime pay (1.5× basic rate): <strong>₹ ${Number(p.overtime_pay || 0).toFixed(2)}</strong>
+                        — added on top of base salary (payable days stay max ${p.total_days}).
                     </div>
                 `;
             } else {

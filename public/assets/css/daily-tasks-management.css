@@ -1,0 +1,1147 @@
+/* Daily Tasks — Pro SaaS / Zoho flow */
+.daily-tasks-page .zoho-module-content {
+    padding-top: 12px;
+    background: #f4f6f9;
+}
+
+/* Card-style task rows */
+.daily-tasks-page .zoho-data-table {
+    border-collapse: separate;
+    border-spacing: 0 12px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.daily-tasks-page .zoho-data-table thead tr {
+    background: transparent;
+}
+
+.daily-tasks-page .zoho-data-table thead th {
+    padding: 0 14px 8px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8 !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+.daily-tasks-page .zoho-data-table tbody tr {
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.daily-tasks-page .zoho-data-table tbody tr:hover {
+    box-shadow: 0 4px 8px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+}
+
+.daily-tasks-page .zoho-data-table tbody td {
+    padding: 18px 16px !important;
+    vertical-align: top !important;
+    border-top: 1px solid #eef1f5 !important;
+    border-bottom: 1px solid #eef1f5 !important;
+    background: #fff;
+}
+
+.daily-tasks-page .zoho-data-table tbody td:first-child {
+    border-left: 1px solid #eef1f5;
+    border-radius: 14px 0 0 14px;
+    width: 44px;
+}
+
+.daily-tasks-page .zoho-data-table tbody td:last-child {
+    border-right: 1px solid #eef1f5;
+    border-radius: 0 14px 14px 0;
+}
+
+.daily-tasks-page .zoho-people-table-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.daily-tasks-page .zoho-people-table-card .zoho-people-table-toolbar {
+    background: #fff;
+    border: 1px solid #e8edf3;
+    border-radius: 14px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+/* Hero stats */
+.dt-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.dt-hero-stat {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    background: #fff;
+    border: 1px solid #e8edf3;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.dt-hero-stat-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.dt-hero-stat-icon i {
+    width: 20px;
+    height: 20px;
+}
+
+.dt-hero-stat-value {
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+}
+
+.dt-hero-stat-label {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.dt-hero-stat--today .dt-hero-stat-icon {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.dt-hero-stat--logged .dt-hero-stat-icon {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.dt-hero-stat--pending .dt-hero-stat-icon {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+/* Filter panel head */
+.dt-filter-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.dt-filter-panel-head i {
+    width: 15px;
+    height: 15px;
+    margin-right: 6px;
+    color: #64748b;
+}
+
+.dt-filter-toggle {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dt-filter-panel.collapsed .dt-filter-toggle i {
+    transform: rotate(180deg);
+}
+
+.daily-tasks-page .zoho-people-table-toolbar {
+    min-height: 44px;
+    padding: 10px 16px;
+}
+
+.daily-tasks-page .zoho-people-table-search input {
+    height: 36px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.daily-tasks-page .zoho-list-bar .text-uppercase {
+    text-transform: none !important;
+    font-weight: 500 !important;
+    font-size: 12px !important;
+}
+
+/* Filter panel */
+.dt-filter-grid {
+    grid-template-columns: 1fr 1fr 160px 150px 150px auto !important;
+}
+
+.daily-tasks-page .dt-filter-panel .form-control {
+    height: 38px !important;
+    border: 1px solid var(--zoho-border, #e0e0e0) !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--zoho-text, #1a1a2e) !important;
+    background: #fff !important;
+    box-shadow: none !important;
+}
+
+.daily-tasks-page .dt-filter-panel .form-control:focus {
+    border-color: var(--zoho-accent, #1070e0) !important;
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.12) !important;
+}
+
+.dt-filter-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.dt-summary-chip {
+    cursor: default;
+}
+
+.dt-summary-chip:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.dt-summary-chip--today {
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.dt-summary-chip--progress {
+    color: #047857;
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+}
+
+.dt-summary-chip--pending {
+    color: #b45309;
+    border-color: #fde68a;
+    background: #fffbeb;
+}
+
+/* Main task cell */
+.dt-main-task {
+    display: flex;
+    gap: 12px;
+    min-width: 260px;
+}
+
+.dt-main-task-icon {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    color: var(--zoho-accent, #1070e0);
+    border: 1px solid #bfdbfe;
+}
+
+.dt-main-task-icon i {
+    width: 18px;
+    height: 18px;
+}
+
+.dt-main-task-body {
+    min-width: 0;
+    flex: 1;
+}
+
+.dt-main-task-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--zoho-muted, #616e88);
+    margin-bottom: 4px;
+}
+
+.dt-main-task-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+    line-height: 1.35;
+    margin-bottom: 6px;
+}
+
+.dt-main-task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.dt-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px solid #eef1f5;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.dt-meta-chip i {
+    width: 12px;
+    height: 12px;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.dt-priority-chip {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+
+.dt-priority-chip--hard,
+.dt-priority-chip--high {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.dt-priority-chip--medium {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+
+.dt-priority-chip--low {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #bbf7d0;
+}
+
+.dt-priority-chip--normal {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.dt-file-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #ecfeff;
+    border: 1px solid #a5f3fc;
+    color: #0e7490;
+    font-size: 10px;
+    font-weight: 700;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+/* Work progress cell */
+.dt-progress-cell {
+    min-width: 220px;
+    max-width: 320px;
+}
+
+.dt-progress-top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.dt-time-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    color: #047857;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.dt-time-chip i {
+    width: 13px;
+    height: 13px;
+}
+
+.dt-time-chip--low {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
+}
+
+.dt-entry-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.dt-progress-bar-wrap {
+    height: 10px;
+    border-radius: 999px;
+    background: #eef1f5;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.dt-progress-target {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.dt-progress-target strong {
+    color: #059669;
+    font-size: 12px;
+}
+
+.dt-meta-chip--person {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+}
+
+.dt-progress-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+    transition: width 0.3s ease;
+}
+
+.dt-progress-bar--low {
+    background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.dt-progress-bar--empty {
+    background: #cbd5e1;
+    width: 0 !important;
+}
+
+.dt-progress-latest {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--zoho-text-secondary, #434a5a);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.dt-progress-empty {
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+    font-style: italic;
+}
+
+/* Status */
+.dt-status-cell .status-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dt-status-cell .btn-status {
+    min-width: 118px;
+    height: 32px;
+    border: none;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.dt-status-cell .btn-status:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
+.dt-status-cell .history-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.dt-status-cell .history-btn:hover {
+    background: var(--zoho-accent, #1070e0);
+    border-color: var(--zoho-accent, #1070e0);
+    color: #fff;
+}
+
+.dt-status-cell .status-time {
+    font-size: 11px;
+    color: var(--zoho-muted, #616e88);
+}
+
+/* Department */
+.dt-dept-badge {
+    display: inline-flex;
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #eef1f5;
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+}
+
+/* Ownership */
+.dt-ownership-cell {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.dt-ownership-cell strong {
+    color: var(--zoho-text, #1a1a2e);
+}
+
+/* Actions */
+.dt-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.dt-btn-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+    white-space: nowrap;
+}
+
+.dt-actions .zoho-icon-btn {
+    width: 32px;
+    height: 32px;
+}
+
+/* Offcanvas — Add Main Task */
+.dt-task-offcanvas {
+    width: min(520px, 100vw) !important;
+    border-left: none;
+}
+
+.dt-task-offcanvas .offcanvas-body {
+    background: #f8fafc;
+    padding: 18px;
+}
+
+.dt-form-card {
+    background: #fff;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+}
+
+.dt-form-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eef1f5;
+    background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+}
+
+.dt-form-card-head-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: var(--zoho-accent, #1070e0);
+}
+
+.dt-form-card-head h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zoho-text, #1a1a2e);
+}
+
+.dt-form-card-head p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.dt-form-card-body {
+    padding: 16px;
+}
+
+.dt-field {
+    margin-bottom: 14px;
+}
+
+.dt-field > label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.dt-field > label .req {
+    color: #dc2626;
+}
+
+.dt-input-wrap {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--zoho-border, #e0e0e0);
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.dt-input-wrap:focus-within {
+    border-color: var(--zoho-accent, #1070e0);
+    box-shadow: 0 0 0 3px rgba(16, 112, 224, 0.12);
+}
+
+.dt-input-wrap > i {
+    flex-shrink: 0;
+    width: 40px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 15px;
+}
+
+.dt-input-wrap > .form-control,
+.dt-input-wrap > .form-select {
+    border: none !important;
+    box-shadow: none !important;
+    height: 40px !important;
+    padding-left: 0 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    background: transparent !important;
+}
+
+.dt-input-wrap > textarea.form-control {
+    height: auto !important;
+    min-height: 90px;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+}
+
+.dt-upload-zone {
+    padding: 14px;
+    border: 2px dashed #e2e8f0;
+    border-radius: 10px;
+    background: #fafbfc;
+}
+
+.dt-offcanvas-foot {
+    display: flex;
+    gap: 8px;
+    padding: 14px 18px;
+    border-top: 1px solid #eef1f5;
+    background: #fff;
+}
+
+/* Work Progress Modal */
+.dt-progress-modal .modal-content {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15);
+}
+
+.dt-progress-modal .modal-dialog {
+    max-width: min(720px, 94vw);
+}
+
+.dt-progress-modal .modal-header {
+    background: linear-gradient(135deg, #1070e0 0%, #2563eb 100%);
+    border: none;
+    padding: 16px 20px;
+}
+
+.dt-progress-modal .modal-title {
+    color: #fff !important;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.dt-progress-modal .dt-modal-task-badge {
+    display: inline-block;
+    max-width: 280px;
+    padding: 4px 10px;
+    margin-left: 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.dt-progress-modal .modal-body {
+    background: #f8fafc;
+    padding: 18px;
+}
+
+/* Status badges (existing classes) */
+.status-pending { background: #f3f4f6; color: #6b7280; }
+.status-in-process { background: #eef2ff; color: #4f46e5; }
+.status-completed { background: #ecfdf5; color: #16a34a; }
+.status-on-hold { background: #fff7ed; color: #ea580c; }
+.status-review { background: #ecfeff; color: #0891b2; }
+.status-rework { background: #fef2f2; color: #dc2626; }
+.status-reassign { background: #f5f3ff; color: #7c3aed; }
+
+.priority-hard, .priority-high { background: #fef2f2; color: #b91c1c; }
+.priority-medium { background: #fff7ed; color: #c2410c; }
+.priority-low { background: #ecfdf5; color: #047857; }
+.priority-normal { background: #eff6ff; color: #1d4ed8; }
+
+.dt-list-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #eef1f5;
+    background: #fafbfc;
+}
+
+.dt-empty-state {
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.dt-empty-state i {
+    width: 48px;
+    height: 48px;
+    color: var(--zoho-muted, #616e88);
+    margin-bottom: 12px;
+}
+
+.dt-empty-state p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--zoho-muted, #616e88);
+}
+
+/* Task detail drawer */
+.dt-detail-offcanvas {
+    width: min(560px, 100vw) !important;
+}
+
+.dt-detail-drawer-sub {
+    font-size: 12px;
+    color: var(--zoho-muted, #616e88);
+}
+
+.dt-detail-offcanvas .offcanvas-body {
+    padding: 20px;
+    background: #f8fafc;
+}
+
+.dt-detail-section {
+    margin-bottom: 20px;
+    padding: 18px;
+    background: #fff;
+    border: 1px solid #e8edf3;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.dt-detail-section-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.dt-detail-section-head > i {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 18px;
+}
+
+.dt-detail-section-head--progress > i {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.dt-detail-section-head h4 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.dt-detail-section-head p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.dt-detail-section-head--progress {
+    position: relative;
+}
+
+.dt-detail-total-time {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    color: #047857;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.dt-detail-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.35;
+    margin-bottom: 12px;
+}
+
+.dt-detail-desc {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #475569;
+}
+
+.dt-detail-desc--empty {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.dt-timeline-item {
+    position: relative;
+    padding-left: 24px;
+    margin-bottom: 14px;
+}
+
+.dt-timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.dt-timeline-dot {
+    position: absolute;
+    left: 0;
+    top: 18px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #2563eb;
+    border: 3px solid #eff6ff;
+    box-shadow: 0 0 0 1px #bfdbfe;
+}
+
+.dt-timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 32px;
+    bottom: -14px;
+    width: 2px;
+    background: linear-gradient(180deg, #bfdbfe 0%, #e2e8f0 100%);
+}
+
+.dt-timeline-card {
+    background: #f8fafc;
+    border: 1px solid #e8edf3;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.dt-timeline-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    background: #fff;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.dt-timeline-card-head strong {
+    display: block;
+    font-size: 14px;
+    color: #0f172a;
+}
+
+.dt-timeline-card-head span {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.dt-timeline-time {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.dt-timeline-body {
+    padding: 12px 14px;
+}
+
+.dt-timeline-entry {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #475569;
+}
+
+.dt-timeline-entry + .dt-timeline-entry {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.dt-detail-empty {
+    padding: 24px;
+    text-align: center;
+    color: #94a3b8;
+}
+
+.dt-detail-empty i {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 8px;
+}
+
+/* Work progress modal */
+.dt-fu-intro {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #eff6ff 0%, #ecfdf5 100%);
+    border: 1px solid #dbeafe;
+}
+
+.dt-fu-intro > i {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #fff;
+    color: #2563eb;
+    flex-shrink: 0;
+}
+
+.dt-fu-intro strong {
+    display: block;
+    font-size: 14px;
+    color: #0f172a;
+}
+
+.dt-fu-intro p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.dt-fu-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.dt-fu-toolbar-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+}
+
+.dt-fu-row {
+    padding: 16px;
+    margin-bottom: 12px;
+    background: #fff;
+    border: 1px solid #e8edf3;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.dt-fu-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.dt-fu-row-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.dt-fu-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.dt-input-wrap--textarea {
+    align-items: flex-start;
+}
+
+.dt-input-wrap--textarea > i {
+    margin-top: 12px;
+}
+
+.dt-input-wrap--textarea > textarea.form-control {
+    min-height: 88px;
+    padding-top: 10px !important;
+}
+
+.dt-input-wrap > .form-select {
+    border: none !important;
+    box-shadow: none !important;
+    height: 40px !important;
+    padding-left: 0 !important;
+    font-size: 13px !important;
+    background: transparent !important;
+}
+
+.dt-modal-foot {
+    padding: 14px 20px;
+    border-top: 1px solid #eef1f5;
+    background: #fafbfc;
+    gap: 10px;
+}
+
+/* Summernote in task offcanvas */
+.dt-task-offcanvas .note-editor {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+}
+
+.dt-task-offcanvas .note-toolbar {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #eef1f5 !important;
+}
+
+@media (max-width: 1199.98px) {
+    .dt-hero-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dt-filter-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .dt-hero-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .dt-filter-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .daily-tasks-page .zoho-data-table {
+        border-spacing: 0 8px;
+    }
+
+    .daily-tasks-page .zoho-people-table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .dt-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .dt-detail-offcanvas {
+        width: 100vw !important;
+    }
+}

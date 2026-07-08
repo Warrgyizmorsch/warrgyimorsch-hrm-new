@@ -1,5 +1,10 @@
 @extends('layouts.app')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/attendance-management.css') }}?v={{ filemtime(public_path('assets/css/attendance-management.css')) ?: time() }}">
+<link rel="stylesheet" href="{{ asset('assets/css/daily-tasks-management.css') }}?v={{ filemtime(public_path('assets/css/daily-tasks-management.css')) ?: time() }}">
+@endpush
+
 @section('content')
     <style>
         /* Custom Dropdown Arrow Color to match Field Text */
@@ -8,429 +13,150 @@
             background-size: 12px 12px !important;
         }
     </style>
-    @include('layouts.partials.zoho-module-toolbar', [
-        'title' => 'Task History',
-        'breadcrumbs' => [
-            ['url' => route('dashboard'), 'label' => 'Home'],
-            ['label' => 'Daily Tasks'],
-        ],
-        'actions' => view('projects.tasks.partials.toolbar-actions')->render(),
-    ])
 
-    <!-- [ main-content ] start -->
-    <div class="main-content pt-4">
-        <div class="row">
-            <div class="col-12">
-                <!-- FILTER CARD (Collapsible) -->
-                <div id="taskFilterSection" class="collapse">
-                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; background: white;">
-                        <div class="card-body p-4">
-                            <form action="{{ route('daily-tasks.index') }}" method="GET">
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <label class="form-label fw-bold small text-muted text-uppercase mb-2">Search By
-                                            Project</label>
-                                        <select name="project_id" class="form-select border-0 bg-light shadow-none fw-bold"
-                                            style="height: 48px; border-radius: 10px; font-size: 14px;">
-                                            <option value="">Select Project...</option>
-                                            @foreach($projects as $project)
-                                                <option value="{{ $project->id }}" {{ request('project_id') == $project->id ? 'selected' : '' }}>{{ $project->name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label fw-bold small text-muted text-uppercase mb-2">Search By
-                                            Employee Name</label>
-                                        <select name="employee_id" class="form-select border-0 bg-light shadow-none fw-bold"
-                                            style="height: 48px; border-radius: 10px; font-size: 14px;">
-                                            <option value="">Select Employee Name</option>
-                                            @foreach($employees as $employee)
-                                                <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label fw-bold small text-muted text-uppercase mb-2">Search By
-                                            Status</label>
-                                        <select name="status" class="form-select border-0 bg-light shadow-none fw-bold"
-                                            style="height: 48px; border-radius: 10px; font-size: 14px;">
-                                            <option value="">Select Status</option>
-                                            <option value="Pending" {{ request('status') == 'Pending' ? 'selected' : '' }}>
-                                                Pending</option>
-                                            <option value="In Process" {{ request('status') == 'In Process' ? 'selected' : '' }}>In Process</option>
-                                            <option value="Completed" {{ request('status') == 'Completed' ? 'selected' : '' }}>Completed</option>
-                                            <option value="Incomplete" {{ request('status') == 'Incomplete' ? 'selected' : '' }}>Incomplete</option>
-                                            <option value="On Hold" {{ request('status') == 'On Hold' ? 'selected' : '' }}>On
-                                                Hold</option>
-                                            <option value="Review" {{ request('status') == 'Review' ? 'selected' : '' }}>
-                                                Review</option>
-                                            <option value="Rework" {{ request('status') == 'Rework' ? 'selected' : '' }}>
-                                                Rework</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4 mt-3">
-                                        <label class="form-label fw-bold small text-muted text-uppercase mb-2">From
-                                            Date</label>
-                                        <input type="date" name="from_date"
-                                            class="form-control border-0 bg-light shadow-none fw-bold"
-                                            value="{{ request('from_date') }}" onclick="this.showPicker()"
-                                            style="height: 48px; border-radius: 10px; font-size: 14px;">
-                                    </div>
-                                    <div class="col-md-4 mt-3">
-                                        <label class="form-label fw-bold small text-muted text-uppercase mb-2">Upto
-                                            Date</label>
-                                        <input type="date" name="upto_date"
-                                            class="form-control border-0 bg-light shadow-none fw-bold"
-                                            value="{{ request('upto_date') }}" onclick="this.showPicker()"
-                                            style="height: 48px; border-radius: 10px; font-size: 14px;">
-                                    </div>
-                                    <div class="col-md-4 mt-3 d-flex align-items-end gap-2">
-                                        <button type="submit"
-                                            class="btn btn-primary fw-bold shadow-sm d-flex align-items-center justify-content-center flex-grow-1"
-                                            style="background: #3858f9; border: none; height: 48px; border-radius: 10px;">
-                                            <i class="feather-search me-1"></i> SEARCH
-                                        </button>
-                                        <a href="{{ route('daily-tasks.index') }}"
-                                            class="btn btn-soft-danger fw-bold d-flex align-items-center justify-content-center"
-                                            style="border-radius: 10px; height: 48px; width: 100px; font-size: 14px;">Reset</a>
-                                    </div>
-                                </div>
-                            </form>
+    <div class="zoho-page-shell daily-tasks-page attendance-page">
+        @include('projects.tasks.partials.page-header')
+
+        <div class="main-content zoho-module-content">
+            @include('projects.tasks.partials.filter-panel')
+
+            @if ($message = Session::get('success'))
+                <div class="attendance-alert" role="alert">
+                    <i class="feather-check-circle"></i>
+                    <span>{{ $message }}</span>
+                    <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            <div class="zoho-people-table-card">
+                <div class="zoho-people-table-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="zoho-people-table-search">
+                        <i class="feather-search"></i>
+                        <input type="text" id="taskSearch"
+                            onkeyup="searchTable()"
+                            value="{{ request('search') }}"
+                            placeholder="Search in list...">
+                    </div>
+                    <div class="zoho-list-bar mb-0 border-0 bg-transparent p-0">
+                        <span class="text-muted small fw-bold text-uppercase">Show</span>
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" id="showEntriesBtn"
+                                style="width: 80px; height: 38px; padding: 0 12px;">
+                                {{ $perPage ?? 20 }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 10px;">
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
+                                <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
+                            </div>
                         </div>
+                        <span class="text-muted small fw-bold text-uppercase">entries</span>
                     </div>
                 </div>
 
-                <!-- DATA TABLE CARD -->
-                <div class="card border-0 shadow-sm" style="border-radius: 12px; background: white;">
-                    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center"
-                        style="border-radius: 12px 12px 0 0;">
-                        <!-- SHOW ENTRIES -->
-                        <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2" id="taskTableContainerHeaderPart">
-                            <span class="text-muted small fw-bold text-uppercase">Show</span>
-                            <div class="dropdown">
-                                <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
-                                    data-bs-toggle="dropdown" id="showEntriesBtn"
-                                    style="width: 80px; height: 44px; padding: 0 15px;">
-                                    {{ $perPage ?? 20 }}
-                                </button>
-                                <div class="dropdown-menu wghrm-custom-dropdown-menu shadow-lg border-0" style="min-width: 80px; border-radius: 12px;">
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 20) == 20 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 20, 'page' => 1]) }}">20</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 50) == 50 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 50, 'page' => 1]) }}">50</a>
-                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ ($perPage ?? 100) == 100 ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['per_page' => 100, 'page' => 1]) }}">100</a>
-                                </div>
-                            </div>
-                            <span class="text-muted small fw-bold text-uppercase">entries</span>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="input-group" style="width: 250px; border-radius: 8px; overflow: hidden; background: #f1f5f9;">
-                                <span class="input-group-text bg-transparent border-0"><i
-                                         class="feather-search text-muted" style="font-size: 13px;"></i></span>
-                                <input type="text" id="taskSearch"
-                                    class="form-control border-0 bg-transparent shadow-none fw-bold" onkeyup="searchTable()"
-                                    value="{{ request('search') }}"
-                                    placeholder="Search tasks..." style="height: 38px; font-size: 13px; color: #334155;">
-                            </div>
-                        </div>
-                    </div>
+                <div id="taskTableContainer">
                     <div id="taskTableContainerBodyPart">
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0" id="tasksTable">
-                                <thead style="background: #3858f9; color: white;">
-                                    <tr style="height: 60px; vertical-align: middle;">
-                                        <th class="ps-4" style="width: 60px;"><input type="checkbox" id="selectAllTasks"
+                    <div class="card-body p-0 zoho-list-body">
+                        <div class="table-responsive zoho-table-wrap">
+                            <table class="table zoho-data-table mb-0" id="tasksTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 44px;"><input type="checkbox" id="selectAllTasks"
                                                 class="form-check-input shadow-none"></th>
-                                        <!-- <th
-                                            style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                            Project.</th> -->
-                                        <!-- <th
-                                            style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                            Task Title</th> -->
-                                        <!-- <th
-                                            style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                            Start Date</th> -->
-                                        <!-- <th
-                                            style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                            Time Tracking</th> -->
-                                        <!-- <th
-                                            style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                            Priority</th> -->
-                                            
-                                        <th
-                                            style="font-size:12px;font-weight:700;text-transform:uppercase;color:white;">
-                                            Task Description
-                                        </th>
-                                        <th
-                                            style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                            Status</th>
-                                        @if ($isAdmin)
-                                            <th
-                                                style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                                Ownership</th>
-                                            <!-- <th
-                                                style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                                Assign By</th> -->
-                                        @endif
-                                        <th
-                                            style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white;">
-                                            Department</th>
-                                        <th class="pe-4 text-center"
-                                            style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white; white-space: nowrap; width: 220px;">
-                                            Action</th>
+                                        <th>Main Task</th>
+                                        <th>Work Progress</th>
+                                        <th>Status</th>
+                                        <th class="text-end" style="min-width: 200px;">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody style="border-top: 1px solid #f1f5f9;">
+                                <tbody>
                                     @forelse($tasks as $index => $task)
-                                        <tr class="task-row" style="height: 70px; border-bottom: 1px solid #f1f5f9;">
-                                            <td class="ps-4"><input type="checkbox"
+                                        <tr class="task-row">
+                                            <td><input type="checkbox"
                                                     class="form-check-input task-checkbox shadow-none" value="{{ $task->id }}">
                                             </td>
-                                            <!-- <td class="fw-bold" style="font-size: 14px; color: #1e293b;">
-                                                <div class="d-flex align-items-center">
-                                                    @if($task->project)
-                                                        <div class="avatar-image border-0 position-relative me-2"
-                                                            style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                                            SVG Ring for Task List
-                                                            <svg width="32" height="32" viewBox="0 0 100 100"
-                                                                style="position: absolute; transform: rotate(-90deg);">
-                                                                <circle cx="50" cy="50" r="44" fill="none" stroke="#f1f5f9"
-                                                                    stroke-width="12"></circle>
-                                                                <circle cx="50" cy="50" r="44" fill="none" stroke="#1d4ed8"
-                                                                    stroke-width="12" stroke-dasharray="276.46"
-                                                                    stroke-dashoffset="{{ 276.46 * (1 - ($task->project->progress ?? 0) / 100) }}"
-                                                                    stroke-linecap="round"
-                                                                    style="transition: stroke-dashoffset 0.5s ease-in-out;">
-                                                                </circle>
-                                                            </svg>
-                                                            <div class="avatar-text bg-white text-primary rounded-circle shadow-sm"
-                                                                style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; z-index: 1; border: 1px solid rgba(0,0,0,0.05); font-size: 10px;">
-                                                                <i class="feather-briefcase"></i>
-                                                            </div>
-                                                        </div>
-                                                        <span>{{ $task->project->name }}</span>
-                                                    @else
-                                                        <span class="text-muted">-</span>
-                                                    @endif
-                                                </div>
-                                            </td> -->
-                                            <!-- <td
-                                                style="font-size: 14px; color: #475569; max-width: 200px; white-space: normal; word-break: break-word;">
-                                                <div class="d-flex flex-column">
-                                                    <div class="fw-bold text-dark mb-1">{{ $task->task_title }}</div>
-                                                    @if($task->photo)
-                                                        <a href="javascript:void(0);"
-                                                            onclick="viewAttachmentPopup('{{ asset('storage/' . $task->photo) }}')"
-                                                            class="badge bg-soft-info text-info border-0 text-decoration-none px-2 py-1 align-self-start"
-                                                            style="font-size: 10px; border-radius: 6px; width: fit-content;">
-                                                            <i class="feather-paperclip me-1"></i> VIEW TASK FILE
-                                                        </a>
-                                                    @endif
-                                                </div>
-                                                </div>
-                                            </td> -->
-                                            <!-- <td style="font-size: 14px; color: #475569;">
-                                                <div class="d-flex flex-column gap-1">
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <i class="feather-calendar text-primary" style="font-size: 11px;"></i>
-                                                        <span class="fw-bold">{{ $task->start_date->format('d M Y') }}</span>
-                                                    </div>
-                                                    @if($task->end_date)
-                                                        <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 11px; margin-left: 14px;">
-                                                            <span class="fw-bold">To: {{ $task->end_date->format('d M Y') }}</span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            </td> -->
-                                            <!-- <td>
-                                                <div class="d-flex flex-column">
-                                                    @if($task->status != 'Completed')
-                                                        @if($task->end_date)
-                                                            <div class="task-timer fw-bold text-primary mb-1" style="font-size: 13px;"
-                                                                data-end="{{ $task->end_date->endOfDay()->toIso8601String() }}"
-                                                                data-start="{{ $task->created_at->toIso8601String() }}">
-                                                                Calculating...
-                                                            </div>
-                                                        @else
-                                                            <div class="fw-bold text-info mb-1 d-flex flex-column"
-                                                                style="font-size: 13px;">
-                                                                <div class="d-flex align-items-center gap-1">
-                                                                    <i class="feather-play-circle fs-11"></i> Ongoing
-                                                                </div>
-                                                                <div class="task-timer text-primary fs-11"
-                                                                    data-start="{{ $task->created_at->toIso8601String() }}">
-                                                                    Calculating...
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                    @else
-                                                        <div class="fw-bold text-success mb-1" style="font-size: 13px;">
-                                                            <i class="feather-check-circle me-1"></i> Completed
-                                                        </div>
-                                                    @endif
-                                                    <span class="text-muted d-flex align-items-center gap-1"
-                                                        style="font-size: 11px; font-weight: 600;">
-                                                        <i class="feather-clock" style="font-size: 10px;"></i>
-                                                        Spent: <span class="text-dark">{{ $task->formatted_total_time }}</span>
-                                                    </span>
-                                                </div>
-                                            </td> -->
-                                            <!-- <td>
+                                            <td>
                                                 @php
                                                     $p = strtolower($task->priority);
-                                                    $priorityClass = 'priority-' . ($p == 'hard' ? 'hard' : ($p == 'medium' ? 'medium' : ($p == 'low' ? 'low' : 'normal')));
+                                                    $priorityClass = 'dt-priority-chip--' . (
+                                                        $p == 'hard' ? 'hard' :
+                                                        ($p == 'medium' ? 'medium' :
+                                                        ($p == 'low' ? 'low' : 'normal'))
+                                                    );
                                                 @endphp
-                                                <div class="dropdown">
-                                                    <span class="priority-badge {{ $priorityClass }} dropdown-toggle"
-                                                        data-bs-toggle="dropdown" aria-expanded="false"
-                                                        data-bs-boundary="viewport">
-                                                        {{ $task->priority }} <i class="feather-chevron-down fs-10 ms-1"></i>
-                                                    </span>
-                                                    <ul class="dropdown-menu shadow-lg border-0" style="border-radius: 12px;">
-                                                        <li><a class="dropdown-item fw-bold priority-hard py-2 mb-1 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskPriority({{ $task->id }}, 'High')">High</a>
-                                                        </li>
-                                                        <li><a class="dropdown-item fw-bold priority-medium py-2 mb-1 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskPriority({{ $task->id }}, 'Medium')">Medium</a>
-                                                        </li>
-                                                        <li><a class="dropdown-item fw-bold priority-normal py-2 mb-1 rounded mx-2" href="javascript:void(0);" onclick="updateTaskPriority({{ $task->id }}, 'Normal')">Normal</a></li>
-                                                        <li><a class="dropdown-item fw-bold priority-low py-2 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskPriority({{ $task->id }}, 'Low')">Low</a>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                            </td> -->
-                                            <!-- <td>
-                                                @php
-                                                    $s = $task->status;
-                                                    $statusSlug = strtolower(str_replace(' ', '-', $s));
-                                                    $statusClass = 'status-' . $statusSlug;
-                                                @endphp
-                                                <div class="dropdown premium-status-dropdown">
-                                                    <button class="btn-status {{ $statusClass }} dropdown-toggle" type="button"
-                                                        data-bs-toggle="dropdown" aria-expanded="false"
-                                                        data-bs-boundary="viewport">
-                                                        {{ $s }} <i class="feather-chevron-down fs-10 ms-1"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu shadow-lg border-0"
-                                                        style="border-radius: 12px; z-index: 99999 !important;">
-                                                        <li><a class="dropdown-item fw-bold status-pending py-2 mb-1 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskStatus({{ $task->id }}, 'Pending')">Pending</a>
-                                                        </li>
-                                                        <li><a class="dropdown-item fw-bold status-in-process py-2 mb-1 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskStatus({{ $task->id }}, 'In Process')">In
-                                                                Process</a></li>
-                                                        <li><a class="dropdown-item fw-bold status-completed py-2 mb-1 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskStatus({{ $task->id }}, 'Completed')">Completed</a>
-                                                        </li>
-                                                        <li><a class="dropdown-item fw-bold status-on-hold py-2 mb-1 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskStatus({{ $task->id }}, 'On Hold')">On
-                                                                Hold</a></li>
-                                                        <li><a class="dropdown-item fw-bold status-review py-2 mb-1 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskStatus({{ $task->id }}, 'Review')">Review</a>
-                                                        </li>
-                                                        <li><a class="dropdown-item fw-bold status-rework py-2 rounded mx-2"
-                                                                href="javascript:void(0);"
-                                                                onclick="updateTaskStatus({{ $task->id }}, 'Rework')">Rework</a>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                                @if($task->status_changed_at)
-                                                    <div class="text-muted fs-12 mt-1">
-                                                        {{ $task->status_changed_at->format('d M Y') }} ({{ $task->formatted_total_time }})
+                                                <div class="dt-main-task">
+                                                    <div class="dt-main-task-icon">
+                                                        <i class="feather-sunrise"></i>
                                                     </div>
-                                                @endif
-                                            </td> -->
-                                            <td style="min-width:250px !important;">
-                                                <div class="d-flex align-items-center">
-
-                                                    {{-- Project Icon --}}
-                                                    <div class="me-3 d-flex align-items-center justify-content-center"
-                                                        style="width:40px;min-width:40px;">
-
-                                                        <div class="text-primary"
-                                                            style="font-size:20px;">
-                                                            <i class="feather-briefcase"></i>
-                                                        </div>
-
-                                                    </div>
-                                                    
-                                                    <div class="d-flex flex-column">
-
-                                                        {{-- Task --}}
-                                                        <div class="mb-1">
-                                                            <small class="text-muted">Task :</small>
-                                                            <span class="fw-bold">
-                                                                {{ Str::limit($task->task_title, 25) }}
-                                                            </span>
-                                                        </div>
-
-                                                        {{-- Date --}}
-                                                        <div class="mb-1 d-flex align-items-center gap-2">
-
-                                                            <small class="text-muted">
-                                                                Start :
-                                                            </small>
-
-                                                            <i class="feather-calendar text-primary"></i>
-
-                                                            <span style="font-size: 10px;">
+                                                    <div class="dt-main-task-body">
+                                                        <div class="dt-main-task-label">Morning Plan</div>
+                                                        <div class="dt-main-task-title">{{ $task->task_title }}</div>
+                                                        <div class="dt-main-task-meta">
+                                                            <span class="dt-meta-chip">
+                                                                <i class="feather-calendar"></i>
                                                                 {{ $task->start_date->format('d M Y') }}
                                                             </span>
-
-                                                            @if($task->end_date)
-                                                                <span class="text-muted" style="font-size: 10px;">
-                                                                    → {{ $task->end_date->format('d M Y') }}
+                                                            @if($task->project)
+                                                                <span class="dt-meta-chip">
+                                                                    <i class="feather-briefcase"></i>
+                                                                    {{ Str::limit($task->project->name, 18) }}
                                                                 </span>
                                                             @endif
-
+                                                            <span class="dt-priority-chip {{ $priorityClass }}">{{ $task->priority }}</span>
+                                                            @if($isAdmin)
+                                                                <span class="dt-meta-chip dt-meta-chip--person" title="Assigned to">
+                                                                    <i class="feather-user"></i>
+                                                                    {{ Str::limit($task->employee->name ?? '—', 16) }}
+                                                                </span>
+                                                            @endif
+                                                            @if($task->employee->department ?? null)
+                                                                <span class="dt-meta-chip">{{ $task->employee->department }}</span>
+                                                            @endif
                                                         </div>
-
-                                                        {{-- Priority --}}
-                                                        <div>
-
-                                                            @php
-                                                                $p = strtolower($task->priority);
-
-                                                                $priorityClass='priority-'.(
-                                                                    $p=='hard' ? 'hard' :
-                                                                    ($p=='medium' ? 'medium' :
-                                                                    ($p=='low' ? 'low' : 'normal'))
-                                                                );
-                                                            @endphp
-
-                                                            <small class="text-muted me-2">
-                                                                Priority :
-                                                            </small>
-
-                                                            <span class="priority-badge {{ $priorityClass }}">
-                                                                {{ $task->priority }}
-                                                            </span>
-
-                                                        </div>
-
                                                         @if($task->photo)
-                                                        <a href="javascript:void(0)"
-                                                            onclick="viewAttachmentPopup('{{ asset('storage/'.$task->photo) }}')"
-                                                            class="badge bg-soft-info text-info mt-2 align-self-start">
-
-                                                            <i class="feather-paperclip"></i>
-                                                            View File
-                                                        </a>
+                                                            <a href="javascript:void(0)"
+                                                                onclick="viewAttachmentPopup('{{ asset('storage/'.$task->photo) }}')"
+                                                                class="dt-file-link">
+                                                                <i class="feather-paperclip"></i> Attachment
+                                                            </a>
                                                         @endif
-
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td class="align-middle">
+                                            <td>
+                                                @php
+                                                    $progressCount = $task->followUps->count();
+                                                    $totalHours = $task->total_time;
+                                                    $targetHours = 8;
+                                                    $pct = min(100, ($totalHours / $targetHours) * 100);
+                                                    $isLowHours = $task->status === 'Completed' && $totalHours < 8;
+                                                    $latestProgress = $task->followUps->sortByDesc('created_at')->first();
+                                                @endphp
+                                                <div class="dt-progress-cell">
+                                                    <div class="dt-progress-top">
+                                                        <span class="dt-time-chip {{ $isLowHours ? 'dt-time-chip--low' : '' }}">
+                                                            <i class="feather-clock"></i>
+                                                            {{ $task->formatted_total_time }}
+                                                        </span>
+                                                        <span class="dt-entry-chip">{{ $progressCount }} {{ Str::plural('entry', $progressCount) }}</span>
+                                                    </div>
+                                                    <div class="dt-progress-target">
+                                                        <span>8h target</span>
+                                                        <strong>{{ round($pct) }}%</strong>
+                                                    </div>
+                                                    <div class="dt-progress-bar-wrap">
+                                                        <div class="dt-progress-bar {{ $progressCount === 0 ? 'dt-progress-bar--empty' : ($isLowHours ? 'dt-progress-bar--low' : '') }}"
+                                                             style="width: {{ $progressCount === 0 ? 0 : $pct }}%"></div>
+                                                    </div>
+                                                    @if($latestProgress)
+                                                        <div class="dt-progress-latest">{!! Str::limit(strip_tags($latestProgress->work_description), 90) !!}</div>
+                                                    @else
+                                                        <div class="dt-progress-empty">No progress logged yet — use Add Progress</div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="dt-status-cell align-middle">
                                                 @php
                                                     $s = $task->status;
                                                     $statusSlug = strtolower(str_replace(' ', '-', $s));
@@ -438,7 +164,6 @@
                                                 @endphp
 
                                                 <div class="status-wrapper">
-
                                                     <div class="d-flex align-items-center gap-2">
 
                                                         <button
@@ -468,206 +193,152 @@
 
 
                                                     @if($task->status_changed_at)
-
                                                         <div class="status-time">
                                                             @php
-                                                                $hours = (int) explode(':', $task->formatted_total_time)[0];
-                                                                $isIncomplete = $hours < 8;
+                                                                $hours = floor($task->total_time);
+                                                                $isIncomplete = $s === 'Completed' && $hours < 8;
                                                             @endphp
-
                                                             <i class="feather-clock"></i>
-
                                                             {{ $task->status_changed_at->format('d M Y h:i A') }}
-                                                            @if ($s == "Completed")
-                                                                <div class="{{ $isIncomplete ? 'text-danger' : 'text-primary' }} fw-bold">
-                                                                    {{ $task->formatted_total_time }}
-                                                                    @if($isIncomplete)
-                                                                        <span class="badge bg-danger ms-2">Incomplete</span>
-                                                                    @endif
+                                                            @if($isIncomplete)
+                                                                <span class="badge bg-danger ms-1">Incomplete</span>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="dt-actions">
+                                                    <button type="button"
+                                                        class="zoho-btn-primary btn-sm dt-btn-progress"
+                                                        title="Add Work Progress"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#followUpModal"
+                                                        onclick="openFollowUpModal({{ $task->id }}, '{{ addslashes($task->project->name ?? 'N/A') }}', 'add', '{{ addslashes($task->task_title) }}', {{ $task->employee_id ?? 'null' }}, '{{ addslashes($task->employee->name ?? auth()->user()->name ?? 'Employee') }}', {{ $task->project_id ?? 'null' }})">
+                                                        <i class="feather-plus"></i> Progress
+                                                    </button>
+                                                    <button type="button"
+                                                        class="zoho-icon-btn"
+                                                        title="View Details & History"
+                                                        onclick="showTaskDesc({{ $task->id }})">
+                                                        <i class="feather-eye"></i>
+                                                    </button>
+                                                    <template id="task_desc_{{ $task->id }}">
+                                                        <div class="dt-detail-section">
+                                                            <div class="dt-detail-section-head">
+                                                                <i class="feather-sunrise"></i>
+                                                                <div>
+                                                                    <h4>Morning Plan</h4>
+                                                                    <p>Original task for the day</p>
                                                                 </div>
+                                                            </div>
+                                                            <div class="dt-detail-title">{{ $task->task_title ?: 'No task title provided.' }}</div>
+                                                            @if($task->description)
+                                                                <div class="dt-detail-desc">{!! $task->description !!}</div>
+                                                            @else
+                                                                <div class="dt-detail-desc dt-detail-desc--empty">No description provided.</div>
                                                             @endif
                                                         </div>
 
-                                                    @endif
+                                                        @php
+                                                        $groupedFollowups = $task->followUps
+                                                            ->sortByDesc('created_at')
+                                                            ->groupBy(function($item){
+                                                                return ($item->reference_name ?? 'Employee') . '_' .
+                                                                $item->created_at->format('d-m-Y');
+                                                            });
+                                                        $allTaskHours = $task->followUps->sum('time_taken');
+                                                        $th = floor($allTaskHours);
+                                                        $tm = round(($allTaskHours - $th) * 60);
+                                                        $totalDisplay = [];
+                                                        if($th > 0) $totalDisplay[] = $th.'h';
+                                                        if($tm > 0) $totalDisplay[] = $tm.'m';
+                                                        @endphp
 
-                                                </div>
-                                            </td>
-                                            @if ($isAdmin)
-                                                <td style="font-size: 12px; color: #475569;">
-                                                    <!-- {{ $task->employee ? $task->employee->name : '-' }} -->
-                                                      Assign to: <b>{{ $task->employee ? $task->employee->name : '-' }}</b> <br>
-                                                      Assign by: <b>{{ $task->creator ? $task->creator->name : '-' }}</b>
-                                                </td>
-                                                <!-- <td style="font-size: 14px; color: #475569;">
-                                                    {{ $task->creator ? $task->creator->name : '-' }}
-                                                </td> -->
-                                            @endif
-                                            <td>
-                                                <span
-                                                    class="badge bg-soft-secondary text-secondary">{{ $task->employee->department }}</span>
-                                            </td>
-                                            <td class="text-center" style="white-space: nowrap;">
-                                                <div class="d-flex justify-content-center gap-2">
-                                                    <a href="javascript:void(0);"
-                                                        class="avatar-text avatar-md bg-soft-secondary text-secondary rounded"
-                                                        title="View Details & History" onclick="showTaskDesc({{ $task->id }})">
-                                                        <i class="feather-file-text"></i>
-                                                    </a>
-                                                    <template id="task_desc_{{ $task->id }}">
-                                                        <div class="mb-4">
-                                                            <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2" style="font-size: 20px;">
-                                                                <i class="feather-info"></i> Original Task Title
-                                                            </h6>
-                                                            <div class="p-3 bg-white rounded border mb-3"
-                                                                style="font-size:14px; min-height:60px; border-color:#e2e8f0 !important;">
-                                                                <span class="fw-semibold text-dark">
-                                                                    {{ $task->task_title ?: 'No task title provided.' }}
+                                                        <div class="dt-detail-section">
+                                                            <div class="dt-detail-section-head dt-detail-section-head--progress">
+                                                                <i class="feather-activity"></i>
+                                                                <div>
+                                                                    <h4>Work Progress</h4>
+                                                                    <p>Logged entries for this task</p>
+                                                                </div>
+                                                                <span class="dt-detail-total-time">
+                                                                    <i class="feather-clock"></i>
+                                                                    {{ count($totalDisplay) ? implode(' ', $totalDisplay) : '0m' }}
                                                                 </span>
                                                             </div>
 
-                                                            <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2" style="font-size: 20px;">
-                                                                <i class="feather-info"></i> Original Task Description
-                                                            </h6>
-                                                            <div class="p-3 bg-white rounded border"
-                                                                style="font-size:14px; min-height:110px; border-color:#e2e8f0 !important;">
-                                                                <div class="text-muted" style="font-size: 15px; line-height: 1.8;">
-                                                                    {!! $task->description ?: 'No description provided.' !!}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {{-- Work Progress History --}}
-                                                        @php
-                                                        $groupedFollowups = $task->followUps
-                                                        ->sortByDesc('created_at')
-                                                        ->groupBy(function($item){
-                                                            return ($item->reference_name ?? 'Employee') . '_' .
-                                                            $item->created_at->format('d-m-Y');
-                                                        });
-
-                                                        $allTaskHours=$task->followUps->sum('time_taken');
-
-                                                        $th=floor($allTaskHours);
-                                                        $tm=round(($allTaskHours-$th)*60);
-
-                                                        $totalDisplay=[];
-
-                                                        if($th>0) $totalDisplay[]=$th.'h';
-                                                        if($tm>0) $totalDisplay[]=$tm.'m';
-                                                        @endphp
-
-
-                                                        <div class="d-flex justify-content-between align-items-center mb-3">
-
-                                                            <h6 class="fw-bold text-primary d-flex align-items-center gap-2 m-0">
-                                                                <i class="feather-clock"></i>
-                                                                Work Progress History
-                                                            </h6>
-
-                                                            <span class="badge text-dark fw-bold"
-                                                            style="
-                                                            background:#e2e8f0;
-                                                            padding:8px 14px;
-                                                            border-radius:8px;
-                                                            font-size:12px;">
-
-                                                                <i class="feather-clock me-1"></i>
-
-                                                                {{implode(' ',$totalDisplay)}}
-
-                                                            </span>
-
-                                                        </div>
-
-                                                        @foreach($groupedFollowups as $group)
-
-                                                            @php
-                                                            $first=$group->first();
-
-                                                            $totalHours=$group->sum('time_taken');
-
-                                                            $h=floor($totalHours);
-
-                                                            $m=round(($totalHours-$h)*60);
-
-                                                            $display=[];
-
-                                                            if($h>0) $display[]=$h.'h';
-                                                            if($m>0) $display[]=$m.'m';
-
-                                                            @endphp
-
-                                                            <div class="mb-4 ps-4 position-relative" style="border-left:2px dashed #cbd5e1;">
-                                                                <div class="position-absolute" style="left:-9px; top:0; width:16px; height:16px; background:#3858f9; border-radius:50%; border:3px solid white;"></div>
-                                                                <div class="card border-0 shadow-sm" style="border-radius:12px;background:#f8fafc">
-                                                                    <div class="card-body p-4">
-                                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            @forelse($groupedFollowups as $group)
+                                                                @php
+                                                                    $first = $group->first();
+                                                                    $groupHours = $group->sum('time_taken');
+                                                                    $gh = floor($groupHours);
+                                                                    $gm = round(($groupHours - $gh) * 60);
+                                                                    $groupTime = [];
+                                                                    if($gh > 0) $groupTime[] = $gh.'h';
+                                                                    if($gm > 0) $groupTime[] = $gm.'m';
+                                                                @endphp
+                                                                <div class="dt-timeline-item">
+                                                                    <div class="dt-timeline-dot"></div>
+                                                                    <div class="dt-timeline-card">
+                                                                        <div class="dt-timeline-card-head">
                                                                             <div>
-                                                                                <div class="fw-bold text-dark" style="font-size:16px">
-                                                                                    {{ $first->reference_name }}
-                                                                                </div>
+                                                                                <strong>{{ $first->reference_name }}</strong>
+                                                                                <span>{{ $first->created_at->format('d M Y') }}</span>
                                                                             </div>
-                                                                            <span style=" background:#eef2ff; color:#3858f9; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600; min-width:90px; text-align:center">
-                                                                                {{ $first->created_at->format('d M, Y') }}
-                                                                            </span>
+                                                                            @if(count($groupTime))
+                                                                                <span class="dt-timeline-time">{{ implode(' ', $groupTime) }}</span>
+                                                                            @endif
                                                                         </div>
-                                                                        <div class="ps-3 mt-3"style="border-left:3px solid #3858f9;">
+                                                                        <div class="dt-timeline-body">
                                                                             @foreach($group as $fu)
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-muted" style=" font-size:14px; line-height:1.8; color:#64748b">{!! $fu->work_description !!}</div>
-                                                                                </div>
+                                                                                <div class="dt-timeline-entry">{!! $fu->work_description !!}</div>
                                                                             @endforeach
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        @endforeach
+                                                            @empty
+                                                                <div class="dt-detail-empty">
+                                                                    <i class="feather-edit-3"></i>
+                                                                    <p>No work progress logged yet.</p>
+                                                                </div>
+                                                            @endforelse
+                                                        </div>
                                                     </template>
 
-                                                    <a href="javascript:void(0);"
-                                                        class="avatar-text avatar-md bg-soft-primary text-primary rounded"
-                                                        title="Edit" onclick="editTask({{ json_encode(array_merge($task->toArray(), ['start_date_formatted' => optional($task->start_date)->format('Y-m-d'), 'end_date_formatted' => optional($task->end_date)->format('Y-m-d')])) }})">
-                                                        <i class="feather-edit-3"></i>
-                                                    </a>
+                                                    <button type="button"
+                                                        class="zoho-icon-btn"
+                                                        title="Edit Main Task"
+                                                        onclick="editTask({{ json_encode(array_merge($task->toArray(), ['start_date_formatted' => optional($task->start_date)->format('Y-m-d'), 'end_date_formatted' => optional($task->end_date)->format('Y-m-d')])) }})">
+                                                        <i class="feather-edit-2"></i>
+                                                    </button>
                                                     <form action="{{ route('daily-tasks.destroy', $task->id) }}" method="POST"
                                                         class="delete-form d-inline" onsubmit="deleteRecord(event, this)">
                                                         @csrf @method('DELETE')
                                                         <button type="submit"
-                                                            class="avatar-text avatar-md bg-soft-danger text-danger rounded border-0"
+                                                            class="zoho-icon-btn zoho-icon-btn--danger"
                                                             title="Delete Task">
                                                             <i class="feather-trash-2"></i>
                                                         </button>
                                                     </form>
-                                                    
-                                                    <a href="javascript:void(0);"
-                                                        class="avatar-text avatar-md bg-soft-info text-info rounded"
-                                                        title="Add Work Progress" data-bs-toggle="modal"
-                                                        data-bs-target="#followUpModal"
-                                                        onclick="openFollowUpModal({{ $task->id }}, '{{ addslashes($task->project->name ?? 'N/A') }}', 'add', '{{ addslashes($task->task_title) }}', {{ $task->employee_id ?? 'null' }}, '{{ addslashes($task->employee->name ?? auth()->user()->name ?? 'Employee') }}', {{ $task->project_id ?? 'null' }})">
-                                                        <i class="feather-plus-circle"></i>
-                                                    </a>
-
-                                                    <!-- <a href="javascript:void(0);"
-                                                        class="avatar-text avatar-md bg-soft-dark text-dark rounded"
-                                                        title="View Work History" data-bs-toggle="modal"
-                                                        data-bs-target="#followUpModal"
-                                                        onclick="openFollowUpModal({{ $task->id }}, '{{ addslashes($task->project->name ?? 'N/A') }}', 'history', '{{ addslashes($task->task_title) }}')">
-                                                        <i class="feather-clock"></i>
-                                                    </a> -->
                                                 </div>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="10" class="text-center py-5 text-muted">No tasks found.</td>
+                                            <td colspan="5">
+                                                <div class="dt-empty-state">
+                                                    <i class="feather-check-square"></i>
+                                                    <p>{{ request()->hasAny(['search', 'project_id', 'employee_id', 'status', 'from_date', 'upto_date']) ? 'No tasks match your filters.' : 'No daily tasks yet. Add your morning plan to get started.' }}</p>
+                                                </div>
+                                            </td>
                                         </tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
-                        <!-- ARROW PAGINATION -->
                         @if($tasks->hasPages())
-                            <div class="card-footer bg-white border-0 py-3">
+                            <div class="dt-list-footer d-flex justify-content-center">
                                 {{ $tasks->appends(request()->query())->links('pagination::bootstrap-5') }}
                             </div>
                         @endif
@@ -733,277 +404,201 @@
 
 @section('modals')
     <!-- SIDE PANEL: CREATE/EDIT TASK -->
-    <div class="offcanvas offcanvas-end border-0" tabindex="-1" id="taskOffcanvas" aria-labelledby="taskOffcanvasLabel"
-        style="width: 50% !important;">
-        <div class="offcanvas-header text-white p-4" style="background: #3858f9;">
-            <h5 class="offcanvas-title fw-bold" id="taskOffcanvasLabel" style="color: #ffffff !important;">Create Task</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas offcanvas-end dt-task-offcanvas shadow-lg h-100" tabindex="-1" id="taskOffcanvas" aria-labelledby="taskOffcanvasLabel">
+        <div class="offcanvas-header zoho-offcanvas-head border-bottom">
+            <h5 class="offcanvas-title zoho-offcanvas-title" id="taskOffcanvasLabel">Add Main Task</h5>
+            <button type="button" class="zoho-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="Close">
+                <i class="feather-x"></i>
+            </button>
         </div>
-        <div class="offcanvas-body p-4" style="background: #f8fafc;">
-            <form id="taskForm">
+        <form id="taskForm" class="d-flex flex-column h-100">
                 @csrf
                 <div id="methodField"></div>
                 <input type="hidden" name="id" id="taskId">
-
-                <div class="row g-4">
-                    <div class="col-md-4 d-none">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Project <span
-                                class="text-danger">*</span></label>
-                        <select name="project_id" id="taskProjectId" class="form-select premium-select"
-                            data-placeholder="Select Project...">
-                            <option value="">Select Project...</option>
-                            @foreach($projects as $project)
-                                <option value="{{ $project->id }}">{{ $project->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Task Title <span
-                                class="text-danger">*</span></label>
-                        <input type="text" name="task_title" id="taskTitle" class="form-control premium-input"
-                            placeholder="Enter Task Title..." required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Priority <span
-                                class="text-danger">*</span></label>
-                        <select name="priority" id="taskPriority" class="form-select premium-select"
-                            data-placeholder="Select Priority..." required>
-                            <option value="">Select priority...</option>
-                            <option value="Hard">High</option>
-                            <option value="Medium" selected>Medium</option>
-                            <option value="Low">Low</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Start Date <span
-                                class="text-danger">*</span></label>
-                        <input type="date" name="start_date" id="taskStartDate" class="form-control premium-input" value="{{ now()->format('Y-m-d') }}"
-                            onclick="this.showPicker()" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">End Date</label>
-                        <input type="date" name="end_date" id="taskEndDate" class="form-control premium-input" value="{{ now()->format('Y-m-d') }}"
-                            onclick="this.showPicker()">
-                    </div>
-                    <div class="col-md-4 d-none">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Status</label>
-                        <select name="status" id="taskStatus" class="form-select premium-select"
-                            data-placeholder="Select Status..." required>Pending
-                            <option value="Pending" selected>Pending</option>
-                            <option value="In Process">In Process</option>
-                            <option value="Completed">Completed</option>
-                            <option value="On Hold">On Hold</option>
-                            <option value="Review">Review</option>
-                            <option value="Rework">Rework</option>
-                        </select>
-                    </div>
-                    @if ($isAdmin)
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Assign To <span
-                                    class="text-danger">*</span></label>
-                            <select name="employee_id" id="taskEmployeeId" class="form-select premium-select"
-                                data-placeholder="Select Employee..." required>
-                                @if(count($employees) > 1)
-                                    <option value="">Employee name</option>
-                                @endif
-                                @foreach($employees as $employee)
-                                    <option value="{{ $employee->id }}" {{ count($employees) == 1 ? 'selected' : '' }}>
-                                        {{ $employee->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                <div class="flex-grow-1 overflow-auto p-3">
+                    <div class="dt-form-card">
+                        <div class="dt-form-card-head">
+                            <span class="dt-form-card-head-icon"><i class="feather-sunrise"></i></span>
+                            <div>
+                                <h3>Morning Plan</h3>
+                                <p>What will you work on today?</p>
+                            </div>
                         </div>
-                    @else
-                        <input type="hidden"
-                            name="employee_id"
-                            value="{{ auth()->user()->employee_id }}">
-                    @endif
-                    <div class="col-md-12">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Task Description</label>
-                        <textarea name="description" id="taskDesc" class="form-control premium-input" rows="3"
-                            placeholder="Enter detailed task description..."></textarea>
-                    </div>
-                    <div class="col-md-12 mt-3">
-                        <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Attachment (Optional)</label>
-                        <div class="p-3" style="border: 2px dashed #e2e8f0; border-radius: 12px; background: #f8fafc;">
-                            <input type="file" name="photo" id="mainTaskPhoto" class="form-control bg-transparent border-0 shadow-none">
-                            <div id="mainTaskFilePreview" class="mt-2 d-none">
-                                <span class="badge bg-soft-primary text-primary fw-bold" id="mainTaskFileName"></span>
+                        <div class="dt-form-card-body">
+                            <div class="col-md-4 d-none">
+                                <select name="project_id" id="taskProjectId" class="form-select premium-select"
+                                    data-placeholder="Select Project...">
+                                    <option value="">Select Project...</option>
+                                    @foreach($projects as $project)
+                                        <option value="{{ $project->id }}">{{ $project->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="dt-field">
+                                <label>Task Title <span class="req">*</span></label>
+                                <div class="dt-input-wrap">
+                                    <i class="feather-target"></i>
+                                    <input type="text" name="task_title" id="taskTitle" class="form-control"
+                                        placeholder="Enter today's main task..." required>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="dt-field">
+                                        <label>Priority <span class="req">*</span></label>
+                                        <div class="dt-input-wrap">
+                                            <i class="feather-flag"></i>
+                                            <select name="priority" id="taskPriority" class="form-select" required>
+                                                <option value="">Select priority...</option>
+                                                <option value="Hard">High</option>
+                                                <option value="Medium" selected>Medium</option>
+                                                <option value="Low">Low</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="dt-field">
+                                        <label>Start Date <span class="req">*</span></label>
+                                        <div class="dt-input-wrap">
+                                            <i class="feather-calendar"></i>
+                                            <input type="date" name="start_date" id="taskStartDate" class="form-control"
+                                                value="{{ now()->format('Y-m-d') }}" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="dt-field mb-md-0">
+                                        <label>End Date</label>
+                                        <div class="dt-input-wrap">
+                                            <i class="feather-calendar"></i>
+                                            <input type="date" name="end_date" id="taskEndDate" class="form-control"
+                                                value="{{ now()->format('Y-m-d') }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-none">
+                                <select name="status" id="taskStatus" class="form-select premium-select" required>
+                                    <option value="Pending" selected>Pending</option>
+                                    <option value="In Process">In Process</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="On Hold">On Hold</option>
+                                    <option value="Review">Review</option>
+                                    <option value="Rework">Rework</option>
+                                </select>
+                            </div>
+                            @if ($isAdmin)
+                                <div class="dt-field">
+                                    <label>Assign To <span class="req">*</span></label>
+                                    <div class="dt-input-wrap">
+                                        <i class="feather-user"></i>
+                                        <select name="employee_id" id="taskEmployeeId" class="form-select" required>
+                                            @if(count($employees) > 1)
+                                                <option value="">Employee name</option>
+                                            @endif
+                                            @foreach($employees as $employee)
+                                                <option value="{{ $employee->id }}" {{ count($employees) == 1 ? 'selected' : '' }}>
+                                                    {{ $employee->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            @else
+                                <input type="hidden" name="employee_id" value="{{ auth()->user()->employee_id }}">
+                            @endif
+                            <div class="dt-field">
+                                <label>Task Description</label>
+                                <div class="dt-input-wrap">
+                                    <i class="feather-align-left"></i>
+                                    <textarea name="description" id="taskDesc" class="form-control" rows="3"
+                                        placeholder="Brief plan for the day..."></textarea>
+                                </div>
+                            </div>
+                            <div class="dt-field mb-0">
+                                <label>Attachment (Optional)</label>
+                                <div class="dt-upload-zone">
+                                    <input type="file" name="photo" id="mainTaskPhoto" class="form-control bg-transparent border-0 shadow-none">
+                                    <div id="mainTaskFilePreview" class="mt-2 d-none">
+                                        <span class="badge bg-soft-primary text-primary fw-bold" id="mainTaskFileName"></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="mt-5">
-                    <button type="button" id="submitTaskBtn" class="btn btn-primary w-100 fw-bold shadow-sm"
-                        style="background: #3858f9; border: none; height: 56px; border-radius: 12px; font-size: 16px; letter-spacing: 0.5px;">SUBMIT
-                        TASK</button>
+                <div class="dt-offcanvas-foot">
+                    <button type="button" class="zoho-btn-outline flex-fill" data-bs-dismiss="offcanvas">Cancel</button>
+                    <button type="button" id="submitTaskBtn" class="zoho-btn-primary flex-fill">
+                        <i class="feather-save"></i> Save Main Task
+                    </button>
                 </div>
             </form>
-        </div>
     </div>
 
-    <!-- TASK FOLLOW-UP MODAL (HISTORY DESCRIPTION) -->
-    <div class="modal border-0" id="followUpModal" tabindex="-1" aria-hidden="true"
-        style="backdrop-filter: none !important;">
-        <div class="modal-dialog modal-dialog-centered"
-            style="max-width: 55%; min-width: 800px; transform: none !important; transition: none !important;">
-            <div class="modal-content border-0 shadow-lg"
-                style="border-radius: 16px; overflow: hidden; filter: none !important; -webkit-filter: none !important; transform: none !important;">
-                <div class="modal-header text-white p-3" style="background: #3858f9; border: none !important;">
-                    <h5 class="modal-title fw-bold" id="followUpModalLabel" style="color: #ffffff !important;">Work History
-                    </h5>
-                    <span id="followUpTaskTitle" class="badge bg-white text-primary ms-2 fw-bold text-truncate"
-                        style="font-size: 11px; padding: 5px 10px; border-radius: 6px; letter-spacing: 0.5px;
-                        text-transform: uppercase;  max-width:650px; display:inline-block; white-space:nowrap; 
-                        overflow:hidden; text-overflow:ellipsis;">
-                    </span>
-                    <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-3" style="background-color: #f8fafc !important; transform: none !important;">
-                    <div class="row g-4">
-                        <!-- ADD FOLLOW UP FORM (LEFT) -->
-                        <div class="col-lg-12 d-none" id="followUpFormColumn">
-                            <div class="card border-0 shadow-sm" style="border-radius: 12px; background: #ffffff;">
-                                <div class="card-body p-6">
-                                    <form id="followUpForm" enctype="multipart/form-data">
-                                        @csrf
-                                        <input type="hidden" name="daily_task_id" id="followUpTaskId">
-                                        <input type="hidden" name="follow_up_id" id="followUpId">
-                                        <input type="hidden" name="time_taken" id="totalFollowUpHours" value="0">
+    <!-- TASK DETAIL DRAWER -->
+    <div class="offcanvas offcanvas-end dt-detail-offcanvas shadow-lg" tabindex="-1" id="taskDetailDrawer">
+        <div class="offcanvas-header zoho-offcanvas-head border-bottom">
+            <div>
+                <h5 class="offcanvas-title zoho-offcanvas-title mb-1">Task Details & Progress</h5>
+                <p class="dt-detail-drawer-sub mb-0">Morning plan and logged work history</p>
+            </div>
+            <button type="button" class="zoho-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="Close">
+                <i class="feather-x"></i>
+            </button>
+        </div>
+        <div class="offcanvas-body" id="taskDetailBody"></div>
+    </div>
 
-                                        <!-- <div class="mb-3">
-                                            <label class="form-label fw-bold small text-muted text-uppercase mb-2">Performed
-                                                By</label>
-                                            <div
-                                                class="p-3 rounded-3 bg-soft-primary border border-primary border-opacity-10 d-flex align-items-center">
-                                                <div class="avatar-text avatar-sm bg-primary text-white rounded-circle me-3"
-                                                    id="followUpEmpInitial">M</div>
-                                                <div>
-                                                    <div class="fw-bold text-dark fs-14" id="followUpEmpNameDisplay">...
-                                                    </div>
-                                                    <div class="text-muted small" style="font-size: 11px;">Assigned Task
-                                                        Owner</div>
-                                                </div>
-                                                <input type="hidden" name="reference_name" id="followUpEmployee">
-                                            </div>
-                                        </div> -->
-
-                                        <!-- QUICK TASK ADDER -->
-                                        <!-- <div class="row g-2 mb-3 p-2 rounded"
-                                            style="background: #f1f5f9; border: 1px dashed #cbd5e1;">
-                                            <div class="col-4">
-                                                <label
-                                                    class="form-label fw-bold fs-10 text-muted text-uppercase mb-1">Sub-Task</label>
-                                                <input type="text" id="quickTaskTitle"
-                                                    class="form-control premium-input shadow-none"
-                                                    placeholder="Task Title..."
-                                                    style="height: 35px !important; border-radius: 8px !important; font-size: 12px !important;">
-                                            </div>
-                                            <div class="col-2">
-                                                <label
-                                                    class="form-label fw-bold fs-10 text-muted text-uppercase mb-1">H</label>
-                                                <input type="number" id="quickTaskHours"
-                                                    class="form-control premium-input shadow-none text-center fw-bold" placeholder="0" min="0"
-                                                    style="height: 35px !important; border-radius: 8px !important; font-size: 13px !important; color: #1e293b !important; padding: 0 !important;">
-                                            </div>
-                                            <div class="col-2">
-                                                <label
-                                                    class="form-label fw-bold fs-10 text-muted text-uppercase mb-1">M</label>
-                                                <input type="number" id="quickTaskMins"
-                                                    class="form-control premium-input shadow-none text-center fw-bold" placeholder="0" min="0" max="59"
-                                                    style="height: 35px !important; border-radius: 8px !important; font-size: 13px !important; color: #1e293b !important; padding: 0 !important;">
-                                            </div>
-                                            <div class="col-4 d-flex align-items-end">
-                                                <button type="button" class="btn btn-primary w-100 p-0 fw-bold"
-                                                    onclick="addQuickTaskToDesc()"
-                                                    style="height: 35px; border-radius: 8px; font-size: 10px; background: #3858f9;">
-                                                    ADD TASK
-                                                </button>
-                                            </div>
-                                        </div> -->
-
-                                        <div class="d-flex justify-content-end align-items-center mb-3">
-                                            <button type="button"
-                                                onclick="addTaskClone()"
-                                                class="btn btn-primary fw-bold px-3"
-                                                style="height:40px;border-radius:10px;">
-                                                <i class="bi bi-plus-lg me-1"></i> Add Row
-                                            </button>
-                                        </div>
-
-                                        <div id="taskAddContainer"></div>
-
-                                        <div class="mb-3 d-none">
-                                            <label class="form-label fw-bold fs-12 text-muted text-uppercase mb-2">Work
-                                                Description <span class="text-danger">*</span></label>
-                                            <textarea name="legacy_work_description" id="workDesc"
-                                                class="form-control premium-input" rows="3"
-                                                placeholder="Enter detailed work progress description..."></textarea>
-                                        </div>
-                                        <button type="submit" id="submitReplyBtn"
-                                            class="btn btn-primary w-100 fw-bold shadow-sm"
-                                            style="background: #3858f9; border: none; height: 52px; border-radius: 12px; font-size: 15px;">SUBMIT
-                                            REPLY</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- FOLLOW UP HISTORY TABLE (RIGHT) -->
-                        <!-- <div class="col-lg-7" id="followUpHistoryColumn">
-                            <div class="card border-0 shadow-sm overflow-hidden"
-                                style="border-radius: 12px; background: #ffffff; min-height: 500px;">
-                                <div class="card-header bg-white border-bottom py-3">
-                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                                        <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3"
-                                            style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                                            <span class="text-muted small fw-bold text-uppercase"
-                                                style="font-size: 10px; letter-spacing: 0.5px;">Show</span>
-                                            <select id="modalEntriesLimit"
-                                                class="form-select select-small border-0 bg-light shadow-none fw-bold"
-                                                onchange="changeModalEntries()"
-                                                style="width: 90px; height: 36px; font-size: 13px; border-radius: 8px; padding: 0 10px; cursor: pointer; background-color: #ffffff !important; border: 1px solid #dbe4f0 !important;">
-                                                <option value="5">5</option>
-                                                <option value="10">10</option>
-                                                <option value="25">25</option>
-                                            </select>
-                                            <span class="text-muted small fw-bold text-uppercase"
-                                                style="font-size: 10px; letter-spacing: 0.5px;">entries</span>
-                                        </div>
-                                        <div class="input-group bg-light"
-                                            style="width: 220px; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0;">
-                                            <span class="input-group-text bg-transparent border-0 py-0"><i
-                                                    class="feather-search text-muted"></i></span>
-                                            <input type="text" id="modalSearch"
-                                                class="form-control border-0 bg-transparent shadow-none fw-bold"
-                                                placeholder="Search..." onkeyup="filterModalHistory()"
-                                                style="height: 38px; font-size: 13px;">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div id="modalTableContainer"
-                                        style="max-height: 450px; overflow-y: auto; overflow-x: hidden; width: 100%;">
-                            
-                                    </div>
-                                    
-                                    <div id="modalPaginationContainer"
-                                        class="px-3 py-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-3 bg-white">
-                                        <div class="small text-muted fw-bold" id="modalEntriesInfo"
-                                            style="font-size: 12px;">Showing 0 to 0 of 0 entries</div>
-                                        <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end" id="modalPaginationButtons">
-                                          
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div> -->
+    <!-- TASK FOLLOW-UP MODAL (WORK PROGRESS) -->
+    <div class="modal fade dt-progress-modal" id="followUpModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-1" id="followUpModalLabel">Add Work Progress</h5>
+                        <span id="followUpTaskTitle" class="dt-modal-task-badge"></span>
                     </div>
+                    <button type="button" class="zoho-offcanvas-close zoho-offcanvas-close--light" data-bs-dismiss="modal" aria-label="Close">
+                        <i class="feather-x"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="dt-fu-intro">
+                        <i class="feather-edit-3"></i>
+                        <div>
+                            <strong>Log your work</strong>
+                            <p>Add project, time spent, and what you accomplished today.</p>
+                        </div>
+                    </div>
+                    <div class="d-none" id="followUpFormColumn">
+                        <form id="followUpForm" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="daily_task_id" id="followUpTaskId">
+                            <input type="hidden" name="follow_up_id" id="followUpId">
+                            <input type="hidden" name="time_taken" id="totalFollowUpHours" value="0">
+
+                            <div class="dt-fu-toolbar">
+                                <span class="dt-fu-toolbar-label">Progress entries</span>
+                                <button type="button" onclick="addTaskClone()" class="zoho-btn-outline btn-sm">
+                                    <i class="feather-plus"></i> Add entry
+                                </button>
+                            </div>
+
+                            <div id="taskAddContainer"></div>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer dt-modal-foot d-none" id="followUpModalFooter">
+                    <button type="button" class="zoho-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="followUpForm" id="submitReplyBtn" class="zoho-btn-primary">
+                        <i class="feather-check"></i> Submit Progress
+                    </button>
                 </div>
             </div>
         </div>
+    </div>
         <!-- CUSTOM ATTACHMENT VIEWER MODAL -->
         <div id="customAttachmentModal"
             style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:999999; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; backdrop-filter: blur(4px);">
@@ -1937,7 +1532,7 @@
 
             function editTask(task) {
                 document.getElementById('taskForm').reset();
-                document.getElementById('taskOffcanvasLabel').innerText = 'Edit Task';
+                document.getElementById('taskOffcanvasLabel').innerText = 'Edit Main Task';
                 document.getElementById('submitTaskBtn').innerText = 'UPDATE TASK';
 
                 // Set basic fields
@@ -2011,7 +1606,7 @@
             function resetTaskForm() {
                 document.getElementById('taskForm').reset();
                 document.getElementById('taskForm').action = `{{ url('/daily-tasks') }}`;
-                document.getElementById('taskOffcanvasLabel').innerText = 'Create Task';
+                document.getElementById('taskOffcanvasLabel').innerText = 'Add Main Task';
                 document.getElementById('submitTaskBtn').innerText = 'SUBMIT TASK';
                 document.getElementById('taskId').value = '';
                 document.getElementById('methodField').innerHTML = '';
@@ -2041,57 +1636,59 @@
 
             function buildFollowUpRow(selectedProjectId = '', existingPhotoUrl = '') {
                 return `
-                <div class="followup-row mb-3 p-3 rounded-4"
-                    style="background:#ffffff;border:1px solid #e2e8f0;box-shadow:0 10px 30px rgba(15,23,42,0.05);">
+                <div class="followup-row dt-fu-row">
+                    <div class="dt-fu-row-head">
+                        <span class="followup-row-title dt-fu-row-title">Work entry</span>
+                        <button type="button" onclick="removeTaskClone(this)" class="zoho-icon-btn zoho-icon-btn--danger followup-remove-btn" title="Remove entry">
+                            <i class="feather-trash-2"></i>
+                        </button>
+                    </div>
                     <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label fw-bold text-muted text-uppercase mb-1" style="font-size:11px;">Project</label>
-                            <select name="project_id[]" class="form-select premium-select followup-project-select" required style="height:35px; border-radius:8px; font-size:12px;">
-                                <option value="">Select Project...</option>
-                                @foreach($projects as $project)
-                                <option value="{{ $project->id }}" ${selectedProjectId == '{{ $project->id }}' ? 'selected' : ''}>
-                                    {{ $project->name }}
-                                </option>
-                                @endforeach
-                            </select>
+                        <div class="col-md-6">
+                            <label class="dt-fu-label">Project</label>
+                            <div class="dt-input-wrap">
+                                <i class="feather-briefcase"></i>
+                                <select name="project_id[]" class="form-select followup-project-select" required>
+                                    <option value="">Select project...</option>
+                                    @foreach($projects as $project)
+                                    <option value="{{ $project->id }}" ${selectedProjectId == '{{ $project->id }}' ? 'selected' : ''}>{{ $project->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label fw-bold text-muted mb-1" style="font-size:11px;">H</label>
-                            <input type="number" name="hours[]" class="form-control text-center fw-bold followup-hours" placeholder="0" min="0" style="height:35px;border-radius:8px;">
+                        <div class="col-md-3">
+                            <label class="dt-fu-label">Hours</label>
+                            <div class="dt-input-wrap">
+                                <i class="feather-clock"></i>
+                                <input type="number" name="hours[]" class="form-control followup-hours" placeholder="0" min="0">
+                            </div>
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label fw-bold text-muted mb-1" style="font-size:11px;">M</label>
-                            <input type="number" name="minutes[]" class="form-control text-center fw-bold followup-minutes" placeholder="0" min="0" max="59" style="height:35px;border-radius:8px;">
+                        <div class="col-md-3">
+                            <label class="dt-fu-label">Minutes</label>
+                            <div class="dt-input-wrap">
+                                <i class="feather-watch"></i>
+                                <input type="number" name="minutes[]" class="form-control followup-minutes" placeholder="0" min="0" max="59">
+                            </div>
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label fw-bold text-muted mb-1" style="font-size:11px;">Action</label>
-                            <button type="button" onclick="removeTaskClone(this)" class="btn btn-outline-danger w-100 followup-remove-btn" style="height:45px;border-radius:8px;">
-                                <i class="feather-trash-2 me-1"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="row g-3 mt-1">
                         <div class="col-12">
-                            <label class="form-label fw-bold text-muted text-uppercase mb-1" style="font-size:11px;">Work Description <span class="text-danger">*</span></label>
-                            <textarea name="work_description[]" rows="3" class="form-control premium-input" placeholder="Enter Description..." style="border-radius:8px;" required></textarea>
+                            <label class="dt-fu-label">Work description <span class="text-danger">*</span></label>
+                            <div class="dt-input-wrap dt-input-wrap--textarea">
+                                <i class="feather-align-left"></i>
+                                <textarea name="work_description[]" rows="3" class="form-control" placeholder="What did you work on?" required></textarea>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row g-3 mt-1">
                         <div class="col-12">
-                            <label class="form-label fw-bold text-muted text-uppercase mb-1" style="font-size:11px;">Upload Attachment</label>
-                            <input type="hidden" class="followup-existing-photo" value="${existingPhotoUrl}">
-                            <input type="file" name="photo[]" class="form-control premium-input followup-photo-input" onchange="previewFollowUpAttachment(this)" accept=".jpeg,.jpg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar">
-                            <div class="followup-preview-container mt-3 d-none"
-                                style="position: relative; width: 100%; min-height: 50px; border-radius: 12px; overflow: hidden; border: 2px dashed #e2e8f0; padding: 10px; background: #f8fafc; text-align: center;">
-                                <img class="followup-photo-preview" alt="Preview"
-                                    style="width: 100%; max-height: 180px; object-fit: contain !important; border-radius: 8px; display: none;">
-                                <div class="followup-doc-preview fw-bold text-primary"
-                                    style="display: none; padding: 20px;"></div>
-                                <button type="button" class="btn btn-sm btn-danger rounded-circle followup-remove-attachment"
-                                    onclick="clearFollowUpAttachment(this)"
-                                    style="position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; z-index: 10;">
-                                    <i class="feather-x"></i>
-                                </button>
+                            <label class="dt-fu-label">Attachment</label>
+                            <div class="dt-upload-zone">
+                                <input type="hidden" class="followup-existing-photo" value="${existingPhotoUrl}">
+                                <input type="file" name="photo[]" class="form-control followup-photo-input bg-transparent border-0 shadow-none" onchange="previewFollowUpAttachment(this)" accept=".jpeg,.jpg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar">
+                                <div class="followup-preview-container mt-2 d-none">
+                                    <img class="followup-photo-preview" alt="Preview" style="display:none; max-height:120px; border-radius:8px;">
+                                    <div class="followup-doc-preview fw-bold text-primary" style="display:none;"></div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger followup-remove-attachment mt-2" onclick="clearFollowUpAttachment(this)">
+                                        <i class="feather-x"></i> Remove file
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2135,42 +1732,34 @@
                 resetFollowUpRows(selectedProjectId);
                 document.getElementById('followUpId').value = '';
                 document.getElementById('totalFollowUpHours').value = 0;
-                document.getElementById('submitReplyBtn').innerText = 'SUBMIT PROGRESS';
+                document.getElementById('submitReplyBtn').innerHTML = '<i class="feather-check"></i> Submit Progress';
                 try { $('#workDesc').summernote('code', ''); } catch (e) { }
                 removePreview();
                 modalCurrentPage = 1;
                 loadFollowUpHistory(taskId);
 
                 const formCol = document.getElementById('followUpFormColumn');
+                const modalFooter = document.getElementById('followUpModalFooter');
                 const historyCol = document.getElementById('followUpHistoryColumn');
                 const modalDialog = document.querySelector('#followUpModal .modal-dialog');
 
                 if (mode === 'add') {
                     formCol.classList.remove('d-none');
+                    if (modalFooter) modalFooter.classList.remove('d-none');
                     if (historyCol) {
                         historyCol.classList.remove('col-lg-12');
                         historyCol.classList.add('col-lg-7');
                     }
-                    modalDialog.classList.add('modal-xl');
+                    if (modalDialog) modalDialog.classList.add('modal-xl');
                     document.getElementById('followUpModalLabel').innerText = 'Add Work Progress';
-
-                    // Display assigned employee name and lock it
-                    if (assignedEmpName) {
-                        const empDisplay = document.getElementById('followUpEmpNameDisplay');
-                        const empInitial = document.getElementById('followUpEmpInitial');
-                        const empHidden = document.getElementById('followUpEmployee');
-
-                        if (empDisplay) empDisplay.innerText = assignedEmpName;
-                        if (empInitial) empInitial.innerText = assignedEmpName.charAt(0).toUpperCase();
-                        if (empHidden) empHidden.value = assignedEmpName;
-                    }
                 } else {
                     formCol.classList.add('d-none');
+                    if (modalFooter) modalFooter.classList.add('d-none');
                     if (historyCol) {
                         historyCol.classList.remove('col-lg-7');
                         historyCol.classList.add('col-lg-12');
                     }
-                    modalDialog.classList.remove('modal-xl');
+                    if (modalDialog) modalDialog.classList.remove('modal-xl');
                     document.getElementById('followUpModalLabel').innerText = 'Work History';
                 }
             }
@@ -2877,22 +2466,12 @@
                 updateTaskTimers();
             });
 
-            function showTaskDesc(id) {
-                const html = document.getElementById('task_desc_' + id).innerHTML;
-                Swal.fire({
-                    title: 'Task Description',
-                    html: `<div class="custom-html-content" style="max-height: 60vh; overflow-y: auto; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">${html}</div>`,
-                    showConfirmButton: true,
-                    confirmButtonColor: '#3858f9'
-                });
-            }
-
             $(document).ready(function () {
-                $('#workDesc, #taskDesc').summernote({
+                $('#taskDesc').summernote({
                     placeholder: 'Enter Description...',
                     tabsize: 2,
                     height: 100,
-                    maximumImageFileSize: 1024 * 1024 * 5, // 5MB limit
+                    maximumImageFileSize: 1024 * 1024 * 5,
                     toolbar: [
                         ['style', ['style']],
                         ['font', ['bold', 'underline', 'clear']],
@@ -2909,8 +2488,6 @@
                                     Toast.fire({ icon: 'error', title: 'Image too large (Max 5MB)' });
                                     continue;
                                 }
-                                // Summernote handles base64 by default if we don't handle it here, 
-                                // but we can manually invoke it to be safe
                                 let reader = new FileReader();
                                 reader.onload = (e) => {
                                     $(this).summernote('insertImage', e.target.result);
@@ -2918,18 +2495,33 @@
                                 reader.readAsDataURL(files[i]);
                             }
                         },
-                        onPaste: function (e) {
-                            var bufferText = ((e.originalEvent || e).clipboardData || window.clipboardData).getData('text/html');
-                            if (bufferText) {
-                                // Optionally clean up pasted HTML
-                            }
-                        },
-                        onChange: function (contents, $editable) {
+                        onChange: function (contents) {
                             $(this).val(contents);
                         }
                     }
                 });
             });
+
+            function showTaskDesc(id) {
+                const html = document.getElementById('task_desc_' + id).innerHTML;
+                document.getElementById('taskDetailBody').innerHTML = html;
+                new bootstrap.Offcanvas(document.getElementById('taskDetailDrawer')).show();
+            }
+
+            function viewAttachmentPopup(url) {
+                const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null;
+                let htmlContent = isImage
+                    ? `<img src="${url}" style="width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px;">`
+                    : `<iframe src="${url}" style="width: 100%; height: 70vh; border: none; border-radius: 8px;"></iframe>`;
+
+                Swal.fire({
+                    title: 'Attachment Preview',
+                    html: htmlContent,
+                    width: '900px',
+                    showCloseButton: true,
+                    showConfirmButton: false
+                });
+            }
 
             function deleteFollowUp(id) {
                 Swal.fire({
@@ -3166,36 +2758,6 @@
                             Toast.fire({ icon: 'error', title: 'Update failed' });
                         }
                     });
-            }
-
-            function showTaskDesc(id) {
-                const html = document.getElementById('task_desc_' + id).innerHTML;
-                Swal.fire({
-                    title: 'Task Details & Progress',
-                    html: `<div class="custom-html-content" style="max-height: 75vh; overflow-y: auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; text-align: left;">${html}</div>`,
-                    width: '800px',
-                    showConfirmButton: true,
-                    confirmButtonColor: '#3858f9'
-                });
-            }
-
-            function viewAttachmentPopup(url) {
-                const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null;
-                let htmlContent = '';
-
-                if (isImage) {
-                    htmlContent = `<img src="${url}" style="width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px;">`;
-                } else {
-                    htmlContent = `<iframe src="${url}" style="width: 100%; height: 70vh; border: none; border-radius: 8px;"></iframe>`;
-                }
-
-                Swal.fire({
-                    title: 'Attachment Preview',
-                    html: htmlContent,
-                    width: '900px',
-                    showCloseButton: true,
-                    showConfirmButton: false
-                });
             }
         </script>
 

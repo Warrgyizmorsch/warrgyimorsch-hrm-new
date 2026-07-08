@@ -10,22 +10,90 @@ use Illuminate\Support\Str;
 
 class MasterController extends Controller
 {
-    public function departments()
+    public function departments(Request $request)
     {
-        $departments = Department::orderBy('name')->paginate(10);
-        return view('master.departments', compact('departments'));
+        [$departments, $stats, $perPage] = $this->masterListing(
+            Department::class,
+            $request,
+            ['name', 'short_name']
+        );
+
+        return view('master.departments', [
+            'departments' => $departments,
+            'totalCount' => $stats['total'],
+            'activeCount' => $stats['active'],
+            'perPage' => $perPage,
+        ]);
     }
 
-    public function designations()
+    public function designations(Request $request)
     {
-        $designations = Designation::orderBy('name')->paginate(10);
-        return view('master.designations', compact('designations'));
+        [$designations, $stats, $perPage] = $this->masterListing(
+            Designation::class,
+            $request,
+            ['name', 'short_name']
+        );
+
+        return view('master.designations', [
+            'designations' => $designations,
+            'totalCount' => $stats['total'],
+            'activeCount' => $stats['active'],
+            'perPage' => $perPage,
+        ]);
     }
 
-    public function roles()
+    public function roles(Request $request)
     {
-        $roles = Role::orderBy('name')->paginate(10);
-        return view('master.roles', compact('roles'));
+        [$roles, $stats, $perPage] = $this->masterListing(
+            Role::class,
+            $request,
+            ['name', 'slug']
+        );
+
+        return view('master.roles', [
+            'roles' => $roles,
+            'totalCount' => $stats['total'],
+            'activeCount' => $stats['active'],
+            'perPage' => $perPage,
+        ]);
+    }
+
+    private function masterListing(string $modelClass, Request $request, array $searchColumns): array
+    {
+        $perPage = (int) ($request->query('show', 20));
+        if (! in_array($perPage, [20, 50, 100], true)) {
+            $perPage = 20;
+        }
+
+        $query = $modelClass::query()->orderBy('name');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search, $searchColumns) {
+                foreach ($searchColumns as $column) {
+                    $q->orWhere($column, 'like', "%{$search}%");
+                }
+            });
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        $items = $query->paginate($perPage)->appends($request->query());
+
+        return [
+            $items,
+            [
+                'total' => $modelClass::count(),
+                'active' => $modelClass::where('is_active', true)->count(),
+            ],
+            $perPage,
+        ];
     }
 
     // DEPARTMENT
@@ -40,7 +108,11 @@ class MasterController extends Controller
     {
         $request->validate(['name' => 'required|string|max:255']);
         $dept = Department::findOrFail($id);
-        $dept->update($request->only('name', 'short_name', 'is_active'));
+        $dept->update([
+            'name' => $request->name,
+            'short_name' => $request->short_name,
+            'is_active' => $request->has('is_active') ? 1 : 0,
+        ]);
         return redirect()->route('master.departments')->with('success', 'Department updated successfully!');
     }
 
@@ -62,7 +134,11 @@ class MasterController extends Controller
     {
         $request->validate(['name' => 'required|string|max:255']);
         $desg = Designation::findOrFail($id);
-        $desg->update($request->only('name', 'short_name'));
+        $desg->update([
+            'name' => $request->name,
+            'short_name' => $request->short_name,
+            'is_active' => $request->has('is_active') ? 1 : 0,
+        ]);
         return redirect()->route('master.designations')->with('success', 'Designation updated successfully!');
     }
 

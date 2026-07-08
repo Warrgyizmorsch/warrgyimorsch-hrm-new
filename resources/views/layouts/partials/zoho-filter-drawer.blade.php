@@ -19,6 +19,10 @@
     </div>
     <div class="zoho-filter-drawer-footer">
         <button type="button" class="zoho-btn-primary" onclick="{{ $applyAction ?? 'applyFilters()' }}">Apply</button>
-        <a href="{{ $resetUrl ?? url()->current() }}" class="zoho-btn-outline">Reset</a>
+        @if(!empty($resetAction))
+            <button type="button" class="zoho-btn-outline" onclick="{{ $resetAction }}">Reset</button>
+        @else
+            <a href="{{ $resetUrl ?? url()->current() }}" class="zoho-btn-outline">Reset</a>
+        @endif
     </div>
 </div>

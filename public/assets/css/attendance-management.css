@@ -203,6 +203,25 @@
     background: #f5f3ff;
 }
 
+.att-stat-chip--missing {
+    color: #c2410c;
+    border-color: #fed7aa;
+    background: #fff7ed;
+}
+
+.att-stat-chip--weekly {
+    color: #475569;
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.att-stat-chip--payable {
+    color: #0f766e;
+    border-color: #99f6e4;
+    background: #f0fdfa;
+    font-weight: 600;
+}
+
 .att-emp-day {
     display: flex;
     align-items: center;

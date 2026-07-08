@@ -41,6 +41,10 @@ class EmployeeController extends Controller
         $employeeFilter = $request->query('employee_id');
         $roleFilter = trim((string) $request->query('role', ''));
         $departmentFilter = trim((string) $request->query('department', ''));
+        $statusFilter = trim((string) $request->query('status', ''));
+        $pfFilter = trim((string) $request->query('pf', ''));
+        $esiFilter = trim((string) $request->query('esi', ''));
+        $insuranceFilter = trim((string) $request->query('insurance', ''));
 
         $baseQuery = Employee::query();
 
@@ -54,34 +58,55 @@ class EmployeeController extends Controller
 
         $employees = $baseQuery
             ->with('user')
+            ->leftJoin('users', 'users.employee_id', '=', 'employees.id')
+            ->select('employees.*')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
-                    $subQuery->where('name', 'like', "%{$search}%")
-                        ->orWhere('employee_code', 'like', "%{$search}%")
-                        ->orWhere('department', 'like', "%{$search}%")
-                        ->orWhere('role', 'like', "%{$search}%");
+                    $subQuery->where('employees.name', 'like', "%{$search}%")
+                        ->orWhere('employees.employee_code', 'like', "%{$search}%")
+                        ->orWhere('employees.department', 'like', "%{$search}%")
+                        ->orWhere('employees.role', 'like', "%{$search}%");
                 });
             })
             ->when($employeeFilter, function ($query) use ($employeeFilter) {
-                $query->where('id', $employeeFilter);
+                $query->where('employees.id', $employeeFilter);
             })
             ->when($roleFilter !== '', function ($query) use ($roleFilter) {
-                $normalizedRole = strtolower(str_replace(' ', '_', $roleFilter));
+                $normalizedRole = strtolower(str_replace([' ', '-'], '_', trim($roleFilter)));
 
                 $query->whereRaw(
-                    "LOWER(REPLACE(role, ' ', '_')) = ?",
+                    "LOWER(REPLACE(REPLACE(employees.role, ' ', '_'), '-', '_')) = ?",
                     [$normalizedRole]
                 );
             })
             ->when($departmentFilter !== '', function ($query) use ($departmentFilter) {
-                $normalizedDepartment = strtolower(str_replace('_', ' ', $departmentFilter));
+                $normalizedDepartment = strtolower(str_replace('_', ' ', trim($departmentFilter)));
 
-                $query->whereRaw(
-                    "LOWER(REPLACE(department, '_', ' ')) = ?",
-                    [$normalizedDepartment]
-                );
+                $query->where(function ($subQuery) use ($departmentFilter, $normalizedDepartment) {
+                    $subQuery->whereRaw('LOWER(TRIM(employees.department)) = LOWER(TRIM(?))', [$departmentFilter])
+                        ->orWhereRaw(
+                            "LOWER(REPLACE(employees.department, '_', ' ')) = ?",
+                            [$normalizedDepartment]
+                        );
+                });
             })
-            ->orderBy('name')
+            ->when($statusFilter === 'active', function ($query) {
+                $query->where(function ($subQuery) {
+                    $subQuery->whereNull('users.account_status')
+                        ->orWhere('users.account_status', 'active');
+                });
+            })
+            ->when($statusFilter === 'inactive', function ($query) {
+                $query->where('users.account_status', 'inactive');
+            })
+            ->when($pfFilter === 'yes', fn ($query) => $query->where('employees.pf', true))
+            ->when($pfFilter === 'no', fn ($query) => $query->where('employees.pf', false))
+            ->when($esiFilter === 'yes', fn ($query) => $query->where('employees.esi', true))
+            ->when($esiFilter === 'no', fn ($query) => $query->where('employees.esi', false))
+            ->when($insuranceFilter === 'yes', fn ($query) => $query->where('employees.insurance', true))
+            ->when($insuranceFilter === 'no', fn ($query) => $query->where('employees.insurance', false))
+            ->orderByRaw("CASE WHEN COALESCE(users.account_status, 'active') = 'inactive' THEN 1 ELSE 0 END")
+            ->orderBy('employees.name')
             ->paginate($perPage)
             ->appends($request->query());
 
@@ -92,7 +117,11 @@ class EmployeeController extends Controller
             'search',
             'employeeFilter',
             'roleFilter',
-            'departmentFilter'
+            'departmentFilter',
+            'statusFilter',
+            'pfFilter',
+            'esiFilter',
+            'insuranceFilter'
         ));
     }
 
@@ -374,9 +403,12 @@ class EmployeeController extends Controller
             $endDate
         );
 
+        $summary = app(AttendanceHistoryService::class)->buildMonthlySummary($history);
+
         return view('payroll.attendance-history', [
             'employee' => $employee,
             'history' => $history,
+            'summary' => $summary,
             'selectedMonth' => "$year-$month"
         ]);
     }

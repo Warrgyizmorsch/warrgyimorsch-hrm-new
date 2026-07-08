@@ -101,11 +101,16 @@ class Attendance extends Model
 
             foreach ($dailyAtts as $att) {
                 $status = strtolower($att->status ?? '');
-                if (!in_array($status, ['present', 'early_out', 'early_leave'], true)) {
+                if (\App\Services\AttendanceStatusService::isLeaveDerivedStatus($status)) {
                     continue;
                 }
 
-                if (!$att->check_out || !$att->employee?->time_out) {
+                $hours = (float) ($att->total_hours ?? 0);
+                if ($hours < \App\Services\AttendanceStatusService::FULL_DAY_HOURS) {
+                    continue;
+                }
+
+                if (!$att->check_out) {
                     continue;
                 }
 
@@ -126,58 +131,19 @@ class Attendance extends Model
     }
 
     /**
-     * Resolve display status — exact mirror of payroll employeeWise renderTable().
+     * Resolve display status using hours-first rules (8.5h full day, 4h min half day).
      */
-    public function resolvePayrollDisplayStatus(bool $isHoliday = false, bool $isActivityDay = false): array
-    {
-        $status = strtolower($this->status ?? '');
-        $checkOutHm = substr($this->getRawPunchTime('check_out') ?? '', 0, 5);
-
-        $isEarly = false;
-        $isHalfDayPunch = false;
-
-        if ($checkOutHm) {
-            if ($checkOutHm < '15:00') {
-                $isHalfDayPunch = true;
-            } elseif ($checkOutHm < '17:30') {
-                $isEarly = true;
-            }
-        }
-
-        if ($isHoliday && $status === 'absent') {
-            return ['label' => 'Holiday', 'class' => self::classForStatusLabel('Holiday'), 'is_activity' => false];
-        }
-
-        if ($isActivityDay && ($isEarly || in_array($status, ['early_out', 'early_leave'], true) || ($status === 'half_day' && !$isHalfDayPunch))) {
-            return ['label' => 'Present Activity', 'class' => self::classForStatusLabel('Present Activity'), 'is_activity' => true];
-        }
-
-        if ($isEarly) {
-            return ['label' => 'Early Out', 'class' => self::classForStatusLabel('Early Out'), 'is_activity' => false];
-        }
-
-        if ($isHalfDayPunch || $status === 'half_day') {
-            return ['label' => 'Half Day', 'class' => self::classForStatusLabel('Half Day'), 'is_activity' => false];
-        }
-
-        $label = match ($status) {
-            'wfh' => 'Wfh',
-            'early_out', 'early_leave' => 'Early Out',
-            'missing_punch' => 'Missing Punch',
-            'unpaid_leave' => 'Unpaid Leave',
-            'half_day' => 'Half Day',
-            default => ucfirst(str_replace('_', ' ', $status ?: 'Absent')),
-        };
-
-        if ($label === 'Early out' || $label === 'Early leave') {
-            $label = 'Early Out';
-        }
-
-        return [
-            'label' => $label,
-            'class' => self::classForStatusLabel($label),
-            'is_activity' => false,
-        ];
+    public function resolvePayrollDisplayStatus(
+        bool $isHoliday = false,
+        bool $isActivityDay = false,
+        bool $isSunday = false
+    ): array {
+        return \App\Services\AttendanceStatusService::resolveDisplayStatus(
+            $this,
+            $isHoliday,
+            $isActivityDay,
+            $isSunday
+        );
     }
 
     /** @deprecated Use resolvePayrollDisplayStatus() */

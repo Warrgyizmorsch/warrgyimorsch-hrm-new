@@ -753,6 +753,46 @@
                 });
         }
 
+        function displayClassToBadge(displayClass) {
+            const map = {
+                success: 'att-detail-status--present',
+                danger: 'att-detail-status--absent',
+                warning: 'att-detail-status--half',
+                info: 'att-detail-status--info',
+                secondary: 'att-detail-status--present',
+            };
+            return map[displayClass] || 'att-detail-status--info';
+        }
+
+        function matchesStatusFilter(item, filterStatus, isHoliday) {
+            const key = (item.display_status_key || item.status || '').toLowerCase();
+
+            switch (filterStatus) {
+                case 'present':
+                    return ['present', 'present_activity', 'late'].includes(key) || (isHoliday && item.status === 'absent');
+                case 'half_day':
+                    return key === 'half_day' || key === 'half_day_leave';
+                case 'leave':
+                    return ['leave', 'half_day_leave', 'unpaid_leave'].includes(key);
+                case 'absent':
+                    return key === 'absent' && !isHoliday;
+                case 'late':
+                    return key === 'late';
+                case 'wfh':
+                    return key === 'wfh';
+                case 'missing_punch':
+                    return key === 'missing_punch';
+                case 'unpaid_leave':
+                    return ['unpaid_leave', 'unauthorised'].includes(key);
+                case 'early_out':
+                    return ['early_out', 'early_leave', 'present_activity'].includes(key) || matchesEarlyOut(item);
+                case 'overtime':
+                    return matchesOvertime(item);
+                default:
+                    return true;
+            }
+        }
+
         function renderTable(rows, filterStatus, isActivityDay = false) {
             const body = document.getElementById('offcanvasTableBody');
             const cardsBody = document.getElementById('offcanvasCardsBody');
@@ -760,52 +800,16 @@
             cardsBody.innerHTML = '';
 
             let count = 0;
-            rows.forEach((item, index) => {
-                let match = !filterStatus;
+            rows.forEach((item) => {
                 const isHoliday = !!item.is_holiday;
-                if (filterStatus === 'present' && (['present', 'late'].includes(item.status) || (isHoliday && item.status === 'absent'))) match = true;
-                if (filterStatus === 'half_day' && item.status === 'half_day') match = true;
-                if (filterStatus === 'leave' && item.status === 'leave') match = true;
-                if (filterStatus === 'absent' && item.status === 'absent' && !isHoliday) match = true;
-                if (filterStatus === 'late' && item.status === 'late') match = true;
-                if (filterStatus === 'overtime' && matchesOvertime(item)) match = true;
-                if (filterStatus === 'wfh' && item.status === 'wfh') match = true;
-                if (filterStatus === 'early_out' && matchesEarlyOut(item)) match = true;
+                const match = !filterStatus || matchesStatusFilter(item, filterStatus, isHoliday);
 
                 if (match) {
                     count++;
-                    let statusDisplay = item.status;
-                    let badgeClass = getStatusBadge(item.status);
-
-                    let isEarly = false;
-                    let isHalfDayPunch = false;
-
-                    if (item.check_out) {
-                        const checkOutTime = item.check_out.includes(' ') ? item.check_out.split(' ')[1] : item.check_out;
-                        if (checkOutTime < '15:00') {
-                            isHalfDayPunch = true;
-                        } else if (checkOutTime < '17:30') {
-                            isEarly = true;
-                        }
-                    }
-
-                    if (isHoliday && item.status === 'absent') {
-                        statusDisplay = 'Holiday';
-                        badgeClass = 'att-detail-status--present';
-                    } else if (isActivityDay && (isEarly || item.status === 'early_out' || item.status === 'early_leave' || (item.status === 'half_day' && !isHalfDayPunch))) {
-                        statusDisplay = 'Present Activity';
-                        badgeClass = 'att-detail-status--info';
-                    } else if (isEarly) {
-                        statusDisplay = 'Early Out';
-                        badgeClass = 'att-detail-status--info';
-                    } else if (isHalfDayPunch || item.status === 'half_day') {
-                        statusDisplay = 'Half Day';
-                        badgeClass = 'att-detail-status--half';
-                    } else {
-                        statusDisplay = item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' ');
-                        if (statusDisplay === 'Early out' || statusDisplay === 'Early leave') statusDisplay = 'Early Out';
-                        badgeClass = getStatusBadge(item.status);
-                    }
+                    const statusDisplay = item.display_status || (item.status || '').replace(/_/g, ' ');
+                    const badgeClass = item.display_status_class
+                        ? displayClassToBadge(item.display_status_class)
+                        : getStatusBadge(item.display_status_key || item.status);
 
                     const adminActions = `@if($isAdmin)
                         <div class="attendance-row-actions">
@@ -923,18 +927,29 @@
         }
 
         function getStatusBadge(status) {
-            switch (status.toLowerCase()) {
-                case 'present': return 'att-detail-status--present';
-                case 'holiday': return 'att-detail-status--present';
-                case 'absent': return 'att-detail-status--absent';
-                case 'leave': return 'att-detail-status--absent';
-                case 'half_day': return 'att-detail-status--half';
-                case 'wfh': return 'att-detail-status--wfh';
-                case 'activity': return 'att-detail-status--info';
-                case 'early_leave': return 'att-detail-status--info';
-                case 'early_out': return 'att-detail-status--info';
-                case 'overtime': return 'att-detail-status--info';
-                default: return 'att-detail-status--info';
+            switch ((status || '').toLowerCase()) {
+                case 'present':
+                case 'holiday':
+                case 'present_activity':
+                    return 'att-detail-status--present';
+                case 'absent':
+                case 'unauthorised':
+                    return 'att-detail-status--absent';
+                case 'half_day':
+                case 'half_day_leave':
+                    return 'att-detail-status--half';
+                case 'leave':
+                case 'unpaid_leave':
+                case 'missing_punch':
+                case 'wfh':
+                case 'activity':
+                case 'early_leave':
+                case 'early_out':
+                case 'late':
+                case 'overtime':
+                    return 'att-detail-status--info';
+                default:
+                    return 'att-detail-status--info';
             }
         }
 
@@ -1022,6 +1037,7 @@
             const start = document.getElementById('startDate').value;
             const end = document.getElementById('endDate').value;
             const employeeId = document.getElementById('selectedEmployeeId')?.value || '';
+            const range = document.getElementById('quickRange')?.value || '';
 
             fetch('{{ route("payroll.attendance.export") }}', {
                 method: 'POST',
@@ -1032,7 +1048,8 @@
                 body: JSON.stringify({
                     start_date: start,
                     end_date: end,
-                    employee_id: employeeId
+                    employee_id: employeeId,
+                    range: range
                 })
             })
             .then(response => response.blob())

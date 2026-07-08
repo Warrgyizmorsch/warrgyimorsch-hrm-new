@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\LeaveApplication;
+use App\Services\AttendanceService;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Carbon\Carbon;
@@ -64,36 +65,17 @@ class AttendanceImport implements ToCollection
             $key = $employee->id . '_' . $attendanceDate;
 
             $data[$key]['employee_id'] = $employee->id;
+            $data[$key]['employee'] = $employee;
             $data[$key]['attendance_date'] = $attendanceDate;
             $data[$key]['punches'][] = $dateTime;
         }
 
         foreach ($data as $entry) {
-
             $employeeId = $entry['employee_id'];
+            $employee = $entry['employee'];
             $punches = $entry['punches'];
 
-            usort($punches, function ($a, $b) {
-                return $a->timestamp <=> $b->timestamp;
-            });
-
-            $first = $punches[0];
-            $last  = count($punches) > 1 ? $punches[count($punches) - 1] : null;
-
-            if (!$last) {
-                $hours = 0;
-                $status = 'missing_punch';
-            } else {
-                $hours = $first->diffInMinutes($last) / 60;
-
-                if ($hours >= 8.5) {
-                    $status = 'present';
-                } elseif ($hours >= 4) {
-                    $status = 'half_day';
-                } else {
-                    $status = 'absent';
-                }
-            }
+            $resolved = AttendanceService::resolveForEmployee($punches, $employee);
 
             Attendance::updateOrCreate(
                 [
@@ -101,10 +83,10 @@ class AttendanceImport implements ToCollection
                     'attendance_date' => $entry['attendance_date'],
                 ],
                 [
-                    'check_in'    => $first->format('H:i:s'),
-                    'check_out'   => $last ? $last->format('H:i:s') : null,
-                    'total_hours' => round($hours, 2),
-                    'status'      => $status,
+                    'check_in' => $resolved['check_in'],
+                    'check_out' => $resolved['check_out'],
+                    'total_hours' => $resolved['total_hours'],
+                    'status' => $resolved['status'],
                 ]
             );
         }
