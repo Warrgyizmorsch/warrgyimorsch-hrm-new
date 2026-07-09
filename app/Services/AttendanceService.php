@@ -23,8 +23,14 @@ class AttendanceService
     /** Max plausible drift (minutes) between a punch and the employee's scheduled time. */
     private const MAX_SCHEDULE_DEVIATION_MINUTES = 150;
 
-    /** Punches arriving within this many seconds of each other are treated as a device/sync echo, not a real session. */
-    private const NOISE_CLUSTER_SECONDS = 120;
+    /**
+     * Punches arriving within this many seconds of each other are treated as a device/sync
+     * echo, not a real session. Every confirmed junk cluster observed on this device has
+     * been within 0-7 seconds (e.g. duplicate reads a couple seconds apart); a genuine
+     * human retry (fingerprint misread, scan again) is typically 30s-a few minutes apart.
+     * Keep this tight so real retries aren't mistaken for device noise.
+     */
+    private const NOISE_CLUSTER_SECONDS = 10;
 
     /** A timestamp shared by this many or more distinct employees in one batch is a sync/device burst artifact, not real simultaneous scans. */
     private const CROSS_EMPLOYEE_BURST_MIN_USERS = 3;
@@ -642,8 +648,6 @@ class AttendanceService
         ?string $timeIn = null,
         ?string $timeOut = null
     ): array {
-        unset($timeIn, $timeOut);
-
         $punches = array_values(array_filter($punches));
         usort($punches, fn (Carbon $a, Carbon $b) => $a->timestamp <=> $b->timestamp);
 
@@ -652,7 +656,19 @@ class AttendanceService
         }
 
         if (count($punches) === 1) {
-            return self::punchResult($punches[0]->format('H:i:s'), null, 0, 'missing_punch');
+            // Classify the lone punch by which scheduled time it's closer to, rather than
+            // always assuming it's a check-in — a single evening-looking punch (e.g. the
+            // employee's only scan that day being near their usual time_out) should be
+            // recorded as the check-out, not mislabeled as a check-in that never happened.
+            $scheduledInMinutes = self::timeToMinutes(substr($timeIn ?? '09:30:00', 0, 8));
+            $scheduledOutMinutes = self::timeToMinutes(substr($timeOut ?? '18:00:00', 0, 8));
+            $punchMinutes = self::timeToMinutes($punches[0]->format('H:i:s'));
+
+            $isCloserToCheckOut = abs($punchMinutes - $scheduledOutMinutes) < abs($punchMinutes - $scheduledInMinutes);
+
+            return $isCloserToCheckOut
+                ? self::punchResult(null, $punches[0]->format('H:i:s'), 0, 'missing_punch')
+                : self::punchResult($punches[0]->format('H:i:s'), null, 0, 'missing_punch');
         }
 
         if (count($punches) === 2) {
