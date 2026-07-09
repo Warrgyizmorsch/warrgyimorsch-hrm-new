@@ -27,6 +27,9 @@
         $syncBiometricButton = $canSyncBiometric ? '
             <button type="button" class="zoho-btn-outline" id="syncBiometricBtn" onclick="syncBiometricAttendance()" title="Pull latest punches from biometric device">
                 <i class="feather-refresh-cw"></i> Sync Punches
+            </button>
+            <button type="button" class="zoho-btn-outline" id="rebuildBiometricBtn" onclick="rebuildBiometricAttendance()" title="Recalculate attendance from stored biometric logs">
+                <i class="feather-database"></i> Rebuild from Logs
             </button>' : '';
         $attendanceHeaderActions = '
             <a href="' . route('payroll.attendace.employee') . '" class="zoho-btn-outline">
@@ -1100,6 +1103,76 @@
                             icon: 'error',
                             title: 'Sync failed',
                             text: error.message || 'Unable to import punches from biometric device.',
+                        });
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    });
+            });
+        }
+
+        function rebuildBiometricAttendance() {
+            const btn = document.getElementById('rebuildBiometricBtn');
+            if (!btn || btn.disabled) {
+                return;
+            }
+
+            Swal.fire({
+                title: 'Rebuild from stored logs?',
+                text: 'This recalculates attendance from punches already saved in the database. It does not contact the biometric device.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3858f9',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Yes, rebuild',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+                customClass: {
+                    confirmButton: 'btn btn-primary px-4',
+                    cancelButton: 'btn btn-light-brand px-4 me-3'
+                },
+                buttonsStyling: false
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="feather-loader"></i> Rebuilding...';
+
+                fetch('{{ route('sync.attendance.rebuild') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                })
+                    .then(async (response) => {
+                        const data = await response.json().catch(() => ({}));
+
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Rebuild failed');
+                        }
+
+                        return data;
+                    })
+                    .then((data) => {
+                        if (typeof Toast !== 'undefined') {
+                            Toast.fire({
+                                icon: 'success',
+                                title: data.message || 'Attendance rebuilt successfully',
+                            });
+                        }
+
+                        setTimeout(() => window.location.reload(), 1200);
+                    })
+                    .catch((error) => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Rebuild failed',
+                            text: error.message || 'Unable to rebuild attendance from logs.',
                         });
                     })
                     .finally(() => {

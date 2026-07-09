@@ -23,6 +23,8 @@ class Employee extends Model
         'address',
         'time_in',
         'time_out',
+        'sunday_time_in',
+        'sunday_time_out',
         'leave',
         'photo',
         'pf',

@@ -2,9 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Http\Controllers\ZKTController;
+use App\Services\BiometricSyncService;
 use App\Services\PyAttendanceService;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class SyncBiometricAttendance extends Command
@@ -13,21 +14,28 @@ class SyncBiometricAttendance extends Command
 
     protected $description = 'Sync biometric attendance';
 
-    public function handle()
-    {
+    public function handle(
+        ZKTController $controller,
+        PyAttendanceService $service,
+        BiometricSyncService $biometricSync
+    ) {
         try {
+            Log::info('Attendance sync started at ' . now());
 
-            $controller = new ZKTController();
-            Log::info('Attendance sync started at '.now());
-            $service = app(PyAttendanceService::class);
+            $response = $controller->syncAttendance($service, $biometricSync);
+            $payload = $response->getData(true);
 
-            $response = $controller->syncAttendance($service);
+            if (($payload['success'] ?? false) !== true) {
+                $this->error($payload['message'] ?? 'Attendance sync failed.');
+
+                return Command::FAILURE;
+            }
 
             $this->info('Attendance synced successfully');
 
             return Command::SUCCESS;
-
         } catch (\Exception $e) {
+            Log::error('Attendance sync command failed', ['error' => $e->getMessage()]);
 
             $this->error($e->getMessage());
 

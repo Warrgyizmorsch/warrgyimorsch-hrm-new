@@ -8,7 +8,23 @@ class AttendanceStatusService
 {
     public const FULL_DAY_HOURS = 8.5;
 
+    public const NIGHT_SHIFT_FULL_DAY_HOURS = 8.0;
+
     public const HALF_DAY_MIN_HOURS = 4.0;
+
+    public static function isNightShiftRecord(Attendance $record): bool
+    {
+        $checkIn = substr($record->getRawPunchTime('check_in') ?? '', 0, 5);
+
+        return $checkIn !== '' && $checkIn >= '15:00';
+    }
+
+    public static function fullDayHoursForRecord(Attendance $record): float
+    {
+        return self::isNightShiftRecord($record)
+            ? self::NIGHT_SHIFT_FULL_DAY_HOURS
+            : self::FULL_DAY_HOURS;
+    }
 
     public static function isLeaveDerivedStatus(string $status): bool
     {
@@ -65,6 +81,7 @@ class AttendanceStatusService
         $hours = (float) ($record->total_hours ?? 0);
         $checkOutHm = substr($record->getRawPunchTime('check_out') ?? '', 0, 5);
         $hasPunches = $record->getRawPunchTime('check_in') && $record->getRawPunchTime('check_out');
+        $fullDayHours = self::fullDayHoursForRecord($record);
 
         if ($isHoliday && $status === 'absent') {
             return self::result('Holiday', 'holiday', false);
@@ -82,7 +99,7 @@ class AttendanceStatusService
             return self::result(self::labelForStatus($status), $status, false);
         }
 
-        if ($isActivityDay && ($hasPunches || $hours > 0) && $hours >= self::FULL_DAY_HOURS) {
+        if ($isActivityDay && ($hasPunches || $hours > 0) && $hours >= $fullDayHours) {
             $isHalfDayPunch = $checkOutHm && $checkOutHm < '15:00';
             $isEarly = $checkOutHm && $checkOutHm >= '15:00' && $checkOutHm < '17:30';
 
@@ -99,7 +116,7 @@ class AttendanceStatusService
         }
 
         if ($hasPunches || ($hours > 0 && !self::isLeaveDerivedStatus($status))) {
-            if ($hours >= self::FULL_DAY_HOURS) {
+            if ($hours >= $fullDayHours) {
                 $isEarly = $checkOutHm && $checkOutHm >= '15:00' && $checkOutHm < '17:30';
 
                 if ($isActivityDay && ($isEarly || in_array($status, ['early_out', 'early_leave'], true))) {
@@ -160,9 +177,10 @@ class AttendanceStatusService
 
         $hours = (float) ($record->total_hours ?? 0);
         $hasBothPunches = $record->getRawPunchTime('check_in') && $record->getRawPunchTime('check_out');
+        $fullDayHours = self::fullDayHoursForRecord($record);
 
         if ($hasBothPunches || $hours > 0) {
-            if ($hours >= self::FULL_DAY_HOURS) {
+            if ($hours >= $fullDayHours) {
                 return 1.0;
             }
 

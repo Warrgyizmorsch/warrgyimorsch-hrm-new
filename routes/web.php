@@ -32,6 +32,10 @@ Route::match(['get', 'post'], '/sync-attendance', [ZKTController::class, 'syncAt
     ->middleware(['auth', 'role.access:super_admin,manager'])
     ->name('sync.attendance');
 
+Route::post('/sync-attendance/rebuild', [ZKTController::class, 'rebuildFromLogs'])
+    ->middleware(['auth', 'role.access:super_admin,manager'])
+    ->name('sync.attendance.rebuild');
+
 Route::get('/payroll/attendance', [PayrollController::class, 'attendance'])
             ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,hr_intern,business_operation_head,team_leader'])
             ->name('payroll.attendance');
