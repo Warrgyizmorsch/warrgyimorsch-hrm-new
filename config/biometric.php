@@ -16,7 +16,7 @@ return [
 
     'script_path' => env(
         'BIOMETRIC_SCRIPT_PATH',
-        'C:\xampp\htdocs\python\hrms\zk_attendance.py'
+        'C:\\xampp new\\htdocs\\python\\zk_attendance.py'
     ),
 
     'timeout' => (int) env('BIOMETRIC_TIMEOUT', 120),
