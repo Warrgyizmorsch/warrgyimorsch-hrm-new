@@ -28,8 +28,8 @@ Route::get('/', function () {
     return view('auth.login');
 });
 
-Route::get('/sync-attendance', [ZKTController::class, 'syncAttendance'])
-    ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,hr_intern,business_operation_head'])
+Route::match(['get', 'post'], '/sync-attendance', [ZKTController::class, 'syncAttendance'])
+    ->middleware(['auth', 'role.access:super_admin,manager'])
     ->name('sync.attendance');
 
 Route::get('/payroll/attendance', [PayrollController::class, 'attendance'])

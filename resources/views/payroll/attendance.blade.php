@@ -8,6 +8,7 @@
     @php
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
         $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $canSyncBiometric = in_array($role, ['super_admin', 'manager']);
         $importDropdown = $isAdmin ? '
             <div class="dropdown">
                 <button type="button" class="zoho-icon-btn dropdown-toggle" data-bs-toggle="dropdown" title="Import">
@@ -23,10 +24,15 @@
                 </div>
             </div>' : '';
         $addButton = $isAdmin ? '<a href="' . route('payroll.attendance.add') . '" class="zoho-btn-primary" title="Add attendance"><i class="feather-plus"></i> Add</a>' : '';
+        $syncBiometricButton = $canSyncBiometric ? '
+            <button type="button" class="zoho-btn-outline" id="syncBiometricBtn" onclick="syncBiometricAttendance()" title="Pull latest punches from biometric device">
+                <i class="feather-refresh-cw"></i> Sync Punches
+            </button>' : '';
         $attendanceHeaderActions = '
             <a href="' . route('payroll.attendace.employee') . '" class="zoho-btn-outline">
                 <i class="feather-users"></i> Employee Wise
             </a>
+            ' . $syncBiometricButton . '
             ' . $importDropdown . '
             <button type="button" class="zoho-icon-btn" onclick="exportAttendance()" title="Export">
                 <i class="feather-download"></i>
@@ -1031,6 +1037,76 @@
 
         function editSingleAttendance(id) {
             window.location.href = `{{ url('/payroll/attendance') }}/${id}/edit`;
+        }
+
+        function syncBiometricAttendance() {
+            const btn = document.getElementById('syncBiometricBtn');
+            if (!btn || btn.disabled) {
+                return;
+            }
+
+            Swal.fire({
+                title: 'Sync biometric punches?',
+                text: 'This will pull the latest punches from the biometric device and update attendance.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3858f9',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Yes, sync now',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+                customClass: {
+                    confirmButton: 'btn btn-primary px-4',
+                    cancelButton: 'btn btn-light-brand px-4 me-3'
+                },
+                buttonsStyling: false
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="feather-loader"></i> Syncing...';
+
+                fetch('{{ route('sync.attendance') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                })
+                    .then(async (response) => {
+                        const data = await response.json().catch(() => ({}));
+
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Biometric sync failed');
+                        }
+
+                        return data;
+                    })
+                    .then((data) => {
+                        if (typeof Toast !== 'undefined') {
+                            Toast.fire({
+                                icon: 'success',
+                                title: data.message || 'Attendance synced successfully',
+                            });
+                        }
+
+                        setTimeout(() => window.location.reload(), 1200);
+                    })
+                    .catch((error) => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Sync failed',
+                            text: error.message || 'Unable to import punches from biometric device.',
+                        });
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    });
+            });
         }
 
          function exportAttendance() {
