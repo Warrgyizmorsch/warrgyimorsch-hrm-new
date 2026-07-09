@@ -26,6 +26,9 @@ class AttendanceService
     /** Punches arriving within this many seconds of each other are treated as a device/sync echo, not a real session. */
     private const NOISE_CLUSTER_SECONDS = 120;
 
+    /** A timestamp shared by this many or more distinct employees in one batch is a sync/device burst artifact, not real simultaneous scans. */
+    private const CROSS_EMPLOYEE_BURST_MIN_USERS = 3;
+
     /**
      * Resolve employee by biometric / import code.
      * Prefers active accounts when duplicate codes exist in the database.
@@ -133,13 +136,18 @@ class AttendanceService
      */
     public function processPunchRecords(array $records, bool $fillAbsences = true): int
     {
+        $burstTimestamps = self::detectBurstTimestamps(collect($records)->map(fn ($row) => (object) [
+            'user_id' => $row['employee_code'] ?? null,
+            'timestamp' => $row['timestamp'] ?? null,
+        ]));
+
         $groupedByEmployee = [];
 
         foreach ($records as $row) {
             $employeeCode = trim((string) ($row['employee_code'] ?? ''));
             $dateTimeRaw = $row['timestamp'] ?? null;
 
-            if ($employeeCode === '' || blank($dateTimeRaw)) {
+            if ($employeeCode === '' || blank($dateTimeRaw) || isset($burstTimestamps[(string) $dateTimeRaw])) {
                 continue;
             }
 
@@ -234,13 +242,22 @@ class AttendanceService
      */
     public function rebuildFromDeviceLogs(?string $employeeCode = null): int
     {
+        // Detected across the whole table (not just the employee(s) being rebuilt) —
+        // a burst is defined by how many distinct employees share one timestamp,
+        // which requires seeing everyone's logs regardless of the current scope.
+        $burstTimestamps = self::detectBurstTimestamps(
+            DB::table('attendance_logs')->get(['timestamp', 'user_id'])
+        );
+
         $query = DB::table('attendance_logs')->orderBy('timestamp');
 
         if ($employeeCode !== null && $employeeCode !== '') {
             $query->where('user_id', $employeeCode);
         }
 
-        $grouped = $query->get()->groupBy('user_id');
+        $grouped = $query->get()
+            ->reject(fn ($log) => isset($burstTimestamps[(string) $log->timestamp]))
+            ->groupBy('user_id');
         $processedGroups = 0;
         $allDates = [];
 
@@ -297,6 +314,41 @@ class AttendanceService
         Attendance::where('employee_id', $employee->id)
             ->whereBetween('attendance_date', [$minDate, $maxDate])
             ->delete();
+    }
+
+    /**
+     * Detect timestamps shared by an implausible number of distinct employees at the
+     * same instant — confirmed on this device as a single sync poll assigning the same
+     * timestamp to 20+ different users' records (sequential device_uid, identical
+     * second). No fingerprint scanner produces that many simultaneous scans; it's a
+     * device/sync burst artifact and must be excluded for every employee it touched,
+     * not just discovered per-employee (a lone burst punch for one person looks
+     * identical to a real single punch until compared against everyone else's logs).
+     *
+     * @param  iterable<object{timestamp: mixed, user_id: mixed}>  $logs
+     * @return array<string, bool> timestamp strings to exclude
+     */
+    private static function detectBurstTimestamps(iterable $logs): array
+    {
+        $userIdsByTimestamp = [];
+
+        foreach ($logs as $log) {
+            if (blank($log->timestamp) || blank($log->user_id)) {
+                continue;
+            }
+
+            $userIdsByTimestamp[(string) $log->timestamp][(string) $log->user_id] = true;
+        }
+
+        $burstTimestamps = [];
+
+        foreach ($userIdsByTimestamp as $timestamp => $userIds) {
+            if (count($userIds) >= self::CROSS_EMPLOYEE_BURST_MIN_USERS) {
+                $burstTimestamps[$timestamp] = true;
+            }
+        }
+
+        return $burstTimestamps;
     }
 
     /**
