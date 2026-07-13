@@ -1,40 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
-    <!-- [ page-header ] start -->
-    <div class="page-header">
-        <div class="page-header-left d-flex align-items-center">
-            <div class="page-header-title">
-                <h5 class="m-b-10">Broadcast</h5>
-            </div>
-            <ul class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
-                <li class="breadcrumb-item">Broadcast</li>
-            </ul>
-        </div>
-        <div class="page-header-right ms-auto">
-            <div class="page-header-right-items">
-                <div class="d-flex d-md-none">
-                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
-                        <i class="feather-arrow-left me-2"></i>
-                        <span>Back</span>
-                    </a>
-                </div>
-                <div class="d-flex align-items-center gap-2 page-header-right-items-wrapper">
-                    <a href="javascript:void(0)" class="btn btn-primary" onclick="openBroadcastOffcanvas()">
-                        <i class="feather-plus me-2"></i>
-                        <span>New Broadcast</span>
-                    </a>
-                </div>
-            </div>
-            <div class="d-md-none d-flex align-items-center">
-                <a href="javascript:void(0)" class="page-header-right-open-toggle">
-                    <i class="feather-align-right fs-20"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-    <!-- [ page-header ] end -->
+    @php
+        $broadcastPrimaryAction = '<a href="javascript:void(0)" class="zoho-btn-primary" onclick="openBroadcastOffcanvas()"><i class="feather-plus"></i> New Broadcast</a>';
+    @endphp
+    @include('layouts.partials.zoho-people-list-header', [
+        'title' => 'Broadcast',
+        'scopeLinks' => [
+            ['label' => 'Home', 'url' => route('dashboard'), 'active' => false],
+            ['label' => 'Broadcast', 'url' => null, 'active' => true],
+        ],
+        'primaryAction' => $broadcastPrimaryAction,
+    ])
 
     <!-- [ stat cards ] start -->
     <div class="page-header-collapse">
