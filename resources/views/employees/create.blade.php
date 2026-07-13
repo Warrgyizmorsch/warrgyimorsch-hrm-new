@@ -68,48 +68,24 @@
                                 </div>
                                 <div class="hrm-field">
                                     <label>Department <span class="req">*</span></label>
-                                    <div class="hrm-input-wrap">
-                                        <i class="bi bi-building"></i>
-                                        <div class="dropdown w-100">
-                                            <button class="wghrm-custom-select-btn dropdown-toggle w-100 text-start" type="button"
-                                                data-bs-toggle="dropdown" id="departmentDropdownBtn" data-bs-auto-close="outside">
-                                                @php $oldDept = collect($departments)->firstWhere('name', old('department')); @endphp
-                                                <span id="departmentDropdownText">{{ $oldDept ? $oldDept->name : 'Select department' }}</span>
-                                            </button>
-                                            <div class="dropdown-menu w-100 hrm-dropdown-menu">
-                                                <a class="dropdown-item" href="javascript:void(0)"
-                                                    onclick="hrmSelect(this,'department','','Select department')">Select department</a>
-                                                @foreach($departments as $dept)
-                                                    <a class="dropdown-item {{ old('department') == $dept->name ? 'active' : '' }}"
-                                                        href="javascript:void(0)"
-                                                        onclick="hrmSelect(this,'department','{{ $dept->name }}','{{ addslashes($dept->name) }}')">{{ $dept->name }}</a>
-                                                @endforeach
-                                            </div>
-                                            <input type="hidden" name="department" id="departmentInput" value="{{ old('department') }}" required>
-                                        </div>
+                                    <div class="hrm-input-wrap"><i class="bi bi-building"></i>
+                                        <select name="department" class="form-select" required>
+                                            <option value="">Select department</option>
+                                            @foreach($departments as $dept)
+                                                <option value="{{ $dept->name }}" {{ old('department') == $dept->name ? 'selected' : '' }}>{{ $dept->name }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="hrm-field">
                                     <label>Designation <span class="req">*</span></label>
-                                    <div class="hrm-input-wrap">
-                                        <i class="bi bi-briefcase"></i>
-                                        <div class="dropdown w-100">
-                                            <button class="wghrm-custom-select-btn dropdown-toggle w-100 text-start" type="button"
-                                                data-bs-toggle="dropdown" id="designationDropdownBtn" data-bs-auto-close="outside">
-                                                @php $oldDesg = collect($designations)->firstWhere('name', old('designation')); @endphp
-                                                <span id="designationDropdownText">{{ $oldDesg ? $oldDesg->name : 'Select designation' }}</span>
-                                            </button>
-                                            <div class="dropdown-menu w-100 hrm-dropdown-menu">
-                                                <a class="dropdown-item" href="javascript:void(0)"
-                                                    onclick="hrmSelect(this,'designation','','Select designation')">Select designation</a>
-                                                @foreach($designations as $desg)
-                                                    <a class="dropdown-item {{ old('designation') == $desg->name ? 'active' : '' }}"
-                                                        href="javascript:void(0)"
-                                                        onclick="hrmSelect(this,'designation','{{ $desg->name }}','{{ addslashes($desg->name) }}')">{{ $desg->name }}</a>
-                                                @endforeach
-                                            </div>
-                                            <input type="hidden" name="designation" id="designationInput" value="{{ old('designation') }}" required>
-                                        </div>
+                                    <div class="hrm-input-wrap"><i class="bi bi-briefcase"></i>
+                                        <select name="designation" class="form-select" required>
+                                            <option value="">Select designation</option>
+                                            @foreach($designations as $desg)
+                                                <option value="{{ $desg->name }}" {{ old('designation') == $desg->name ? 'selected' : '' }}>{{ $desg->name }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="hrm-field">
@@ -143,44 +119,22 @@
                                 </div>
                                 <div class="hrm-field">
                                     <label>Role</label>
-                                    <div class="hrm-input-wrap">
-                                        <i class="bi bi-person-badge"></i>
-                                        <div class="dropdown w-100">
-                                            <button class="wghrm-custom-select-btn dropdown-toggle w-100 text-start" type="button"
-                                                data-bs-toggle="dropdown" id="roleDropdownBtn" data-bs-auto-close="outside">
-                                                @php $oldRole = collect($roles)->firstWhere('slug', old('role')); @endphp
-                                                <span id="roleDropdownText">{{ $oldRole ? $oldRole->name : 'Select Role' }}</span>
-                                            </button>
-                                            <div class="dropdown-menu w-100 hrm-dropdown-menu">
-                                                <a class="dropdown-item" href="javascript:void(0)"
-                                                    onclick="hrmSelect(this,'role','','Select Role')">Select Role</a>
-                                                @foreach($roles as $rl)
-                                                    <a class="dropdown-item {{ old('role') == $rl->slug ? 'active' : '' }}"
-                                                        href="javascript:void(0)"
-                                                        onclick="hrmSelect(this,'role','{{ $rl->slug }}','{{ addslashes($rl->name) }}')">{{ $rl->name }}</a>
-                                                @endforeach
-                                            </div>
-                                            <input type="hidden" name="role" id="roleInput" value="{{ old('role') }}" required>
-                                        </div>
+                                    <div class="hrm-input-wrap"><i class="bi bi-person-badge"></i>
+                                        <select name="role" class="form-select" required>
+                                            <option value="">Select Role</option>
+                                            @foreach($roles as $rl)
+                                                <option value="{{ $rl->slug }}" {{ old('role') == $rl->slug ? 'selected' : '' }}>{{ $rl->name }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="hrm-field">
                                     <label>Working Mode</label>
-                                    <div class="hrm-input-wrap">
-                                        <i class="bi bi-laptop"></i>
-                                        <div class="dropdown w-100">
-                                            <button class="wghrm-custom-select-btn dropdown-toggle w-100 text-start" type="button"
-                                                id="working_modeDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside">
-                                                <span id="working_modeDropdownText">{{ old('working_mode','Office') }}</span>
-                                            </button>
-                                            <div class="dropdown-menu w-100 hrm-dropdown-menu">
-                                                <a class="dropdown-item" href="javascript:void(0)"
-                                                    onclick="hrmSelect(this,'working_mode','Office','Office')">Office</a>
-                                                <a class="dropdown-item" href="javascript:void(0)"
-                                                    onclick="hrmSelect(this,'working_mode','Work from home','Work from home')">Work from home</a>
-                                            </div>
-                                            <input type="hidden" name="working_mode" id="working_modeInput" value="{{ old('working_mode','Office') }}">
-                                        </div>
+                                    <div class="hrm-input-wrap"><i class="bi bi-laptop"></i>
+                                        <select name="working_mode" class="form-select">
+                                            <option value="Office" {{ old('working_mode', 'Office') == 'Office' ? 'selected' : '' }}>Office</option>
+                                            <option value="Work from home" {{ old('working_mode') == 'Work from home' ? 'selected' : '' }}>Work from home</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="hrm-field">
@@ -450,16 +404,6 @@ function togglePassword(inputId, btn) {
         input.type = 'password';
         icon.classList.replace('bi-eye', 'bi-eye-slash');
     }
-}
-
-function hrmSelect(el, field, value, text) {
-    const input = document.getElementById(field + 'Input');
-    input.value = value;
-    document.getElementById(field + 'DropdownText').innerText = text;
-    el.closest('.dropdown-menu').querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
-    el.classList.add('active');
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    if (typeof window.hrmClearFieldError === 'function') window.hrmClearFieldError(input);
 }
 
 function hrmToggle(id, fieldId, offId) {
