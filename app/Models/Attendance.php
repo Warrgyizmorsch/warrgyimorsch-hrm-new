@@ -14,11 +14,13 @@ class Attendance extends Model
         'check_out',
         'status',
         'total_hours',
+        'is_manual',
     ];
 
     protected $casts = [
         'attendance_date' => 'date',
         'total_hours' => 'float',
+        'is_manual' => 'boolean',
     ];
 
     // Optional: default status

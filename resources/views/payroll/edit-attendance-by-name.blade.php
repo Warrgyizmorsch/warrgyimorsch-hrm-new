@@ -128,7 +128,7 @@
                                             <div style="margin-bottom: 8px;">
                                                 <input type="time" id="check_out_{{ $index }}"
                                                     name="check_out[{{ $record->id }}]"
-                                                    value="{{ $record->check_in ? \Carbon\Carbon::parse($record->check_out)->format('H:i') : '' }}"
+                                                    value="{{ $record->check_out ? \Carbon\Carbon::parse($record->check_out)->format('H:i') : '' }}"
                                                     class="form-control form-control-sm text-center mx-auto"
                                                     style="max-width: 100px;" onchange="calculateDuration({{ $index }})">
                                             </div>
@@ -225,8 +225,8 @@
                                     <div class="bg-light p-2 rounded text-center">
                                         <label class="small text-muted fw-bold d-block">Out</label>
                                         <input type="time" id="check_out_mob_{{ $index }}" name="check_out[{{ $record->id }}]"
-                                            value="{{ $record->check_in ? \Carbon\Carbon::parse($record->check_out)->format('H:i') : '' }}"
-                                            class="form-control form-control-sm border-0 bg-white" 
+                                            value="{{ $record->check_out ? \Carbon\Carbon::parse($record->check_out)->format('H:i') : '' }}"
+                                            class="form-control form-control-sm border-0 bg-white"
                                             onchange="syncTime({{ $index }}, 'out', 'mob')">
                                         <label class="small text-primary mt-1 cursor-pointer" onclick="setNowTime('check_out_mob_{{ $index }}', {{ $index }}, 'mob')">
                                             <span>Set Now</span>

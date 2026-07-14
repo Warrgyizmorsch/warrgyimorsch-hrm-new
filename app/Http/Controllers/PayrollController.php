@@ -348,10 +348,13 @@ class PayrollController extends Controller
             Attendance::create([
                 'employee_id' => $emp['employee_id'],
                 'attendance_date' => $request->attendance_date,
-                'check_in' => !empty($emp['check_in']) ? $emp['check_in'] : null,
-                'check_out' => !empty($emp['check_out']) ? $emp['check_out'] : null,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
                 'total_hours' => $totalHours,
                 'status' => $status,
+                // Both punches set by hand — lock this record so a later device sync/rebuild
+                // can't overwrite the manual correction.
+                'is_manual' => (bool) ($checkIn && $checkOut),
             ]);
         }
 
@@ -1195,6 +1198,9 @@ class PayrollController extends Controller
                 $totalHours,
                 (bool) ($checkIn && $checkOut)
             );
+            // Both punches set by hand — lock this record so a later device sync/rebuild
+            // can't overwrite the manual correction.
+            $attendance->is_manual = (bool) ($checkIn && $checkOut);
 
             $attendance->save();
         }
@@ -1519,7 +1525,10 @@ class PayrollController extends Controller
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
                 'status' => $status,
-                'total_hours' => $totalHours
+                'total_hours' => $totalHours,
+                // Both punches set by hand — lock this record so a later device sync/rebuild
+                // can't overwrite the manual correction.
+                'is_manual' => (bool) ($checkIn && $checkOut),
             ]);
         }
 

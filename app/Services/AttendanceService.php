@@ -222,6 +222,17 @@ class AttendanceService
         }
 
         foreach ($data as $entry) {
+            $existing = Attendance::where('employee_id', $entry['employee_id'])
+                ->where('attendance_date', $entry['attendance_date'])
+                ->first();
+
+            // A record the user manually corrected (both punches set by hand) is locked —
+            // device syncs must never clobber it, only fill in dates that are still unset.
+            if ($existing && $existing->is_manual) {
+                $dates[] = $entry['attendance_date'];
+                continue;
+            }
+
             $resolved = self::resolveForEmployee($entry['punches'], $entry['employee'], $entry['attendance_date']);
 
             Attendance::updateOrCreate(
@@ -319,6 +330,7 @@ class AttendanceService
 
         Attendance::where('employee_id', $employee->id)
             ->whereBetween('attendance_date', [$minDate, $maxDate])
+            ->where('is_manual', false)
             ->delete();
     }
 
