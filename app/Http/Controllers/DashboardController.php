@@ -859,6 +859,11 @@ class DashboardController extends Controller
         $attendanceRecords = Attendance::with('employee')
             ->whereBetween('attendance_date', [$startDate, $endDate])
 
+            // Inactive employees should never surface in the late-arrivals widget.
+            ->whereHas('employee.user', function ($q) {
+                $q->where('account_status', 'active');
+            })
+
             // For USER → force only logged-in employee
             ->when(!$isAdmin && !$isTeamLeader, function ($q) use ($employeeId) {
                 $q->where('employee_id', $employeeId);
@@ -884,11 +889,9 @@ class DashboardController extends Controller
             })
             ->get();
 
-        $activityDates = $this->getAttendanceActivityDates($attendanceRecords);
-
         $lateRecords = $attendanceRecords
-            ->map(function ($item) use ($activityDates) {
-                $item->late_minutes = $this->getAttendanceLateMinutes($item, $activityDates);
+            ->map(function ($item) {
+                $item->late_minutes = $this->getAttendanceLateMinutes($item);
 
                 return $item;
             })
@@ -917,31 +920,20 @@ class DashboardController extends Controller
         });
     }
 
-    private function getAttendanceLateMinutes(Attendance $attendance, array $activityDates = []): int
+    /**
+     * Late arrival = check-in after the employee's scheduled shift start, full stop.
+     * Check-out time and hours worked have no bearing on whether the arrival was late.
+     */
+    private function getAttendanceLateMinutes(Attendance $attendance): int
     {
-        if (!$attendance->employee || !$attendance->check_in || !$attendance->check_out) {
+        if (!$attendance->employee || !$attendance->check_in) {
             return 0;
         }
 
         $checkIn = $this->parseAttendancePunch($attendance, $attendance->check_in);
-        $checkOut = $this->parseAttendancePunch($attendance, $attendance->check_out);
-        [$shiftStart, $shiftEnd] = $this->getAttendanceShiftWindow($attendance);
+        [$shiftStart] = $this->getAttendanceShiftWindow($attendance);
 
-        if ($checkOut->lessThanOrEqualTo($checkIn)) {
-            $checkOut->addDay();
-        }
-
-        $workedMinutes = $checkIn->diffInMinutes($checkOut);
-        $isApprovedHalfDay = $this->isApprovedHalfDayAttendance($attendance);
-        $requiredMinutes = $isApprovedHalfDay
-            ? 4 * 60
-            : 8 * 60 + 30;
-
-        if (!$isApprovedHalfDay && $this->hasOneHourEarlyOutAllowance($attendance, $activityDates)) {
-            $requiredMinutes = max($requiredMinutes - 60, 0);
-        }
-
-        return max($requiredMinutes - $workedMinutes, 0);
+        return max(intdiv($checkIn->timestamp - $shiftStart->timestamp, 60), 0);
     }
 
     private function parseAttendancePunch(Attendance $attendance, $time): Carbon
@@ -954,8 +946,15 @@ class DashboardController extends Controller
     private function getAttendanceShiftWindow(Attendance $attendance): array
     {
         $date = Carbon::parse($attendance->attendance_date)->toDateString();
-        $timeIn = $attendance->employee->time_in ?? '09:30:00';
-        $timeOut = $attendance->employee->time_out ?? '18:00:00';
+        $employee = $attendance->employee;
+        $isSunday = Carbon::parse($date)->isSunday();
+
+        $timeIn = ($isSunday && $employee->sunday_time_in)
+            ? $employee->sunday_time_in
+            : ($employee->time_in ?? '09:30:00');
+        $timeOut = ($isSunday && $employee->sunday_time_out)
+            ? $employee->sunday_time_out
+            : ($employee->time_out ?? '18:00:00');
 
         try {
             $shiftStart = Carbon::parse($date . ' ' . Carbon::parse($timeIn)->format('H:i:s'));
@@ -972,100 +971,6 @@ class DashboardController extends Controller
         return [$shiftStart, $shiftEnd];
     }
 
-    private function getAttendanceActivityDates($attendanceRecords): array
-    {
-        $activityDates = [];
-
-        foreach ($attendanceRecords->groupBy(fn ($attendance) => Carbon::parse($attendance->attendance_date)->toDateString()) as $date => $dailyAttendances) {
-            $earlyOuts = 0;
-            $totalPresent = 0;
-
-            foreach ($dailyAttendances as $attendance) {
-                $status = strtolower($attendance->status ?? '');
-
-                if (!in_array($status, ['present', 'late', 'half_day', 'early_out', 'early_leave'])) {
-                    continue;
-                }
-
-                if (!$attendance->check_out || !$attendance->employee || !$attendance->employee->time_out) {
-                    continue;
-                }
-
-                $totalPresent++;
-                $punchTime = Carbon::parse($attendance->check_out)->format('H:i');
-
-                if ($punchTime >= '16:50' && $punchTime < '17:30') {
-                    $earlyOuts++;
-                }
-            }
-
-            if ($totalPresent > 2 && ($earlyOuts / $totalPresent) >= 0.7) {
-                $activityDates[$date] = true;
-            }
-        }
-
-        return $activityDates;
-    }
-
-    private function hasOneHourEarlyOutAllowance(Attendance $attendance, array $activityDates): bool
-    {
-        $date = Carbon::parse($attendance->attendance_date)->toDateString();
-
-        return isset($activityDates[$date]) || $this->isEarlyLeaveAttendance($attendance);
-    }
-
-    private function isEarlyLeaveAttendance(Attendance $attendance): bool
-    {
-        $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
-
-        if (in_array($status, ['early_leave', 'early_out'])) {
-            return true;
-        }
-
-        return LeaveApplication::where('employee_id', $attendance->employee_id)
-            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
-            ->whereDate('start_date', '<=', $attendance->attendance_date)
-            ->where(function ($query) use ($attendance) {
-                $query->whereDate('end_date', '>=', $attendance->attendance_date)
-                    ->orWhere(function ($sub) use ($attendance) {
-                        $sub->whereNull('end_date')
-                            ->whereDate('start_date', $attendance->attendance_date);
-                    });
-            })
-            ->where(function ($query) {
-                $query->whereRaw('LOWER(leave_category) LIKE ?', ['%gatepass%'])
-                    ->orWhereRaw('LOWER(leave_type) LIKE ?', ['%gatepass%'])
-                    ->orWhereRaw('LOWER(leave_category) LIKE ?', ['%early leave%'])
-                    ->orWhereRaw('LOWER(leave_type) LIKE ?', ['%early leave%']);
-            })
-            ->exists();
-    }
-
-    private function isApprovedHalfDayAttendance(Attendance $attendance): bool
-    {
-        $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
-
-        if ($status === 'half_day_leave') {
-            return true;
-        }
-
-        return LeaveApplication::where('employee_id', $attendance->employee_id)
-            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
-            ->whereDate('start_date', '<=', $attendance->attendance_date)
-            ->where(function ($query) use ($attendance) {
-                $query->whereDate('end_date', '>=', $attendance->attendance_date)
-                    ->orWhere(function ($sub) use ($attendance) {
-                        $sub->whereNull('end_date')
-                            ->whereDate('start_date', $attendance->attendance_date);
-                    });
-            })
-            ->where(function ($query) {
-                $query->whereRaw('LOWER(leave_category) LIKE ?', ['%half%'])
-                    ->orWhereRaw('LOWER(leave_type) LIKE ?', ['%half%'])
-                    ->orWhere('total_days', 0.5);
-            })
-            ->exists();
-    }
 
     /* private function getLateEmployeesData()
     {
