@@ -11,8 +11,8 @@
                 <li class="breadcrumb-item">Personal Review</li>
             </ul>
         </div>
-        <div class="page-header-right">
-            <button id="openCreateReviewBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReviewModal" data-mode="create">
+        <div style="display: flex !important; gap: 10px !important; align-items: center !important; margin-left: auto !important; z-index: 999 !important;">
+            <button id="openCreateReviewBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReviewModal" data-mode="create" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; white-space: nowrap !important;">
                 <i class="fa fa-plus me-1"></i>
                 {{ ($isTeamLeader && !$isAdmin) ? 'Create Team Review' : 'Create Review' }}
             </button>

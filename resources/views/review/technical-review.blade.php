@@ -11,14 +11,14 @@
                 <li class="breadcrumb-item">Technical Review</li>
             </ul>
         </div>
-        <div class="page-header-right d-flex justify-content-between">
+        <div style="display: flex !important; gap: 10px !important; align-items: center !important; margin-left: auto !important; z-index: 999 !important;">
             @if ($isTeamLeader || $isAdmin)
-                <button type="button" class="btn btn-primary me-5" data-bs-toggle="modal" data-bs-target="#evaluationModal">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#evaluationModal" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; white-space: nowrap !important;">
                     <i class="feather-settings me-1"></i>
                     Manage Evaluation
                 </button>
             @endif
-            <button id="openCreateReviewBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReviewModal" data-mode="create">
+            <button id="openCreateReviewBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReviewModal" data-mode="create" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; white-space: nowrap !important;">
                 <i class="fa fa-plus me-1"></i> Create Review
             </button>
         </div>
@@ -664,6 +664,7 @@
             background-color: #3858f9 !important;
             color: #fff !important;
         }
+
     </style>
 
     <link href="{{ asset('assets/vendors/css/select2.min.css') }}" rel="stylesheet" />

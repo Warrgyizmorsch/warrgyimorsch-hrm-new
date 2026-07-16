@@ -197,7 +197,7 @@ class DashboardController extends Controller
         // Employee Metrics
         // $totalEmployees = $isAdmin ? Employee::count() : 1;
 
-        if(!$isAdmin){
+        if(!$isAdmin && $employee){
             $totalEmployees = Employee::active()->where('department', $employee->department)->count();
         }
         else{

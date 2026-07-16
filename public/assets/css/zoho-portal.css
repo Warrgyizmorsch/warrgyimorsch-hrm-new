@@ -1665,7 +1665,7 @@ html.minimenu body.zoho-portal .nxl-header {
    ═══════════════════════════════════════════════════════════════ */
 
 body.zoho-portal .page-header {
-    display: none !important;
+    display: flex !important;
 }
 
 .zoho-page-shell {
