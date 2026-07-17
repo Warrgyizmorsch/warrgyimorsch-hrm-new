@@ -415,7 +415,7 @@
                             <td class="fw-bold text-primary" data-sort-value="{{ $scoreText($reviewGroup->objective['score'] ?? 0) }}">
                                 {{ $scoreText($reviewGroup->objective['score'] ?? 0) }} / 100
                             </td>
-                            <td data-sort-value="{{ $reviewGroup->objective['penalty'] ?? 0 }}">
+                            <td class="review-checks-cell" data-sort-value="{{ $reviewGroup->objective['penalty'] ?? 0 }}">
                                 <div class="review-metric-grid">
                                     <span class="review-metric-chip review-metric-chip-primary">
                                         <b>score</b> {{ $scoreText($reviewGroup->objective['score'] ?? 0) }}
@@ -424,52 +424,55 @@
                                         <b>rank</b> #{{ $reviewGroup->objective['rank'] ?? '-' }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['late_days'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                        <b>late days</b> {{ $reviewGroup->objective['late_days'] ?? 0 }}
+                                        <b>late</b> {{ $reviewGroup->objective['late_days'] ?? 0 }}d
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['late_minutes'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                        <b>arrival late min</b> {{ $reviewGroup->objective['late_minutes'] ?? 0 }}
+                                        <b>balance</b> {{ (int) round($reviewGroup->objective['late_minutes'] ?? 0) }}m
+                                    </span>
+                                    <span class="review-metric-chip review-metric-chip-warning">
+                                        <b>covered</b> {{ $reviewGroup->objective['covered_late_days'] ?? 0 }}d / {{ (int) round($reviewGroup->objective['covered_late_minutes'] ?? 0) }}m
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['late_penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                        <b>late penalty</b> -{{ $scoreText($reviewGroup->objective['late_penalty'] ?? 0) }}
+                                        <b>late pen</b> -{{ $scoreText($reviewGroup->objective['late_penalty'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['missed_reports'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                        <b>missed reports</b> {{ $reviewGroup->objective['missed_reports'] ?? 0 }}
+                                        <b>missed</b> {{ $reviewGroup->objective['missed_reports'] ?? 0 }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['report_penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                        <b>report penalty</b> -{{ $scoreText($reviewGroup->objective['report_penalty'] ?? 0) }}
+                                        <b>report pen</b> -{{ $scoreText($reviewGroup->objective['report_penalty'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip">
-                                        <b>report days</b> {{ $reviewGroup->objective['report_days'] ?? 0 }}
+                                        <b>reports</b> {{ $reviewGroup->objective['report_days'] ?? 0 }}
                                     </span>
                                     <span class="review-metric-chip review-metric-chip-success">
-                                        <b>8h+ reports</b> {{ $reviewGroup->objective['completed_report_days'] ?? 0 }}
+                                        <b>8h+</b> {{ $reviewGroup->objective['completed_report_days'] ?? 0 }}
                                     </span>
                                     <span class="review-metric-chip review-metric-chip-success">
-                                        <b>done tasks</b> {{ $reviewGroup->objective['completed_tasks'] ?? 0 }}
+                                        <b>done</b> {{ $reviewGroup->objective['completed_tasks'] ?? 0 }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['pending_tasks'] ?? 0) > 0 ? 'review-metric-chip-warning' : 'review-metric-chip-success' }}">
                                         <b>pending</b> {{ $reviewGroup->objective['pending_tasks'] ?? 0 }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['pending_penalty'] ?? 0) > 0 ? 'review-metric-chip-warning' : 'review-metric-chip-success' }}">
-                                        <b>pending penalty</b> -{{ $scoreText($reviewGroup->objective['pending_penalty'] ?? 0) }}
+                                        <b>pending pen</b> -{{ $scoreText($reviewGroup->objective['pending_penalty'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip review-metric-chip-success">
                                         <b>task bonus</b> +{{ $scoreText($reviewGroup->objective['task_bonus'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip review-metric-chip-primary">
-                                        <b>tech score</b> {{ $scoreText($reviewGroup->objective['technical_score'] ?? 0) }}
+                                        <b>tech</b> {{ $scoreText($reviewGroup->objective['technical_score'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip">
                                         <b>tech bonus</b> +{{ $scoreText($reviewGroup->objective['technical_bonus'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['leave_days'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                        <b>leave days</b> {{ $scoreText($reviewGroup->objective['leave_days'] ?? 0) }}
+                                        <b>leave</b> {{ $scoreText($reviewGroup->objective['leave_days'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['leave_penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
-                                        <b>leave penalty</b> -{{ $scoreText($reviewGroup->objective['leave_penalty'] ?? 0) }}
+                                        <b>leave pen</b> -{{ $scoreText($reviewGroup->objective['leave_penalty'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip review-metric-chip-success">
-                                        <b>no leave bonus</b> +{{ $scoreText($reviewGroup->objective['no_leave_bonus'] ?? 0) }}
+                                        <b>no leave</b> +{{ $scoreText($reviewGroup->objective['no_leave_bonus'] ?? 0) }}
                                     </span>
                                     <span class="review-metric-chip {{ ($reviewGroup->objective['penalty'] ?? 0) > 0 ? 'review-metric-chip-danger' : 'review-metric-chip-success' }}">
                                         <b>penalty</b> -{{ $scoreText($reviewGroup->objective['penalty'] ?? 0) }}
@@ -480,27 +483,25 @@
                                 </div>
                             </td>
                         @endif
-                        <td>
-                            <div class="d-flex gap-1" style="height: 50px;">
-                                @if($canViewReviewAnalytics)
-                                    @php
-                                        $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
-                                        $reportFileName = preg_replace('/[^A-Za-z0-9_-]+/', '_', ($reviewGroup->employee_name ?? 'employee') . '_' . $reviewGroup->month . '_review_report') . '.html';
-                                    @endphp
-                                    <button class="btn btn-info" data-bs-toggle="modal" style="height: 20px; width:20px" title="Report Card" data-bs-target="#{{ $reportCardId }}Modal">
-                                        <i class="fa fa-id-card"></i>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="btn btn-dark download-report-card-btn"
-                                        style="height: 20px; width:20px"
-                                        title="Download Report Card"
-                                        data-report-target="{{ $reportCardId }}"
-                                        data-report-filename="{{ $reportFileName }}"
-                                    >
-                                        <i class="fa fa-download"></i>
-                                    </button>
-                                @endif
+                        <td class="review-action-cell">
+                            <div class="review-action-buttons">
+                                @php
+                                    $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
+                                    $reportFileName = preg_replace('/[^A-Za-z0-9_-]+/', '_', ($reviewGroup->employee_name ?? 'employee') . '_' . $reviewGroup->month . '_review_report') . '.html';
+                                @endphp
+                                <button class="btn btn-info" data-bs-toggle="modal" style="height: 20px; width:20px" title="Report Card" data-bs-target="#{{ $reportCardId }}Modal">
+                                    <i class="fa fa-id-card"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-dark download-report-card-btn"
+                                    style="height: 20px; width:20px"
+                                    title="Download Report Card"
+                                    data-report-target="{{ $reportCardId }}"
+                                    data-report-filename="{{ $reportFileName }}"
+                                >
+                                    <i class="fa fa-download"></i>
+                                </button>
                                 @foreach([$reviewGroup->firstHalf, $reviewGroup->secondHalf] as $review)
                                     @if($review)
                                         <button class="btn btn-primary" data-bs-toggle="modal" style="height: 20px; width:20px" title="{{ $review->period }}" data-bs-target="#reviewModal{{ $review->id }}">
@@ -547,18 +548,18 @@
         </div>
     </div>
 
-    @if($canViewReviewAnalytics)
-        @foreach($reviews as $reviewGroup)
+    @foreach($reviews as $reviewGroup)
             @php
                 $reportCardId = 'reviewReportCard' . ($reviewGroup->employee->id ?? 'na') . preg_replace('/[^A-Za-z0-9]/', '', $reviewGroup->month);
                 $objective = $reviewGroup->objective ?? [];
                 $reportRows = [
                 ['label' => 'Score', 'value' => $scoreText($objective['score'] ?? 0) . ' / 100'],
                 ['label' => 'Rank', 'value' => '#' . ($objective['rank'] ?? '-')],
-                ['label' => 'Late Arrival Rule', 'value' => $objective['late_rule'] ?? 'Check-in after scheduled shift start'],
-                ['label' => 'Late Arrival Days', 'value' => $objective['late_days'] ?? 0],
-                ['label' => 'Late Arrival Minutes', 'value' => ($objective['late_minutes'] ?? 0) . ' min'],
-                ['label' => 'Late Arrival Penalty', 'value' => '-' . $scoreText($objective['late_penalty'] ?? 0)],
+                ['label' => 'Late Rule', 'value' => $objective['late_rule'] ?? 'Late check-in not recovered by 8 hr 30 min work duration'],
+                ['label' => 'Late Days', 'value' => $objective['late_days'] ?? 0],
+                ['label' => 'Late Balance Minutes', 'value' => (int) round($objective['late_minutes'] ?? 0) . ' min'],
+                ['label' => 'Covered Late Arrivals', 'value' => ($objective['covered_late_days'] ?? 0) . ' days / ' . (int) round($objective['covered_late_minutes'] ?? 0) . ' min'],
+                ['label' => 'Late Penalty', 'value' => '-' . $scoreText($objective['late_penalty'] ?? 0)],
                 ['label' => 'Missed Reports', 'value' => $objective['missed_reports'] ?? 0],
                 ['label' => 'Report Penalty', 'value' => '-' . $scoreText($objective['report_penalty'] ?? 0)],
                 ['label' => 'Report Days', 'value' => $objective['report_days'] ?? 0],
@@ -584,11 +585,18 @@
                         'marks' => '+' . $scoreText($reviewGroup->system_review_total),
                     ],
                     [
-                        'criteria' => 'Late arrivals',
-                        'basis' => 'days with check-in after scheduled shift start x 2.5',
-                        'raw' => ($objective['late_days'] ?? 0) . ' late arrival days / ' . ($objective['late_minutes'] ?? 0) . ' total arrival late min',
+                        'criteria' => 'Late balance',
+                        'basis' => 'late check-in days below 8 hr 30 min worked duration x 2.5',
+                        'raw' => ($objective['late_days'] ?? 0) . ' late days / ' . (int) round($objective['late_minutes'] ?? 0) . ' total balance minutes',
                         'cap' => 'max -25',
                         'marks' => '-' . $scoreText($objective['late_penalty'] ?? 0),
+                    ],
+                    [
+                        'criteria' => 'Covered late arrivals',
+                        'basis' => 'late check-in covered by completing 8 hr 30 min worked duration',
+                        'raw' => ($objective['covered_late_days'] ?? 0) . ' covered days / ' . (int) round($objective['covered_late_minutes'] ?? 0) . ' arrival late minutes',
+                        'cap' => 'info only',
+                        'marks' => '+0',
                     ],
                     [
                         'criteria' => '8h reporting',
@@ -747,8 +755,7 @@
                 </div>
             </div>
             </div>
-        @endforeach
-    @endif
+    @endforeach
 
     @foreach($modalReviews as $review)
         <div class="modal fade" id="reviewModal{{ $review->id }}" tabindex="-1" aria-hidden="true">
@@ -955,6 +962,27 @@
             white-space: nowrap;
         }
 
+        .review-sortable-table td {
+            vertical-align: top;
+        }
+
+        .review-checks-cell {
+            min-width: 410px;
+            max-width: 500px;
+        }
+
+        .review-action-cell {
+            min-width: 136px;
+            white-space: nowrap;
+        }
+
+        .review-action-buttons {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            min-height: 28px;
+        }
+
         .review-sort-btn {
             width: 100%;
             border: 0;
@@ -1003,25 +1031,27 @@
         }
 
         .review-metric-grid {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(104px, 1fr));
+            align-items: start;
             gap: 6px;
-            min-width: 360px;
-            max-width: 520px;
+            width: 100%;
         }
 
         .review-metric-chip {
             display: inline-flex;
             align-items: center;
             gap: 5px;
+            justify-content: center;
             border: 1px solid #dbe3f0;
             border-radius: 6px;
             background: #f8fafc;
             color: #334155;
-            font-size: 11px;
+            font-size: 10.5px;
             line-height: 1.2;
-            padding: 5px 7px;
+            padding: 5px 6px;
             white-space: nowrap;
+            min-height: 28px;
         }
 
         .review-metric-chip b {

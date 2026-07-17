@@ -250,7 +250,9 @@ class ReviewController extends Controller
                 'rank' => null,
                 'late_days' => 0,
                 'late_minutes' => 0,
-                'late_rule' => 'Check-in after scheduled shift start',
+                'covered_late_days' => 0,
+                'covered_late_minutes' => 0,
+                'late_rule' => 'Late check-in not recovered by 8 hr 30 min work duration',
                 'missed_reports' => 0,
                 'report_days' => 0,
                 'completed_tasks' => 0,
@@ -304,6 +306,8 @@ class ReviewController extends Controller
 
         $lateMinutes = 0;
         $lateDays = 0;
+        $coveredLateMinutes = 0;
+        $coveredLateDays = 0;
         $reportDates = [];
         $attendanceByDate = $attendanceRecords->keyBy(fn ($attendance) => Carbon::parse($attendance->attendance_date)->toDateString());
         $nonReportingStatuses = [
@@ -318,10 +322,13 @@ class ReviewController extends Controller
         ];
 
         foreach ($attendanceRecords as $attendance) {
-            $minutes = $this->getAttendanceLateMinutes($attendance);
-            if ($minutes > 0) {
+            $lateBreakdown = $this->getAttendanceLateBreakdown($attendance);
+            if ($lateBreakdown['penalty_minutes'] > 0) {
                 $lateDays++;
-                $lateMinutes += $minutes;
+                $lateMinutes += $lateBreakdown['penalty_minutes'];
+            } elseif ($lateBreakdown['covered_minutes'] > 0) {
+                $coveredLateDays++;
+                $coveredLateMinutes += $lateBreakdown['covered_minutes'];
             }
         }
 
@@ -385,7 +392,6 @@ class ReviewController extends Controller
         $technicalReview = TechnicalReview::where('employee_id', $employeeId)
             ->where('month', $month)
             ->first();
-
         $technicalScore = 0;
         if ($technicalReview) {
             $technicalScore = (float) $technicalReview->admin_total > 0
@@ -416,7 +422,9 @@ class ReviewController extends Controller
             'rank' => null,
             'late_days' => $lateDays,
             'late_minutes' => $lateMinutes,
-            'late_rule' => 'Check-in after scheduled shift start',
+            'covered_late_days' => $coveredLateDays,
+            'covered_late_minutes' => $coveredLateMinutes,
+            'late_rule' => 'Late check-in not recovered by 8 hr 30 min work duration',
             'missed_reports' => $missedReports,
             'report_days' => count($reportDates),
             'completed_report_days' => count($completedReportDates),
@@ -449,14 +457,58 @@ class ReviewController extends Controller
 
     private function getAttendanceLateMinutes(Attendance $attendance): int
     {
-        if (!$attendance->employee || !$attendance->check_in) {
-            return 0;
+        return $this->getAttendanceLateBreakdown($attendance)['penalty_minutes'];
+    }
+
+    private function getAttendanceLateBreakdown(Attendance $attendance): array
+    {
+        if (!$attendance->employee || !$attendance->check_in || !$attendance->check_out) {
+            return ['penalty_minutes' => 0, 'covered_minutes' => 0];
+        }
+
+        $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
+        $excludedStatuses = [
+            'absent',
+            'leave',
+            'unpaid_leave',
+            'unauthorised',
+            'missing_punch',
+            'holiday',
+            'week_off',
+            'weekly_off',
+            'wfh',
+        ];
+
+        if (in_array($status, $excludedStatuses, true)) {
+            return ['penalty_minutes' => 0, 'covered_minutes' => 0];
         }
 
         $checkIn = $this->parseAttendancePunch($attendance, $attendance->check_in);
+        $checkOut = $this->parseAttendancePunch($attendance, $attendance->check_out);
+
+        if ($checkOut->lessThanOrEqualTo($checkIn)) {
+            $checkOut->addDay();
+        }
+
+        if ($checkOut->equalTo($checkIn)) {
+            return ['penalty_minutes' => 0, 'covered_minutes' => 0];
+        }
+
         [$shiftStart] = $this->getAttendanceShiftWindow($attendance);
 
-        return max(intdiv($checkIn->timestamp - $shiftStart->timestamp, 60), 0);
+        if (!$checkIn->gt($shiftStart)) {
+            return ['penalty_minutes' => 0, 'covered_minutes' => 0];
+        }
+
+        $workedMinutes = (int) round($checkIn->diffInMinutes($checkOut));
+        $requiredMinutes = 8 * 60 + 30;
+        $arrivalLateMinutes = (int) round($shiftStart->diffInMinutes($checkIn));
+        $penaltyMinutes = max($requiredMinutes - $workedMinutes, 0);
+
+        return [
+            'penalty_minutes' => $penaltyMinutes,
+            'covered_minutes' => $penaltyMinutes > 0 ? 0 : $arrivalLateMinutes,
+        ];
     }
 
     private function getAttendanceShiftWindow(Attendance $attendance): array
