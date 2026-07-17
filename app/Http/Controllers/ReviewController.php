@@ -99,7 +99,10 @@ class ReviewController extends Controller
 
         $employeeRecord = $this->resolveEmployeeRecord($user);
         
-        $query = EmployeeReview::with(['employee', 'details']);
+        $query = EmployeeReview::with(['employee', 'details'])
+            ->whereHas('employee.user', function ($q) {
+                $q->where('account_status', 'active');
+            });
         
         if ($isTeamLeader && !$isAdmin) {
             $department = $employeeRecord->department ?? null;
