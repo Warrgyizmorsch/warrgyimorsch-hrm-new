@@ -162,7 +162,7 @@ class ReviewController extends Controller
                     'month' => $firstReview->month,
                     'firstHalf' => $firstHalf,
                     'secondHalf' => $secondHalf,
-                    'combined_total' => $this->resolveSelfReviewTotal($firstHalf) + $this->resolveSelfReviewTotal($secondHalf),
+                    'combined_total' => $this->resolveSystemReviewTotal($firstHalf) + $this->resolveSystemReviewTotal($secondHalf),
                     'system_review_total' => $this->resolveSystemReviewTotal($firstHalf) + $this->resolveSystemReviewTotal($secondHalf),
                 ];
             })
@@ -222,27 +222,18 @@ class ReviewController extends Controller
         ));
     }
 
-    protected function resolveSelfReviewTotal(?EmployeeReview $review): float
-    {
-        if (!$review) {
-            return 0;
-        }
-
-        return (float) $review->self_total;
-    }
-
     protected function resolveSystemReviewTotal(?EmployeeReview $review): float
     {
         if (!$review) {
             return 0;
         }
 
-        if ((float) $review->admin_total > 0) {
-            return (float) $review->admin_total;
-        }
-
         if ((float) $review->author_total > 0) {
             return (float) $review->author_total;
+        }
+
+        if ((float) $review->admin_total > 0) {
+            return (float) $review->admin_total;
         }
 
         return 0;
@@ -256,6 +247,7 @@ class ReviewController extends Controller
                 'rank' => null,
                 'late_days' => 0,
                 'late_minutes' => 0,
+                'late_rule' => 'Check-in after scheduled shift start',
                 'missed_reports' => 0,
                 'report_days' => 0,
                 'completed_tasks' => 0,
@@ -307,7 +299,6 @@ class ReviewController extends Controller
             }
         }
 
-        $activityDates = $this->getAttendanceActivityDates($attendanceRecords);
         $lateMinutes = 0;
         $lateDays = 0;
         $reportDates = [];
@@ -324,10 +315,7 @@ class ReviewController extends Controller
         ];
 
         foreach ($attendanceRecords as $attendance) {
-            $status = strtolower(str_replace(' ', '_', $attendance->status ?? ''));
-            $attendanceDate = Carbon::parse($attendance->attendance_date);
-
-            $minutes = $this->getAttendanceLateMinutes($attendance, $activityDates);
+            $minutes = $this->getAttendanceLateMinutes($attendance);
             if ($minutes > 0) {
                 $lateDays++;
                 $lateMinutes += $minutes;
@@ -425,6 +413,7 @@ class ReviewController extends Controller
             'rank' => null,
             'late_days' => $lateDays,
             'late_minutes' => $lateMinutes,
+            'late_rule' => 'Check-in after scheduled shift start',
             'missed_reports' => $missedReports,
             'report_days' => count($reportDates),
             'completed_report_days' => count($completedReportDates),
@@ -455,28 +444,44 @@ class ReviewController extends Controller
         return [$startDate, $startDate->copy()->endOfMonth()];
     }
 
-    private function getAttendanceLateMinutes(Attendance $attendance, array $activityDates = []): int
+    private function getAttendanceLateMinutes(Attendance $attendance): int
     {
-        if (!$attendance->employee || !$attendance->check_in || !$attendance->check_out) {
+        if (!$attendance->employee || !$attendance->check_in) {
             return 0;
         }
 
         $checkIn = $this->parseAttendancePunch($attendance, $attendance->check_in);
-        $checkOut = $this->parseAttendancePunch($attendance, $attendance->check_out);
+        [$shiftStart] = $this->getAttendanceShiftWindow($attendance);
 
-        if ($checkOut->lessThanOrEqualTo($checkIn)) {
-            $checkOut->addDay();
+        return max(intdiv($checkIn->timestamp - $shiftStart->timestamp, 60), 0);
+    }
+
+    private function getAttendanceShiftWindow(Attendance $attendance): array
+    {
+        $date = Carbon::parse($attendance->attendance_date)->toDateString();
+        $employee = $attendance->employee;
+        $isSunday = Carbon::parse($date)->isSunday();
+
+        $timeIn = ($isSunday && $employee->sunday_time_in)
+            ? $employee->sunday_time_in
+            : ($employee->time_in ?? '09:30:00');
+        $timeOut = ($isSunday && $employee->sunday_time_out)
+            ? $employee->sunday_time_out
+            : ($employee->time_out ?? '18:00:00');
+
+        try {
+            $shiftStart = Carbon::parse($date . ' ' . Carbon::parse($timeIn)->format('H:i:s'));
+            $shiftEnd = Carbon::parse($date . ' ' . Carbon::parse($timeOut)->format('H:i:s'));
+        } catch (\Exception $e) {
+            $shiftStart = Carbon::parse($date . ' 09:30:00');
+            $shiftEnd = Carbon::parse($date . ' 18:00:00');
         }
 
-        $workedMinutes = $checkIn->diffInMinutes($checkOut);
-        $isApprovedHalfDay = $this->isApprovedHalfDayAttendance($attendance);
-        $requiredMinutes = $isApprovedHalfDay ? 4 * 60 : 8 * 60 + 30;
-
-        if (!$isApprovedHalfDay && $this->hasOneHourEarlyOutAllowance($attendance, $activityDates)) {
-            $requiredMinutes = max($requiredMinutes - 60, 0);
+        if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
+            $shiftEnd->addDay();
         }
 
-        return max($requiredMinutes - $workedMinutes, 0);
+        return [$shiftStart, $shiftEnd];
     }
 
     private function parseAttendancePunch(Attendance $attendance, $time): Carbon
