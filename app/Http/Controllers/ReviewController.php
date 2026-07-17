@@ -494,34 +494,6 @@ class ReviewController extends Controller
         return Carbon::parse($date . ' ' . Carbon::parse($time)->format('H:i:s'));
     }
 
-    private function getAttendanceShiftWindow(Attendance $attendance): array
-    {
-        $date = Carbon::parse($attendance->attendance_date)->toDateString();
-        $employee = $attendance->employee;
-        $isSunday = Carbon::parse($date)->isSunday();
-
-        $timeIn = ($isSunday && $employee->sunday_time_in)
-            ? $employee->sunday_time_in
-            : ($employee->time_in ?? '09:30:00');
-        $timeOut = ($isSunday && $employee->sunday_time_out)
-            ? $employee->sunday_time_out
-            : ($employee->time_out ?? '18:00:00');
-
-        try {
-            $shiftStart = Carbon::parse($date . ' ' . Carbon::parse($timeIn)->format('H:i:s'));
-            $shiftEnd = Carbon::parse($date . ' ' . Carbon::parse($timeOut)->format('H:i:s'));
-        } catch (\Exception $e) {
-            $shiftStart = Carbon::parse($date . ' 09:30:00');
-            $shiftEnd = Carbon::parse($date . ' 18:00:00');
-        }
-
-        if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
-            $shiftEnd->addDay();
-        }
-
-        return [$shiftStart, $shiftEnd];
-    }
-
     public function store(Request $request) {
         $user = auth()->user();
         $canManageEmployeeReviews = $this->canManageEmployeeReviews($user);
