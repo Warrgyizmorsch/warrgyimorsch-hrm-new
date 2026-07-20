@@ -12,6 +12,16 @@ class AttendanceStatusService
 
     public const HALF_DAY_MIN_HOURS = 4.0;
 
+    /** Recurring Saturday office activity — credited toward Present/Half-day thresholds and overtime. */
+    public const SATURDAY_CREDIT_HOURS = 1.0;
+
+    public static function saturdayCreditHours(Attendance $record): float
+    {
+        return $record->attendance_date && $record->attendance_date->isSaturday()
+            ? self::SATURDAY_CREDIT_HOURS
+            : 0.0;
+    }
+
     public static function isNightShiftRecord(Attendance $record): bool
     {
         $checkIn = substr($record->getRawPunchTime('check_in') ?? '', 0, 5);
@@ -78,7 +88,7 @@ class AttendanceStatusService
         bool $isSunday = false
     ): array {
         $status = strtolower($record->status ?? '');
-        $hours = (float) ($record->total_hours ?? 0);
+        $hours = (float) ($record->total_hours ?? 0) + self::saturdayCreditHours($record);
         $checkOutHm = substr($record->getRawPunchTime('check_out') ?? '', 0, 5);
         $hasPunches = $record->getRawPunchTime('check_in') && $record->getRawPunchTime('check_out');
         $fullDayHours = self::fullDayHoursForRecord($record);
@@ -175,7 +185,7 @@ class AttendanceStatusService
             return 1.0;
         }
 
-        $hours = (float) ($record->total_hours ?? 0);
+        $hours = (float) ($record->total_hours ?? 0) + self::saturdayCreditHours($record);
         $hasBothPunches = $record->getRawPunchTime('check_in') && $record->getRawPunchTime('check_out');
         $fullDayHours = self::fullDayHoursForRecord($record);
 

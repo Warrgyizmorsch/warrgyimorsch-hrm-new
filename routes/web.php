@@ -94,16 +94,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/ticket-history/{id}', [TicketController::class, 'history'])->name('tickets.history');
 
 
-    Route::get('/asset-management', [AssetController::class, 'index'])->name('assets.index');
-    Route::post('/asset-management/store', [AssetController::class, 'store'])->name('assets.store');
-    Route::put('/asset-management/{id}', [AssetController::class, 'update'])->name('assets.update');
-    Route::delete('/asset-management/{id}', [AssetController::class, 'destroy'])->name('assets.destroy');
-    Route::post('/asset-requests/{id}/allocate', [AssetController::class, 'allocate'])->name('assets.allocate');
-    Route::post('/asset-requests/{id}/reject', [AssetController::class, 'reject'])->name('assets.reject');
-    Route::post('/asset-requests/{id}/return', [AssetController::class, 'markReturned'])->name('assets.markReturned');
-    Route::post('/asset-management/{id}/allocate-manual', [AssetController::class, 'allocateManual'])->name('assets.allocateManual');
-    
-    // Asset Management - Employee Routes
+    // Asset Management - Employee/Team Leader Routes (self + team-scoped, view-only, no admin actions)
     Route::get('/my-assets', [AssetController::class, 'employeeView'])->name('assets.employee');
     Route::post('/my-assets/request', [AssetController::class, 'requestAsset'])->name('assets.request');
 
@@ -113,6 +104,15 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
+    // Asset Management admin actions — team leaders get the same page read-only (see below).
+    Route::post('/asset-management/store', [AssetController::class, 'store'])->name('assets.store');
+    Route::put('/asset-management/{id}', [AssetController::class, 'update'])->name('assets.update');
+    Route::delete('/asset-management/{id}', [AssetController::class, 'destroy'])->name('assets.destroy');
+    Route::post('/asset-requests/{id}/allocate', [AssetController::class, 'allocate'])->name('assets.allocate');
+    Route::post('/asset-requests/{id}/reject', [AssetController::class, 'reject'])->name('assets.reject');
+    Route::post('/asset-requests/{id}/return', [AssetController::class, 'markReturned'])->name('assets.markReturned');
+    Route::post('/asset-management/{id}/allocate-manual', [AssetController::class, 'allocateManual'])->name('assets.allocateManual');
+
     Route::get('/dashboard/summary', [DashboardController::class, 'getMonthlySummary'])->name('dashboard.summary');
     Route::get('/dashboard/chart', [DashboardController::class, 'getChartData'])->name('dashboard.chart');
     Route::get('/dashboard/full-year', [DashboardController::class, 'getFullYearBreakdown'])->name('dashboard.full-year');
@@ -163,12 +163,9 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/leave/balance/export', [LeaveController::class, 'exportBalances'])->name('leave.balance.export');
     Route::get('/api/leave/balance', [LeaveController::class, 'apiBalanceList']);
 
-    Route::get('/leave/history', [LeaveApplicationController::class, 'index'])->name('leave.history');
     Route::get('/leave/export', [LeaveApplicationController::class, 'export'])->name('leave.export');
     Route::post('/leave/action', [LeaveApplicationController::class, 'updateAction'])->name('leave.updateAction');
     Route::delete('/leave/application/{id}', [LeaveApplicationController::class, 'destroy'])->name('leave.application.destroy');
-    Route::get('/api/leave/details/{id}', [LeaveApplicationController::class, 'getDetails']);
-    Route::get('/api/leave/employee/{employeeId}', [LeaveApplicationController::class, 'getEmployeeLeaves']);
 
    
     Route::get('/payroll/attendance/get', [PayrollController::class, 'getAttendance'])->name('payroll.attendance.get');
@@ -197,8 +194,6 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::delete('/payroll/attendance/{id}', [PayrollController::class, 'destroyAttendance'])->name('payroll.attendance.destroy');
     Route::delete('/payroll/attendance/date/{date}', [PayrollController::class, 'destroyAttendanceByDate'])->name('payroll.attendance.destroyByDate');
     Route::post('/payroll/attendance/delete-bulk', [PayrollController::class, 'bulkDestroyAttendance'])->name('payroll.attendance.bulkDestroy');
-    Route::get('/payroll/attendance/employee', [PayrollController::class, 'employeeWiseAttendace'])->name('payroll.attendace.employee');
-    Route::get('/payroll/attendance/employee-wise-details', [PayrollController::class, 'employeeWiseDetails'])->name('payroll.attendance.employee.details');
     Route::get('/payroll/attendace/employee/{employee_id}/edit', [PayrollController::class, 'editByName'])->name('payroll.attendance.employee.editByName');
     Route::put('/payroll/attendance/employee/{employee_id}/update', [PayrollController::class, 'updateByName'])->name('payroll.attendance.employee.updateByName');
 
@@ -206,6 +201,27 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
 });
 
 Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
+
+    // View-only for team leaders (scoped to their own department in the controller);
+    // approve/reject/delete/export stay admin-only.
+    Route::get('/leave/history', [LeaveApplicationController::class, 'index'])->name('leave.history');
+
+    // Same: view-only attendance history, scoped to the team leader's own department;
+    // add/edit/import/export/delete stay admin-only.
+    Route::get('/payroll/attendance/employee', [PayrollController::class, 'employeeWiseAttendace'])->name('payroll.attendace.employee');
+    Route::get('/payroll/attendance/employee-wise-details', [PayrollController::class, 'employeeWiseDetails'])->name('payroll.attendance.employee.details');
+
+    // "View" drawer on the leave history list — same view-only, department-scoped access.
+    Route::get('/api/leave/details/{id}', [LeaveApplicationController::class, 'getDetails']);
+    Route::get('/api/leave/employee/{employeeId}', [LeaveApplicationController::class, 'getEmployeeLeaves']);
+
+    // Same view-only, department-scoped pattern for Asset Management.
+    Route::get('/asset-management', [AssetController::class, 'index'])->name('assets.index');
+
+    // Broadcast: team leaders can view (own department only, in the controller) and create
+    // (forced to their own department server-side) — editing existing broadcasts stays admin-only.
+    Route::get('/broadcast', [BroadcastController::class, 'index'])->name('broadcasts.index');
+    Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('broadcasts.store');
 
     Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
     Route::get('/projects/create', [ProjectController::class, 'create'])->name('projects.create');
@@ -219,6 +235,17 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
     Route::get('/projects/{project}/tasks-summary', [ProjectController::class, 'tasksSummary'])->name('projects.tasks-summary');
     Route::get('/payroll/attendance/details', [PayrollController::class, 'getAttendanceDetails'])->name('payroll.attendance.details');
+
+    // Team leaders only get the requirement board (scoped to what they've placed in the
+    // controller) — job-vacancy, candidates, and broadcast are admin-only below.
+    Route::get('/job-requirement', [VacancyController::class, 'showRequirements'])->name('requirement.show');
+    Route::post('/job-requirement/store', [VacancyController::class, 'storeRequirement'])->name('requirement.store');
+    Route::delete('/job-requirement/{id}', [VacancyController::class, 'destroyRequirement'])->name('requirement.destroy');
+    Route::post('/job-requirement/update-status', [VacancyController::class, 'updateStatusofRequirement'])->name('requirements.update-status');
+});
+
+// Job vacancy, candidates, and broadcast: admin-only (not team leaders).
+Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/job-vacancy', [VacancyController::class, 'show'])->name('vacancy.show');
     Route::post('/job-vacancy/store', [VacancyController::class, 'store'])->name('job.store');
     Route::get('/job-vacancy/{id}/edit', [VacancyController::class, 'edit'])->name('vacancy.edit');
@@ -226,16 +253,9 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     Route::delete('/job-vacancy/{id}', [VacancyController::class, 'destroy'])->name('vacancy.destroy');
     Route::post('/job-vacancy/bulk-delete', [VacancyController::class, 'bulkDestroy'])->name('vacancy.bulk-delete');
     Route::post('/job-applications/update-status/{id}', [VacancyController::class, 'updateStatus']);
-    Route::get('/job-requirement', [VacancyController::class, 'showRequirements'])->name('requirement.show');
-    Route::post('/job-requirement/store', [VacancyController::class, 'storeRequirement'])->name('requirement.store');
-    Route::delete('/job-requirement/{id}', [VacancyController::class, 'destroyRequirement'])->name('requirement.destroy');
-    Route::post('/job-requirement/update-status', [VacancyController::class, 'updateStatusofRequirement'])->name('requirements.update-status');
     Route::get('/candidates', [CandidateController::class, 'index'])->name('candidates.index');
     Route::get('/candidates/{id}', [CandidateController::class, 'show'])->name('candidates.show');
 
-    Route::get('/broadcast', [BroadcastController::class, 'index'])->name('broadcasts.index');
-  
-   
 });
 
 Route::post('/broadcasts/{id}/read', [BroadcastController::class, 'markAsRead'])
@@ -243,7 +263,6 @@ Route::post('/broadcasts/{id}/read', [BroadcastController::class, 'markAsRead'])
     ->name('broadcasts.read');
 
 Route::middleware(['auth'])->group(function () {
-    Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('broadcasts.store');
     // Route::post('/broadcasts/{id}/read', [BroadcastController::class, 'markAsRead']);
     Route::get('/attendance-history', [EmployeeController::class, 'getAttendance'])->name('attendance-history');
     Route::post('/leave/apply', [LeaveApplicationController::class, 'store'])->name('leave.apply');

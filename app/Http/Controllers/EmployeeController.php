@@ -100,6 +100,14 @@ class EmployeeController extends Controller
             ->when($statusFilter === 'inactive', function ($query) {
                 $query->where('users.account_status', 'inactive');
             })
+            // No explicit status filter and no search term: hide inactive accounts by default.
+            // A search term is allowed to surface inactive matches too.
+            ->when($statusFilter === '' && $search === '', function ($query) {
+                $query->where(function ($subQuery) {
+                    $subQuery->whereNull('users.account_status')
+                        ->orWhere('users.account_status', 'active');
+                });
+            })
             ->when($pfFilter === 'yes', fn ($query) => $query->where('employees.pf', true))
             ->when($pfFilter === 'no', fn ($query) => $query->where('employees.pf', false))
             ->when($esiFilter === 'yes', fn ($query) => $query->where('employees.esi', true))
@@ -421,7 +429,7 @@ class EmployeeController extends Controller
     }
 
     public function employeeDays() {
-        $employees = Employee::all();
+        $employees = Employee::active()->get();
         return view('employees.employeeDay', compact('employees'));
     }
 

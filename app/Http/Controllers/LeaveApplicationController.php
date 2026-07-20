@@ -164,10 +164,16 @@ class LeaveApplicationController extends Controller
         } elseif ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
+                // Same department AND plain "employee" role only — not other team leaders,
+                // managers, HR, etc. who happen to share the department.
                 $query->whereHas('employee', function ($q) use ($department) {
-                    $q->where('department', $department);
+                    $q->where('department', $department)
+                        ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
                 });
-                $employees = Employee::active()->where('department', $department)->get();
+                $employees = Employee::active()
+                    ->where('department', $department)
+                    ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'")
+                    ->get();
             } else {
                 $employees = collect();
             }
@@ -371,6 +377,22 @@ class LeaveApplicationController extends Controller
     public function getDetails($id)
     {
         $leave = LeaveApplication::with('employee')->findOrFail($id);
+
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isTeamLeader = in_array($role, ['team_leader']);
+
+        if ($isTeamLeader) {
+            $department = $user->employee->department ?? null;
+            $targetRole = str_replace(' ', '_', strtolower($leave->employee->role ?? ''));
+            if (!$department || ($leave->employee->department ?? null) !== $department || $targetRole !== 'employee') {
+                return response()->json(['message' => 'Unauthorized access to employee data.'], 403);
+            }
+        } elseif (!$isAdmin && $leave->employee_id != $user->employee_id) {
+            return response()->json(['message' => 'Unauthorized access.'], 403);
+        }
+
         return response()->json(array_merge(
             $leave->toArray(),
             $this->leaveBalanceService->getEmployeeBalanceSummary((int) $leave->employee_id)
@@ -379,6 +401,22 @@ class LeaveApplicationController extends Controller
 
     public function getEmployeeLeaves($employeeId)
     {
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isTeamLeader = in_array($role, ['team_leader']);
+
+        if ($isTeamLeader) {
+            $department = $user->employee->department ?? null;
+            $targetEmployee = Employee::find($employeeId);
+            $targetRole = $targetEmployee ? str_replace(' ', '_', strtolower($targetEmployee->role ?? '')) : null;
+            if (!$department || !$targetEmployee || $targetEmployee->department !== $department || $targetRole !== 'employee') {
+                return response()->json(['message' => 'Unauthorized access to employee data.'], 403);
+            }
+        } elseif (!$isAdmin && $employeeId != $user->employee_id) {
+            return response()->json(['message' => 'Unauthorized access.'], 403);
+        }
+
         $leaves = LeaveApplication::where('employee_id', $employeeId)
             ->orderBy('start_date', 'desc')
             ->get();

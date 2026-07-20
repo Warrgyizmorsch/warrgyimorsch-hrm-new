@@ -24,14 +24,17 @@
                 </div>
             </div>' : '';
         $addButton = $isAdmin ? '<a href="' . route('payroll.attendance.add') . '" class="zoho-btn-primary" title="Add attendance"><i class="feather-plus"></i> Add</a>' : '';
+        // Export hits an admin-only route — hide it for team leaders so there's no dead-end click.
+        $exportButton = $isAdmin ? '
+            <button type="button" class="zoho-icon-btn" onclick="exportAttendance()" title="Export">
+                <i class="feather-download"></i>
+            </button>' : '';
         $employeeHeaderActions = '
             <a href="' . route('payroll.attendance') . '" class="zoho-btn-outline">
                 <i class="feather-calendar"></i> Date Wise
             </a>
             ' . $importDropdown . '
-            <button type="button" class="zoho-icon-btn" onclick="exportAttendance()" title="Export">
-                <i class="feather-download"></i>
-            </button>
+            ' . $exportButton . '
             ' . $addButton;
     @endphp
 
@@ -91,7 +94,7 @@
                                 @php
                                     $activeRange = request('range');
                                     if (!$activeRange && !request()->filled('start_date') && !request()->filled('end_date')) {
-                                        $activeRange = 'lastMonth';
+                                        $activeRange = 'month';
                                     }
                                     $label = 'All Time';
                                     if ($activeRange == 'today') $label = 'Today';

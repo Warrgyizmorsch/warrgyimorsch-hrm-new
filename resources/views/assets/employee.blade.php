@@ -72,6 +72,36 @@
             @endforelse
         </div>
 
+        @if(isset($teamAllocatedAssets) && $teamAllocatedAssets->isNotEmpty())
+            <!-- Team Devices Section (Team Leaders only) -->
+            <h5 class="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+                👥 Team Devices
+            </h5>
+
+            <div class="row g-4 mb-5">
+                @foreach($teamAllocatedAssets as $alloc)
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm position-relative overflow-hidden"
+                            style="border-radius: 20px; background: white; border: 1px solid #e2e8f0 !important;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <span class="badge bg-soft-primary text-primary"
+                                        style="font-size: 11px; padding: 6px 12px; border-radius: 30px; font-weight: 700; text-transform: uppercase;">
+                                        {{ $alloc->asset->type }}
+                                    </span>
+                                    <span class="text-muted small">Assigned: {{ $alloc->allocated_at ? $alloc->allocated_at->format('d M, Y') : $alloc->updated_at->format('d M, Y') }}</span>
+                                </div>
+
+                                <h4 class="fw-bold text-dark mb-1 fs-5">{{ $alloc->asset->name }}</h4>
+                                <p class="text-muted small mb-1">Assigned to: <b class="text-dark">{{ $alloc->user->name ?? 'N/A' }}</b></p>
+                                <p class="text-muted small mb-3">Serial Number: <b class="text-dark">{{ $alloc->asset->serial_number ?: 'N/A' }}</b></p>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         <!-- Requests History Section -->
         <h5 class="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
             📝 Request History & Status

@@ -257,6 +257,13 @@ class VacancyController extends Controller
                 $q->where('status', 'hired');
             }]);
 
+        // Team leaders only see the requirements they placed themselves.
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        if ($role === 'team_leader') {
+            $requirementsQuery->where('created_by', $user->employee_id);
+        }
+
         if ($request->filled('department_id')) {
             $requirementsQuery->where('department_id', $request->department_id);
         }
@@ -288,6 +295,7 @@ class VacancyController extends Controller
         JobRequirement::create([
             'role_id' => $request->role_id,
             'department_id' => $request->department_id,
+            'created_by' => auth()->user()->employee_id,
             'priority' => $request->priority,
             'date' => $request->date,
             'candidate_type' => $request->candidate_type,
@@ -301,9 +309,21 @@ class VacancyController extends Controller
         return back()->with('success', 'Saved Successfully');
     }
 
+    /** Team leaders may only act on requirements they placed themselves. */
+    private function assertCanManageRequirement(JobRequirement $requirement): void
+    {
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        if ($role === 'team_leader' && $requirement->created_by != $user->employee_id) {
+            abort(403, 'Unauthorized access to this requirement.');
+        }
+    }
+
     public function destroyRequirement($id)
     {
-        JobRequirement::findOrFail($id)->delete();
+        $requirement = JobRequirement::findOrFail($id);
+        $this->assertCanManageRequirement($requirement);
+        $requirement->delete();
 
         return back()->with('success', 'Requirement removed successfully');
     }
@@ -316,6 +336,7 @@ class VacancyController extends Controller
         ]);
 
         $requirement = JobRequirement::findOrFail($request->id);
+        $this->assertCanManageRequirement($requirement);
         $requirement->status = $request->status;
         $requirement->save();
 

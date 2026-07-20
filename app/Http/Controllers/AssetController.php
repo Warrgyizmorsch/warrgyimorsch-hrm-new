@@ -11,17 +11,39 @@ class AssetController extends Controller
 {
     public function index()
     {
-        $assets = Asset::with('activeAllocation.user')
-            ->get()
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isTeamLeader = $role === 'team_leader';
+
+        $assetsQuery = Asset::with('activeAllocation.user');
+        $requestsQuery = AssetRequest::with(['user', 'asset'])->latest();
+
+        if ($isTeamLeader) {
+            // View-only, scoped to their own department's plain "employee" role members.
+            $department = $user->employee->department ?? null;
+            $teamUserIds = $department
+                ? \App\Models\User::whereHas('employee', function ($q) use ($department) {
+                    $q->where('department', $department)
+                        ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
+                })->pluck('id')
+                : collect();
+
+            $assetsQuery->whereHas('activeAllocation', function ($q) use ($teamUserIds) {
+                $q->whereIn('user_id', $teamUserIds);
+            });
+            $requestsQuery->whereIn('user_id', $teamUserIds);
+        }
+
+        $assets = $assetsQuery->get()
             ->sortBy([
                 fn ($asset) => $asset->activeAllocation ? 0 : 1,
                 fn ($asset) => strtolower($asset->activeAllocation->user->name ?? ''),
                 fn ($asset) => strtolower($asset->name ?? ''),
             ])
             ->values();
-        $requests = AssetRequest::with(['user', 'asset'])->latest()->get();
-        $availableAssets = Asset::where('status', 'Available')->get();
-        $users = \App\Models\User::orderBy('name')->get();
+        $requests = $requestsQuery->get();
+        $availableAssets = $isTeamLeader ? collect() : Asset::where('status', 'Available')->get();
+        $users = $isTeamLeader ? collect() : \App\Models\User::orderBy('name')->get();
 
         return view('assets.index', compact('assets', 'requests', 'availableAssets', 'users'));
     }
@@ -183,7 +205,28 @@ class AssetController extends Controller
             ->with('asset')
             ->get();
 
-        return view('assets.employee', compact('userRequests', 'allocatedAssets'));
+        // Team leaders also see (read-only) devices allocated to their own department's
+        // plain "employee" role members — no admin actions, just visibility.
+        $teamAllocatedAssets = collect();
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+
+        if ($role === 'team_leader') {
+            $department = $user->employee->department ?? null;
+            if ($department) {
+                $teamUserIds = \App\Models\User::whereHas('employee', function ($q) use ($department) {
+                    $q->where('department', $department)
+                        ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
+                })->pluck('id');
+
+                $teamAllocatedAssets = AssetRequest::whereIn('user_id', $teamUserIds)
+                    ->where('status', 'Allocated')
+                    ->with(['asset', 'user'])
+                    ->get();
+            }
+        }
+
+        return view('assets.employee', compact('userRequests', 'allocatedAssets', 'teamAllocatedAssets'));
     }
 
     public function requestAsset(Request $request)

@@ -1178,11 +1178,9 @@
         let payableDays = isManualDays ? rawPayableDays : Math.min(rawPayableDays, totalDays);
         let extraDays = Math.max(0, payableDays - totalDays);
         let baseGross = (fullSalary / totalDays) * payableDays;
-        // When HR sets payable days manually above month days, do not also stack auto OT pay (avoid double pay).
-        let overtimePay = (isManualDays && extraDays > 0)
-            ? 0
-            : Number(currentPayrollData?.overtime_pay || 0);
-        let gross = baseGross + overtimePay; 
+        // Overtime pay is informational only — shown for review, never added to gross/net salary.
+        let overtimePay = Number(currentPayrollData?.overtime_pay || 0);
+        let gross = baseGross;
 
         if (document.getElementById('overrideCheck')?.checked) {
             let override = parseFloat(document.getElementById('overrideAmount').value);
@@ -1228,7 +1226,7 @@
             breakdownBox.style.display = 'block';
             const extraLabel = extraDays > 0 ? ` (+${extraDays} extra)` : '';
             breakdownBox.innerHTML = `Base: ${payableDays}/${totalDays} days${extraLabel} → ₹ ${baseGross.toFixed(2)}`
-                + (!isManualDays && otHours > 0 ? ` · OT ${otHours}h → ₹ ${overtimePay.toFixed(2)}` : '')
+                + (!isManualDays && otHours > 0 ? ` · OT ${otHours}h (ref. only, not added): ₹ ${overtimePay.toFixed(2)}` : '')
                 + (attDays && !isManualDays ? ` · Attendance ${attDays} + Leave ${paidLeave}` : '');
         }
     }
@@ -1292,10 +1290,10 @@
                 overtimeBox.innerHTML = `
                     <div class="alert alert-info mb-0">
                         <strong>${p.emp_name}</strong> worked
-                        <strong>${otHours}</strong> hrs
+                        <strong>${otHours}</strong> extra hrs
                         (<strong>${otDays.toFixed(2)}</strong> extra shift-days) this month.
-                        Overtime pay (1.5× basic rate): <strong>₹ ${Number(p.overtime_pay || 0).toFixed(2)}</strong>
-                        — added on top of base salary (payable days stay max ${p.total_days}).
+                        Reference value (1.5× basic rate): <strong>₹ ${Number(p.overtime_pay || 0).toFixed(2)}</strong>
+                        — shown for review only, not added to payroll.
                     </div>
                 `;
             } else {

@@ -2,7 +2,13 @@
 
 @section('content')
     @php
-        $broadcastPrimaryAction = '<a href="javascript:void(0)" class="zoho-btn-primary" onclick="openBroadcastOffcanvas()"><i class="feather-plus"></i> New Broadcast</a>';
+        $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isTeamLeader = in_array($role, ['team_leader']);
+        $broadcastPrimaryAction = ($isAdmin || $isTeamLeader)
+            ? '<a href="javascript:void(0)" class="zoho-btn-primary" onclick="openBroadcastOffcanvas()"><i class="feather-plus"></i> New Broadcast</a>'
+            : '';
+        $tlDepartment = $isTeamLeader ? (auth()->user()->employee->department ?? null) : null;
     @endphp
     @include('layouts.partials.zoho-people-list-header', [
         'title' => 'Broadcast',
@@ -157,10 +163,12 @@
                                             </button>
                                         </td>
                                         <td class="text-end">
+                                            @if($isAdmin)
                                             <button type="button" class="btn btn-sm btn-icon btn-light-brand" title="Edit"
                                                 onclick="openBroadcastOffcanvas({{ $broadcast->id }}, '{{ addslashes($broadcast->department) }}', `{{ addslashes($broadcast->message) }}`)">
                                                 <i class="feather-edit-2"></i>
                                             </button>
+                                            @endif
                                         </td>
                                     </tr>
                                     @empty
@@ -204,22 +212,29 @@
 
                 <div class="mb-3">
                     <label class="form-label">Department <span class="text-danger">*</span></label>
-                    <div class="dropdown">
-                        <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between"
-                                type="button" id="bcDeptBtn" data-bs-toggle="dropdown" style="height: 44px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff; color: #4b5563;">
-                            <span>All Employees</span>
-                        </button>
-                        <input type="hidden" name="department" id="bcDeptInput" value="All" required>
+                    @if($isTeamLeader)
+                        <input type="text" class="form-control" value="{{ $tlDepartment ?? 'N/A' }}" disabled
+                               style="height: 44px; border-radius: 12px;">
+                        <input type="hidden" name="department" value="{{ $tlDepartment }}" required>
+                        <small class="text-muted">You can only broadcast to your own department.</small>
+                    @else
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex align-items-center justify-content-between"
+                                    type="button" id="bcDeptBtn" data-bs-toggle="dropdown" style="height: 44px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff; color: #4b5563;">
+                                <span>All Employees</span>
+                            </button>
+                            <input type="hidden" name="department" id="bcDeptInput" value="All" required>
 
-                        <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
-                            <div class="wghrm-items-container">
-                                <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="setBcDept('All', 'All Employees', this)">All Employees</a>
-                                @foreach($departments as $dept)
-                                    <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="setBcDept('{{ addslashes($dept->name) }}', '{{ addslashes($dept->name) }}', this)">{{ $dept->name }}</a>
-                                @endforeach
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
+                                <div class="wghrm-items-container">
+                                    <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="setBcDept('All', 'All Employees', this)">All Employees</a>
+                                    @foreach($departments as $dept)
+                                        <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="setBcDept('{{ addslashes($dept->name) }}', '{{ addslashes($dept->name) }}', this)">{{ $dept->name }}</a>
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    @endif
                     @error('department') <small class="text-danger">{{ $message }}</small> @enderror
                 </div>
 
@@ -415,18 +430,24 @@
             form.reset();
             document.getElementById('broadcastFormMethod').value = '';
 
+            const hasDeptDropdown = !!document.getElementById('bcDeptBtn');
+
             if (id) {
                 form.action = `/broadcasts/${id}`;
                 document.getElementById('broadcastFormMethod').value = 'PUT';
                 document.getElementById('broadcastOffcanvasTitle').innerText = 'Edit Broadcast';
                 document.getElementById('bcSubmitLabel').innerText = 'Update Broadcast';
                 document.getElementById('bcMessage').value = message || '';
-                setBcDept(department, department === 'All' ? 'All Employees' : department, document.querySelector('#bcDeptBtn').closest('.dropdown').querySelector('.wghrm-custom-dropdown-item'));
+                if (hasDeptDropdown) {
+                    setBcDept(department, department === 'All' ? 'All Employees' : department, document.querySelector('#bcDeptBtn').closest('.dropdown').querySelector('.wghrm-custom-dropdown-item'));
+                }
             } else {
                 form.action = '{{ route('broadcasts.store') }}';
                 document.getElementById('broadcastOffcanvasTitle').innerText = 'New Broadcast';
                 document.getElementById('bcSubmitLabel').innerText = 'Post Broadcast';
-                setBcDept('All', 'All Employees', document.querySelector('#bcDeptBtn').closest('.dropdown').querySelector('.wghrm-custom-dropdown-item'));
+                if (hasDeptDropdown) {
+                    setBcDept('All', 'All Employees', document.querySelector('#bcDeptBtn').closest('.dropdown').querySelector('.wghrm-custom-dropdown-item'));
+                }
             }
             updateBcMessageCount();
 

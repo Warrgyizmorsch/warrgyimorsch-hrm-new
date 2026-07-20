@@ -21,6 +21,19 @@ class BroadcastController extends Controller
 
         $query = Broadcast::withCount('readByUsers')->orderBy('created_at', 'desc');
 
+        // Team leaders see only broadcasts sent to their own department (or company-wide).
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        if ($role === 'team_leader') {
+            $department = $user->employee->department ?? null;
+            $query->where(function ($q) use ($department) {
+                $q->where('department', 'All');
+                if ($department) {
+                    $q->orWhere('department', $department);
+                }
+            });
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -50,6 +63,16 @@ class BroadcastController extends Controller
             'department' => 'required|string',
             'message'    => 'required|string|max:5000',
         ]);
+
+        // Team leaders can only ever broadcast to their own department —
+        // ignore whatever department was submitted and force it server-side.
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        if ($role === 'team_leader') {
+            $department = $user->employee->department ?? null;
+            abort_if(!$department, 403, 'No department found for this account.');
+            $validated['department'] = $department;
+        }
 
         Broadcast::create($validated);
 

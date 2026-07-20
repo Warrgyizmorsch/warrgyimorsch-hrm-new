@@ -250,24 +250,28 @@
                             <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                         </a>
                         <ul class="nxl-submenu">
-                            <li class="nxl-item">
-                                <a href="{{ route('vacancy.show') }}" class="nxl-link">
-                                        <span class="nxl-micon"><i class="feather-user-plus"></i></span>
-                                        <span class="nxl-mtext">Job Vacancy</span>
-                                </a>
-                            </li>
+                            @if($isAdmin)
+                                <li class="nxl-item">
+                                    <a href="{{ route('vacancy.show') }}" class="nxl-link">
+                                            <span class="nxl-micon"><i class="feather-user-plus"></i></span>
+                                            <span class="nxl-mtext">Job Vacancy</span>
+                                    </a>
+                                </li>
+                            @endif
                             <li class="nxl-item">
                                 <a href="{{ route('requirement.show') }}" class="nxl-link">
                                     <span class="nxl-micon"><i class="fas fa-clipboard-list"></i></span>
                                     <span class="nxl-mtext">Job Requirement</span>
                                 </a>
                             </li>
-                            <li class="nxl-item">
-                                <a href="{{ route('candidates.index') }}" class="nxl-link">
-                                    <span class="nxl-micon"><i class="feather-users"></i></span>
-                                    <span class="nxl-mtext">Candidates</span>
-                                </a>
-                            </li>
+                            @if($isAdmin)
+                                <li class="nxl-item">
+                                    <a href="{{ route('candidates.index') }}" class="nxl-link">
+                                        <span class="nxl-micon"><i class="feather-users"></i></span>
+                                        <span class="nxl-mtext">Candidates</span>
+                                    </a>
+                                </li>
+                            @endif
                         </ul>
                     </li>
                 @endif
@@ -324,14 +328,14 @@
                         <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
-                        
+                        @if($isAdmin || $isTeamLeader)
                             <li class="nxl-item">
                                 <a href="{{ route('assets.index') }}" class="nxl-link">
                                     <span class="nxl-micon"><i class="fas fa-clipboard-list"></i></span>
-                                    <span class="nxl-mtext">Manage Assets</span>
+                                    <span class="nxl-mtext">{{ $isAdmin ? 'Manage Assets' : 'Team Assets' }}</span>
                                 </a>
                             </li>
-                       
+                        @endif
                         <li class="nxl-item">
                             <a href="{{ route('assets.employee') }}" class="nxl-link">
                                 <span class="nxl-micon"><i class="fas fa-user-tag"></i></span>

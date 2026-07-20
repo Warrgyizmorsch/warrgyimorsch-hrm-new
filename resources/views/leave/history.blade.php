@@ -12,7 +12,10 @@
             default => request('category'),
         };
         $applyLeaveBtn = '<button type="button" class="zoho-btn-primary" data-bs-toggle="offcanvas" data-bs-target="#applyLeaveModal" aria-controls="applyLeaveModal"><i class="feather-plus"></i> Apply For Leave</button>';
-        $exportBtn = '<a href="' . route('leave.export', request()->all()) . '" class="zoho-btn-outline"><i class="feather-download"></i> Export</a>';
+        // Export stays admin-only — team leaders get view-only access to this page.
+        $exportBtn = ($isAdmin ?? false)
+            ? '<a href="' . route('leave.export', request()->all()) . '" class="zoho-btn-outline"><i class="feather-download"></i> Export</a>'
+            : '';
     @endphp
 
     <div class="zoho-page-shell leave-history-page">

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Attendance;
+use App\Models\Employee;
 use App\Models\Holiday;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -33,6 +34,9 @@ class AttendanceHistoryService
             ->keyBy(fn ($holiday) => Carbon::parse($holiday->date)->format('Y-m-d'));
 
         $activityDays = Attendance::computeActivityDays($dateStrings);
+        $todayStr = Carbon::today()->format('Y-m-d');
+        $lastWorkingDay = $this->employeeLastWorkingDay($employeeId);
+        $lastWorkingDayStr = $lastWorkingDay?->format('Y-m-d');
         $history = [];
 
         for ($date = $endDate->copy(); $date->gte($startDate); $date->subDay()) {
@@ -41,6 +45,10 @@ class AttendanceHistoryService
             $isSunday = $date->isSunday();
             $isActivityDay = (bool) ($activityDays[$dayStr] ?? false);
             $record = $records->get($dayStr);
+            // Compare date strings, not Carbon instances — $date/$endDate may carry a
+            // non-midnight time (e.g. endOfMonth() = 23:59:59), which would otherwise make
+            // "today" itself compare as being in the future.
+            $excludedFromPayable = $dayStr > $todayStr || ($lastWorkingDayStr && $dayStr > $lastWorkingDayStr);
 
             if ($record) {
                 $resolved = $record->resolvePayrollDisplayStatus($isHoliday, $isActivityDay, $isSunday);
@@ -59,13 +67,14 @@ class AttendanceHistoryService
                     'total_hours_decimal' => (float) ($record->total_hours ?? 0),
                     'attendance_id' => $record->id,
                     'is_activity' => $resolved['is_activity'] ?? false,
+                    'excluded_from_payable' => $excludedFromPayable,
                 ];
 
                 continue;
             }
 
             if ($isSunday) {
-                $history[] = $this->syntheticRow($date, $dayStr, 'Sunday', 'sunday');
+                $history[] = $this->syntheticRow($date, $dayStr, 'Sunday', 'sunday', $excludedFromPayable);
                 continue;
             }
 
@@ -75,17 +84,24 @@ class AttendanceHistoryService
                 if ($holiday?->title) {
                     $label .= ' (' . $holiday->title . ')';
                 }
-                $history[] = $this->syntheticRow($date, $dayStr, $label, 'holiday');
+                $history[] = $this->syntheticRow($date, $dayStr, $label, 'holiday', $excludedFromPayable);
                 continue;
             }
 
-            $history[] = $this->syntheticRow($date, $dayStr, 'Absent', 'absent');
+            $history[] = $this->syntheticRow($date, $dayStr, 'Absent', 'absent', $excludedFromPayable);
         }
 
         return $history;
     }
 
-    private function syntheticRow(Carbon $date, string $dayStr, string $label, string $key): array
+    private function employeeLastWorkingDay(int $employeeId): ?Carbon
+    {
+        $lastWorkingDay = Employee::find($employeeId)?->user?->last_working_day;
+
+        return $lastWorkingDay ? Carbon::parse($lastWorkingDay)->startOfDay() : null;
+    }
+
+    private function syntheticRow(Carbon $date, string $dayStr, string $label, string $key, bool $excludedFromPayable = false): array
     {
         return [
             'date' => $date->format('d M, Y (D)'),
@@ -101,6 +117,7 @@ class AttendanceHistoryService
             'total_hours_decimal' => 0,
             'attendance_id' => null,
             'is_activity' => false,
+            'excluded_from_payable' => $excludedFromPayable,
         ];
     }
 
@@ -146,7 +163,7 @@ class AttendanceHistoryService
             }
         }
 
-        return $this->datesForQuickRange('lastMonth');
+        return $this->datesForQuickRange('month');
     }
 
     public function countCalendarDays(Carbon $startDate, Carbon $endDate): int
@@ -233,10 +250,14 @@ class AttendanceHistoryService
      */
     public function resolvePayableFractionForHistoryRow(array $row): float
     {
+        if (!empty($row['excluded_from_payable'])) {
+            return 0.0;
+        }
+
         $key = strtolower($row['status_key'] ?? '');
 
         return match (true) {
-            in_array($key, ['present', 'present_activity', 'late', 'wfh', 'missing_punch', 'early_out', 'early_leave'], true) => 1.0,
+            in_array($key, ['present', 'present_activity', 'late', 'wfh', 'missing_punch', 'early_out', 'early_leave', 'sunday'], true) => 1.0,
             in_array($key, ['half_day', 'half_day_leave'], true) => 0.5,
             default => 0.0,
         };

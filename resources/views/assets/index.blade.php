@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isTeamLeader = in_array($role, ['team_leader']);
+    @endphp
     <div class="page-header">
         <div class="page-header-left d-flex align-items-center">
             <div class="page-header-title">
@@ -11,17 +16,19 @@
                 <li class="breadcrumb-item active">Asset Management</li>
             </ul>
         </div>
+        @if($isAdmin)
         <div class="page-header-right ms-auto">
             <div class="page-header-right-items">
                 <div class="d-flex align-items-center gap-2">
                     <a href="javascript:void(0);" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm"
-                        style="border-radius: 10px; background: #3858f9; border: none; height: 44px;" 
+                        style="border-radius: 10px; background: #3858f9; border: none; height: 44px;"
                         data-bs-toggle="modal" data-bs-target="#addAssetModal">
                         <i class="feather-plus"></i> ADD ASSET
                     </a>
                 </div>
             </div>
         </div>
+        @endif
     </div>
 
     <div class="main-content pt-4" style="font-family: 'Inter', sans-serif;">
@@ -47,11 +54,7 @@
                     Returned Assets
                 </button>
             </div>
-            <a href="javascript:void(0);" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm flex-shrink-0"
-                style="border-radius: 10px; background: #3858f9; border: none; height: 44px;"
-                data-bs-toggle="modal" data-bs-target="#addAssetModal">
-                <i class="feather-plus"></i> Add Asset
-            </a>
+            
         </div>
 
         <!-- Inventory Tab Section -->
@@ -205,16 +208,17 @@
                                                         <i class="feather-eye"></i> Manage Assets
                                                     </button>
                                                 @else
+                                                @if($isAdmin)
                                                 @if($asset->status == 'Available')
-                                                    <a href="javascript:void(0);" 
-                                                        class="avatar-text avatar-md bg-soft-success text-success rounded" 
+                                                    <a href="javascript:void(0);"
+                                                        class="avatar-text avatar-md bg-soft-success text-success rounded"
                                                         title="Allocate Manually"
                                                         onclick="openManualAllocateModal({{ json_encode($asset) }})">
                                                         <i class="feather-user-plus"></i>
                                                     </a>
                                                 @endif
-                                                <a href="javascript:void(0);" 
-                                                    class="avatar-text avatar-md bg-soft-primary text-primary rounded" 
+                                                <a href="javascript:void(0);"
+                                                    class="avatar-text avatar-md bg-soft-primary text-primary rounded"
                                                     title="Edit"
                                                     onclick="editAsset({{ json_encode($asset) }})">
                                                     <i class="feather-edit-3"></i>
@@ -226,6 +230,9 @@
                                                         <i class="feather-trash-2"></i>
                                                     </button>
                                                 </form>
+                                                @else
+                                                    <span class="text-muted small">View only</span>
+                                                @endif
                                                 @endif
                                             </div>
                                         </td>
@@ -317,7 +324,7 @@
                                             </span>
                                         </td>
                                         <td class="pe-4 text-center">
-                                            @if($req->status == 'Pending')
+                                            @if($req->status == 'Pending' && $isAdmin)
                                                 <div class="d-flex justify-content-center gap-2">
                                                     <button class="btn btn-sm btn-soft-success fw-bold d-flex align-items-center gap-1" style="border-radius: 8px;" onclick="openAllocateModal({{ $req->id }}, '{{ $req->asset_type }}')">
                                                         <i class="feather-check"></i> Allocate
@@ -842,6 +849,7 @@
     </style>
 
     <script>
+        const isAdmin = {{ $isAdmin ? 'true' : 'false' }};
         let editAssetModal;
         let allocateModal;
         let manualAllocateModal;
@@ -1066,10 +1074,11 @@
                                         ${asset.system_configuration || 'No configuration details.'}
                                     </div>
                                 </div>
-                                
+                                ${isAdmin ? `
                                 <button type="button" class="btn btn-sm btn-soft-secondary fw-bold w-100 d-flex align-items-center justify-content-center gap-1" style="border-radius: 8px; height: 36px;" data-id="${asset.id}" data-name="${escapeHtml(asset.name)}" onclick="triggerReturnFromOffcanvas(this)">
                                     <i class="feather-corner-down-left" style="font-size: 12px;"></i> Mark Returned
                                 </button>
+                                ` : ''}
                             </div>
                         </div>
                     `;

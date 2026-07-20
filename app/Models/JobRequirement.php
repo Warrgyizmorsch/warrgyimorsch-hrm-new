@@ -12,6 +12,7 @@ class JobRequirement extends Model
     protected $fillable = [
         'role_id',
         'department_id',
+        'created_by',
         'priority',
         'date',
         'candidate_type',
@@ -33,6 +34,11 @@ class JobRequirement extends Model
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(Employee::class, 'created_by');
     }
 
     public function applications()

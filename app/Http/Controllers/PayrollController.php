@@ -415,9 +415,10 @@ class PayrollController extends Controller
                 ->get();
 
             foreach ($records as $r) {
-                // Overtime is still derived from raw attendance hours.
+                // Overtime is still derived from raw attendance hours (plus the Saturday activity credit).
                 if ($r->total_hours > 0) {
                     $workedMinutes = $r->total_hours * 60;
+                    $workedMinutes += AttendanceStatusService::saturdayCreditHours($r) * 60;
 
                     if ($workedMinutes > $shiftMinutes) {
                         $overtimeMinutes += ($workedMinutes - $shiftMinutes);
@@ -445,18 +446,18 @@ class PayrollController extends Controller
                 ($employee->other_allowance ?? 0)
             );
 
-            // Per day salary (base components only — overtime is added separately)
+            // Per day salary (base components only — overtime is shown separately, not added)
             $perDaySalary = $monthlySalary / $totalDays;
 
             // Base gross from payable days (capped at calendar days in month)
             $baseGrossSalary = $perDaySalary * $payableDays;
 
-            // Overtime pay: 1.5× basic hourly rate (Keka-style — separate from payable days)
+            // Overtime pay: 1.5× basic hourly rate — informational only, NOT added to gross/net salary.
             $shiftHours = max($shiftMinutes / 60, 1);
             $hourlyBasicRate = ($employee->basic_salary / $totalDays) / $shiftHours;
             $overtimePay = round($hourlyBasicRate * $overtimeHours * 1.5, 2);
 
-            $grossSalary = $baseGrossSalary + $overtimePay;
+            $grossSalary = $baseGrossSalary;
 
             // Override (HR control)
             if ($overrideSalary) {
@@ -1341,7 +1342,10 @@ class PayrollController extends Controller
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
-                $empQuery->where('department', $department);
+                // Team leaders only see plain "employee" role records in their own department —
+                // not other team leaders, managers, HR, etc. who happen to share the department.
+                $empQuery->where('department', $department)
+                    ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
             }
         }
         $employees = $empQuery->get();
@@ -1360,7 +1364,8 @@ class PayrollController extends Controller
         if ($isTeamLeader) {
             $department = $user->employee->department ?? null;
             if ($department) {
-                $query->where('employees.department', $department);
+                $query->where('employees.department', $department)
+                    ->whereRaw("LOWER(REPLACE(employees.role, ' ', '_')) = 'employee'");
             }
         }
 
@@ -1451,11 +1456,12 @@ class PayrollController extends Controller
             $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
             $isTeamLeader = in_array($role, ['team_leader']);
 
-            // Security check for Team Leader
+            // Security check for Team Leader — same department AND plain "employee" role only.
             if ($isTeamLeader) {
                 $department = $user->employee->department ?? null;
                 $targetEmployee = Employee::active()->find($request->employee_id);
-                if ($department && $targetEmployee && $targetEmployee->department !== $department) {
+                $targetRole = $targetEmployee ? str_replace(' ', '_', strtolower($targetEmployee->role ?? '')) : null;
+                if (!$department || !$targetEmployee || $targetEmployee->department !== $department || $targetRole !== 'employee') {
                     return response()->json(['success' => false, 'message' => 'Unauthorized access to employee data.'], 403);
                 }
             } elseif (!$isAdmin && $request->employee_id != $user->employee_id) {
@@ -1504,6 +1510,8 @@ class PayrollController extends Controller
             $checkOut = $request->check_out[$id] ?? null;
 
             $totalHours = null;
+            // Admin picked this status explicitly in the edit form — respect it as-is,
+            // don't silently recompute it from hours (that overwrote manual corrections).
             $status = strtolower($request->status[$id] ?? 'absent');
 
             // Calculate total working hours
@@ -1518,7 +1526,6 @@ class PayrollController extends Controller
 
                 $minutes = $inTime->diffInMinutes($outTime);
                 $totalHours = round($minutes / 60, 2);
-                $status = AttendanceStatusService::resolveStoredStatus($status, $totalHours, true);
             }
 
             Attendance::where('id', $id)->update([
