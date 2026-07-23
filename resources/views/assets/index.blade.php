@@ -54,7 +54,6 @@
                     Returned Assets
                 </button>
             </div>
-            
         </div>
 
         <!-- Inventory Tab Section -->

@@ -20,6 +20,7 @@ use App\Http\Controllers\VacancyController;
 use App\Http\Controllers\CandidateController;
 use App\Http\Controllers\ZKTController;
 use App\Http\Controllers\AssetController;
+use App\Http\Controllers\LoginActivityController;
 
 $adminRoles = 'super_admin,manager,hr_executive,hr_intern,business_operation_head';
 $TeamLeaderRoles = 'super_admin,manager,hr_executive,hr_intern,business_operation_head,team_leader';
@@ -56,6 +57,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/leave-report', [DashboardController::class, 'fetchLeaveReport'])->name('dashboard.leave-report');
     Route::get('/dashboard/late-arrivals', [DashboardController::class, 'fetchLateArrivals'])->name('dashboard.late-arrivals');
     Route::post('/dashboard/birthday-wish/dismiss', [DashboardController::class, 'dismissBirthdayWish'])->name('dashboard.birthday-wish.dismiss');
+
+    Route::get('/login-activity', [LoginActivityController::class, 'index'])->name('login-activity.index');
+    Route::post('/login-activity/heartbeat', [LoginActivityController::class, 'heartbeat'])->name('login-activity.heartbeat');
 
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
 

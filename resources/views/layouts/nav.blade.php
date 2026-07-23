@@ -46,6 +46,8 @@
                         <span class="nxl-mtext">Dashboard</span>
                     </a>
                 </li>
+
+
                 @if($isAdmin)
                     <li class="nxl-item nxl-hasmenu {{ $navOpen('employees.*', 'payroll.index', 'payroll.attendance', 'payroll.attendance.add') }}">
                         <a href="javascript:void(0);" class="nxl-link">
@@ -349,6 +351,13 @@
                     <a href="{{ route('tickets.index') }}" class="nxl-link {{ $navLinkActive('tickets.*') }}">
                         <span class="nxl-micon"><i class="bi bi-headset"></i></span>
                         <span class="nxl-mtext">Help & Support</span>
+                    </a>
+                </li>
+                
+                <li class="nxl-item {{ $navItemActive('login-activity.index') }}">
+                    <a href="{{ route('login-activity.index') }}" class="nxl-link {{ $navLinkActive('login-activity.index') }}">
+                        <span class="nxl-micon"><i class="feather-log-in"></i></span>
+                        <span class="nxl-mtext">Login Activity</span>
                     </a>
                 </li>
 

@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('attendance:sync')
     ->everyTwoHours()
     ->withoutOverlapping();
+
+Schedule::command('login-activity:close-stale')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();

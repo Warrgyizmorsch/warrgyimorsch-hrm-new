@@ -807,6 +807,42 @@
         });
         observer.observe(document.body, { childList: true, subtree: true });
     </script>
+    @auth
+    <script>
+        (function () {
+            const heartbeatUrl = document.querySelector('meta[name="base-url"]').content + '/login-activity/heartbeat';
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            function sendHeartbeat(useBeacon) {
+                if (useBeacon && navigator.sendBeacon) {
+                    const data = new Blob([JSON.stringify({ _token: csrfToken })], { type: 'application/json' });
+                    navigator.sendBeacon(heartbeatUrl, data);
+                    return;
+                }
+
+                fetch(heartbeatUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    keepalive: true,
+                }).catch(() => {});
+            }
+
+            setInterval(() => sendHeartbeat(false), 60000);
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    sendHeartbeat(true);
+                }
+            });
+
+            window.addEventListener('beforeunload', () => sendHeartbeat(true));
+        })();
+    </script>
+    @endauth
+
     @yield('modals')
     @stack('modals')
     @stack('scripts')
