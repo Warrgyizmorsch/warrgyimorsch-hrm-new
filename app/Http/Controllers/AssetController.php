@@ -17,9 +17,11 @@ class AssetController extends Controller
 
         $assetsQuery = Asset::with('activeAllocation.user');
         $requestsQuery = AssetRequest::with(['user', 'asset'])->latest();
+        $teamUserIds = collect();
 
         if ($isTeamLeader) {
-            // View-only, scoped to their own department's plain "employee" role members.
+            // Scoped to their own department's plain "employee" role members. They can view
+            // (and, since they get the update route too) edit/reassign only these assets.
             $department = $user->employee->department ?? null;
             $teamUserIds = $department
                 ? \App\Models\User::whereHas('employee', function ($q) use ($department) {
@@ -43,7 +45,9 @@ class AssetController extends Controller
             ->values();
         $requests = $requestsQuery->get();
         $availableAssets = $isTeamLeader ? collect() : Asset::where('status', 'Available')->get();
-        $users = $isTeamLeader ? collect() : \App\Models\User::orderBy('name')->get();
+        $users = $isTeamLeader
+            ? \App\Models\User::whereIn('id', $teamUserIds)->orderBy('name')->get()
+            : \App\Models\User::orderBy('name')->get();
 
         return view('assets.index', compact('assets', 'requests', 'availableAssets', 'users'));
     }
@@ -97,17 +101,80 @@ class AssetController extends Controller
     {
         $asset = Asset::findOrFail($id);
 
+        $authUser = auth()->user();
+        $role = str_replace(' ', '_', strtolower($authUser->role ?? 'employee'));
+        $isTeamLeader = $role === 'team_leader';
+
+        $teamUserIds = collect();
+        if ($isTeamLeader) {
+            $department = $authUser->employee->department ?? null;
+            $teamUserIds = $department
+                ? \App\Models\User::whereHas('employee', function ($q) use ($department) {
+                    $q->where('department', $department)
+                        ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
+                })->pluck('id')
+                : collect();
+
+            $currentAllocation = $asset->activeAllocation;
+            if (!$currentAllocation || !$teamUserIds->contains($currentAllocation->user_id)) {
+                abort(403, 'Unauthorized access');
+            }
+        }
+
         $request->validate([
             'name' => 'required|string',
             'type' => 'required|string',
             'serial_number' => 'nullable|string|unique:assets,serial_number,' . $id,
             'system_configuration' => 'nullable|string',
             'status' => 'required|in:Available,Allocated,Maintenance,Faulty',
+            'assign_user_id' => $isTeamLeader ? 'required|exists:users,id' : 'nullable|exists:users,id',
         ]);
+
+        if ($isTeamLeader && !$teamUserIds->contains((int) $request->assign_user_id)) {
+            abort(403, 'Unauthorized access');
+        }
 
         $asset->update($request->only(['name', 'type', 'serial_number', 'system_configuration', 'status']));
 
+        $this->applyAssignment($asset, $request->input('assign_user_id'));
+
         return back()->with('success', 'Asset updated successfully.');
+    }
+
+    protected function applyAssignment(Asset $asset, $assignUserId)
+    {
+        $currentAllocation = $asset->activeAllocation()->first();
+
+        if ($assignUserId) {
+            if (!$currentAllocation || (int) $currentAllocation->user_id !== (int) $assignUserId) {
+                if ($currentAllocation) {
+                    $currentAllocation->update(['status' => 'Returned', 'returned_at' => now()]);
+                }
+
+                AssetRequest::create([
+                    'user_id' => $assignUserId,
+                    'asset_id' => $asset->id,
+                    'asset_type' => $asset->type,
+                    'reason' => 'Reassigned via Edit',
+                    'status' => 'Allocated',
+                    'allocated_at' => now(),
+                ]);
+
+                $asset->update(['status' => 'Allocated']);
+            }
+
+            return;
+        }
+
+        // Empty selection: the dropdown always defaults to the current holder when one exists,
+        // so a blank submission here is a deliberate unassign, not an untouched field.
+        if ($currentAllocation) {
+            $currentAllocation->update(['status' => 'Returned', 'returned_at' => now()]);
+
+            if ($asset->status === 'Allocated') {
+                $asset->update(['status' => 'Available']);
+            }
+        }
     }
 
     public function destroy($id)

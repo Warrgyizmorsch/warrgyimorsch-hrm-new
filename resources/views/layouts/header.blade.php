@@ -48,10 +48,16 @@
                     $notifications = collect();
                     $roleUpper = strtoupper(auth()->user()->role);
 
-                    $today = now()->format('m-d');
-                    $celebrations = \App\Models\Employee::where(function ($q) use ($today) {
-                            $q->whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') = ?", [$today])
-                              ->orWhereRaw("DATE_FORMAT(date_of_joining, '%m-%d') = ?", [$today]);
+                    $todayDate = now();
+                    $today = $todayDate->format('m-d');
+                    $celebrations = \App\Models\Employee::where(function ($q) use ($todayDate) {
+                            $q->where(function ($q2) use ($todayDate) {
+                                $q2->whereMonth('date_of_birth', $todayDate->month)
+                                    ->whereDay('date_of_birth', $todayDate->day);
+                            })->orWhere(function ($q2) use ($todayDate) {
+                                $q2->whereMonth('date_of_joining', $todayDate->month)
+                                    ->whereDay('date_of_joining', $todayDate->day);
+                            });
                         })
                         ->get()
                         ->map(function ($emp) use ($today) {

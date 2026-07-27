@@ -10,7 +10,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE attendances MODIFY COLUMN status ENUM('present','half_day','absent','missing_punch','leave','wfh','half_day_leave','early_leave','unpaid_leave','unauthorised','overtime','late','activity') NOT NULL DEFAULT 'absent'");
+        // MySQL-only DDL: SQLite (used by the test suite) has no native ENUM type — the column
+        // is already a free-form TEXT there, so there is nothing to widen.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE attendances MODIFY COLUMN status ENUM('present','half_day','absent','missing_punch','leave','wfh','half_day_leave','early_leave','unpaid_leave','unauthorised','overtime','late','activity') NOT NULL DEFAULT 'absent'");
+        }
     }
 
     /**
@@ -18,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE attendances MODIFY COLUMN status ENUM('present','half_day','absent','missing_punch','leave','wfh','half_day_leave','early_leave','unpaid_leave','unauthorised','overtime') NOT NULL DEFAULT 'absent'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE attendances MODIFY COLUMN status ENUM('present','half_day','absent','missing_punch','leave','wfh','half_day_leave','early_leave','unpaid_leave','unauthorised','overtime') NOT NULL DEFAULT 'absent'");
+        }
     }
 };

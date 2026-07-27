@@ -16,7 +16,10 @@ return new class extends Migration
         // touched an existing punch row (e.g. re-syncing an already-seen device record) silently
         // overwrote the real punch time with "now" — the actual source of the corrupted/duplicated
         // timestamps found in this table. Keep an explicit DEFAULT for convenience but drop ON UPDATE.
-        DB::statement('ALTER TABLE attendance_logs MODIFY `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
+        // MySQL-only DDL: no-op on SQLite (used by the test suite), which has no ON UPDATE clause to strip.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE attendance_logs MODIFY `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
+        }
     }
 
     /**
@@ -24,6 +27,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE attendance_logs MODIFY `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE attendance_logs MODIFY `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+        }
     }
 };

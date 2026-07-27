@@ -216,12 +216,16 @@
                                                         <i class="feather-user-plus"></i>
                                                     </a>
                                                 @endif
+                                                @endif
+                                                @if($isAdmin || $isTeamLeader)
                                                 <a href="javascript:void(0);"
                                                     class="avatar-text avatar-md bg-soft-primary text-primary rounded"
                                                     title="Edit"
-                                                    onclick="editAsset({{ json_encode($asset) }})">
+                                                    onclick="editAsset({{ json_encode($asset) }}, {{ $asset->activeAllocation->user_id ?? 'null' }})">
                                                     <i class="feather-edit-3"></i>
                                                 </a>
+                                                @endif
+                                                @if($isAdmin)
                                                 <form action="{{ route('assets.destroy', $asset->id) }}" method="POST" onsubmit="return deleteData(event)">
                                                     @csrf
                                                     @method('DELETE')
@@ -229,9 +233,9 @@
                                                         <i class="feather-trash-2"></i>
                                                     </button>
                                                 </form>
-                                                @else
-                                                    <span class="text-muted small">View only</span>
                                                 @endif
+                                                @if(!$isAdmin && !$isTeamLeader)
+                                                    <span class="text-muted small">View only</span>
                                                 @endif
                                             </div>
                                         </td>
@@ -700,6 +704,22 @@
                                 <option value="Faulty">Faulty</option>
                             </select>
                         </div>
+                        @if($isAdmin || $isTeamLeader)
+                        <div class="mb-3">
+                            <label class="fw-semibold mb-2">Assign Employee @if($isTeamLeader)<span class="text-danger">*</span>@endif</label>
+                            <select class="form-select" name="assign_user_id" id="edit-assign-user" @if($isTeamLeader) required @endif>
+                                @if($isAdmin)
+                                    <option value="">Unassigned (keep in stock)</option>
+                                @endif
+                                @foreach($users as $u)
+                                    <option value="{{ $u->id }}">{{ $u->name }} ({{ str_replace('_', ' ', ucwords($u->role)) }})</option>
+                                @endforeach
+                            </select>
+                            @if($isTeamLeader)
+                                <div class="text-muted small mt-2" style="font-size: 11px;">You can reassign this asset to another member of your team.</div>
+                            @endif
+                        </div>
+                        @endif
                     </div>
                     <div class="modal-footer border-top-0 d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-soft-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
@@ -1097,13 +1117,18 @@
             }, 300);
         }
 
-        function editAsset(asset) {
+        function editAsset(asset, assignedUserId) {
             document.getElementById('edit-name').value = asset.name;
             document.getElementById('edit-type').value = asset.type;
             document.getElementById('edit-serial_number').value = asset.serial_number || '';
             document.getElementById('edit-system_configuration').value = asset.system_configuration || '';
             document.getElementById('edit-status').value = asset.status;
-            
+
+            const assignSelect = document.getElementById('edit-assign-user');
+            if (assignSelect) {
+                assignSelect.value = assignedUserId ? String(assignedUserId) : '';
+            }
+
             document.getElementById('editAssetForm').action = "{{ url('asset-management') }}/" + asset.id;
             editAssetModal.show();
         }

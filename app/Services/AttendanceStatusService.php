@@ -109,6 +109,14 @@ class AttendanceStatusService
             return self::result(self::labelForStatus($status), $status, false);
         }
 
+        // An admin's manual correction (both punches hand-set — see PayrollController::updateByName)
+        // is the source of truth for its status. Without this, the hours-first rules below would
+        // silently recompute a different label right after a manual save, making the correction
+        // look like it never took effect even though it was written to the database correctly.
+        if ($record->is_manual) {
+            return self::result(self::labelForStatus($status), $status, false);
+        }
+
         if ($isActivityDay && ($hasPunches || $hours > 0) && $hours >= $fullDayHours) {
             $isHalfDayPunch = $checkOutHm && $checkOutHm < '15:00';
             $isEarly = $checkOutHm && $checkOutHm >= '15:00' && $checkOutHm < '17:30';

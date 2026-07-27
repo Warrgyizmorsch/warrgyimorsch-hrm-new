@@ -110,7 +110,6 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     // Asset Management admin actions — team leaders get the same page read-only (see below).
     Route::post('/asset-management/store', [AssetController::class, 'store'])->name('assets.store');
-    Route::put('/asset-management/{id}', [AssetController::class, 'update'])->name('assets.update');
     Route::delete('/asset-management/{id}', [AssetController::class, 'destroy'])->name('assets.destroy');
     Route::post('/asset-requests/{id}/allocate', [AssetController::class, 'allocate'])->name('assets.allocate');
     Route::post('/asset-requests/{id}/reject', [AssetController::class, 'reject'])->name('assets.reject');
@@ -219,8 +218,11 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     Route::get('/api/leave/details/{id}', [LeaveApplicationController::class, 'getDetails']);
     Route::get('/api/leave/employee/{employeeId}', [LeaveApplicationController::class, 'getEmployeeLeaves']);
 
-    // Same view-only, department-scoped pattern for Asset Management.
+    // Same view-only, department-scoped pattern for Asset Management — team leaders additionally
+    // get the update route so they can reassign/edit assets already allocated to their own team
+    // (scoped in the controller); store/destroy/allocate/reject/return stay admin-only.
     Route::get('/asset-management', [AssetController::class, 'index'])->name('assets.index');
+    Route::put('/asset-management/{id}', [AssetController::class, 'update'])->name('assets.update');
 
     // Broadcast: team leaders can view (own department only, in the controller) and create
     // (forced to their own department server-side) — editing existing broadcasts stays admin-only.
