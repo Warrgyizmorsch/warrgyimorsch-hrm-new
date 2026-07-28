@@ -219,6 +219,11 @@
                                                         <button type="button" class="zoho-icon-btn" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}')" title="View">
                                                             <i class="feather-eye"></i>
                                                         </button>
+                                                        @if($isAdmin)
+                                                            <a href="{{ route('payroll.attendance.employee.editByName', $employeeId) }}?start_date={{ $listStartDate->toDateString() }}&end_date={{ $listEndDate->toDateString() }}" class="zoho-icon-btn" title="Edit">
+                                                                <i class="feather-edit"></i>
+                                                            </a>
+                                                        @endif
                                                     </div>
                                                 </td>
                                             </tr>
@@ -250,9 +255,16 @@
                                         <div class="att-detail-mobile-label">Employee</div>
                                         <div class="att-emp-list-name">{{ $employeeName }}</div>
                                     </div>
-                                    <button type="button" class="zoho-icon-btn" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}')" title="View">
-                                        <i class="feather-eye"></i>
-                                    </button>
+                                    <div class="attendance-row-actions">
+                                        <button type="button" class="zoho-icon-btn" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}')" title="View">
+                                            <i class="feather-eye"></i>
+                                        </button>
+                                        @if($isAdmin)
+                                            <a href="{{ route('payroll.attendance.employee.editByName', $employeeId) }}?start_date={{ $listStartDate->toDateString() }}&end_date={{ $listEndDate->toDateString() }}" class="zoho-icon-btn" title="Edit">
+                                                <i class="feather-edit"></i>
+                                            </a>
+                                        @endif
+                                    </div>
                                 </div>
                                 <div class="att-stat-chips">
                                     <span class="att-stat-chip att-stat-chip--present" onclick="openAttendanceDetails('{{ $employeeId }}', '{{ addslashes($employeeName) }}', 'present')">Present <strong>{{ $att->present_count }}</strong></span>
@@ -696,7 +708,7 @@
 
                     const adminActions = (isAdmin && item.id) ? `
                         <div class="attendance-row-actions">
-                            <button type="button" class="zoho-icon-btn" onclick="editSingleAttendance(${item.id}, '${item.employee_id}')" title="Edit">
+                            <button type="button" class="zoho-icon-btn" onclick="editSingleAttendance('${item.employee_id}', '${item.attendance_date}')" title="Edit">
                                 <i class="feather-edit"></i>
                             </button>
                             <button type="button" class="zoho-icon-btn" onclick="deleteSingleAttendance(${item.id})" title="Delete">
@@ -742,7 +754,7 @@
                             </div>
                             ${(isAdmin && item.id) ? `
                             <div class="att-detail-mobile-actions">
-                                <button type="button" class="zoho-btn-outline" onclick="editSingleAttendance(${item.id}, '${item.employee_id}')">
+                                <button type="button" class="zoho-btn-outline" onclick="editSingleAttendance('${item.employee_id}', '${item.attendance_date}')">
                                     <i class="feather-edit"></i> Edit
                                 </button>
                                 <button type="button" class="zoho-btn-outline" onclick="deleteSingleAttendance(${item.id})">
@@ -853,8 +865,8 @@
             });
         }
 
-        function editSingleAttendance(id, employeeId) {
-            window.location.href = `{{ url('/payroll/attendace/employee') }}/${employeeId}/edit?attendance_id=${id}`;
+        function editSingleAttendance(employeeId, date) {
+            window.location.href = `{{ url('/payroll/attendace/employee') }}/${employeeId}/edit?date=${date}`;
         }
 
         function exportAttendance() {

@@ -4,6 +4,7 @@
     $pageTitle = trim($__env->yieldContent('page_title')) ?: match (true) {
         request()->routeIs('dashboard') => 'Home',
         request()->routeIs('employees.*') => 'Employees',
+        request()->routeIs('payroll.attendance*', 'payroll.attendace.employee') => 'Attendance History',
         request()->routeIs('payroll.*') => 'Payroll',
         request()->routeIs('daily-tasks.*') => 'Daily Tasks',
         request()->routeIs('leave.*', 'holidays.*') => 'Leave',
@@ -28,7 +29,8 @@
                     <li><a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">Home</a></li>
                     @if($isAdminNav)
                         <li><a href="{{ route('employees.index') }}" class="{{ request()->routeIs('employees.*') ? 'active' : '' }}">Employees</a></li>
-                        <li><a href="{{ route('payroll.index') }}" class="{{ request()->routeIs('payroll.index', 'payroll.attendance*') ? 'active' : '' }}">Payroll</a></li>
+                        <li><a href="{{ route('payroll.index') }}" class="{{ request()->routeIs('payroll.index') ? 'active' : '' }}">Payroll</a></li>
+                        <li><a href="{{ route('payroll.attendance') }}" class="{{ request()->routeIs('payroll.attendance*', 'payroll.attendace.employee') ? 'active' : '' }}">Attendance History</a></li>
                     @endif
                     <li><a href="{{ route('daily-tasks.index') }}" class="{{ request()->routeIs('daily-tasks.*') ? 'active' : '' }}">Tasks</a></li>
                     <li><a href="{{ route('leave.history') }}" class="{{ request()->routeIs('leave.*', 'holidays.*') ? 'active' : '' }}">Leave</a></li>

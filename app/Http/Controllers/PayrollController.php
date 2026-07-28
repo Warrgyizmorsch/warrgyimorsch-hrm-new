@@ -1491,9 +1491,20 @@ class PayrollController extends Controller
 
         $query = Attendance::where('employee_id', $employee_id);
 
-        // if single record edit from eye tab
-        if ($request->filled('attendance_id')) {
+        // Editing from a specific date row: load every attendance record for
+        // that employee on that date so all punches for the day are edited
+        // together in one submit (same pattern as editByDate for the Date Wise page).
+        if ($request->filled('date')) {
+            $query->whereDate('attendance_date', $request->date);
+        } elseif ($request->filled('attendance_id')) {
+            // Backward-compatible fallback for old single-record links.
             $query->where('id', $request->attendance_id);
+        } elseif ($request->filled('start_date') && $request->filled('end_date')) {
+            // Editing from the employee summary row: scope to whatever date
+            // range is currently selected on the Employee Wise list, not the
+            // employee's entire attendance history.
+            $query->whereDate('attendance_date', '>=', $request->start_date)
+                ->whereDate('attendance_date', '<=', $request->end_date);
         }
 
         $attendance = $query
