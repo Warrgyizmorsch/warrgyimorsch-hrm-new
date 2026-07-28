@@ -53,6 +53,14 @@
                 <button class="switcher-btn" id="tab-returned-btn" onclick="switchAssetTab('returned')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s; white-space: nowrap;">
                     Returned Assets
                 </button>
+                @if($isAdmin)
+                <button class="switcher-btn" id="tab-deactivated-btn" onclick="switchAssetTab('deactivated')" style="border: none; background: transparent; padding: 8px 24px; border-radius: 25px; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.25s; white-space: nowrap;">
+                    Deactivated Employees
+                    @if($deactivatedAllocations->groupBy('user_id')->count() > 0)
+                        <span class="badge bg-danger ms-1" style="font-size: 10px;">{{ $deactivatedAllocations->groupBy('user_id')->count() }}</span>
+                    @endif
+                </button>
+                @endif
             </div>
         </div>
 
@@ -236,6 +244,7 @@
                                                 @endif
                                                 @if(!$isAdmin && !$isTeamLeader)
                                                     <span class="text-muted small">View only</span>
+                                                @endif
                                                 @endif
                                             </div>
                                         </td>
@@ -576,6 +585,114 @@
                 </div>
             </div>
         </div>
+
+        @if($isAdmin)
+        <!-- Deactivated Employees Tab Section -->
+        <div id="section-deactivated" class="asset-tab-section d-none">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; background: white; overflow: hidden; border: 1px solid #e2e8f0 !important;">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead style="background: #3858f9; color: white;">
+                                <tr style="height: 60px; vertical-align: middle;">
+                                    <th class="ps-4" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 220px; color: white">Deactivated Employee</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 120px; color: white">Assets Count</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: white">Asset Details</th>
+                                    <th style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 140px; color: white">Latest Assigned</th>
+                                    <th class="pe-4 text-center" style="font-size: 12px; font-weight: 700; text-transform: uppercase; width: 200px; color: white">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $deactivatedByUser = $deactivatedAllocations
+                                        ->groupBy('user_id')
+                                        ->sortBy(fn($userAllocations) => strtolower($userAllocations->first()->user->name ?? ''));
+                                @endphp
+                                @forelse($deactivatedByUser as $userId => $userAllocations)
+                                    @php
+                                        $firstAlloc = $userAllocations->first();
+                                        $user = $firstAlloc->user;
+                                        $dept = $user->employee->department ?? $user->role ?? 'N/A';
+                                        $latestAlloc = $userAllocations->sortByDesc(fn($a) => $a->allocated_at ?? $a->updated_at)->first();
+                                        $assignedDate = $latestAlloc->allocated_at ? $latestAlloc->allocated_at->format('d M, Y') : $latestAlloc->updated_at->format('d M, Y');
+                                        $assetSummary = $userAllocations->map(function($a) {
+                                            $assetName = $a->asset->name ?? 'Unknown Asset';
+                                            $serial = $a->asset && $a->asset->serial_number ? ' - SN: ' . $a->asset->serial_number : '';
+                                            return $assetName . $serial;
+                                        })->implode(', ');
+
+                                        $jsAllocations = $userAllocations->map(function($a) {
+                                            return [
+                                                'id' => $a->id,
+                                                'name' => $a->asset->name ?? 'Unknown Asset',
+                                                'type' => $a->asset->type ?? 'Other',
+                                                'serial_number' => $a->asset->serial_number ?? 'N/A',
+                                                'allocated_at' => $a->allocated_at ? $a->allocated_at->format('d M, Y') : $a->updated_at->format('d M, Y'),
+                                                'system_configuration' => $a->asset->system_configuration ?? '-'
+                                            ];
+                                        })->values()->all();
+                                    @endphp
+                                    <tr style="height: 75px; border-bottom: 1px solid #f1f5f9;">
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="user-avatar-wrapper" style="width: 32px; height: 32px; flex-shrink: 0; display: inline-block;">
+                                                    @if($user && $user->photo)
+                                                        <img src="{{ asset('storage/' . $user->photo) }}" alt="{{ $user->name }}" class="user-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; filter: grayscale(1);">
+                                                    @else
+                                                        <div class="user-avatar-initials" style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">
+                                                            {{ substr($user->name ?? 'U', 0, 1) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-bold text-dark fs-6">{{ $user->name ?? 'Unknown User' }}</span>
+                                                    <span class="text-muted small" style="font-size: 11px;">{{ $dept }}</span>
+                                                    <span class="badge bg-soft-danger text-danger mt-1 align-self-start" style="font-size: 9px; padding: 2px 8px; border-radius: 20px; font-weight: 700; text-transform: uppercase;">Deactivated</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-soft-danger text-danger" style="font-size: 12px; padding: 8px 12px; border-radius: 30px; font-weight: 700;">
+                                                {{ $userAllocations->count() }} {{ \Illuminate\Support\Str::plural('asset', $userAllocations->count()) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold text-dark text-truncate" style="max-width: 520px;" title="{{ $assetSummary }}">
+                                                {{ $assetSummary }}
+                                            </div>
+                                            <div class="text-muted small mt-1" style="font-size: 11px;">
+                                                {{ $userAllocations->pluck('asset.type')->filter()->unique()->implode(', ') ?: 'Asset details' }}
+                                            </div>
+                                        </td>
+                                        <td class="text-muted small">{{ $assignedDate }}</td>
+                                        <td class="pe-4 text-center">
+                                            <button class="btn btn-sm btn-soft-danger fw-bold"
+                                                    style="border-radius: 8px;"
+                                                    data-assets='@json($jsAllocations)'
+                                                    data-employee="{{ $user->name ?? 'Employee' }}"
+                                                    onclick="openAllocatedAssetsOffcanvas(this)">
+                                                <i class="feather-corner-down-left"></i> Reclaim Assets
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center py-5">
+                                            <div class="py-4">
+                                                <div style="font-size: 40px;">🚫</div>
+                                                <h4 class="text-muted mt-3">No Assets Held by Deactivated Employees</h4>
+                                                <p class="text-muted small">Devices still allocated to a deactivated employee will be listed here so they can be reclaimed.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
     <!-- Add Asset Modal -->
@@ -1034,6 +1151,9 @@
             } else if (tab === 'returned') {
                 document.getElementById('tab-returned-btn').classList.add('active');
                 document.getElementById('section-returned').classList.remove('d-none');
+            } else if (tab === 'deactivated') {
+                document.getElementById('tab-deactivated-btn').classList.add('active');
+                document.getElementById('section-deactivated').classList.remove('d-none');
             }
         }
 

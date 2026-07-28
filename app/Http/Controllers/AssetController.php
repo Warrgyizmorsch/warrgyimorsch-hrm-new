@@ -14,6 +14,7 @@ class AssetController extends Controller
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
         $isTeamLeader = $role === 'team_leader';
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
 
         $assetsQuery = Asset::with('activeAllocation.user');
         $requestsQuery = AssetRequest::with(['user', 'asset'])->latest();
@@ -45,11 +46,27 @@ class AssetController extends Controller
             ->values();
         $requests = $requestsQuery->get();
         $availableAssets = $isTeamLeader ? collect() : Asset::where('status', 'Available')->get();
-        $users = $isTeamLeader
-            ? \App\Models\User::whereIn('id', $teamUserIds)->orderBy('name')->get()
-            : \App\Models\User::orderBy('name')->get();
+        $users = ($isTeamLeader
+            ? \App\Models\User::whereIn('id', $teamUserIds)
+            : \App\Models\User::query())
+            ->where(function ($q) {
+                $q->whereNull('account_status')->orWhere('account_status', 'active');
+            })
+            ->orderBy('name')->get();
 
-        return view('assets.index', compact('assets', 'requests', 'availableAssets', 'users'));
+        // Devices still allocated to employees whose account has since been deactivated.
+        // Kept out of the main tabs (and out of the assignment dropdowns above) so admins
+        // can find and reclaim/reassign them separately.
+        $deactivatedAllocations = $isAdmin
+            ? AssetRequest::where('status', 'Allocated')
+                ->whereHas('user', function ($q) {
+                    $q->where('account_status', 'inactive');
+                })
+                ->with(['user', 'asset'])
+                ->get()
+            : collect();
+
+        return view('assets.index', compact('assets', 'requests', 'availableAssets', 'users', 'deactivatedAllocations'));
     }
 
     public function store(Request $request)
