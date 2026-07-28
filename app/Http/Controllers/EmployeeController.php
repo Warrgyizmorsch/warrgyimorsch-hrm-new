@@ -462,6 +462,7 @@ class EmployeeController extends Controller
                 'name' => 'required|string|max:255',
                 'mobile_number' => 'required|string|max:20',
                 'department' => 'required|string',
+                'additional_led_departments' => 'nullable|array',
                 'designation' => 'required|string',
                 'role' => 'required|string',
                 'email' => 'nullable|email|unique:users,email,' . $userId,
@@ -476,6 +477,9 @@ class EmployeeController extends Controller
                     'mobile_number' => $request->mobile_number,
                     'role' => $request->role,
                     'department' => $request->department,
+                    'additional_led_departments' => strtolower(str_replace(' ', '_', (string) $request->role)) === 'team_leader'
+                        ? array_values(array_filter((array) $request->additional_led_departments))
+                        : [],
                     'designation' => $request->designation,
                     'date_of_joining' => $request->date_of_joining,
                     'date_of_birth' => $request->date_of_birth,

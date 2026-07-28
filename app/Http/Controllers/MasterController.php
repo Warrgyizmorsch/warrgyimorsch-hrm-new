@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Department;
 use App\Models\Designation;
+use App\Models\Project;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -18,11 +19,21 @@ class MasterController extends Controller
             ['name', 'short_name']
         );
 
+        $allProjects = Project::select('id', 'name', 'slug', 'status', 'department')->get();
+
+        $projectsByDepartment = [];
+        foreach ($departments as $dept) {
+            $projectsByDepartment[$dept->id] = $allProjects->filter(function ($project) use ($dept) {
+                return in_array($dept->name, (array) $project->department, true);
+            })->values();
+        }
+
         return view('master.departments', [
             'departments' => $departments,
             'totalCount' => $stats['total'],
             'activeCount' => $stats['active'],
             'perPage' => $perPage,
+            'projectsByDepartment' => $projectsByDepartment,
         ]);
     }
 

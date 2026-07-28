@@ -107,13 +107,24 @@
                                 <div class="hrm-field">
                                     <label>Role</label>
                                     <div class="hrm-input-wrap"><i class="bi bi-person-badge"></i>
-                                        <select name="role" class="form-select" required>
+                                        <select name="role" id="employeeRoleSelect" class="form-select" required onchange="toggleLedDepartments(this.value)">
                                             <option value="">Select Role</option>
                                             @foreach($roles as $rl)
                                                 <option value="{{ $rl->slug }}" {{ old('role', $employee->role) == $rl->slug ? 'selected' : '' }}>{{ $rl->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
+                                </div>
+                                <div class="hrm-field" id="ledDepartmentsField" style="display: none;">
+                                    <label>Additional Departments (as Team Leader)</label>
+                                    <div class="hrm-input-wrap" style="align-items: flex-start;"><i class="bi bi-diagram-3"></i>
+                                        <select name="additional_led_departments[]" class="form-select" multiple size="4">
+                                            @foreach($departments as $dept)
+                                                <option value="{{ $dept->name }}" {{ in_array($dept->name, old('additional_led_departments', $employee->additional_led_departments ?? [])) ? 'selected' : '' }}>{{ $dept->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <p class="text-muted small mt-1 mb-0">Departments this Team Leader can also view and manage projects/tasks for, besides their own department.</p>
                                 </div>
                                 <div class="hrm-field">
                                     <label>Working Mode</label>
@@ -316,6 +327,12 @@
 </div>
 
 <script>
+function toggleLedDepartments(roleSlug) {
+    const field = document.getElementById('ledDepartmentsField');
+    if (field) field.style.display = roleSlug === 'team_leader' ? 'block' : 'none';
+}
+toggleLedDepartments(document.getElementById('employeeRoleSelect')?.value);
+
 function hrmToggle(id, fieldId, offId) {
     document.getElementById(id)?.addEventListener('change', function () {
         const on = this.checked;

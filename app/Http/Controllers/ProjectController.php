@@ -42,11 +42,13 @@ class ProjectController extends Controller
         $query = Project::query()->with(['tasks.employee']);
 
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
-            if ($department) {
-                $query->where(function ($q) use ($department) {
-                    $q->whereJsonContains('department', $department)
-                      ->orWhere('department', 'like', '%' . $department . '%');
+            $departments = $user->employee?->ledDepartments() ?? [];
+            if (!empty($departments)) {
+                $query->where(function ($q) use ($departments) {
+                    foreach ($departments as $department) {
+                        $q->orWhereJsonContains('department', $department)
+                          ->orWhere('department', 'like', '%' . $department . '%');
+                    }
                 });
             } else {
                 $query->whereRaw('1=0');
@@ -421,12 +423,19 @@ class ProjectController extends Controller
         $isLead = is_array($project->leaders)
             && in_array(auth()->user()->employee_id, $project->leaders, true);
 
+        $isDepartmentTeamLeader = false;
+        if ($role === 'team_leader') {
+            $ledDepartments = auth()->user()->employee?->ledDepartments() ?? [];
+            $projectDepartments = is_array($project->department) ? $project->department : [];
+            $isDepartmentTeamLeader = !empty(array_intersect($ledDepartments, $projectDepartments));
+        }
+
         foreach ($fields as $field) {
             if (!$request->has($field)) {
                 continue;
             }
 
-            if ($field === 'status' && !$isAdmin && !$isLead) {
+            if ($field === 'status' && !$isAdmin && !$isLead && !$isDepartmentTeamLeader) {
                 continue;
             }
 

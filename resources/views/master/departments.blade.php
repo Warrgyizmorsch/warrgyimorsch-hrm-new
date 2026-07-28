@@ -76,6 +76,7 @@
                                 <th class="col-num">Sr. No.</th>
                                 <th>Department Name</th>
                                 <th>Short Name</th>
+                                <th>Projects</th>
                                 <th>Status</th>
                                 <th class="text-end" style="width: 100px;">Action</th>
                             </tr>
@@ -90,6 +91,28 @@
                                             <span class="mst-meta-badge">{{ strtoupper($dept->short_name) }}</span>
                                         @else
                                             <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php $deptProjects = $projectsByDepartment[$dept->id] ?? collect(); @endphp
+                                        @if($deptProjects->isEmpty())
+                                            <span class="text-muted">—</span>
+                                        @else
+                                            <div class="dropdown">
+                                                <button class="mst-meta-badge dropdown-toggle" type="button" data-bs-toggle="dropdown" style="cursor: pointer; border: none;">
+                                                    {{ $deptProjects->count() }} {{ Str::plural('project', $deptProjects->count()) }}
+                                                </button>
+                                                <ul class="dropdown-menu shadow-lg border-0" style="min-width: 220px; max-height: 260px; overflow-y: auto;">
+                                                    @foreach($deptProjects as $proj)
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('projects.show', $proj->slug) }}">
+                                                                {{ $proj->name }}
+                                                                <span class="text-muted small d-block">{{ $proj->status }}</span>
+                                                            </a>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
                                         @endif
                                     </td>
                                     <td>
@@ -124,7 +147,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5">
+                                    <td colspan="6">
                                         <div class="attendance-empty">
                                             <i class="feather-layers"></i>
                                             <p>{{ request('search') || request('status') ? 'No departments match your filters.' : 'No departments recorded yet.' }}</p>

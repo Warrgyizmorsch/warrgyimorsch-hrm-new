@@ -35,18 +35,22 @@ class DailyTaskController extends Controller
         $otherProject->update(['members' => Employee::active()->pluck('id')->toArray()]);
 
         if ($role == 'team_leader') {
-            $teamLeaderDepartment = auth()->user()->employee->department ?? null;
+            $teamLeaderDepartments = auth()->user()->employee?->ledDepartments() ?? [];
 
-            $departmentEmployeeIds = Employee::active()->where('department', $teamLeaderDepartment)
+            $departmentEmployeeIds = Employee::active()->whereIn('department', $teamLeaderDepartments)
                 ->pluck('id');
 
             $query->whereIn('employee_id', $departmentEmployeeIds);
 
-            $employees = Employee::active()->where('department', $teamLeaderDepartment)->get();
+            $employees = Employee::active()->whereIn('department', $teamLeaderDepartments)->get();
 
-            $projects = Project::where(function ($q) use ($departmentEmployeeIds) {
+            $projects = Project::where(function ($q) use ($departmentEmployeeIds, $teamLeaderDepartments) {
                 foreach ($departmentEmployeeIds as $employeeId) {
                     $q->orWhereJsonContains('members', (string) $employeeId);
+                }
+                foreach ($teamLeaderDepartments as $department) {
+                    $q->orWhereJsonContains('department', $department)
+                      ->orWhere('department', 'like', '%' . $department . '%');
                 }
             })->orderBy('name')->get();
         } elseif (!$isAdmin) {
