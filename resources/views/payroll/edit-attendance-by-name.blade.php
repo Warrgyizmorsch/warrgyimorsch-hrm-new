@@ -112,7 +112,7 @@
                                                 <input type="time" id="check_in_{{ $index }}" name="check_in[{{ $record->id }}]"
                                                     value="{{ $record->check_in ? \Carbon\Carbon::parse($record->check_in)->format('H:i') : '' }}"
                                                     class="form-control form-control-sm text-center mx-auto"
-                                                    style="max-width: 100px;" onchange="calculateDuration({{ $index }})">
+                                                    style="max-width: 100px;" onchange="syncTime({{ $index }}, 'in', 'desktop')">
                                             </div>
 
                                             <label class="small text-primary cursor-pointer d-block">
@@ -130,7 +130,7 @@
                                                     name="check_out[{{ $record->id }}]"
                                                     value="{{ $record->check_out ? \Carbon\Carbon::parse($record->check_out)->format('H:i') : '' }}"
                                                     class="form-control form-control-sm text-center mx-auto"
-                                                    style="max-width: 100px;" onchange="calculateDuration({{ $index }})">
+                                                    style="max-width: 100px;" onchange="syncTime({{ $index }}, 'out', 'desktop')">
                                             </div>
 
                                             <label class="small text-primary cursor-pointer d-block">

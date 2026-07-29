@@ -1188,7 +1188,12 @@
                         </div> -->
                 <!-- [Latest leave report] end -->
 
-                <!--! BEGIN: [Attendance Analytics] !-->
+                <!--! BEGIN: [Quick Notes] !-->
+                <div class="col-xxl-4 saas-animate-in" style="animation-delay:0.55s">
+                    @include('partials.quick-notes-card')
+                </div>
+                <!--! END: [Quick Notes] !-->
+                <!--! BEGIN: [Attendance Analytics - disabled] !-->
                 <!-- <div class="col-xxl-4">
                             <div class="card stretch stretch-full">
                                 <div class="card-header border-bottom-0 pb-0">

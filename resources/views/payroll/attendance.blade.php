@@ -35,6 +35,9 @@
             <a href="' . route('payroll.attendace.employee') . '" class="zoho-btn-outline">
                 <i class="feather-users"></i> Employee Wise
             </a>
+            <a href="' . route('payroll.attendance.missing') . '" class="zoho-btn-outline">
+                <i class="feather-alert-triangle"></i> Missing Punches
+            </a>
             ' . $syncBiometricButton . '
             ' . $importDropdown . '
             <button type="button" class="zoho-icon-btn" onclick="exportAttendance()" title="Export">
@@ -226,6 +229,9 @@
                                                             <span class="att-stat-chip att-stat-chip--absent" onclick="openAttendanceDetails('{{ $date }}', 'absent')">Absent <strong>{{ $att->absent_count }}</strong></span>
                                                             <span class="att-stat-chip att-stat-chip--wfh" onclick="openAttendanceDetails('{{ $date }}', 'wfh')">WFH <strong>{{ $att->wfh_count }}</strong></span>
                                                             <span class="att-stat-chip att-stat-chip--early" onclick="openAttendanceDetails('{{ $date }}', 'early_out')">Early Out <strong>{{ $att->early_count }}</strong></span>
+                                                            @if($att->missing_count > 0)
+                                                                <span class="att-stat-chip att-stat-chip--absent" onclick="window.location.href='{{ route('payroll.attendance.missing.editByDate', $date) }}'" title="Fix all missing punches for this date at once">Missing Punch <strong>{{ $att->missing_count }}</strong></span>
+                                                            @endif
                                                         </div>
                                                     @endif
                                                 </td>
@@ -241,6 +247,9 @@
                                                                 </button>
                                                                 <ul class="dropdown-menu dropdown-menu-end zoho-more-menu">
                                                                     <li><a class="dropdown-item" href="{{ route('payroll.attendance.editByDate', $date) }}"><i class="feather-edit me-2"></i>Edit</a></li>
+                                                                    @if($att->missing_count > 0)
+                                                                        <li><a class="dropdown-item" href="{{ route('payroll.attendance.missing.editByDate', $date) }}"><i class="feather-alert-triangle me-2"></i>Fix Missing Punches</a></li>
+                                                                    @endif
                                                                     <li><a class="dropdown-item text-danger" href="javascript:void(0);" onclick="deleteAttendanceByDate('{{ $date }}')"><i class="feather-trash-2 me-2"></i>Delete</a></li>
                                                                 </ul>
                                                             </div>

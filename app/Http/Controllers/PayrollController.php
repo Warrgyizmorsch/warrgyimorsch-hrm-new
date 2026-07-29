@@ -1211,6 +1211,98 @@ class PayrollController extends Controller
     }
 
     /**
+     * Day-by-day list of dates that have at least one missing-punch record.
+     */
+    public function missingPunches(Request $request)
+    {
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isTeamLeader = in_array($role, ['team_leader']);
+
+        $query = Attendance::query()->visible();
+        $query->join('employees', 'attendances.employee_id', '=', 'employees.id');
+        $query->whereDate('attendances.attendance_date', '<=', now()->toDateString());
+
+        if ($isTeamLeader) {
+            $department = $user->employee->department ?? null;
+            if ($department) {
+                $query->where('employees.department', $department);
+            }
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereDate('attendance_date', '>=', $request->start_date)
+                ->whereDate('attendance_date', '<=', $request->end_date);
+        }
+
+        $select = array_merge(
+            ['attendances.attendance_date'],
+            $this->attendanceAggregateSelectColumns()
+        );
+
+        $perPage = (int) $request->query('per_page', 20);
+        $allowedPerPage = [20, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 20;
+        }
+
+        $attendance = $query->select($select)
+            ->groupBy('attendances.attendance_date')
+            ->having('missing_count', '>', 0)
+            ->orderBy('attendances.attendance_date', 'desc')
+            ->paginate($perPage);
+
+        return view('payroll.attendance-missing', compact('attendance', 'perPage'));
+    }
+
+    /**
+     * Bulk-fix view scoped to only the employees with a missing punch on one date.
+     */
+    public function editMissingPunchesByDate($attendance_date)
+    {
+        $attendances = Attendance::with('employee')
+            ->visible()
+            ->whereDate('attendance_date', $attendance_date)
+            ->where('status', 'missing_punch')
+            ->get();
+
+        if ($attendances->isEmpty()) {
+            return redirect()->route('payroll.attendance.missing')
+                ->with('success', 'No missing punches left for this date.');
+        }
+
+        $employees = $attendances->map(function ($attendance) {
+            $employee = $attendance->employee;
+
+            $employee->old_check_in = $attendance->check_in
+                ? \Carbon\Carbon::parse($attendance->check_in)->format('H:i')
+                : '';
+
+            $employee->old_check_out = $attendance->check_out
+                ? \Carbon\Carbon::parse($attendance->check_out)->format('H:i')
+                : '';
+
+            $employee->old_status = $attendance->status;
+            $employee->can_edit_check_in = empty($attendance->check_in);
+            $employee->can_edit_check_out = empty($attendance->check_out);
+            $employee->is_absent = false;
+            $employee->old_duration = '--';
+
+            return $employee;
+        })
+            ->sortBy(fn ($employee) => strtolower($employee->name))
+            ->values();
+
+        return view('payroll.add-attendance', [
+            'employees' => $employees,
+            'edit_date' => $attendance_date,
+            'is_edit' => true,
+            'missing_only' => true,
+        ]);
+    }
+
+    /**
      * Get payroll record for editing
      */
     public function editPayroll($id)
@@ -1911,6 +2003,7 @@ class PayrollController extends Controller
             DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'absent' AND NOT ({$holiday}) THEN attendances.id END) as absent_count"),
             DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'wfh' THEN attendances.id END) as wfh_count"),
             DB::raw($this->attendanceEarlyOutCountSql() . ' as early_count'),
+            DB::raw("COUNT(DISTINCT CASE WHEN attendances.status = 'missing_punch' THEN attendances.id END) as missing_count"),
         ];
     }
 

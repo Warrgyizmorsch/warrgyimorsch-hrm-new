@@ -1478,115 +1478,11 @@
                 </div>
                 <!-- [Latest leave report] end -->
 
-                <!--! BEGIN: [Attendance Analytics] !-->
+                <!--! BEGIN: [Quick Notes] !-->
                 <div class="col-xxl-4 saas-animate-in" style="animation-delay:0.55s">
-                    <div class="saas-panel-card">
-                        <div class="card-header border-bottom-0 pb-0 d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5 class="card-title">Attendance Analytics</h5>
-                                <p class="text-muted fs-12 mb-0">Filtered workforce metrics</p>
-                            </div>
-                            <!-- <div class="dropdown-menu dropdown-menu-end">
-                                                <a href="{{ route('payroll.attendance') }}" class="dropdown-item">
-                                                    <i class="feather-external-link me-2"></i>
-                                                    <span>Full Attendance List</span>
-                                                </a>
-                                            </div> -->
-                            <div class="dropdown">
-                                <button type="button" class="avatar-text avatar-sm border-0 bg-transparent"
-                                    data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
-                                    <i class="feather-more-vertical"></i>
-                                </button>
-
-                                <div class="dropdown-menu dropdown-menu-end p-2"
-                                    style="min-width: 220px; position: absolute !important;">
-
-                                    <!-- Normal Filters -->
-                                    <div id="normalFilters">
-                                        <a href="?filter=today" class="dropdown-item">Today</a>
-                                        <a href="?filter=yesterday" class="dropdown-item">Yesterday</a>
-                                        <a href="?filter=week" class="dropdown-item">Last Week</a>
-                                        <a href="?filter=month" class="dropdown-item">Last Month</a>
-
-                                        <div class="dropdown-divider"></div>
-
-                                        <a href="javascript:void(0);" class="dropdown-item text-primary fw-bold"
-                                            onclick="event.stopPropagation(); showCustomFilter()">
-                                            Custom Range →
-                                        </a>
-                                    </div>
-
-                                    <!-- Custom Form (hidden initially) -->
-                                    <div id="customFilterBox" style="display:none;" onclick="event.stopPropagation();">
-                                        <form method="GET">
-                                            <label class="form-label small mb-1">From</label>
-                                            <input type="date" name="from" class="form-control form-control-sm mb-2"
-                                                value="{{ request('from') }}">
-
-                                            <label class="form-label small mb-1">To</label>
-                                            <input type="date" name="to" class="form-control form-control-sm mb-2"
-                                                value="{{ request('to') }}">
-
-                                            <button type="submit" class="btn btn-sm btn-primary w-100 mb-2">
-                                                Apply
-                                            </button>
-
-                                            <a href="javascript:void(0);" class="btn btn-sm btn-light w-100"
-                                                onclick="hideCustomFilter()">← Back</a>
-                                        </form>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body pt-2">
-                            @php $isFiltered = request()->has('from') || request()->has('filter'); @endphp
-                            <div class="saas-attendance-ring mb-3">
-                                <div id="attendance-rate-ring"></div>
-                                <div class="saas-attendance-rate">
-                                    <span class="rate-value">{{ $isFiltered ? $rangeAttendanceRate : $attendanceRate }}%</span>
-                                    <span class="rate-label">Attendance</span>
-                                </div>
-                            </div>
-
-                            <div class="p-3 rounded-3" style="background:#f8fafc;">
-                                <div class="saas-metric-row">
-                                    <span class="d-flex align-items-center small fw-semibold"><span class="saas-metric-dot" style="background:#10b981"></span>Present</span>
-                                    <span class="small fw-bold">{{ $isFiltered ? $rangePresent : $present }}/{{ $totalEmployees }}</span>
-                                </div>
-                                <div class="saas-metric-row">
-                                    <span class="d-flex align-items-center small fw-semibold"><span class="saas-metric-dot" style="background:#3b82f6"></span>WFH</span>
-                                    <span class="small fw-bold">{{ $isFiltered ? $rangeWFH : $wfh }}/{{ $totalEmployees }}</span>
-                                </div>
-                                <div class="saas-metric-row">
-                                    <span class="d-flex align-items-center small fw-semibold"><span class="saas-metric-dot" style="background:#f59e0b"></span>Late</span>
-                                    <span class="small fw-bold">{{ $isFiltered ? $rangeLate : $late }}/{{ $totalEmployees }}</span>
-                                </div>
-                                <div class="saas-metric-row">
-                                    <span class="d-flex align-items-center small fw-semibold"><span class="saas-metric-dot" style="background:#8b5cf6"></span>Half Day</span>
-                                    <span class="small fw-bold">{{ $isFiltered ? $rangeHalfday : $half_day }}/{{ $totalEmployees }}</span>
-                                </div>
-                                <div class="saas-metric-row">
-                                    <span class="d-flex align-items-center small fw-semibold"><span class="saas-metric-dot" style="background:#06b6d4"></span>Leave</span>
-                                    <span class="small fw-bold">{{ $isFiltered ? $rangeLeave : $leave }}/{{ $totalEmployees }}</span>
-                                </div>
-                                <div class="saas-metric-row">
-                                    <span class="d-flex align-items-center small fw-semibold"><span class="saas-metric-dot" style="background:#64748b"></span>Early Out</span>
-                                    <span class="small fw-bold">{{ $isFiltered ? $rangeEarly : $early }}/{{ $totalEmployees }}</span>
-                                </div>
-                                <div class="saas-metric-row">
-                                    <span class="d-flex align-items-center small fw-semibold"><span class="saas-metric-dot" style="background:#ef4444"></span>Absent</span>
-                                    <span class="small fw-bold">{{ $isFiltered ? $rangeAbsent : $absent }}/{{ $totalEmployees }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer border-top p-3 text-center">
-                            <a href="{{ route('payroll.attendance.add') }}" class="fs-12 fw-bold text-primary text-uppercase">
-                                <i class="feather-plus-circle me-1"></i> Add Daily Records
-                            </a>
-                        </div>
-                    </div>
+                    @include('partials.quick-notes-card')
                 </div>
+                <!--! END: [Quick Notes] !-->
             </div>
 
         @if($canViewPayrollAnalytics)

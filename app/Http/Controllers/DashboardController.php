@@ -9,6 +9,8 @@ use App\Models\Holiday;
 use App\Models\LeaveApplication;
 use App\Models\LeaveAllotment;
 use App\Models\Broadcast;
+use App\Models\Note;
+use App\Models\DailyTask;
 use App\Services\LeaveBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -516,6 +518,20 @@ class DashboardController extends Controller
 
         $canViewPayrollAnalytics = $this->canViewPayrollAnalytics();
 
+        $myNotes = Note::where('user_id', auth()->id())
+            ->orderBy('is_completed')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $myAdhocTasks = $employeeId
+            ? DailyTask::with('creator')
+                ->whereNull('project_id')
+                ->where('employee_id', $employeeId)
+                ->where('status', '!=', 'Completed')
+                ->orderByDesc('created_at')
+                ->get()
+            : collect();
+
         if (!$isAdmin) {
             return view('userDashboard', compact(
                 'totalEmployees',
@@ -564,7 +580,9 @@ class DashboardController extends Controller
                 'currentMonthUtilizedLeave',
                 'currentMonthAllottedLeave',
                 'totalJourney',
-                'canViewPayrollAnalytics'
+                'canViewPayrollAnalytics',
+                'myNotes',
+                'myAdhocTasks'
             ));
         }
 
@@ -609,7 +627,9 @@ class DashboardController extends Controller
             'employee',
             'celebration',
             'announcements',
-            'canViewPayrollAnalytics'
+            'canViewPayrollAnalytics',
+            'myNotes',
+            'myAdhocTasks'
         ));
     }
 

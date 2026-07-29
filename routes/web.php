@@ -11,6 +11,7 @@ use App\Http\Controllers\LeaveApplicationController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NoteController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -75,6 +76,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/login-activity/heartbeat', [LoginActivityController::class, 'heartbeat'])->name('login-activity.heartbeat');
 
     Route::post('/suggestions', [SuggestionController::class, 'store'])->name('suggestions.store');
+
+    Route::post('/notes', [NoteController::class, 'store'])->name('notes.store');
+    Route::post('/notes/{id}/toggle', [NoteController::class, 'toggle'])->name('notes.toggle');
+    Route::delete('/notes/{id}', [NoteController::class, 'destroy'])->name('notes.destroy');
 
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
 
@@ -215,7 +220,9 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/payroll/attendace/employee/{employee_id}/edit', [PayrollController::class, 'editByName'])->name('payroll.attendance.employee.editByName');
     Route::put('/payroll/attendance/employee/{employee_id}/update', [PayrollController::class, 'updateByName'])->name('payroll.attendance.employee.updateByName');
 
-    
+    Route::get('/payroll/attendance/missing-punches', [PayrollController::class, 'missingPunches'])->name('payroll.attendance.missing');
+    Route::get('/payroll/attendance/missing-punches/{attendance_date}/edit', [PayrollController::class, 'editMissingPunchesByDate'])->name('payroll.attendance.missing.editByDate');
+
 });
 
 Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {

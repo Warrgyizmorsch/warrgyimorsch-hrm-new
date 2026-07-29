@@ -7,13 +7,15 @@
 @section('content')
 @php
     $isEdit = isset($is_edit);
-    $pageTitle = $isEdit ? 'Edit Attendance' : 'Add Attendance';
+    $missingOnly = isset($missing_only) && $missing_only;
+    $pageTitle = $isEdit ? ($missingOnly ? 'Fix Missed Punches' : 'Edit Attendance') : 'Add Attendance';
     $formattedDate = isset($edit_date)
         ? \Carbon\Carbon::parse($edit_date)->format('M d, Y')
         : \Carbon\Carbon::today()->format('M d, Y');
     $employeeTotal = count($employees);
+    $backUrl = $missingOnly ? route('payroll.attendance.missing') : route('payroll.attendance');
     $headerActions = '
-        <a href="' . route('payroll.attendance') . '" class="zoho-btn-outline">
+        <a href="' . $backUrl . '" class="zoho-btn-outline">
             <i class="feather-arrow-left"></i> Back
         </a>
         <button type="submit" form="attendanceForm" class="zoho-btn-primary" id="attFormSubmitTop">
@@ -25,7 +27,11 @@
     @include('layouts.partials.zoho-people-list-header', [
         'title' => 'Attendance Management',
         'viewLabel' => $pageTitle,
-        'scopeLinks' => [
+        'scopeLinks' => $missingOnly ? [
+            ['label' => 'Home', 'url' => route('dashboard'), 'active' => false],
+            ['label' => 'Missing Punches', 'url' => route('payroll.attendance.missing'), 'active' => false],
+            ['label' => $pageTitle, 'url' => 'javascript:void(0)', 'active' => true],
+        ] : [
             ['label' => 'Home', 'url' => route('dashboard'), 'active' => false],
             ['label' => 'Attendance List', 'url' => route('payroll.attendance'), 'active' => false],
             ['label' => $pageTitle, 'url' => 'javascript:void(0)', 'active' => true],
@@ -88,6 +94,13 @@
                         </div>
                     @endif
                 </div>
+
+                @if($missingOnly)
+                    <div class="att-form-inline-alert att-form-inline-alert--warning" role="alert">
+                        <i class="feather-alert-triangle"></i>
+                        Showing only employees with a missing punch on this date — fill in the missing check-in/check-out for each, then update all at once.
+                    </div>
+                @endif
 
                 <div id="attBulkAlert" class="att-form-inline-alert" role="alert" hidden></div>
 
@@ -215,7 +228,7 @@
                             @endif
                         </div>
                         <div class="att-mark-footer-actions">
-                            <a href="{{ route('payroll.attendance') }}" class="zoho-btn-outline">Cancel</a>
+                            <a href="{{ $backUrl }}" class="zoho-btn-outline">Cancel</a>
                             <button type="submit" class="zoho-btn-primary">
                                 <i class="feather-check"></i>
                                 {{ $isEdit ? 'Update Attendance' : 'Save Attendance' }}
