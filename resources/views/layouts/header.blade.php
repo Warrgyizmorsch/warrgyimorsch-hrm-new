@@ -46,6 +46,10 @@
                     <i class="feather-plus"></i>
                 </button>
 
+                <button type="button" class="zoho-topbar-icon" data-bs-toggle="modal" data-bs-target="#suggestionModal" title="Suggestion Box">
+                    <i class="feather-message-square"></i>
+                </button>
+
                 @php
                     $notifications = collect();
                     $roleUpper = strtoupper(auth()->user()->role);
@@ -215,6 +219,86 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="suggestionModal" tabindex="-1" aria-labelledby="suggestionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="{{ route('suggestions.store') }}" method="POST">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="suggestionModalLabel">
+                        <i class="feather-message-square me-1"></i> Suggestion Box
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Help us improve work culture — share your feedback or suggestions. Your name and designation will only be visible to management.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select name="category" class="form-control" required>
+                            <option value="">Select Category</option>
+                            @foreach(\App\Models\Suggestion::CATEGORIES as $suggestionCategory)
+                                <option value="{{ $suggestionCategory }}" {{ old('category') === $suggestionCategory ? 'selected' : '' }}>{{ $suggestionCategory }}</option>
+                            @endforeach
+                        </select>
+                        @error('category') <small class="text-danger">{{ $message }}</small> @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-flex justify-content-between">
+                            <span>Your Suggestion</span>
+                            <span class="small text-muted"><span id="suggestionMessageCount">0</span>/5000</span>
+                        </label>
+                        <textarea name="message" id="suggestionMessage" class="form-control" maxlength="5000" placeholder="What's working well? What could be better?" required style="height: 180px; min-height: 180px; resize: vertical;">{{ old('message') }}</textarea>
+                        @error('message') <small class="text-danger">{{ $message }}</small> @enderror
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Submit Suggestion</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function initSuggestionMessageCounter() {
+        var suggestionMessage = document.getElementById('suggestionMessage');
+        var suggestionMessageCount = document.getElementById('suggestionMessageCount');
+        if (suggestionMessage && suggestionMessageCount) {
+            var updateSuggestionCount = function () {
+                suggestionMessageCount.innerText = suggestionMessage.value.length;
+            };
+            suggestionMessage.addEventListener('input', updateSuggestionCount);
+            updateSuggestionCount();
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSuggestionMessageCounter);
+    } else {
+        initSuggestionMessageCounter();
+    }
+</script>
+
+@auth
+    @if(!session('suggestion_box_prompted') || $errors->has('category') || $errors->has('message'))
+        @php
+            session(['suggestion_box_prompted' => true]);
+        @endphp
+        <script>
+            function showSuggestionBoxModal() {
+                var suggestionModalEl = document.getElementById('suggestionModal');
+                if (suggestionModalEl && window.bootstrap) {
+                    bootstrap.Modal.getOrCreateInstance(suggestionModalEl).show();
+                }
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', showSuggestionBoxModal);
+            } else {
+                showSuggestionBoxModal();
+            }
+        </script>
+    @endif
+@endauth
 
 {{-- Notifications drawer (Zoho People style) --}}
 <x-ui.drawer

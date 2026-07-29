@@ -316,6 +316,15 @@
                     </li>
                 @endif
 
+                @if (in_array($role, ['super_admin', 'manager']))
+                    <li class="nxl-item {{ $navItemActive('suggestions.*') }}">
+                        <a href="{{ route('suggestions.index') }}" class="nxl-link {{ $navLinkActive('suggestions.*') }}">
+                            <span class="nxl-micon"><i class="feather-message-square"></i></span>
+                            <span class="nxl-mtext">Suggestion Box</span>
+                        </a>
+                    </li>
+                @endif
+
                 <li class="nxl-item {{ $navItemActive('employees.employeeDays') }}">
                     <a href="{{ route('employees.employeeDays') }}" class="nxl-link {{ $navLinkActive('employees.employeeDays') }}">
                         <span class="nxl-micon"><i class="fa-solid fa-cake-candles"></i></span>

@@ -15,6 +15,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SuggestionController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\VacancyController;
 use App\Http\Controllers\CandidateController;
@@ -41,6 +42,18 @@ Route::get('/payroll/attendance', [PayrollController::class, 'attendance'])
             ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,hr_intern,business_operation_head,team_leader'])
             ->name('payroll.attendance');
 
+Route::get('/suggestions', [SuggestionController::class, 'index'])
+            ->middleware(['auth', 'role.access:super_admin,manager'])
+            ->name('suggestions.index');
+
+Route::post('/suggestions/{id}/status', [SuggestionController::class, 'updateStatus'])
+            ->middleware(['auth', 'role.access:super_admin,manager'])
+            ->name('suggestions.status');
+
+Route::post('/suggestions/{id}/appreciate', [SuggestionController::class, 'toggleAppreciation'])
+            ->middleware(['auth', 'role.access:super_admin,manager'])
+            ->name('suggestions.appreciate');
+
 
 Route::middleware(['auth', 'verified'])->group(function () {
     
@@ -60,6 +73,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/login-activity', [LoginActivityController::class, 'index'])->name('login-activity.index');
     Route::post('/login-activity/heartbeat', [LoginActivityController::class, 'heartbeat'])->name('login-activity.heartbeat');
+
+    Route::post('/suggestions', [SuggestionController::class, 'store'])->name('suggestions.store');
 
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
 
