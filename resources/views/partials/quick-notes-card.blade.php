@@ -51,7 +51,7 @@
             @endif
 
             @forelse($myNotes as $note)
-                <div class="qn-item {{ $note->is_completed ? 'qn-item--done' : '' }}" data-note-id="{{ $note->id }}">
+                <div class="qn-item {{ $note->is_completed ? 'qn-item--done' : '' }}" data-note-id="{{ $note->id }}" data-type="{{ $note->type }}" @if($note->remind_at) data-remind-iso="{{ $note->remind_at->toIso8601String() }}" @endif>
                     <input type="checkbox" class="qn-check" {{ $note->is_completed ? 'checked' : '' }} onchange="qnToggle({{ $note->id }}, this)">
                     <span class="qn-badge qn-badge--{{ $note->type }}">{{ ucfirst($note->type) }}</span>
                     <div class="qn-item-body">
@@ -146,6 +146,21 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="qnSubmitStatus()">Save Status</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="qnReminderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content qn-modal-content">
+            <div class="modal-body qn-reminder-body">
+                <div class="qn-reminder-icon"><i class="feather-bell"></i></div>
+                <h5 class="qn-reminder-title">Meeting Reminder</h5>
+                <p class="qn-reminder-text" id="qnReminderModalText"></p>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pt-0">
+                <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Got it</button>
             </div>
         </div>
     </div>
@@ -336,6 +351,27 @@
     .qn-form-label { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
     .qn-status-select { cursor: pointer; }
     .qn-status-comment { height: auto; padding: 10px 12px; resize: vertical; }
+
+    .qn-reminder-body { text-align: center; padding: 32px 24px 8px; }
+    .qn-reminder-icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 16px;
+        border-radius: 50%;
+        background: rgba(16, 112, 224, 0.1);
+        color: #1070e0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        animation: qn-reminder-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes qn-reminder-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+    }
+    .qn-reminder-title { font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+    .qn-reminder-text { font-size: 14px; color: #64748b; margin-bottom: 0; }
     .qn-empty {
         text-align: center;
         padding: 24px 12px;
@@ -348,6 +384,123 @@
 @once
     @push('scripts')
         <script>
+            const qnReminderTimeouts = {};
+
+            // Short two-tone beep via Web Audio — no external sound asset needed.
+            function qnBeep() {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    [0, 220].forEach(function (delayMs) {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = 880;
+                        gain.gain.value = 0.2;
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        const start = ctx.currentTime + delayMs / 1000;
+                        osc.start(start);
+                        osc.stop(start + 0.15);
+                    });
+                } catch (e) { /* Web Audio unsupported — silently skip the beep */ }
+            }
+
+            // Checkpoints (minutes before the meeting) that each trigger their own popup.
+            const QN_REMINDER_CHECKPOINTS = [10, 5];
+
+            const qnReminderQueue = [];
+            let qnReminderModalShowing = false;
+
+            // Dedupe so refreshing the dashboard doesn't replay a reminder already shown.
+            function qnReminderAlreadyFired(id, minutesBefore) {
+                try {
+                    return localStorage.getItem('qn_reminder_fired_' + id + '_' + minutesBefore) === '1';
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function qnMarkReminderFired(id, minutesBefore) {
+                try {
+                    localStorage.setItem('qn_reminder_fired_' + id + '_' + minutesBefore, '1');
+                } catch (e) { /* ignore */ }
+            }
+
+            function qnFireReminder(id, title, minutesBefore) {
+                if (qnReminderAlreadyFired(id, minutesBefore)) return;
+                qnMarkReminderFired(id, minutesBefore);
+
+                qnBeep();
+
+                if (window.Notification && Notification.permission === 'granted') {
+                    try {
+                        new Notification('Meeting in ' + minutesBefore + ' minutes', { body: title });
+                    } catch (e) { /* ignore */ }
+                }
+
+                qnReminderQueue.push({ title: title, minutesBefore: minutesBefore });
+                qnProcessReminderQueue();
+            }
+
+            // Popups are queued so two reminders firing close together don't fight over the
+            // same modal — the next one shows as soon as the current one is dismissed.
+            function qnProcessReminderQueue() {
+                if (qnReminderModalShowing || qnReminderQueue.length === 0) return;
+
+                const next = qnReminderQueue.shift();
+                qnReminderModalShowing = true;
+
+                const minuteWord = next.minutesBefore === 1 ? 'minute' : 'minutes';
+                document.getElementById('qnReminderModalText').textContent =
+                    '"' + next.title + '" starts in ' + next.minutesBefore + ' ' + minuteWord + '.';
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('qnReminderModal')).show();
+            }
+
+            // Schedules a popup at each checkpoint (10 and 5 minutes before) for a "meeting"
+            // note. Only fires while this tab stays open — there is no push/service-worker
+            // backend to ring the reminder if the browser is closed. If the page loads (or
+            // reloads) after a checkpoint's alert time has already passed — but before the
+            // meeting itself starts — that checkpoint fires immediately as a catch-up, rather
+            // than staying silent for the rest of the wait.
+            function qnScheduleReminder(id, title, remindAtIso) {
+                qnCancelReminder(id);
+
+                if (!remindAtIso) return;
+
+                const remindTime = new Date(remindAtIso).getTime();
+                if (isNaN(remindTime)) return;
+
+                const now = Date.now();
+
+                // The meeting itself has already started/passed — nothing left to remind about.
+                if (now >= remindTime) return;
+
+                qnReminderTimeouts[id] = {};
+
+                QN_REMINDER_CHECKPOINTS.forEach(function (minutesBefore) {
+                    if (qnReminderAlreadyFired(id, minutesBefore)) return;
+
+                    const alertTime = remindTime - minutesBefore * 60 * 1000;
+                    const delay = Math.max(alertTime - now, 0);
+
+                    // Still skip a checkpoint so far out that catching up on it would be pointless
+                    // (the tab won't realistically stay open that long anyway).
+                    if (delay > 24 * 60 * 60 * 1000) return;
+
+                    qnReminderTimeouts[id][minutesBefore] = setTimeout(function () {
+                        qnFireReminder(id, title, minutesBefore);
+                    }, delay);
+                });
+            }
+
+            function qnCancelReminder(id) {
+                const timeouts = qnReminderTimeouts[id];
+                if (!timeouts) return;
+                Object.values(timeouts).forEach(function (t) { clearTimeout(t); });
+                delete qnReminderTimeouts[id];
+            }
+
             function qnAssignChanged(select) {
                 const row = document.getElementById('qnAssignRow');
                 const hint = document.getElementById('qnAssignHint');
@@ -394,7 +547,7 @@
                 // Move modals to <body> so they aren't nested inside an animated
                 // ancestor (e.g. ".saas-animate-in" leaves a `transform` applied
                 // after its entrance animation, which breaks position:fixed modals).
-                ['qnAddModal', 'qnStatusModal'].forEach(function (id) {
+                ['qnAddModal', 'qnStatusModal', 'qnReminderModal'].forEach(function (id) {
                     const el = document.getElementById(id);
                     if (el && el.parentElement !== document.body) {
                         document.body.appendChild(el);
@@ -405,6 +558,21 @@
                 if (modalEl) {
                     modalEl.addEventListener('hidden.bs.modal', qnResetForm);
                 }
+
+                document.getElementById('qnReminderModal')?.addEventListener('hidden.bs.modal', function () {
+                    qnReminderModalShowing = false;
+                    qnProcessReminderQueue();
+                });
+
+                if (window.Notification && Notification.permission === 'default') {
+                    Notification.requestPermission().catch(function () {});
+                }
+
+                document.querySelectorAll('.qn-item[data-remind-iso]').forEach(function (item) {
+                    if (item.classList.contains('qn-item--done')) return;
+                    const titleEl = item.querySelector('.qn-item-title');
+                    qnScheduleReminder(item.dataset.noteId, titleEl ? titleEl.textContent : 'Meeting', item.dataset.remindIso);
+                });
 
                 form.addEventListener('submit', function (e) {
                     e.preventDefault();
@@ -481,6 +649,10 @@
                 const div = document.createElement('div');
                 div.className = 'qn-item';
                 div.dataset.noteId = note.id;
+                div.dataset.type = note.type;
+                if (note.remind_at_iso) {
+                    div.dataset.remindIso = note.remind_at_iso;
+                }
 
                 const check = document.createElement('input');
                 check.type = 'checkbox';
@@ -526,6 +698,10 @@
                 }
 
                 if (window.feather) { feather.replace(); }
+
+                if (note.type === 'meeting' && note.remind_at_iso) {
+                    qnScheduleReminder(note.id, note.title, note.remind_at_iso);
+                }
             }
 
             function qnToggle(id, checkbox) {
@@ -541,6 +717,9 @@
                     .then(function (data) {
                         if (data.success) {
                             checkbox.closest('.qn-item').classList.toggle('qn-item--done', data.is_completed);
+                            if (data.is_completed) {
+                                qnCancelReminder(id);
+                            }
                         }
                     });
             }
@@ -607,6 +786,10 @@
                     .then(function (data) {
                         if (data.success) {
                             btn.closest('.qn-item').remove();
+                            qnCancelReminder(id);
+                            QN_REMINDER_CHECKPOINTS.forEach(function (minutesBefore) {
+                                try { localStorage.removeItem('qn_reminder_fired_' + id + '_' + minutesBefore); } catch (e) {}
+                            });
                         }
                     });
             }

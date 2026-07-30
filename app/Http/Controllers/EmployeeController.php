@@ -430,7 +430,34 @@ class EmployeeController extends Controller
 
     public function employeeDays() {
         $employees = Employee::active()->get();
-        return view('employees.employeeDay', compact('employees'));
+
+        $daysUntilNextOccurrence = function (?string $date) {
+            if (!$date) {
+                return PHP_INT_MAX;
+            }
+
+            $today = now()->startOfDay();
+            $next = \Carbon\Carbon::parse($date)->year($today->year)->startOfDay();
+
+            if ($next->lt($today)) {
+                $next->addYear();
+            }
+
+            return $today->diffInDays($next);
+        };
+
+        // Sorted soonest-first so "Days Left" is monotonically increasing on screen —
+        // birthdays and anniversaries need separate orderings since they key off
+        // different dates (date_of_birth vs date_of_joining).
+        $employeesByBirthday = $employees->sortBy(
+            fn ($employee) => $daysUntilNextOccurrence($employee->date_of_birth)
+        )->values();
+
+        $employeesByAnniversary = $employees->sortBy(
+            fn ($employee) => $daysUntilNextOccurrence($employee->date_of_joining)
+        )->values();
+
+        return view('employees.employeeDay', compact('employees', 'employeesByBirthday', 'employeesByAnniversary'));
     }
 
     /**

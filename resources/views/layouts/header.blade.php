@@ -50,6 +50,10 @@
                     <i class="feather-message-square"></i>
                 </button>
 
+                <button type="button" class="zoho-topbar-icon" data-bs-toggle="modal" data-bs-target="#qhNoteModal" title="Quick Note / Task">
+                    <i class="feather-edit-3"></i>
+                </button>
+
                 @php
                     $notifications = collect();
                     $roleUpper = strtoupper(auth()->user()->role);
@@ -260,6 +264,56 @@
     </div>
 </div>
 
+<div class="modal fade" id="qhNoteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="qhNoteForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="feather-edit-3 me-1"></i> Add Quick Note or Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="qhFeedback" class="qn-assign-feedback d-none"></div>
+
+                    <input type="text" id="qhTitle" class="qn-input qn-input--full" placeholder="Add a quick note or reminder…" required maxlength="255" autocomplete="off">
+
+                    <div class="qn-type-pills qn-type-pills--modal">
+                        <button type="button" class="qn-pill qn-pill--priority active" data-type="priority" onclick="qhSelectType(this)">
+                            <i class="feather-flag"></i> Priority
+                        </button>
+                        <button type="button" class="qn-pill qn-pill--meeting" data-type="meeting" onclick="qhSelectType(this)">
+                            <i class="feather-users"></i> Meeting
+                        </button>
+                        <input type="datetime-local" id="qhRemindAt" class="qn-time-input d-none">
+                    </div>
+                    <input type="hidden" id="qhType" value="priority">
+
+                    <div class="qn-assign-row" id="qhAssignRow">
+                        <span class="qn-assign-label"><i class="feather-user-plus"></i> Assign to</span>
+                        <select id="qhAssignTo" class="qn-assign-select" onchange="qhAssignChanged(this)">
+                            <option value="">Just me (personal note)</option>
+                            @php $qhEmployeesByDept = \App\Models\Employee::active()->where('id', '!=', auth()->user()->employee_id)->orderBy('name')->get()->groupBy(fn($e) => $e->department ?: 'Other'); @endphp
+                            @foreach($qhEmployeesByDept as $qhDepartment => $qhDeptEmployees)
+                                <optgroup label="{{ $qhDepartment }}">
+                                    @foreach($qhDeptEmployees as $qhEmp)
+                                        <option value="{{ $qhEmp->id }}" data-name="{{ $qhEmp->name }}">{{ $qhEmp->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div id="qhAssignHint" class="qn-assign-hint d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="qhSubmitBtn">Add Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     function initSuggestionMessageCounter() {
         var suggestionMessage = document.getElementById('suggestionMessage');
@@ -277,6 +331,224 @@
     } else {
         initSuggestionMessageCounter();
     }
+</script>
+
+<style>
+    /* Shared with resources/views/partials/quick-notes-card.blade.php — same classes,
+       duplicated here so the header's Quick Note modal works on pages that don't
+       include the dashboard's Quick Notes card. */
+    .qn-input {
+        width: 100%;
+        height: 40px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0 12px;
+        font-size: 13px;
+        outline: none;
+        margin-bottom: 12px;
+    }
+    .qn-input:focus { border-color: #1070e0; }
+    .qn-type-pills { display: flex; align-items: center; gap: 6px; }
+    .qn-type-pills--modal { margin-bottom: 12px; flex-wrap: wrap; }
+    .qn-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #64748b;
+        border-radius: 20px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .qn-pill.active.qn-pill--priority { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; }
+    .qn-pill.active.qn-pill--meeting { background: rgba(16, 112, 224, 0.1); border-color: rgba(16, 112, 224, 0.3); color: #1070e0; }
+    .qn-time-input {
+        height: 38px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0 10px;
+        font-size: 12px;
+        flex: 1 1 180px;
+    }
+    .qn-assign-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 40px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 0 4px 0 12px;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .qn-assign-row.qn-assign-row--active {
+        background: rgba(16, 112, 224, 0.06);
+        border-color: rgba(16, 112, 224, 0.3);
+    }
+    .qn-assign-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .qn-assign-label i { font-size: 13px; }
+    .qn-assign-row--active .qn-assign-label { color: #1070e0; }
+    .qn-assign-select {
+        flex: 1 1 auto;
+        height: 100%;
+        border: none;
+        background: transparent;
+        padding: 0 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #1e293b;
+        outline: none;
+        max-width: 100%;
+        cursor: pointer;
+    }
+    .qn-assign-hint {
+        font-size: 11px;
+        color: #1070e0;
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .qn-assign-feedback {
+        font-size: 12px;
+        color: #16a34a;
+        background: rgba(22, 163, 74, 0.08);
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+</style>
+
+<script>
+    function qhSelectType(btn) {
+        document.querySelectorAll('#qhNoteModal .qn-pill').forEach(function (p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        var type = btn.dataset.type;
+        document.getElementById('qhType').value = type;
+        document.getElementById('qhRemindAt').classList.toggle('d-none', type !== 'meeting');
+    }
+
+    function qhAssignChanged(select) {
+        var row = document.getElementById('qhAssignRow');
+        var hint = document.getElementById('qhAssignHint');
+        var selectedOption = select.options[select.selectedIndex];
+        var isAssigned = !!select.value;
+
+        row.classList.toggle('qn-assign-row--active', isAssigned);
+
+        if (isAssigned) {
+            hint.classList.remove('d-none');
+            hint.textContent = 'This will be added as a task, visible only to ' + selectedOption.dataset.name + '.';
+        } else {
+            hint.classList.add('d-none');
+        }
+
+        document.getElementById('qhSubmitBtn').textContent = isAssigned ? 'Assign Task' : 'Add Note';
+    }
+
+    function qhResetForm() {
+        var form = document.getElementById('qhNoteForm');
+        if (!form) return;
+        form.reset();
+        document.querySelectorAll('#qhNoteModal .qn-pill').forEach(function (p) { p.classList.remove('active'); });
+        document.querySelector('#qhNoteModal .qn-pill--priority').classList.add('active');
+        document.getElementById('qhType').value = 'priority';
+        document.getElementById('qhRemindAt').classList.add('d-none');
+        document.getElementById('qhAssignRow').classList.remove('qn-assign-row--active');
+        document.getElementById('qhAssignHint').classList.add('d-none');
+        document.getElementById('qhSubmitBtn').textContent = 'Add Note';
+    }
+
+    function qhShowFeedback(message, isError) {
+        var el = document.getElementById('qhFeedback');
+        el.textContent = message;
+        el.style.color = isError ? '#ef4444' : '#16a34a';
+        el.style.background = isError ? 'rgba(239, 68, 68, 0.08)' : 'rgba(22, 163, 74, 0.08)';
+        el.classList.remove('d-none');
+        setTimeout(function () { el.classList.add('d-none'); }, 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.getElementById('qhNoteForm');
+        if (!form) return;
+
+        var modalEl = document.getElementById('qhNoteModal');
+        if (modalEl) {
+            modalEl.addEventListener('hidden.bs.modal', qhResetForm);
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var titleInput = document.getElementById('qhTitle');
+            var title = titleInput.value.trim();
+            if (!title) return;
+
+            var type = document.getElementById('qhType').value;
+            var remindAt = document.getElementById('qhRemindAt').value;
+            var assignTo = document.getElementById('qhAssignTo').value;
+            var token = document.querySelector('meta[name="csrf-token"]').content;
+            var modalInstance = bootstrap.Modal.getInstance(modalEl);
+
+            if (assignTo) {
+                fetch('/daily-tasks/quick-assign', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': token,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        task_title: title,
+                        employee_id: assignTo,
+                        priority: type === 'priority' ? 'Hard' : 'Medium',
+                        remind_at: remindAt || null,
+                    }),
+                })
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        if (data.success) {
+                            if (modalInstance) modalInstance.hide();
+                            qhShowFeedback(data.message);
+                        } else if (data.error) {
+                            qhShowFeedback(data.error, true);
+                        }
+                    });
+                return;
+            }
+
+            fetch('/notes', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ title: title, type: type, remind_at: remindAt || null }),
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        if (modalInstance) modalInstance.hide();
+                        qhShowFeedback('Note added.');
+                    }
+                });
+        });
+    });
 </script>
 
 @auth

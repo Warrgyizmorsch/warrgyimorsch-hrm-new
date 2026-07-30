@@ -29,6 +29,7 @@ class NoteController extends Controller
                 'type' => $note->type,
                 'title' => $note->title,
                 'remind_at' => $note->remind_at?->format('d M, h:i A'),
+                'remind_at_iso' => $note->remind_at?->toIso8601String(),
                 'is_completed' => $note->is_completed,
             ],
         ]);

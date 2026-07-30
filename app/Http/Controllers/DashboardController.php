@@ -450,30 +450,7 @@ class DashboardController extends Controller
 
         // Late arrival on today
         $todayLateEmployees = $this->getLateEmployeesData();
-        // $todayLateEmployees = Attendance::with('employee')
-        // ->whereDate('attendance_date', $today)
-        // ->whereTime('check_in', '>', '09:30:00')
-        // // ->when(!$isAdmin, fn($q) => $q->where('employee_id', $employeeId))
-        // ->get();
 
-        // $officeTime = Carbon::createFromTime(9, 30, 0);
-
-        // $todayLateEmployees = $todayLateEmployees->map(function ($item) use ($officeTime) {
-        //     $checkIn = Carbon::parse($item->check_in);
-
-        //     $lateMinutes = $officeTime->diffInMinutes($checkIn);
-
-        //     $hours = floor($lateMinutes / 60);
-        //     $minutes = $lateMinutes % 60;
-
-        //     if ($hours > 0) {
-        //         $item->late_duration = $hours . ' hr ' . $minutes . ' min';
-        //     } else {
-        //         $item->late_duration = $minutes . ' min';
-        //     }
-
-        //     return $item;
-        // });
 
         $userDepartment = $employee->department ?? auth()->user()->employee?->department ?? null;
         $normalizedUserDepartment = $userDepartment

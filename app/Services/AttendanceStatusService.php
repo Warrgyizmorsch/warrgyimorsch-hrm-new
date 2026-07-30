@@ -3,9 +3,17 @@
 namespace App\Services;
 
 use App\Models\Attendance;
+use App\Models\Employee;
+use Carbon\Carbon;
 
 class AttendanceStatusService
 {
+    /** Grace window (minutes) within which a late arrival can be forgiven — see lateArrivalMinutes(). */
+    public const LATE_ARRIVAL_GRACE_MINUTES = 15;
+
+    /** Forgiven late arrivals allowed per calendar month before the grace credit stops applying. */
+    public const LATE_ARRIVAL_GRACE_LIMIT_PER_MONTH = 2;
+
     public const FULL_DAY_HOURS = 8.5;
 
     public const NIGHT_SHIFT_FULL_DAY_HOURS = 8.0;
@@ -34,6 +42,47 @@ class AttendanceStatusService
         return self::isNightShiftRecord($record)
             ? self::NIGHT_SHIFT_FULL_DAY_HOURS
             : self::FULL_DAY_HOURS;
+    }
+
+    /**
+     * The employee's scheduled shift start for the day this record covers (Sunday override aware).
+     */
+    public static function resolveShiftStart(Attendance $record, Employee $employee): Carbon
+    {
+        $date = $record->attendance_date instanceof Carbon
+            ? $record->attendance_date->toDateString()
+            : Carbon::parse($record->attendance_date)->toDateString();
+
+        $isSunday = Carbon::parse($date)->isSunday();
+        $timeIn = ($isSunday && $employee->sunday_time_in)
+            ? $employee->sunday_time_in
+            : ($employee->time_in ?? '09:30:00');
+
+        try {
+            return Carbon::parse($date . ' ' . Carbon::parse($timeIn)->format('H:i:s'));
+        } catch (\Exception $e) {
+            return Carbon::parse($date . ' 09:30:00');
+        }
+    }
+
+    /**
+     * Minutes the check-in punch falls after the employee's scheduled shift start (0 if on time or early).
+     */
+    public static function lateArrivalMinutes(Attendance $record, Employee $employee): int
+    {
+        $checkIn = $record->getRawPunchTime('check_in');
+        if (!$checkIn) {
+            return 0;
+        }
+
+        $date = $record->attendance_date instanceof Carbon
+            ? $record->attendance_date->toDateString()
+            : Carbon::parse($record->attendance_date)->toDateString();
+
+        $shiftStart = self::resolveShiftStart($record, $employee);
+        $checkInTime = Carbon::parse($date . ' ' . Carbon::parse($checkIn)->format('H:i:s'));
+
+        return max(intdiv($checkInTime->timestamp - $shiftStart->timestamp, 60), 0);
     }
 
     public static function isLeaveDerivedStatus(string $status): bool

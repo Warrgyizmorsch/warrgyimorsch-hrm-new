@@ -37,6 +37,8 @@ class AttendanceHistoryService
         $todayStr = Carbon::today()->format('Y-m-d');
         $lastWorkingDay = $this->employeeLastWorkingDay($employeeId);
         $lastWorkingDayStr = $lastWorkingDay?->format('Y-m-d');
+        $employee = Employee::find($employeeId);
+        $graceCredits = $this->computeLateArrivalGraceCredits($employee, $records, $dateStrings, $holidayMap);
         $history = [];
 
         for ($date = $endDate->copy(); $date->gte($startDate); $date->subDay()) {
@@ -51,6 +53,13 @@ class AttendanceHistoryService
             $excludedFromPayable = $dayStr > $todayStr || ($lastWorkingDayStr && $dayStr > $lastWorkingDayStr);
 
             if ($record) {
+                if (!empty($graceCredits[$dayStr])) {
+                    // Forgiven late arrival (see computeLateArrivalGraceCredits): credit the late
+                    // minutes back into worked hours so this day isn't downgraded to Half Day for
+                    // a punctuality slip the company still allows this month.
+                    $record->total_hours = (float) ($record->total_hours ?? 0) + ($graceCredits[$dayStr] / 60);
+                }
+
                 $resolved = $record->resolvePayrollDisplayStatus($isHoliday, $isActivityDay, $isSunday);
 
                 $history[] = [
@@ -92,6 +101,60 @@ class AttendanceHistoryService
         }
 
         return $history;
+    }
+
+    /**
+     * Forgive the first LATE_ARRIVAL_GRACE_LIMIT_PER_MONTH late arrivals (within
+     * LATE_ARRIVAL_GRACE_MINUTES of shift start) per calendar month, crediting their late
+     * minutes back into that day's worked hours. Only counts in-office days the employee
+     * actually punched in for — WFH, leave, holidays, Sundays, and absences are excluded.
+     * Beyond the monthly allowance (or beyond the grace window), no credit is given and the
+     * day falls back to the normal hours-based Present/Half Day/Absent thresholds.
+     *
+     * @return array<string, int> date string ('Y-m-d') => late minutes to credit
+     */
+    private function computeLateArrivalGraceCredits(?Employee $employee, $records, array $dateStrings, $holidayMap): array
+    {
+        if (!$employee) {
+            return [];
+        }
+
+        $credits = [];
+        $occurrencesByMonth = [];
+
+        foreach ($dateStrings as $dayStr) {
+            $record = $records->get($dayStr);
+            if (!$record || !$record->check_in) {
+                continue;
+            }
+
+            $date = Carbon::parse($dayStr);
+            $status = strtolower($record->status ?? '');
+
+            if (
+                $date->isSunday()
+                || $holidayMap->has($dayStr)
+                || $status === 'absent'
+                || AttendanceStatusService::isLeaveDerivedStatus($status)
+            ) {
+                continue;
+            }
+
+            $lateMinutes = AttendanceStatusService::lateArrivalMinutes($record, $employee);
+
+            if ($lateMinutes <= 0 || $lateMinutes > AttendanceStatusService::LATE_ARRIVAL_GRACE_MINUTES) {
+                continue;
+            }
+
+            $monthKey = $date->format('Y-m');
+            $occurrencesByMonth[$monthKey] = ($occurrencesByMonth[$monthKey] ?? 0) + 1;
+
+            if ($occurrencesByMonth[$monthKey] <= AttendanceStatusService::LATE_ARRIVAL_GRACE_LIMIT_PER_MONTH) {
+                $credits[$dayStr] = $lateMinutes;
+            }
+        }
+
+        return $credits;
     }
 
     private function employeeLastWorkingDay(int $employeeId): ?Carbon

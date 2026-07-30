@@ -31,7 +31,7 @@
         <div class="celebration-section">
             <div class="premium-grid">
                 @php $birthdayCount = 0; @endphp
-                @foreach ($employees as $employee)
+                @foreach ($employeesByBirthday as $employee)
                     @php
                         $birthday = \Carbon\Carbon::parse($employee->date_of_birth)->year(now()->year);
                         $today = now()->startOfDay();
@@ -101,7 +101,7 @@
         <div class="celebration-section">
             <div class="premium-grid">
                 @php $birthdayCount = 0; @endphp
-                @foreach ($employees as $employee)
+                @foreach ($employeesByBirthday as $employee)
                     @php
                         $birthday = \Carbon\Carbon::parse($employee->date_of_birth)->year(now()->year);
                         if ($birthday->isPast() && !$birthday->isToday()) {
@@ -172,7 +172,7 @@
         <div class="celebration-section">
             <div class="premium-grid">
                 @php $anniversaryCount = 0; @endphp
-                @foreach ($employees as $employee)
+                @foreach ($employeesByAnniversary as $employee)
                     @php
                         $joiningDate = \Carbon\Carbon::parse($employee->date_of_joining);
                         $anniversary = $joiningDate->copy()->year(now()->year);
@@ -244,7 +244,7 @@
         <div class="celebration-section">
             <div class="premium-grid">
                 @php $anniversaryCount = 0; @endphp
-                @foreach ($employees as $employee)
+                @foreach ($employeesByAnniversary as $employee)
                     @php
                         $joiningDate = \Carbon\Carbon::parse($employee->date_of_joining);
                         $anniversary = $joiningDate->copy()->year(now()->year);
