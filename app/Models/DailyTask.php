@@ -93,4 +93,9 @@ class DailyTask extends Model
             'task_id'
         )->latest();
     }
+
+    public function latestStatusHistory()
+    {
+        return $this->hasOne(TaskStatusHistory::class, 'task_id')->latestOfMany();
+    }
 }

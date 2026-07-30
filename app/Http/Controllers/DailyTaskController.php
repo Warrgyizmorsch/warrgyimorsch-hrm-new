@@ -291,7 +291,13 @@ class DailyTaskController extends Controller
         return response()->json(['success' => 'Task updated successfully!']);
     }
 
-    public function destroy(DailyTask $dailyTask)
+    /**
+     * Whether the current user may delete this task. A task's assignee can update its
+     * status/priority, but for an ad-hoc task (no project) assigned by someone else, only
+     * that assigner — or an admin/lead — can delete it outright; the assignee alone isn't
+     * enough. Project tasks keep the original owner-can-delete behavior.
+     */
+    private function canDeleteDailyTask(DailyTask $dailyTask): bool
     {
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
         $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
@@ -300,9 +306,16 @@ class DailyTaskController extends Controller
         $project = $dailyTask->project;
         $isLead = $project && is_array($project->leaders) && in_array(auth()->user()->employee_id, $project->leaders);
         $isOwner = auth()->user()->employee_id == $dailyTask->employee_id;
+        $isAssigner = auth()->id() == $dailyTask->assigned_by;
+        $canDeleteAsOwner = $isOwner && $dailyTask->project_id !== null;
 
-        if (!$isAdmin && !$isLead && !$isOwner) {
-            return back()->with('error', 'Unauthorized action.');
+        return $isAdmin || $isLead || $isAssigner || $canDeleteAsOwner;
+    }
+
+    public function destroy(DailyTask $dailyTask)
+    {
+        if (!$this->canDeleteDailyTask($dailyTask)) {
+            return back()->with('error', 'Only the person who assigned this task, or an admin, can delete it.');
         }
 
         $dailyTask->delete();
@@ -312,11 +325,25 @@ class DailyTaskController extends Controller
     public function bulkDestroy(Request $request)
     {
         $ids = $request->ids;
-        if ($ids && is_array($ids)) {
-            DailyTask::whereIn('id', $ids)->delete();
-            return response()->json(['success' => 'Tasks deleted successfully!']);
+        if (!$ids || !is_array($ids)) {
+            return response()->json(['error' => 'No tasks selected.'], 400);
         }
-        return response()->json(['error' => 'No tasks selected.'], 400);
+
+        $tasks = DailyTask::with('project')->whereIn('id', $ids)->get();
+        $deletableIds = $tasks->filter(fn (DailyTask $task) => $this->canDeleteDailyTask($task))->pluck('id');
+
+        if ($deletableIds->isEmpty()) {
+            return response()->json(['error' => 'You are not authorized to delete the selected tasks.'], 403);
+        }
+
+        DailyTask::whereIn('id', $deletableIds)->delete();
+
+        $skipped = count($ids) - $deletableIds->count();
+        $message = $skipped > 0
+            ? $deletableIds->count() . ' task(s) deleted. ' . $skipped . ' skipped (not authorized).'
+            : 'Tasks deleted successfully!';
+
+        return response()->json(['success' => $message]);
     }
 
     public function storeFollowUp(Request $request)

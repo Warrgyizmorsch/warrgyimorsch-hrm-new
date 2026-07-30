@@ -39,6 +39,11 @@
                                 To {{ $task->employee->name ?? 'Someone' }} @if($task->priority) &middot; {{ $task->priority }} @endif
                                 <span class="qn-status qn-status--{{ \Illuminate\Support\Str::slug($task->status) }}">{{ $task->status }}</span>
                             </div>
+                            @if($task->latestStatusHistory && $task->latestStatusHistory->comment)
+                                <div class="qn-item-feedback">
+                                    <i class="feather-message-circle"></i> {{ $task->latestStatusHistory->comment }}
+                                </div>
+                            @endif
                         </div>
                         <button type="button" class="qn-status-btn" data-task-id="{{ $task->id }}" title="Update status" onclick="qnOpenStatusModal({{ $task->id }}, '{{ $task->status }}')"><i class="feather-check-square"></i></button>
                         <a href="{{ route('daily-tasks.index') }}" class="qn-item-link" title="Open in Daily Tasks"><i class="feather-arrow-up-right"></i></a>
@@ -315,6 +320,19 @@
     .qn-item-body { flex: 1; min-width: 0; }
     .qn-item-title { font-size: 13px; font-weight: 600; color: #1e293b; word-break: break-word; }
     .qn-item-meta { font-size: 11px; color: #94a3b8; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .qn-item-feedback {
+        font-size: 11px;
+        color: #475569;
+        background: #f8fafc;
+        border-left: 2px solid #1070e0;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 5px;
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    .qn-item-feedback i { font-size: 11px; margin-top: 2px; flex-shrink: 0; }
     .qn-status {
         display: inline-block;
         font-size: 9px;

@@ -312,15 +312,24 @@
                                                         onclick="editTask({{ json_encode(array_merge($task->toArray(), ['start_date_formatted' => optional($task->start_date)->format('Y-m-d'), 'end_date_formatted' => optional($task->end_date)->format('Y-m-d')])) }})">
                                                         <i class="feather-edit-2"></i>
                                                     </button>
-                                                    <form action="{{ route('daily-tasks.destroy', $task->id) }}" method="POST"
-                                                        class="delete-form d-inline" onsubmit="deleteRecord(event, this)">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit"
-                                                            class="zoho-icon-btn zoho-icon-btn--danger"
-                                                            title="Delete Task">
-                                                            <i class="feather-trash-2"></i>
-                                                        </button>
-                                                    </form>
+                                                    @php
+                                                        $taskProject = $task->project;
+                                                        $isTaskLead = $taskProject && is_array($taskProject->leaders) && in_array(auth()->user()->employee_id, $taskProject->leaders);
+                                                        $isTaskOwner = auth()->user()->employee_id == $task->employee_id;
+                                                        $isTaskAssigner = auth()->id() == $task->assigned_by;
+                                                        $canDeleteTask = $isAdmin || $isTaskLead || $isTaskAssigner || ($isTaskOwner && $task->project_id !== null);
+                                                    @endphp
+                                                    @if($canDeleteTask)
+                                                        <form action="{{ route('daily-tasks.destroy', $task->id) }}" method="POST"
+                                                            class="delete-form d-inline" onsubmit="deleteRecord(event, this)">
+                                                            @csrf @method('DELETE')
+                                                            <button type="submit"
+                                                                class="zoho-icon-btn zoho-icon-btn--danger"
+                                                                title="Delete Task">
+                                                                <i class="feather-trash-2"></i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>

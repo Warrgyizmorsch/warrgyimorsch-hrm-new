@@ -509,7 +509,7 @@ class DashboardController extends Controller
                 ->get()
             : collect();
 
-        $tasksIAssigned = DailyTask::with('employee')
+        $tasksIAssigned = DailyTask::with(['employee', 'latestStatusHistory'])
             ->whereNull('project_id')
             ->where('assigned_by', auth()->id())
             ->where('status', '!=', 'Completed')
