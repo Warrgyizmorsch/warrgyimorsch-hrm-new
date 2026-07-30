@@ -195,6 +195,52 @@ class DailyTaskController extends Controller
         return response()->json(['success' => 'Task created successfully!']);
     }
 
+    /**
+     * Quick-assign an ad-hoc task to any employee from the dashboard "Quick Notes" widget.
+     * Unlike store(), this is intentionally open to every authenticated employee and every
+     * target employee (same or different department) — it is not restricted to project members.
+     */
+    public function quickAssign(Request $request)
+    {
+        $validated = $request->validate([
+            'task_title' => 'required|string|max:255',
+            'employee_id' => 'required|exists:employees,id',
+            'priority' => 'nullable|string|in:Hard,Medium,Low',
+            'remind_at' => 'nullable|date',
+        ]);
+
+        $assignee = Employee::active()->find($validated['employee_id']);
+        if (!$assignee) {
+            return response()->json(['error' => 'Selected employee is not available.'], 422);
+        }
+
+        $startDate = now();
+        $endDate = !empty($validated['remind_at'])
+            ? \Carbon\Carbon::parse($validated['remind_at'])->endOfDay()
+            : $startDate->copy()->endOfDay();
+
+        $task = DailyTask::create([
+            'project_id' => null,
+            'task_title' => $validated['task_title'],
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'priority' => $validated['priority'] ?? 'Medium',
+            'status' => 'Pending',
+            'employee_id' => $assignee->id,
+            'assigned_by' => Auth::id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Task assigned to ' . $assignee->name . '.',
+            'task' => [
+                'id' => $task->id,
+                'task_title' => $task->task_title,
+                'employee_name' => $assignee->name,
+            ],
+        ]);
+    }
+
     public function update(Request $request, DailyTask $dailyTask)
     {
         $validated = $request->validate([
@@ -507,9 +553,10 @@ class DailyTaskController extends Controller
         }
 
         $isOwner = auth()->user()->employee_id == $dailyTask->employee_id;
+        $isAssigner = auth()->id() == $dailyTask->assigned_by;
 
-        if (!$isAdmin && !$isLead && !$isOwner) {
-            return response()->json(['error' => 'Only Admin, Project Lead or Task Owner can change status.'], 403);
+        if (!$isAdmin && !$isLead && !$isOwner && !$isAssigner) {
+            return response()->json(['error' => 'Only Admin, Project Lead, Task Owner or the person who assigned it can change status.'], 403);
         }
 
         $updateData = ['status' => $validated['status']];
@@ -556,8 +603,9 @@ class DailyTaskController extends Controller
         $project = $dailyTask->project;
         $isLead = $project && is_array($project->leaders) && in_array(auth()->user()->employee_id, $project->leaders);
         $isOwner = auth()->user()->employee_id == $dailyTask->employee_id;
+        $isAssigner = auth()->id() == $dailyTask->assigned_by;
 
-        if (!$isAdmin && !$isLead && !$isOwner) {
+        if (!$isAdmin && !$isLead && !$isOwner && !$isAssigner) {
             return response()->json(['error' => 'Unauthorized action.'], 403);
         }
 

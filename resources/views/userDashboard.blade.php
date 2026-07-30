@@ -388,7 +388,14 @@
     <!-- [ page-header ] end -->
     <!-- [ Main Content ] start -->
     <div class="main-content pt-md-4 pt-2 hrm-resp-main-content">
-        @include('partials.urgent-announcements-card', ['announcements' => $announcements])
+        <div class="row g-3 mb-3">
+            <div class="col-lg-6">
+                @include('partials.urgent-announcements-card', ['announcements' => $announcements])
+            </div>
+            <div class="col-lg-6">
+                @include('partials.quick-notes-card')
+            </div>
+        </div>
 
         <div class="row">
             <!-- [Available Leave Balance] start -->
@@ -1187,12 +1194,6 @@
                             </div>
                         </div> -->
                 <!-- [Latest leave report] end -->
-
-                <!--! BEGIN: [Quick Notes] !-->
-                <div class="col-xxl-4 saas-animate-in" style="animation-delay:0.55s">
-                    @include('partials.quick-notes-card')
-                </div>
-                <!--! END: [Quick Notes] !-->
                 <!--! BEGIN: [Attendance Analytics - disabled] !-->
                 <!-- <div class="col-xxl-4">
                             <div class="card stretch stretch-full">

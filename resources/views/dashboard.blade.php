@@ -992,7 +992,14 @@
             </div>
         </div>
 
-        @include('partials.urgent-announcements-card', ['announcements' => $announcements])
+        <div class="row g-3 mb-4">
+            <div class="col-lg-6">
+                @include('partials.urgent-announcements-card', ['announcements' => $announcements])
+            </div>
+            <div class="col-lg-6">
+                @include('partials.quick-notes-card')
+            </div>
+        </div>
 
         <div class="row g-3 mb-4">
             @if($canViewPayrollAnalytics)
@@ -1348,7 +1355,7 @@
             </div>
             <div class="row g-3 mt-1">
                 <!-- [Latest leave report] start -->
-                <div class="col-xxl-8 saas-animate-in" style="animation-delay:0.5s">
+                <div class="col-xxl-12 saas-animate-in" style="animation-delay:0.5s">
                     <div class="saas-panel-card">
                         <div class="saas-leave-report-header">
                             <h5 class="card-title">Latest Leave Report</h5>
@@ -1477,12 +1484,6 @@
                     </div>
                 </div>
                 <!-- [Latest leave report] end -->
-
-                <!--! BEGIN: [Quick Notes] !-->
-                <div class="col-xxl-4 saas-animate-in" style="animation-delay:0.55s">
-                    @include('partials.quick-notes-card')
-                </div>
-                <!--! END: [Quick Notes] !-->
             </div>
 
         @if($canViewPayrollAnalytics)

@@ -90,6 +90,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/daily-tasks', [DailyTaskController::class, 'index'])->name('daily-tasks.index');
     Route::post('/daily-tasks', [DailyTaskController::class, 'store'])->name('daily-tasks.store');
+    Route::post('/daily-tasks/quick-assign', [DailyTaskController::class, 'quickAssign'])->name('daily-tasks.quick-assign');
     Route::put('/daily-tasks/{dailyTask}', [DailyTaskController::class, 'update'])->name('daily-tasks.update');
     Route::patch('/daily-tasks/{dailyTask}/status', [DailyTaskController::class, 'updateStatus'])->name('daily-tasks.update-status');
     Route::patch('/daily-tasks/{dailyTask}/priority', [DailyTaskController::class, 'updatePriority'])->name('daily-tasks.update-priority');

@@ -532,6 +532,13 @@ class DashboardController extends Controller
                 ->get()
             : collect();
 
+        $tasksIAssigned = DailyTask::with('employee')
+            ->whereNull('project_id')
+            ->where('assigned_by', auth()->id())
+            ->where('status', '!=', 'Completed')
+            ->orderByDesc('created_at')
+            ->get();
+
         if (!$isAdmin) {
             return view('userDashboard', compact(
                 'totalEmployees',
@@ -582,7 +589,8 @@ class DashboardController extends Controller
                 'totalJourney',
                 'canViewPayrollAnalytics',
                 'myNotes',
-                'myAdhocTasks'
+                'myAdhocTasks',
+                'tasksIAssigned'
             ));
         }
 
@@ -629,7 +637,8 @@ class DashboardController extends Controller
             'announcements',
             'canViewPayrollAnalytics',
             'myNotes',
-            'myAdhocTasks'
+            'myAdhocTasks',
+            'tasksIAssigned'
         ));
     }
 
