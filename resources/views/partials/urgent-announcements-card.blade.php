@@ -123,6 +123,18 @@
                                                 data-target="bc-msg-{{ $announcement->id }}">Show more</button>
                                     @endif
                                 </div>
+                                @if(!empty($announcement->documents))
+                                    <div class="bc-item-attachments">
+                                        @foreach($announcement->documents as $doc)
+                                            <a href="{{ \Storage::url($doc) }}" target="_blank" rel="noopener"
+                                               class="bc-item-attachment-chip"
+                                               title="{{ Str::after(basename($doc), '_') }}">
+                                                <i class="feather-paperclip"></i>
+                                                {{ Str::limit(Str::after(basename($doc), '_'), 24) }}
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </div>
                         </div>
                         <div class="bc-card-aside">

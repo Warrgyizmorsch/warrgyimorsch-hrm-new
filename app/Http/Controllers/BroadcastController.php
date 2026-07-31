@@ -60,8 +60,9 @@ class BroadcastController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'department' => 'required|string',
-            'message'    => 'required|string|max:5000',
+            'department'    => 'required|string',
+            'message'       => 'required|string|max:5000',
+            'documents.*'   => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
         ]);
 
         // Team leaders can only ever broadcast to their own department —
@@ -73,6 +74,15 @@ class BroadcastController extends Controller
             abort_if(!$department, 403, 'No department found for this account.');
             $validated['department'] = $department;
         }
+
+        $documents = [];
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $file) {
+                $fileName = time().'_'.$file->getClientOriginalName();
+                $documents[] = $file->storeAs('broadcast-documents', $fileName, 'public');
+            }
+        }
+        $validated['documents'] = $documents;
 
         Broadcast::create($validated);
 
@@ -89,15 +99,39 @@ class BroadcastController extends Controller
         return view('broadcast.index', compact('broadcasts', 'broadcastToEdit', 'departments'));
     }
 
-    // Handle updates 
+    // Handle updates
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'department' => 'required|string',
-            'message'    => 'required|string|max:5000',
+            'department'    => 'required|string',
+            'message'       => 'required|string|max:5000',
+            'documents.*'   => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
         ]);
 
         $broadcast = Broadcast::findOrFail($id);
+
+        $documents = is_array($broadcast->documents) ? $broadcast->documents : [];
+
+        // Remove any documents the user deleted in the edit form
+        if ($request->has('removed_documents')) {
+            foreach ($request->removed_documents as $removedFile) {
+                if (($key = array_search($removedFile, $documents)) !== false) {
+                    unset($documents[$key]);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($removedFile);
+                }
+            }
+            $documents = array_values($documents);
+        }
+
+        // Append any newly uploaded documents
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $file) {
+                $fileName = time().'_'.$file->getClientOriginalName();
+                $documents[] = $file->storeAs('broadcast-documents', $fileName, 'public');
+            }
+        }
+
+        $validated['documents'] = $documents;
         $broadcast->update($validated);
 
         return redirect()->route('broadcasts.index')->with('success', 'Broadcast updated successfully.');

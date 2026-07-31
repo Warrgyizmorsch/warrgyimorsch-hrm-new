@@ -146,6 +146,16 @@
                                                 <div class="bc-message bc-message--clamped">{{ $broadcast->message }}</div>
                                                 <a href="javascript:void(0)" class="bc-message-toggle small text-primary d-none">Show more</a>
                                             </div>
+                                            @if(!empty($broadcast->documents))
+                                            <div class="bc-attachments mt-1">
+                                                @foreach($broadcast->documents as $doc)
+                                                    <a href="{{ \Storage::url($doc) }}" target="_blank" rel="noopener" class="bc-attachment-chip" title="{{ \Illuminate\Support\Str::after(basename($doc), '_') }}">
+                                                        <i class="feather-paperclip"></i>
+                                                        {{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::after(basename($doc), '_'), 20) }}
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                            @endif
                                         </td>
                                         <td>
                                             <span class="badge {{ $broadcast->department === 'All' ? 'bg-primary' : 'bg-light text-dark border' }}">
@@ -165,7 +175,11 @@
                                         <td class="text-end">
                                             @if($isAdmin)
                                             <button type="button" class="btn btn-sm btn-icon btn-light-brand" title="Edit"
-                                                onclick="openBroadcastOffcanvas({{ $broadcast->id }}, '{{ addslashes($broadcast->department) }}', `{{ addslashes($broadcast->message) }}`)">
+                                                data-id="{{ $broadcast->id }}"
+                                                data-department="{{ addslashes($broadcast->department) }}"
+                                                data-message="{{ addslashes($broadcast->message) }}"
+                                                data-documents='@json($broadcast->documents ?? [])'
+                                                onclick="openBroadcastOffcanvas(this.dataset.id, this.dataset.department, this.dataset.message, JSON.parse(this.dataset.documents || '[]'))">
                                                 <i class="feather-edit-2"></i>
                                             </button>
                                             @endif
@@ -206,7 +220,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
         </div>
         <div class="offcanvas-body">
-            <form id="broadcastForm" action="{{ route('broadcasts.store') }}" method="POST">
+            <form id="broadcastForm" action="{{ route('broadcasts.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="_method" id="broadcastFormMethod" value="">
 
@@ -245,6 +259,14 @@
                     </label>
                     <textarea name="message" id="bcMessage" rows="6" class="form-control" placeholder="Write your announcement…" maxlength="5000" required style="height: 160px; min-height: 160px; resize: vertical;"></textarea>
                     @error('message') <small class="text-danger">{{ $message }}</small> @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Attachments</label>
+                    <input type="file" name="documents[]" id="bcDocuments" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xlsx" style="height: 44px; border-radius: 12px;">
+                    <small class="text-muted d-block mt-1">PDF, image, Word or Excel — max 5MB each.</small>
+                    @error('documents.*') <small class="text-danger">{{ $message }}</small> @enderror
+                    <div id="bcExistingDocuments" class="d-flex flex-wrap gap-2 mt-2"></div>
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100 mt-3">
@@ -354,6 +376,44 @@
         .bc-message-toggle {
             cursor: pointer;
         }
+        .bc-attachments {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .bc-attachment-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4b5563;
+            background: #f1f3f9;
+            border-radius: 20px;
+            padding: 3px 10px;
+            text-decoration: none;
+        }
+        .bc-attachment-chip:hover {
+            background: #e4e8f5;
+            color: #3858f9;
+        }
+        .bc-doc-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4b5563;
+            background: #f1f3f9;
+            border-radius: 20px;
+            padding: 4px 10px;
+        }
+        .bc-doc-remove {
+            color: #ef4444;
+            text-decoration: none;
+            font-weight: 700;
+            line-height: 1;
+        }
 
         .zoho-people-table-search {
             position: relative;
@@ -408,9 +468,27 @@
     <script>
         let receiptModal = null;
         let broadcastOffcanvas = null;
+        let removedDocuments = [];
 
         function escapeReceiptText(value) {
             return $('<div>').text(value || '').html();
+        }
+
+        function renderExistingDocuments(documents) {
+            const container = document.getElementById('bcExistingDocuments');
+            container.innerHTML = '';
+
+            (documents || []).forEach(function (path) {
+                const name = path.split('/').pop().replace(/^\d+_/, '');
+                const chip = document.createElement('span');
+                chip.className = 'bc-doc-chip';
+                chip.innerHTML = `<i class="feather-paperclip"></i><span>${escapeReceiptText(name)}</span> <a href="javascript:void(0)" class="bc-doc-remove" title="Remove">&times;</a>`;
+                chip.querySelector('.bc-doc-remove').addEventListener('click', function () {
+                    removedDocuments.push(path);
+                    chip.remove();
+                });
+                container.appendChild(chip);
+            });
         }
 
         function setBcDept(value, label, element) {
@@ -425,10 +503,12 @@
             document.getElementById('bcMessageCount').innerText = document.getElementById('bcMessage').value.length;
         }
 
-        function openBroadcastOffcanvas(id, department, message) {
+        function openBroadcastOffcanvas(id, department, message, documents) {
             const form = document.getElementById('broadcastForm');
             form.reset();
             document.getElementById('broadcastFormMethod').value = '';
+            removedDocuments = [];
+            renderExistingDocuments(documents || []);
 
             const hasDeptDropdown = !!document.getElementById('bcDeptBtn');
 
@@ -464,6 +544,18 @@
                 : null;
 
             document.getElementById('bcMessage').addEventListener('input', updateBcMessageCount);
+
+            document.getElementById('broadcastForm').addEventListener('submit', function () {
+                const form = this;
+                form.querySelectorAll('input[name="removed_documents[]"]').forEach(el => el.remove());
+                removedDocuments.forEach(function (path) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'removed_documents[]';
+                    input.value = path;
+                    form.appendChild(input);
+                });
+            });
 
             // Expand/collapse long messages
             document.querySelectorAll('.bc-message-wrap').forEach(function (wrap) {

@@ -4121,6 +4121,31 @@ body.zoho-portal .avatar-text.bg-soft-primary {
     text-decoration: underline;
 }
 
+.bc-item-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.bc-item-attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--zoho-hover, #f1f3f9);
+    color: var(--zoho-text-secondary, #434a5a);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.bc-item-attachment-chip:hover {
+    background: var(--zoho-accent-soft, #e4e8f5);
+    color: var(--zoho-accent, #1070e0);
+}
+
 .bc-mark-btn {
     flex-shrink: 0;
     display: inline-flex;

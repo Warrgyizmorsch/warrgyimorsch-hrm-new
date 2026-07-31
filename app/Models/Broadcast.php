@@ -14,6 +14,11 @@ class Broadcast extends Model
     protected $fillable = [
         'department',
         'message',
+        'documents',
+    ];
+
+    protected $casts = [
+        'documents' => 'array',
     ];
 
     public function readByUsers()
