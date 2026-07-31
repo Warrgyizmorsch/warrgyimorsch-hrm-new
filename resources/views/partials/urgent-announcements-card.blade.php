@@ -126,7 +126,7 @@
                                 @if(!empty($announcement->documents))
                                     <div class="bc-item-attachments">
                                         @foreach($announcement->documents as $doc)
-                                            <a href="{{ \Storage::url($doc) }}" target="_blank" rel="noopener"
+                                            <a href="{{ asset('storage/' . $doc) }}" target="_blank" rel="noopener"
                                                class="bc-item-attachment-chip"
                                                title="{{ Str::after(basename($doc), '_') }}">
                                                 <i class="feather-paperclip"></i>

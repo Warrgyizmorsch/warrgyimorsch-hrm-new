@@ -149,7 +149,7 @@
                                             @if(!empty($broadcast->documents))
                                             <div class="bc-attachments mt-1">
                                                 @foreach($broadcast->documents as $doc)
-                                                    <a href="{{ \Storage::url($doc) }}" target="_blank" rel="noopener" class="bc-attachment-chip" title="{{ \Illuminate\Support\Str::after(basename($doc), '_') }}">
+                                                    <a href="{{ asset('storage/' . $doc) }}" target="_blank" rel="noopener" class="bc-attachment-chip" title="{{ \Illuminate\Support\Str::after(basename($doc), '_') }}">
                                                         <i class="feather-paperclip"></i>
                                                         {{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::after(basename($doc), '_'), 20) }}
                                                     </a>
