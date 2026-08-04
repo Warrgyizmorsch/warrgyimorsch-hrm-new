@@ -9,8 +9,9 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('attendance:sync')
-    ->everyTwoHours()
-    ->withoutOverlapping();
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
 
 Schedule::command('login-activity:close-stale')
     ->everyFiveMinutes()

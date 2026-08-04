@@ -14,40 +14,20 @@ class ZKTController extends Controller
         PyAttendanceService $service,
         BiometricSyncService $biometricSync
     ): JsonResponse {
-        $run = $biometricSync->runAttendanceScript();
+        $result = $biometricSync->fetchAttendance();
 
-        if (!$run['success']) {
+        if (!$result['success']) {
             Log::warning('Biometric attendance sync failed to start', [
-                'message' => $run['message'] ?? null,
+                'message' => $result['message'] ?? null,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $run['message'] ?? 'Failed to run biometric sync script.',
+                'message' => $result['message'] ?? 'Failed to fetch biometric attendance.',
             ], 500);
         }
 
-        $output = trim((string) ($run['output'] ?? ''));
-        $records = json_decode($output, true);
-
-        if (!is_array($records)) {
-            Log::warning('Biometric sync returned invalid JSON', [
-                'raw' => $output,
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'No valid data received from biometric device',
-                'raw' => $output,
-            ], 422);
-        }
-
-        if (isset($records['error'])) {
-            return response()->json([
-                'success' => false,
-                'message' => $records['error'],
-            ], 422);
-        }
+        $records = $result['records'];
 
         if ($records === []) {
             return response()->json([

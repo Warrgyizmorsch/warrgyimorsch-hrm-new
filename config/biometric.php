@@ -7,18 +7,23 @@ return [
     | Biometric / ZKT Attendance Sync
     |--------------------------------------------------------------------------
     |
-    | Configure the Python interpreter and script used to pull punches from
-    | the biometric device. Override these in .env per server/environment.
+    | Punches are pulled from the biometric device via the ZKTeco Attendance
+    | webhook API (https://webhook.gjnwm.dpdns.org/docs), which reaches the
+    | device on the LAN on our behalf. Override these in .env per
+    | server/environment.
     |
     */
 
-    'python_path' => env('BIOMETRIC_PYTHON_PATH', 'python'),
+    'webhook_url' => env('BIOMETRIC_WEBHOOK_URL', 'https://webhook.gjnwm.dpdns.org/api/attendance'),
 
-    'script_path' => env(
-        'BIOMETRIC_SCRIPT_PATH',
-        'C:\\xampp new\\htdocs\\python\\zk_attendance.py'
-    ),
+    'device_host' => env('BIOMETRIC_DEVICE_HOST', '192.168.29.150'),
 
-    'timeout' => (int) env('BIOMETRIC_TIMEOUT', 120),
+    'device_port' => (int) env('BIOMETRIC_DEVICE_PORT', 4370),
+
+    'device_password' => (int) env('BIOMETRIC_DEVICE_PASSWORD', 0),
+
+    'sync_days' => (int) env('BIOMETRIC_SYNC_DAYS', 1),
+
+    'timeout' => (int) env('BIOMETRIC_TIMEOUT', 60),
 
 ];
