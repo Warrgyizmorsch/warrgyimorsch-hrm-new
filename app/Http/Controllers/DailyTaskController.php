@@ -49,8 +49,7 @@ class DailyTaskController extends Controller
                     $q->orWhereJsonContains('members', (string) $employeeId);
                 }
                 foreach ($teamLeaderDepartments as $department) {
-                    $q->orWhereJsonContains('department', $department)
-                      ->orWhere('department', 'like', '%' . $department . '%');
+                    $q->orWhere('department', 'like', '%' . $department . '%');
                 }
             })->orderBy('name')->get();
         } elseif (!$isAdmin) {
