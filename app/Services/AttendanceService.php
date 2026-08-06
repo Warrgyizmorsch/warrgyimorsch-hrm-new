@@ -370,13 +370,15 @@ class AttendanceService
     }
 
     /**
-     * Drop punches that arrive within NOISE_CLUSTER_SECONDS of another punch.
+     * Collapse punches that arrive within NOISE_CLUSTER_SECONDS of the previous one
+     * (chained, so a burst of reads a couple seconds apart all fold into one cluster).
      *
-     * The biometric sync has been observed writing near-simultaneous duplicate punches
-     * (a few seconds apart) for unrelated employees at the same wall-clock moment — a
-     * device/sync artifact, not a real clock-in/out. Left unfiltered these get treated
-     * as a valid punch pair with ~0 worked hours, fabricating bogus "Absent" rows (or,
-     * for night shift, misidentified as the real check-in/out).
+     * The biometric sync has been observed writing near-simultaneous duplicate reads
+     * (a few seconds apart) for a single real tap — e.g. a fingerprint scanner
+     * double-reading one check-in or check-out. That's device noise around one real
+     * event, not two, so each cluster is reduced to its earliest punch rather than
+     * discarded outright — dropping the whole cluster would erase the real
+     * check-in/check-out it represents instead of just deduping it.
      *
      * @param  Carbon[]  $punches
      * @return Carbon[]
@@ -386,27 +388,16 @@ class AttendanceService
         $punches = array_values($punches);
         usort($punches, fn (Carbon $a, Carbon $b) => $a->timestamp <=> $b->timestamp);
 
-        $count = count($punches);
-        $keep = array_fill(0, $count, true);
-
-        for ($i = 0; $i < $count; $i++) {
-            for ($j = $i + 1; $j < $count; $j++) {
-                $gapSeconds = $punches[$i]->diffInSeconds($punches[$j]);
-
-                if ($gapSeconds > self::NOISE_CLUSTER_SECONDS) {
-                    break;
-                }
-
-                $keep[$i] = false;
-                $keep[$j] = false;
-            }
-        }
-
         $filtered = [];
-        foreach ($punches as $index => $punch) {
-            if ($keep[$index]) {
-                $filtered[] = $punch;
+        $clusterAnchor = null;
+
+        foreach ($punches as $punch) {
+            if ($clusterAnchor !== null && $clusterAnchor->diffInSeconds($punch) <= self::NOISE_CLUSTER_SECONDS) {
+                continue;
             }
+
+            $filtered[] = $punch;
+            $clusterAnchor = $punch;
         }
 
         return $filtered;
