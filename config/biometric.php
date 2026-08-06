@@ -26,4 +26,6 @@ return [
 
     'timeout' => (int) env('BIOMETRIC_TIMEOUT', 60),
 
+    'api_secret_token' => env('API_SECRET_TOKEN'),
+
 ];

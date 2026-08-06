@@ -24,15 +24,22 @@ class BiometricSyncService
             ];
         }
 
+        $token = trim((string) config('biometric.api_secret_token'));
+
         try {
-            $response = Http::timeout((int) config('biometric.timeout', 60))
-                ->acceptJson()
-                ->post($url, [
-                    'host'     => config('biometric.device_host'),
-                    'port'     => (int) config('biometric.device_port'),
-                    'password' => (int) config('biometric.device_password'),
-                    'days'     => (int) config('biometric.sync_days'),
-                ]);
+            $request = Http::timeout((int) config('biometric.timeout', 60))
+                ->acceptJson();
+
+            if ($token !== '') {
+                $request = $request->withToken($token);
+            }
+
+            $response = $request->post($url, [
+                'host'     => config('biometric.device_host'),
+                'port'     => (int) config('biometric.device_port'),
+                'password' => (int) config('biometric.device_password'),
+                'days'     => (int) config('biometric.sync_days'),
+            ]);
         } catch (ConnectionException $e) {
             Log::error('Biometric webhook connection failed', ['error' => $e->getMessage()]);
 
