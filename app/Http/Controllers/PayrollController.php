@@ -699,6 +699,49 @@ class PayrollController extends Controller
     }
 
     /**
+     * Bulk import payroll (payable days, basic salary, gross/net salary) from an Excel/CSV sheet
+     * for a chosen month. Employees are matched by employee_code; ESI is cut automatically when
+     * the employee's ESI flag is enabled and the gross salary is <= 21000 (same rule used by the
+     * single-employee calculator).
+     */
+    public function importPayroll(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'import_file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+                'month' => 'required|date_format:Y-m',
+            ]);
+
+            if ($validator->fails()) {
+                return back()->with('error', $validator->errors()->first());
+            }
+
+            $file = $request->file('import_file');
+
+            if (!$file || $file->getSize() == 0) {
+                return back()->with('error', 'Uploaded file is empty.');
+            }
+
+            $import = new \App\Imports\PayrollImport($request->month);
+            \Maatwebsite\Excel\Facades\Excel::import($import, $file);
+
+            $message = count($import->imported) . ' payroll record(s) saved for ' . $request->month . '.';
+            if ($import->skipped) {
+                $message .= ' Skipped (no matching employee): ' . implode(', ', $import->skipped);
+            }
+
+            return back()->with('success', $message);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Payroll Import Controller Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
      * Display payroll list
      */
     public function index(Request $request)

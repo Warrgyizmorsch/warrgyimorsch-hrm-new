@@ -6,6 +6,23 @@
 
 @section('content')
     @php
+        $payrollRoleSlug = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
+        $payrollIsAdmin = in_array($payrollRoleSlug, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $payrollImportDropdown = $payrollIsAdmin ? '
+            <div class="dropdown">
+                <button type="button" class="zoho-icon-btn dropdown-toggle" data-bs-toggle="dropdown" title="Import">
+                    <i class="feather-upload"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end attendance-import-menu">
+                    <form action="' . route('payroll.import') . '" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="' . csrf_token() . '">
+                        <label class="form-label fw-bold small text-dark mb-2">Import Payroll (Excel/CSV)</label>
+                        <input type="month" class="form-control mb-2" name="month" value="' . date('Y-m') . '" required>
+                        <input type="file" class="form-control mb-3" name="import_file" accept=".xlsx,.xls,.csv" required>
+                        <button type="submit" class="zoho-btn-primary w-100">Upload &amp; Save</button>
+                    </form>
+                </div>
+            </div>' : '';
         $payrollHeaderActions = '
             <button type="button" class="zoho-btn-outline" id="shareReportBtn" title="Share salary report">
                 <i class="feather-share-2"></i> Share Report
@@ -13,6 +30,7 @@
             <button type="button" class="zoho-icon-btn" data-bs-toggle="collapse" data-bs-target="#filterSection" title="Filter">
                 <i class="feather-filter"></i>
             </button>
+            ' . $payrollImportDropdown . '
             <div class="position-relative" id="exportWrapper">
                 <button type="button" class="zoho-icon-btn" id="exportBtn" title="Export">
                     <i class="feather-download"></i>

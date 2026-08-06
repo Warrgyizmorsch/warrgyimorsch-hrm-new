@@ -217,7 +217,7 @@
                                                             </div>
                                                             <div class="att-time-stat">
                                                                 <div class="att-time-stat-label">Work Hours</div>
-                                                                <div class="att-time-stat-value att-time-stat-value--primary">{{ number_format($att->total_hours, 2) }} hrs</div>
+                                                                <div class="att-time-stat-value att-time-stat-value--primary">{{ \App\Models\Attendance::formatTotalHours($att->total_hours) }}</div>
                                                             </div>
                                                         </div>
                                                     @else
@@ -322,7 +322,7 @@
                                                 @endphp
                                                 <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded" style="background: #f8fafc;">
                                                     <span class="badge {{ $statusClass }} fw-bold text-uppercase px-2 py-1" style="font-size: 10px;">{{ str_replace('_', ' ', $att->status) }}</span>
-                                                    <div class="fw-bold text-primary">{{ number_format($att->total_hours, 2) }} hrs</div>
+                                                    <div class="fw-bold text-primary">{{ \App\Models\Attendance::formatTotalHours($att->total_hours) }}</div>
                                                 </div>
                                                 <div class="d-flex gap-2">
                                                     <div class="flex-fill p-2 bg-white rounded border text-center">

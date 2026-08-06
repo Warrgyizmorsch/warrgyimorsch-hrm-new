@@ -177,6 +177,14 @@
     box-shadow: var(--zoho-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1)) !important;
 }
 
+.attendance-import-menu {
+    min-width: 300px;
+    padding: 16px !important;
+    border-radius: var(--zoho-radius-lg, 10px) !important;
+    border: 1px solid var(--zoho-border, #e0e0e0) !important;
+    box-shadow: var(--zoho-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1)) !important;
+}
+
 .payroll-export-menu .dropdown-item {
     font-size: 13px;
     font-weight: 600;

@@ -200,6 +200,7 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::post('/payroll/calculate', [PayrollController::class, 'calculatePayroll'])->name('payroll.calculate');
     Route::post('/payroll/sendDateRange', [PayrollController::class, 'calculateInRage'])->name('payroll.sendDateRange');
     Route::post('/payroll/store', [PayrollController::class, 'storePayroll'])->name('payroll.store');
+    Route::post('/payroll/import', [PayrollController::class, 'importPayroll'])->name('payroll.import');
     Route::get('/payroll/{id}/edit', [PayrollController::class, 'editPayroll'])->name('payroll.edit');
     Route::put('/payroll/{id}', [PayrollController::class, 'updatePayroll'])->name('payroll.update');
   
