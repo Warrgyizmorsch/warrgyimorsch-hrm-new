@@ -46,8 +46,7 @@ class ProjectController extends Controller
             if (!empty($departments)) {
                 $query->where(function ($q) use ($departments) {
                     foreach ($departments as $department) {
-                        $q->orWhereJsonContains('department', $department)
-                          ->orWhere('department', 'like', '%' . $department . '%');
+                        $this->orWhereDepartmentMatches($q, $department);
                     }
                 });
             } else {
@@ -78,8 +77,7 @@ class ProjectController extends Controller
         if ($request->filled('department')) {
             $departmentFilter = $request->department;
             $query->where(function ($q) use ($departmentFilter) {
-                $q->whereJsonContains('department', $departmentFilter)
-                  ->orWhere('department', 'like', '%' . $departmentFilter . '%');
+                $this->orWhereDepartmentMatches($q, $departmentFilter);
             });
         }
 
@@ -143,6 +141,19 @@ class ProjectController extends Controller
             'projectInsights',
             'sort'
         ));
+    }
+
+    /**
+     * Match a department against the `department` column, which normally holds a
+     * JSON-encoded array (via the Project model's mutator) but may contain legacy
+     * plain-text values from data imported before that mutator existed. JSON_CONTAINS
+     * errors out on non-JSON column values, so it's guarded with JSON_VALID and backed
+     * by a plain LIKE for the legacy rows.
+     */
+    private function orWhereDepartmentMatches($query, string $department): void
+    {
+        $query->orWhereRaw('JSON_VALID(department) AND JSON_CONTAINS(department, ?)', [json_encode($department)])
+              ->orWhere('department', 'like', '%' . $department . '%');
     }
 
     public function create()
