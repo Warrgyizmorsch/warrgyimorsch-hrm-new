@@ -773,7 +773,19 @@
                         document.getElementById('inputPF').value = payroll.pf_deduction || '';
                         document.getElementById('inputESI').value = payroll.esi_deduction || '';
                         document.getElementById('inputOther').value = payroll.other_deduction || '';
-                        
+
+                        const isBD = payroll.department === 'Business Development';
+                        document.getElementById('rowDearnessAllowance').style.display = isBD ? '' : 'none';
+                        document.getElementById('rowVariableEarning').style.display = isBD ? '' : 'none';
+                        document.getElementById('rowEpf').style.display = isBD ? '' : 'none';
+                        document.getElementById('rowProfessionalTax').style.display = isBD ? '' : 'none';
+                        document.getElementById('rowLoanRecovery').style.display = isBD ? '' : 'none';
+                        document.getElementById('inputDearnessAllowance').value = payroll.dearness_allowance || 0;
+                        document.getElementById('inputVariableEarning').value = payroll.variable_earning || 0;
+                        document.getElementById('inputEpf').value = payroll.epf_deduction || 0;
+                        document.getElementById('inputProfessionalTax').value = payroll.professional_tax_deduction || 0;
+                        document.getElementById('inputLoanRecovery').value = payroll.loan_recovery_deduction || 0;
+
                         // Set currentPayrollData for calculations
                         window.currentPayrollData = payroll;
                         
@@ -1182,8 +1194,10 @@
         let conv = parseFloat(document.getElementById('inputConveyance')?.value) || 0;
         let med = parseFloat(document.getElementById('inputMedical')?.value) || 0;
         let otherAllowance = parseFloat(currentPayrollData?.other_allowance) || 0;
+        let dearnessAllowance = parseFloat(document.getElementById('inputDearnessAllowance')?.value) || 0;
+        let variableEarning = parseFloat(document.getElementById('inputVariableEarning')?.value) || 0;
 
-        let fullSalary = basic + hra + conv + med + otherAllowance;
+        let fullSalary = basic + hra + conv + med + otherAllowance + dearnessAllowance;
         let backendPerDaySalary = Number(currentPayrollData?.perdaysalary || 0);
         let totalDays = Number(currentPayrollTotalDays || currentPayrollData?.total_days || 0);
         if (!totalDays && backendPerDaySalary > 0 && fullSalary > 0) {
@@ -1205,6 +1219,8 @@
             if (!isNaN(override) && override > 0) gross = override;
         }
 
+        gross += variableEarning;
+
         if(document.getElementById('tableGrossSalary')) document.getElementById('tableGrossSalary').innerText = '₹ ' + gross.toFixed(2);
 
         let earnedBasic = totalDays > 0 ? (basic / totalDays) * payableDays : 0;
@@ -1222,8 +1238,11 @@
         let pf = parseFloat(document.getElementById('inputPF')?.value) || 0;
         let esi = parseFloat(document.getElementById('inputESI')?.value) || 0;
         let other = parseFloat(document.getElementById('inputOther')?.value) || 0;
+        let epf = parseFloat(document.getElementById('inputEpf')?.value) || 0;
+        let professionalTax = parseFloat(document.getElementById('inputProfessionalTax')?.value) || 0;
+        let loanRecovery = parseFloat(document.getElementById('inputLoanRecovery')?.value) || 0;
 
-        let totalDeduction = pf + esi + other;
+        let totalDeduction = pf + esi + other + epf + professionalTax + loanRecovery;
         let net = gross - totalDeduction;
 
         if(document.getElementById('tableTotalDeductions')) document.getElementById('tableTotalDeductions').innerText = '₹ ' + totalDeduction.toFixed(2);
@@ -1295,6 +1314,19 @@
         document.getElementById('inputPF').value = p.pf_deduction;
         document.getElementById('inputESI').value = p.esi_deduction;
         document.getElementById('inputOther').value = p.other_deduction || 0;
+
+        const isBD = p.department === 'Business Development';
+        document.getElementById('rowDearnessAllowance').style.display = isBD ? '' : 'none';
+        document.getElementById('rowVariableEarning').style.display = isBD ? '' : 'none';
+        document.getElementById('rowEpf').style.display = isBD ? '' : 'none';
+        document.getElementById('rowProfessionalTax').style.display = isBD ? '' : 'none';
+        document.getElementById('rowLoanRecovery').style.display = isBD ? '' : 'none';
+        document.getElementById('inputDearnessAllowance').value = p.dearness_allowance || 0;
+        document.getElementById('inputVariableEarning').value = p.variable_earning || 0;
+        document.getElementById('inputEpf').value = p.epf_deduction || 0;
+        document.getElementById('inputProfessionalTax').value = p.professional_tax_deduction || 0;
+        document.getElementById('inputLoanRecovery').value = p.loan_recovery_deduction || 0;
+
         currentPayrollTotalDays = Number(p.total_days || currentPayrollTotalDays || 0);
         const overtimeBox = document.getElementById('overtime_box');
 
@@ -1339,14 +1371,22 @@
             hra: document.getElementById('inputHRA').value,
             conveyance_allowance: document.getElementById('inputConveyance').value,
             medical_allowance: document.getElementById('inputMedical').value,
+            dearness_allowance: document.getElementById('inputDearnessAllowance').value || 0,
+            variable_earning: document.getElementById('inputVariableEarning').value || 0,
             payable_days: document.getElementById('inputPayableDays').value,
             pf_deduction: document.getElementById('inputPF').value,
             esi_deduction: document.getElementById('inputESI').value,
             other_deduction: document.getElementById('inputOther').value,
+            epf_deduction: document.getElementById('inputEpf').value || 0,
+            professional_tax_deduction: document.getElementById('inputProfessionalTax').value || 0,
+            loan_recovery_deduction: document.getElementById('inputLoanRecovery').value || 0,
             deductions: (
                 (parseFloat(document.getElementById('inputPF').value) || 0) +
                 (parseFloat(document.getElementById('inputESI').value) || 0) +
-                (parseFloat(document.getElementById('inputOther').value) || 0)
+                (parseFloat(document.getElementById('inputOther').value) || 0) +
+                (parseFloat(document.getElementById('inputEpf').value) || 0) +
+                (parseFloat(document.getElementById('inputProfessionalTax').value) || 0) +
+                (parseFloat(document.getElementById('inputLoanRecovery').value) || 0)
             ).toFixed(2),
             net_salary: document.getElementById('tableNetSalary').innerText.replace(/[₹,]/g,''),
             gross_salary: document.getElementById('tableGrossSalary').innerText.replace(/[₹,]/g,'')
@@ -1404,16 +1444,26 @@
         document.getElementById('inputPF').value = '';
         document.getElementById('inputESI').value = '';
         document.getElementById('inputOther').value = '';
+        document.getElementById('inputDearnessAllowance').value = '';
+        document.getElementById('inputVariableEarning').value = '';
+        document.getElementById('inputEpf').value = '';
+        document.getElementById('inputProfessionalTax').value = '';
+        document.getElementById('inputLoanRecovery').value = '';
+        document.getElementById('rowDearnessAllowance').style.display = 'none';
+        document.getElementById('rowVariableEarning').style.display = 'none';
+        document.getElementById('rowEpf').style.display = 'none';
+        document.getElementById('rowProfessionalTax').style.display = 'none';
+        document.getElementById('rowLoanRecovery').style.display = 'none';
         document.getElementById('overrideCheck').checked = false;
         document.getElementById('overrideAmount').disabled = true;
         document.getElementById('overrideAmount').value = '';
-        
+
         currentPayrollData = null;
         isManualDays = false;
         isManualPF = false;
         isManualESI = false;
         currentPayrollTotalDays = 0;
-        
+
         document.getElementById('calculationResult').style.display = 'none';
         document.getElementById('noCalculation').style.display = 'block';
     }

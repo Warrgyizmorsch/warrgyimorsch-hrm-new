@@ -100,12 +100,18 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="text-muted mb-1 small">Allowances</div>
-                <div class="fw-bold fs-6">₹ {{ number_format($payroll->conveyance_allowance + $payroll->medical_allowance + $payroll->other_allowance, 2) }}</div>
+                <div class="fw-bold fs-6">₹ {{ number_format($payroll->conveyance_allowance + $payroll->medical_allowance + $payroll->other_allowance + ($payroll->dearness_allowance ?? 0), 2) }}</div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="text-muted mb-1 small">Gross Total</div>
                 <div class="fw-bold fs-6 text-primary">₹ {{ number_format($payroll->gross_salary, 2) }}</div>
             </div>
+            @if(($payroll->variable_earning ?? 0) > 0)
+            <div class="col-6 col-md-3">
+                <div class="text-muted mb-1 small">Variable Earning</div>
+                <div class="fw-bold fs-6">₹ {{ number_format($payroll->variable_earning, 2) }}</div>
+            </div>
+            @endif
         </div>
     </div>
 </div>

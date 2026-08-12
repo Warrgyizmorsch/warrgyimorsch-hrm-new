@@ -69,7 +69,7 @@
                                 <div class="hrm-field">
                                     <label>Department <span class="req">*</span></label>
                                     <div class="hrm-input-wrap"><i class="bi bi-building"></i>
-                                        <select name="department" class="form-select" required>
+                                        <select name="department" id="employeeDepartmentSelect" class="form-select" required onchange="toggleGrossSalaryMode(this.value)">
                                             <option value="">Select department</option>
                                             @foreach($departments as $dept)
                                                 <option value="{{ $dept->name }}" {{ old('department') == $dept->name ? 'selected' : '' }}>{{ $dept->name }}</option>
@@ -342,13 +342,36 @@
                             <h3>Salary Details</h3>
                         </div>
                         <div class="hrm-card-body">
-                            <div class="hrm-form-grid cols-1">
+                            <div class="hrm-form-grid cols-1" id="grossSalaryFields" style="display:none;">
+                                <div class="hrm-field">
+                                    <label>Gross Salary <span class="req">*</span></label>
+                                    <div class="hrm-input-wrap">
+                                        <i class="bi bi-currency-dollar"></i>
+                                        <input type="number" name="gross_salary" id="gross_salary" class="form-control"
+                                            placeholder="Gross Salary" value="{{ old('gross_salary') }}">
+                                    </div>
+                                    <p class="text-muted small mt-1 mb-0">Automatically split into Basic, DA, HRA, Conveyance &amp; Medical/Other allowances per the Business Development salary structure.</p>
+                                </div>
+                                <div class="hrm-field">
+                                    <table class="table table-sm mb-0" id="grossSalaryPreview">
+                                        <tbody>
+                                            <tr><td class="text-muted">Basic Salary</td><td class="text-end" data-preview="basic_salary">₹0.00</td></tr>
+                                            <tr><td class="text-muted">Dearness Allowance</td><td class="text-end" data-preview="dearness_allowance">₹0.00</td></tr>
+                                            <tr><td class="text-muted">HRA</td><td class="text-end" data-preview="hra">₹0.00</td></tr>
+                                            <tr><td class="text-muted">Conveyance</td><td class="text-end" data-preview="conveyance_allowance">₹0.00</td></tr>
+                                            <tr><td class="text-muted">Medical Allowance</td><td class="text-end" data-preview="medical_allowance">₹0.00</td></tr>
+                                            <tr><td class="text-muted">Other Allowance</td><td class="text-end" data-preview="other_allowance">₹0.00</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="hrm-form-grid cols-1" id="individualSalaryFields">
                                 <div class="hrm-field">
                                     <label>Basic Salary <span class="req">*</span></label>
                                     <div class="hrm-input-wrap">
                                         <i class="bi bi-currency-dollar"></i>
                                         <input type="number" name="basic_salary" id="basic_salary" class="form-control salary-input"
-                                            placeholder="Basic Salary" value="{{ old('basic_salary') }}" required>
+                                            placeholder="Basic Salary" value="{{ old('basic_salary') }}">
                                     </div>
                                 </div>
                                 <div class="hrm-field">
@@ -422,6 +445,44 @@ function toggleLedDepartments(roleSlug) {
     if (field) field.style.display = roleSlug === 'team_leader' ? 'block' : 'none';
 }
 toggleLedDepartments(document.getElementById('employeeRoleSelect')?.value);
+
+const SALARY_STRUCTURE_RATIOS = {
+    'Business Development': {
+        basic_salary: 0.59,
+        dearness_allowance: 4705 / 35000,
+        hra: 3345 / 35000,
+        conveyance_allowance: 1600 / 35000,
+        medical_allowance: 1200 / 35000,
+        other_allowance: 0.10,
+    },
+};
+
+function toggleGrossSalaryMode(department) {
+    const grossFields = document.getElementById('grossSalaryFields');
+    const individualFields = document.getElementById('individualSalaryFields');
+    const useGross = !!SALARY_STRUCTURE_RATIOS[department];
+    if (grossFields) grossFields.style.display = useGross ? 'block' : 'none';
+    if (individualFields) individualFields.style.display = useGross ? 'none' : 'block';
+    document.getElementById('gross_salary').required = useGross;
+    document.getElementById('basic_salary').required = !useGross;
+    if (useGross) updateGrossSalaryPreview(department);
+}
+toggleGrossSalaryMode(document.getElementById('employeeDepartmentSelect')?.value);
+
+function updateGrossSalaryPreview(department) {
+    const ratios = SALARY_STRUCTURE_RATIOS[department];
+    if (!ratios) return;
+    const gross = parseFloat(document.getElementById('gross_salary')?.value) || 0;
+    document.querySelectorAll('#grossSalaryPreview [data-preview]').forEach(cell => {
+        const field = cell.getAttribute('data-preview');
+        const amount = gross * (ratios[field] || 0);
+        cell.textContent = '₹' + amount.toFixed(2);
+    });
+}
+
+document.getElementById('gross_salary')?.addEventListener('input', function () {
+    updateGrossSalaryPreview(document.getElementById('employeeDepartmentSelect')?.value);
+});
 
 function hrmToggle(id, fieldId, offId) {
     const t = document.getElementById(id);

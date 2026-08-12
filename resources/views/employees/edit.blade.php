@@ -60,7 +60,7 @@
                                 <div class="hrm-field">
                                     <label>Department</label>
                                     <div class="hrm-input-wrap"><i class="bi bi-building"></i>
-                                        <select name="department" class="form-select" required>
+                                        <select name="department" id="employeeDepartmentSelect" class="form-select" required onchange="toggleGrossSalaryMode(this.value)">
                                             <option value="">Select department</option>
                                             @foreach($departments as $dept)
                                                 <option value="{{ $dept->name }}" {{ $dept->name == old('department', $employee->department) ? 'selected' : '' }}>{{ $dept->name }}</option>
@@ -277,11 +277,35 @@
                     <div class="hrm-card">
                         <div class="hrm-card-head"><i class="bi bi-cash-coin"></i><h3>Salary Details</h3></div>
                         <div class="hrm-card-body">
-                            <div class="hrm-form-grid cols-1">
+                            @php
+                                $currentGross = $employee->basic_salary + $employee->dearness_allowance + $employee->hra + $employee->conveyance_allowance + $employee->medical_allowance + $employee->other_allowance;
+                            @endphp
+                            <div class="hrm-form-grid cols-1" id="grossSalaryFields" style="display:none;">
+                                <div class="hrm-field">
+                                    <label>Gross Salary <span class="req">*</span></label>
+                                    <div class="hrm-input-wrap"><i class="bi bi-currency-dollar"></i>
+                                        <input type="number" name="gross_salary" id="gross_salary" class="form-control" value="{{ old('gross_salary', $currentGross) }}">
+                                    </div>
+                                    <p class="text-muted small mt-1 mb-0">Automatically split into Basic, DA, HRA, Conveyance &amp; Medical/Other allowances per the Business Development salary structure.</p>
+                                </div>
+                                <div class="hrm-field">
+                                    <table class="table table-sm mb-0" id="grossSalaryPreview">
+                                        <tbody>
+                                            <tr><td class="text-muted">Basic Salary</td><td class="text-end" data-preview="basic_salary">₹{{ number_format($employee->basic_salary, 2) }}</td></tr>
+                                            <tr><td class="text-muted">Dearness Allowance</td><td class="text-end" data-preview="dearness_allowance">₹{{ number_format($employee->dearness_allowance, 2) }}</td></tr>
+                                            <tr><td class="text-muted">HRA</td><td class="text-end" data-preview="hra">₹{{ number_format($employee->hra, 2) }}</td></tr>
+                                            <tr><td class="text-muted">Conveyance</td><td class="text-end" data-preview="conveyance_allowance">₹{{ number_format($employee->conveyance_allowance, 2) }}</td></tr>
+                                            <tr><td class="text-muted">Medical Allowance</td><td class="text-end" data-preview="medical_allowance">₹{{ number_format($employee->medical_allowance, 2) }}</td></tr>
+                                            <tr><td class="text-muted">Other Allowance</td><td class="text-end" data-preview="other_allowance">₹{{ number_format($employee->other_allowance, 2) }}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="hrm-form-grid cols-1" id="individualSalaryFields">
                                 <div class="hrm-field">
                                     <label>Basic Salary <span class="req">*</span></label>
                                     <div class="hrm-input-wrap"><i class="bi bi-currency-dollar"></i>
-                                        <input type="number" name="basic_salary" id="basic_salary" class="form-control salary-input" value="{{ old('basic_salary', $employee->basic_salary) }}" required>
+                                        <input type="number" name="basic_salary" id="basic_salary" class="form-control salary-input" value="{{ old('basic_salary', $employee->basic_salary) }}">
                                     </div>
                                 </div>
                                 <div class="hrm-field">
@@ -349,6 +373,44 @@ document.getElementById('insuranceToggle')?.addEventListener('change', function 
     ['insuranceProviderField','insurancePolicyWrap'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = on ? (id.includes('Wrap') ? 'flex' : 'block') : 'none'; });
     ['insuranceProviderOff','insurancePolicyOff'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = on ? 'none' : 'flex'; });
 });
+const SALARY_STRUCTURE_RATIOS = {
+    'Business Development': {
+        basic_salary: 0.59,
+        dearness_allowance: 4705 / 35000,
+        hra: 3345 / 35000,
+        conveyance_allowance: 1600 / 35000,
+        medical_allowance: 1200 / 35000,
+        other_allowance: 0.10,
+    },
+};
+
+function toggleGrossSalaryMode(department) {
+    const grossFields = document.getElementById('grossSalaryFields');
+    const individualFields = document.getElementById('individualSalaryFields');
+    const useGross = !!SALARY_STRUCTURE_RATIOS[department];
+    if (grossFields) grossFields.style.display = useGross ? 'block' : 'none';
+    if (individualFields) individualFields.style.display = useGross ? 'none' : 'block';
+    document.getElementById('gross_salary').required = useGross;
+    document.getElementById('basic_salary').required = !useGross;
+    if (useGross) updateGrossSalaryPreview(department);
+}
+toggleGrossSalaryMode(document.getElementById('employeeDepartmentSelect')?.value);
+
+function updateGrossSalaryPreview(department) {
+    const ratios = SALARY_STRUCTURE_RATIOS[department];
+    if (!ratios) return;
+    const gross = parseFloat(document.getElementById('gross_salary')?.value) || 0;
+    document.querySelectorAll('#grossSalaryPreview [data-preview]').forEach(cell => {
+        const field = cell.getAttribute('data-preview');
+        const amount = gross * (ratios[field] || 0);
+        cell.textContent = '₹' + amount.toFixed(2);
+    });
+}
+
+document.getElementById('gross_salary')?.addEventListener('input', function () {
+    updateGrossSalaryPreview(document.getElementById('employeeDepartmentSelect')?.value);
+});
+
 document.querySelectorAll('.salary-input').forEach(i => i.addEventListener('input', function () {
     const t = ['basic_salary','hra','conveyance_allowance','medical_allowance','other_allowance'].reduce((s, id) => s + (parseFloat(document.getElementById(id).value) || 0), 0);
     document.getElementById('total_salary').value = t.toFixed(2);

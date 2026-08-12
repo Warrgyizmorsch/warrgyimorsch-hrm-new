@@ -257,7 +257,7 @@
                 <td class="label">Month:</td>
                 <td class="value">{{ \Carbon\Carbon::parse($payroll->month)->format('F Y') }}</td>
                 <td class="label">Department:</td>
-                <td class="value">Web Development</td>
+                <td class="value">{{ $payroll->employee->department ?? '—' }}</td>
             </tr>
         </table>
 
@@ -277,6 +277,12 @@
                                 <td>Basic Pay</td>
                                 <td class="text-right">&#8377;{{ number_format($payroll->basic_salary, 2) }}</td>
                             </tr>
+                            @if(($payroll->dearness_allowance ?? 0) > 0)
+                                <tr>
+                                    <td>Dearness Allowance</td>
+                                    <td class="text-right">&#8377;{{ number_format($payroll->dearness_allowance, 2) }}</td>
+                                </tr>
+                            @endif
                             @if($payroll->hra > 0)
                                 <tr>
                                     <td>HRA</td>
@@ -300,6 +306,12 @@
                                     <td>Conveyance</td>
                                     <td class="text-right">&#8377;{{ number_format($payroll->conveyance_allowance, 2) }}
                                     </td>
+                                </tr>
+                            @endif
+                            @if(($payroll->variable_earning ?? 0) > 0)
+                                <tr>
+                                    <td>Variable Earning</td>
+                                    <td class="text-right">&#8377;{{ number_format($payroll->variable_earning, 2) }}</td>
                                 </tr>
                             @endif
                             <tr class="bold">
@@ -326,6 +338,30 @@
                                 <tr>
                                     <td>ESI / ECS</td>
                                     <td class="text-right">&#8377;{{ number_format($payroll->esi_deduction, 2) }}</td>
+                                </tr>
+                            @endif
+
+                            @if(($payroll->epf_deduction ?? 0) > 0)
+                                @php $hasDeductions = true; @endphp
+                                <tr>
+                                    <td>EPF</td>
+                                    <td class="text-right">&#8377;{{ number_format($payroll->epf_deduction, 2) }}</td>
+                                </tr>
+                            @endif
+
+                            @if(($payroll->professional_tax_deduction ?? 0) > 0)
+                                @php $hasDeductions = true; @endphp
+                                <tr>
+                                    <td>Professional Tax</td>
+                                    <td class="text-right">&#8377;{{ number_format($payroll->professional_tax_deduction, 2) }}</td>
+                                </tr>
+                            @endif
+
+                            @if(($payroll->loan_recovery_deduction ?? 0) > 0)
+                                @php $hasDeductions = true; @endphp
+                                <tr>
+                                    <td>Loan Recovery</td>
+                                    <td class="text-right">&#8377;{{ number_format($payroll->loan_recovery_deduction, 2) }}</td>
                                 </tr>
                             @endif
 

@@ -437,9 +437,12 @@ class PayrollController extends Controller
             $overrideSalary = $request->override_salary ?? null;
             $unpaidDays = $totalDays - $payableDays;
 
+            $isBusinessDevelopment = $employee->department === 'Business Development';
+
             // 💰 STEP 2: Monthly Salary (Annual → Monthly)
             $monthlySalary = (
                 ($employee->basic_salary ?? 0) +
+                ($isBusinessDevelopment ? ($employee->dearness_allowance ?? 0) : 0) +
                 ($employee->hra ?? 0) +
                 ($employee->conveyance_allowance ?? 0) +
                 ($employee->medical_allowance ?? 0) +
@@ -466,10 +469,17 @@ class PayrollController extends Controller
                 $baseGrossSalary = $overrideSalary;
             }
 
+            // Variable Earning (manually entered incentive/bonus for this pay run — Business Development only)
+            $variableEarning = $isBusinessDevelopment ? (float) ($request->variable_earning ?? 0) : 0;
+            $grossSalary += $variableEarning;
+
             // 📉 STEP 3: Deductions
             $otherDeduction = (float) ($request->other_deduction ?? 0);
             $pf = 0;
             $esi = 0;
+            $epfDeduction = $isBusinessDevelopment ? (float) ($request->epf_deduction ?? 0) : 0;
+            $professionalTaxDeduction = $isBusinessDevelopment ? (float) ($request->professional_tax_deduction ?? 0) : 0;
+            $loanRecoveryDeduction = $isBusinessDevelopment ? (float) ($request->loan_recovery_deduction ?? 0) : 0;
 
             // PF (12% of earned basic for payable days)
             if ($employee->pf) {
@@ -482,7 +492,7 @@ class PayrollController extends Controller
                 $esi = $grossSalary * 0.0075;
             }
 
-            $totalDeductions = $pf + $esi + $otherDeduction;
+            $totalDeductions = $pf + $esi + $otherDeduction + $epfDeduction + $professionalTaxDeduction + $loanRecoveryDeduction;
 
             // 💵 STEP 4: Net Salary
             $netSalary = max(0, $grossSalary - $totalDeductions);
@@ -496,6 +506,8 @@ class PayrollController extends Controller
                 'employee_id' => $employeeId,
                 'month' => $month,
                 'emp_name' => $employee->name,
+                'department' => $employee->department,
+                'is_business_development' => $isBusinessDevelopment,
                 'overtime_hours' => round($overtimeHours, 2),
                 'overtime_days' => round($overtimeDays, 2),
                 'overtime_pay' => $overtimePay,
@@ -510,10 +522,12 @@ class PayrollController extends Controller
 
                 //  ORIGINAL MONTHLY SALARY (IMPORTANT)
                 'basic_salary' => $employee->basic_salary,
+                'dearness_allowance' => $isBusinessDevelopment ? ($employee->dearness_allowance ?? 0) : 0,
                 'hra' => $employee->hra,
                 'conveyance_allowance' => $employee->conveyance_allowance,
                 'medical_allowance' => $employee->medical_allowance,
                 'other_allowance' => $employee->other_allowance,
+                'variable_earning' => round($variableEarning, 2),
 
                 //  CALCULATED (for reference only)
                 'calculated_basic' => round(($employee->basic_salary / $totalDays) * $payableDays, 2),
@@ -525,6 +539,9 @@ class PayrollController extends Controller
                 // Deductions
                 'pf_deduction' => round($pf, 2),
                 'esi_deduction' => round($esi, 2),
+                'epf_deduction' => round($epfDeduction, 2),
+                'professional_tax_deduction' => round($professionalTaxDeduction, 2),
+                'loan_recovery_deduction' => round($loanRecoveryDeduction, 2),
                 'other_deduction' => $otherDeduction,
                 'deductions' => round($totalDeductions, 2),
 
@@ -1359,16 +1376,22 @@ class PayrollController extends Controller
                     'id' => $payroll->id,
                     'employee_id' => $payroll->employee_id,
                     'employee_name' => $payroll->employee->name,
+                    'department' => $payroll->employee->department,
                     'month' => $payroll->month,
                     'payable_days' => $payroll->payable_days,
                     'basic_salary' => $payroll->basic_salary,
+                    'dearness_allowance' => $payroll->dearness_allowance,
                     'hra' => $payroll->hra,
                     'conveyance_allowance' => $payroll->conveyance_allowance,
                     'medical_allowance' => $payroll->medical_allowance,
                     'other_allowance' => $payroll->other_allowance,
+                    'variable_earning' => $payroll->variable_earning,
                     'gross_salary' => $payroll->gross_salary,
                     'pf_deduction' => $payroll->pf_deduction,
                     'esi_deduction' => $payroll->esi_deduction,
+                    'epf_deduction' => $payroll->epf_deduction,
+                    'professional_tax_deduction' => $payroll->professional_tax_deduction,
+                    'loan_recovery_deduction' => $payroll->loan_recovery_deduction,
                     'other_deduction' => $payroll->other_deduction,
                     'net_salary' => $payroll->net_salary,
                     'status' => $payroll->status,

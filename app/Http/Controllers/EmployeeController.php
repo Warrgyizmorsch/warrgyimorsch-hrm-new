@@ -14,6 +14,7 @@ use App\Models\Designation;
 use App\Models\Role;
 use App\Models\JobApplication;
 use App\Services\AttendanceHistoryService;
+use App\Services\SalaryStructureService;
 
 class EmployeeController extends Controller
 {
@@ -163,7 +164,8 @@ class EmployeeController extends Controller
                 'bank_name' => 'required|string|max:255',
                 'account_number' => 'required|string|max:50',
                 'ifsc_code' => 'required|string|max:20',
-                'basic_salary' => 'required|numeric|min:0',
+                'basic_salary' => 'required_without:gross_salary|nullable|numeric|min:0',
+                'gross_salary' => 'required_without:basic_salary|nullable|numeric|min:0',
                 'working_mode' => 'required|in:Office,Work from home',
             ]);
 
@@ -186,10 +188,23 @@ class EmployeeController extends Controller
                 $data['insurance'] = $request->has('insurance');
 
                 // Salary Defaults
+                $data['dearness_allowance'] = $request->dearness_allowance ?? 0;
                 $data['hra'] = $request->hra ?? 0;
                 $data['conveyance_allowance'] = $request->conveyance_allowance ?? 0;
                 $data['medical_allowance'] = $request->medical_allowance ?? 0;
                 $data['other_allowance'] = $request->other_allowance ?? 0;
+
+                // For departments with a configured salary structure (currently Business
+                // Development), a single Gross Salary input replaces manual component entry —
+                // the backend, not the browser, is the source of truth for the split.
+                if ($request->filled('gross_salary')) {
+                    $breakdown = SalaryStructureService::breakdown((float) $request->gross_salary, (string) $request->department);
+                    if ($breakdown) {
+                        $data = array_merge($data, $breakdown);
+                    } else {
+                        $data['basic_salary'] = $request->gross_salary;
+                    }
+                }
 
                 // Handle Photo upload
                 if ($request->hasFile('photo')) {
@@ -495,6 +510,8 @@ class EmployeeController extends Controller
                 'email' => 'nullable|email|unique:users,email,' . $userId,
                 'employee_code' => 'nullable|string|max:50|unique:employees,employee_code,' . $employee->id,
                 'working_mode' => 'required|in:Office,Work from home',
+                'basic_salary' => 'nullable|numeric|min:0',
+                'gross_salary' => 'nullable|numeric|min:0',
             ]);
 
             return DB::transaction(function () use ($request, $employee, $user) {
@@ -529,12 +546,25 @@ class EmployeeController extends Controller
                     'account_number' => $request->account_number,
                     'ifsc_code' => $request->ifsc_code,
                     'basic_salary' => $request->basic_salary ?? 0,
+                    'dearness_allowance' => $request->dearness_allowance ?? 0,
                     'hra' => $request->hra ?? 0,
                     'conveyance_allowance' => $request->conveyance_allowance ?? 0,
                     'medical_allowance' => $request->medical_allowance ?? 0,
                     'other_allowance' => $request->other_allowance ?? 0,
                     'working_mode' => $request->working_mode,
                 ];
+
+                // For departments with a configured salary structure (currently Business
+                // Development), a single Gross Salary input replaces manual component entry —
+                // the backend, not the browser, is the source of truth for the split.
+                if ($request->filled('gross_salary')) {
+                    $breakdown = SalaryStructureService::breakdown((float) $request->gross_salary, (string) $request->department);
+                    if ($breakdown) {
+                        $updateData = array_merge($updateData, $breakdown);
+                    } else {
+                        $updateData['basic_salary'] = $request->gross_salary;
+                    }
+                }
 
                 // Only update password if provided
                 if ($request->filled('password')) {

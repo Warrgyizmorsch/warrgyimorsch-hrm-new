@@ -693,6 +693,9 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         feather.replace();
+
+        document.getElementById('leaveCategory')?.addEventListener('change', toggleCategoryFields);
+
         const applyForm = document.getElementById('applyLeaveForm');
 
         if (applyForm) {

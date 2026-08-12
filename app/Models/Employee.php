@@ -39,6 +39,7 @@ class Employee extends Model
         'account_number',
         'ifsc_code',
         'basic_salary',
+        'dearness_allowance',
         'hra',
         'conveyance_allowance',
         'medical_allowance',

@@ -98,6 +98,12 @@
                             <div class="zoho-detail-label">Basic Salary</div>
                             <div class="zoho-detail-value is-highlight">₹ {{ number_format($employee->basic_salary ?? 0, 2) }}</div>
                         </div>
+                        @if($employee->department === 'Business Development')
+                        <div class="zoho-detail-row">
+                            <div class="zoho-detail-label">Dearness Allowance</div>
+                            <div class="zoho-detail-value">₹ {{ number_format($employee->dearness_allowance ?? 0, 2) }}</div>
+                        </div>
+                        @endif
                         <div class="zoho-detail-row">
                             <div class="zoho-detail-label">HRA</div>
                             <div class="zoho-detail-value">₹ {{ number_format($employee->hra ?? 0, 2) }}</div>
