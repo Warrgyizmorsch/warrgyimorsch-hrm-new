@@ -85,7 +85,7 @@
     </div>
 
     <!-- Additional Breakdown -->
-    <div class="p-4 rounded-4 border bg-white shadow-sm">
+    <div class="p-4 rounded-4 border bg-white shadow-sm mb-3">
         <h6 class="text-uppercase fw-bold text-dark mb-4 d-flex align-items-center gap-2" style="font-size: 12px; letter-spacing: 0.5px;">
             <i class="bi bi-bar-chart-steps text-primary"></i> Earnings Summary
         </h6>
@@ -94,17 +94,27 @@
                 <div class="text-muted mb-1 small">Basic Salary</div>
                 <div class="fw-bold fs-6">₹ {{ number_format($payroll->basic_salary, 2) }}</div>
             </div>
+            @if(($payroll->dearness_allowance ?? 0) > 0)
+            <div class="col-6 col-md-3">
+                <div class="text-muted mb-1 small">Dearness Allowance</div>
+                <div class="fw-bold fs-6">₹ {{ number_format($payroll->dearness_allowance, 2) }}</div>
+            </div>
+            @endif
             <div class="col-6 col-md-3">
                 <div class="text-muted mb-1 small">HRA</div>
                 <div class="fw-bold fs-6">₹ {{ number_format($payroll->hra, 2) }}</div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="text-muted mb-1 small">Allowances</div>
-                <div class="fw-bold fs-6">₹ {{ number_format($payroll->conveyance_allowance + $payroll->medical_allowance + $payroll->other_allowance + ($payroll->dearness_allowance ?? 0), 2) }}</div>
+                <div class="text-muted mb-1 small">Conveyance</div>
+                <div class="fw-bold fs-6">₹ {{ number_format($payroll->conveyance_allowance, 2) }}</div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="text-muted mb-1 small">Gross Total</div>
-                <div class="fw-bold fs-6 text-primary">₹ {{ number_format($payroll->gross_salary, 2) }}</div>
+                <div class="text-muted mb-1 small">Medical Allowance</div>
+                <div class="fw-bold fs-6">₹ {{ number_format($payroll->medical_allowance, 2) }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted mb-1 small">Other Allowance</div>
+                <div class="fw-bold fs-6">₹ {{ number_format($payroll->other_allowance, 2) }}</div>
             </div>
             @if(($payroll->variable_earning ?? 0) > 0)
             <div class="col-6 col-md-3">
@@ -112,12 +122,42 @@
                 <div class="fw-bold fs-6">₹ {{ number_format($payroll->variable_earning, 2) }}</div>
             </div>
             @endif
+            <div class="col-6 col-md-3">
+                <div class="text-muted mb-1 small">Gross Total</div>
+                <div class="fw-bold fs-6 text-primary">₹ {{ number_format($payroll->gross_salary, 2) }}</div>
+            </div>
         </div>
     </div>
+
+    @if((($payroll->epf_deduction ?? 0) > 0) || (($payroll->professional_tax_deduction ?? 0) > 0) || (($payroll->loan_recovery_deduction ?? 0) > 0))
+    <div class="p-4 rounded-4 border bg-white shadow-sm">
+        <h6 class="text-uppercase fw-bold text-dark mb-4 d-flex align-items-center gap-2" style="font-size: 12px; letter-spacing: 0.5px;">
+            <i class="bi bi-dash-circle text-danger"></i> Additional Deductions
+        </h6>
+        <div class="row g-4">
+            @if(($payroll->epf_deduction ?? 0) > 0)
+            <div class="col-6 col-md-3">
+                <div class="text-muted mb-1 small">EPF</div>
+                <div class="fw-bold fs-6 text-danger">₹ {{ number_format($payroll->epf_deduction, 2) }}</div>
+            </div>
+            @endif
+            @if(($payroll->professional_tax_deduction ?? 0) > 0)
+            <div class="col-6 col-md-3">
+                <div class="text-muted mb-1 small">Professional Tax</div>
+                <div class="fw-bold fs-6 text-danger">₹ {{ number_format($payroll->professional_tax_deduction, 2) }}</div>
+            </div>
+            @endif
+            @if(($payroll->loan_recovery_deduction ?? 0) > 0)
+            <div class="col-6 col-md-3">
+                <div class="text-muted mb-1 small">Loan Recovery</div>
+                <div class="fw-bold fs-6 text-danger">₹ {{ number_format($payroll->loan_recovery_deduction, 2) }}</div>
+            </div>
+            @endif
+        </div>
+    </div>
+    @endif
 </div>
 
 <style>
     .text-primary { color: #3858f9 !important; }
-</style>
->
 </style>
