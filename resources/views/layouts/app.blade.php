@@ -1,5 +1,14 @@
 <!DOCTYPE html>
 <html lang="zxx">
+<script>
+    (function () {
+        try {
+            if (window.innerWidth > 1024 && localStorage.getItem('zoho-sidebar-minimenu') === '1') {
+                document.documentElement.classList.add('minimenu');
+            }
+        } catch (e) {}
+    })();
+</script>
 
 <head>
     <meta charset="utf-8" />

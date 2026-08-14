@@ -728,14 +728,24 @@
             document.body.classList.add('zoho-sidebar-open');
         }
 
+        function toggleDesktopCollapse() {
+            const collapsed = document.documentElement.classList.toggle('minimenu');
+            try { localStorage.setItem('zoho-sidebar-minimenu', collapsed ? '1' : '0'); } catch (e) {}
+        }
+
         function toggleSidebar() {
-            if (!nav) return;
-            nav.classList.contains('mob-navigation-active') ? closeSidebar() : openSidebar();
+            if (isMobile()) {
+                if (!nav) return;
+                nav.classList.contains('mob-navigation-active') ? closeSidebar() : openSidebar();
+            } else {
+                toggleDesktopCollapse();
+            }
         }
 
         toggleBtn?.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             toggleSidebar();
         });
 
@@ -759,7 +769,11 @@
         });
 
         window.addEventListener('resize', function () {
-            if (!isMobile()) closeSidebar();
+            if (!isMobile()) {
+                closeSidebar();
+            } else {
+                document.documentElement.classList.remove('minimenu');
+            }
         });
 
         // Legacy theme hook (hidden fallback button)

@@ -53,6 +53,7 @@
     --zoho-subheader-h: 52px;
     --zoho-header-total-h: calc(var(--zoho-topbar-h) + var(--zoho-subheader-h));
     --zoho-sidebar-w: 240px;
+    --zoho-sidebar-collapsed-w: 100px;
     --zoho-page-bg: var(--brand-page-bg);
     --zoho-surface: var(--brand-surface);
     --zoho-border: var(--brand-border);
@@ -1364,9 +1365,9 @@ body.zoho-portal .table-responsive {
     }
 }
 
-/* ── Page header mobile toggle ── */
+/* ── Page header sidebar toggle (mobile drawer / desktop collapse) ── */
 .zoho-mobile-toggle {
-    display: none;
+    display: inline-flex;
     width: 40px;
     height: 40px;
     align-items: center;
@@ -1612,52 +1613,61 @@ body.zoho-sidebar-open {
     display: none !important;
 }
 
-/* Disable theme minimenu collapse — Zoho sidebar stays full width with labels */
+/* Desktop sidebar collapse (minimenu) — icon-only rail, flyout on hover */
 html.minimenu body.zoho-portal .nxl-navigation {
-    width: var(--zoho-sidebar-w) !important;
+    width: var(--zoho-sidebar-collapsed-w) !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-search,
+html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-user,
+html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-brand {
+    display: none !important;
 }
 
 html.minimenu body.zoho-portal .nxl-navigation .nxl-mtext,
 html.minimenu body.zoho-portal .nxl-navigation .nxl-arrow,
-html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-search,
-html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-scroll,
-html.minimenu body.zoho-portal .nxl-navigation .zoho-sidebar-user,
 html.minimenu body.zoho-portal .nxl-navigation .nxl-caption label {
-    display: block !important;
-}
-
-html.minimenu body.zoho-portal .nxl-navigation .nxl-link {
-    display: flex !important;
-}
-
-html.minimenu body.zoho-portal .nxl-navigation .nxl-mtext {
-    display: inline !important;
-}
-
-html.minimenu body.zoho-portal .nxl-navigation .navbar-content {
-    width: 100% !important;
-    position: static !important;
-    background: transparent !important;
-    border-right: none !important;
-}
-
-html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content {
-    position: static !important;
-    width: 100% !important;
-    background: transparent !important;
-}
-
-html.minimenu body.zoho-portal .nxl-navigation .nxl-caption:before {
-    content: none !important;
     display: none !important;
 }
 
+html.minimenu body.zoho-portal .nxl-navigation .nxl-link {
+    justify-content: center !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation .navbar-content {
+    width: var(--zoho-sidebar-collapsed-w) !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content {
+    position: absolute !important;
+    width: var(--zoho-sidebar-w) !important;
+    background: var(--brand-nav) !important;
+    border-right: 1px solid var(--brand-nav-border) !important;
+    z-index: 1045;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content .zoho-sidebar-search,
+html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content .zoho-sidebar-user,
+html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content .nxl-mtext,
+html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content .nxl-arrow,
+html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content .nxl-caption label {
+    display: block !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation:hover .zoho-sidebar-brand {
+    display: flex !important;
+}
+
+html.minimenu body.zoho-portal .nxl-navigation:hover .navbar-content .nxl-link {
+    justify-content: flex-start !important;
+}
+
 html.minimenu body.zoho-portal .nxl-container {
-    margin-left: var(--zoho-sidebar-w) !important;
+    margin-left: var(--zoho-sidebar-collapsed-w) !important;
 }
 
 html.minimenu body.zoho-portal .nxl-header {
-    left: var(--zoho-sidebar-w) !important;
+    left: var(--zoho-sidebar-collapsed-w) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
