@@ -28,7 +28,7 @@ class TicketController extends Controller
     { 
         $user = auth()->user();
 
-        if ($user->role == 'super_admin') {
+        if (in_array($user->role, ['super_admin', 'hr_executive'])) {
             $tickets = Ticket::with('user')->latest()->get();
 
         // } elseif ($user->role == 'team_leader') {
