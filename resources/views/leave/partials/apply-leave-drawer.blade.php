@@ -81,7 +81,7 @@
         <div class="lv-apply-block">
             <div class="lv-apply-block__head">
                 <span class="lv-apply-block__title">Leave Category</span>
-                <span class="lv-apply-block__hint">Select one</span>
+                <span class="lv-apply-block__hint" id="applyBalanceHint">Select one</span>
             </div>
             <div class="lv-cat-picker" id="leaveCategoryPicker" role="group" aria-label="Leave category">
                 @foreach($leaveCategories as $cat)
@@ -153,6 +153,7 @@
                 <div class="lv-duration-summary__value" id="totalDaysDisplay">0 Days</div>
                 <input type="hidden" name="total_days" id="totalDays" value="0">
             </div>
+            <div id="applyOverflowWarning" style="display:none; margin-top: 10px; padding: 10px 14px; border-radius: 10px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); color: #b45309; font-size: 13px; font-weight: 600;"></div>
         </div>
 
         <div class="lv-apply-block lv-apply-block--last">

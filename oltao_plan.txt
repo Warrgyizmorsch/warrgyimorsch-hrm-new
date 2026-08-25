@@ -1,0 +1,583 @@
+OLTAO
+Custom Backend & Platform Development
+Development Plan — Shopify Replacement & Phase Roadmap
+Prepared for: Oltao (Nine Oasis Impex Pvt. Ltd.)
+Prepared by: Warrgyizmorsch Private Limited
+Udaipur, Rajasthan  •  August 2026
+Reference: Client requirements captured in last meeting — pending MSA & scope sign-off
+1.  Executive Summary
+oltao.in runs on a custom Next.js frontend — live, mature, and already selling — sitting on top of a Shopify backend (Shopify-hosted product catalog, cart, checkout and customer accounts at account.oltao.in). The client has asked us to replace that Shopify backend with a fully custom-coded backend portal, built the same way as the Bharat Ceramics ERP: our own admin panel, our own data model, no per-order/per-GMV platform fees, and room to bolt on CRM, inventory, installation, HRMS and marketing automation that Shopify was never going to give them natively.
+This document turns the requirements captured in the last client meeting into a phased build plan with epics, in the same format as the Bharat Ceramics plan. Every requirement below is still at Client Review stage — nothing has been costed or contracted yet — so this is a proposal for phasing and scope, not a signed roadmap.
+The single biggest decision this plan hinges on is Phase 1: the Shopify-to-custom-backend migration. Everything else — CRM, inventory, installation, automation, customer portal, HRMS — depends on that foundation existing first.
+FOUNDATION — BLOCKS OTHER PHASES
+Core platform work every later phase depends on.
+NEEDS CLIENT INPUT
+Vendor docs, API keys, or a client decision needed before this can be scoped precisely.
+REUSABLE FROM BHARAT CERAMICS BUILD
+Same architecture already built for Bharat Ceramics — expect lower effort.
+2.  Current State Snapshot
+Live today at oltao.in, on Shopify's backend:
+Full product catalog — designer/bladeless/chandelier/wall/hugger fan ranges, with pricing shown per product
+Cart & checkout, customer accounts and order history via Shopify (account.oltao.in)
+A custom Next.js front-end layer: 3D live blade previewer, hero video, corporate client showcase, media coverage, catalogue flip-book
+Click-to-WhatsApp contact — a static link, not a CRM-connected automation
+Not present today: any CRM, inventory/stock management, installation or after-sales tracking, HRMS, or marketing automation — Shopify's ecosystem apps could bolt some of this on, but the client's direction is to own this outright on custom infrastructure instead.
+3.  Shopify App Audit — What Needs Replacing
+A review of the live Shopify admin (22 installed apps) surfaces real functionality that isn't in the client's verbal requirements yet — carriers, COD/EMI payment flows, GST invoicing, and site search are all currently live via Shopify apps. "Replace all" means Phase 1–2 need to cover this full surface, not just what was listed in the meeting notes. Apps below the fold in the admin panel (22 installed, ~20 visible in the screenshots) should be reconfirmed with the client before Phase 1 is costed.
+Shopify App
+What it does
+Disposition
+Maps to
+Delhivery
+Shipping carrier
+REPLACE
+Epic 2.5 — add as a carrier option
+Shiprocket: eCommerce Shipping
+Shipping aggregator (multi-carrier)
+REPLACE
+Epic 2.5 — reconcile against Blue Dart/Delivery One ask
+Shiprocket: Smart COD
+COD order verification/fraud check
+REPLACE
+New Epic 1.6 — COD & partial payment
+eShipz Auth App
+Shipping aggregator
+REPLACE
+Epic 2.5 — reconcile carrier list
+Split2Ship: PayPart | Rest COD
+Partial online payment + remainder on delivery
+REPLACE
+New Epic 1.6 — COD & partial payment
+Snapmint PG Customizations
+EMI / Buy-Now-Pay-Later at checkout
+REPLACE
+Epic 1.5 — add as a payment method
+India GST App
+GST-compliant invoice generation
+REPLACE
+New Epic 1.7 — tax invoicing & order documents
+Invoice Generator
+Order invoice generation
+REPLACE
+New Epic 1.7 — tax invoicing & order documents
+Order Printer
+Packing slip / order document printing
+REPLACE
+New Epic 1.7 — tax invoicing & order documents
+Search & Discovery
+Storefront product search & filtering
+REPLACE
+Epic 1.1 — add search/filter to catalog
+SEOWILL (SEOAnt) - AI SEO
+Meta tags, sitemap, on-page SEO
+REPLACE
+Epic 1.1 — basic SEO fields on product/category admin
+EasyEcom Inventory Management
+Third-party inventory/warehouse management
+DECIDE
+Epic 2.2 — replace with custom inventory, or integrate via API? Needs client decision
+CAPI Facebook Pixel Meta API
+Facebook Conversions API for ad tracking
+REPLACE
+New Phase 4 epic — marketing pixel/CAPI integration
+Analyzely
+Site analytics
+DECIDE
+Likely replaced by GA4 — confirm with client, not a custom-build item
+Flow
+Shopify's workflow automation engine
+REPLACE
+Covered by Phase 4's automation epics (2.1–4.4) rather than a 1:1 rebuild
+Next Storefront
+Headless Storefront API bridge powering the existing Next.js site
+REPLACE
+This is exactly what Phase 1 replaces — confirms scope, no new epic
+Core PHP Storefront
+Unclear from the admin panel alone
+DECIDE
+Needs client explanation — possible legacy/unused app
+Shopify GraphiQL App / Knowledge Base / Shopify Claude Connector App
+Internal dev/admin tools
+N/A
+No customer-facing function — nothing to replace
+4.  Development Roadmap Overview
+Phase
+Module / Deliverable
+Duration
+Status
+Scope Type
+Phase 1
+Custom Backend Foundation — replaces Shopify (catalog, orders, accounts, cart/checkout, payments, invoicing, migration)
+12–14 weeks
+Proposed
+Foundation
+Phase 2
+E-Commerce Operations — CRM, Inventory, Barcode, Pricing, Shipping & AWB
+6.5–7.5 weeks
+Proposed
+Client Review
+Phase 3
+Installation, Customer Support & After-Sales — service tracking, technician assignment, VMS, warranty
+6–7 weeks
+Proposed
+Client Review
+Phase 4
+Automation & Communications — WhatsApp/SMS/Email, IVR, bulk marketing, lead tracking, ad pixel/CAPI, analytics dashboard
+6–7 weeks
+Proposed
+Client Review
+Phase 5
+Customer Portal — login, profile, My Orders, feedback
+2.5–3.5 weeks (parallel to Phase 2/3)
+Proposed
+Client Review
+Phase 6
+HRMS — attendance, leave, payroll
+5–6 weeks
+Proposed
+Reusable build
+Overall: roughly 39–46 weeks (9–10.5 months) end to end if all six phases are approved — up from the earlier estimate as the client's confirmation call added post-order warranty purchase, an analytics/attribution dashboard, and a wider confirmed carrier list on top of the Shopify app audit findings. Phase 5 can run alongside Phases 2–3 once Phase 1 accounts/orders exist; Phase 6 reuses the Bharat Ceramics HRMS design. See Section 14 for the resourcing this timeline assumes.
+5.  Phase 1 — Custom Backend Foundation (Shopify Replacement)
+Goal: stand up a fully custom backend — our own database, our own admin panel — that does everything Shopify and its 22 installed apps currently do for orders, products, accounts, cart, payments and invoicing, then cut over with existing data and orders intact.
+EPIC 1.1  Product & Catalog Master   FOUNDATION — BLOCKS OTHER PHASES    REUSABLE FROM BHARAT CERAMICS BUILD
+Move the product catalog off Shopify into a backend we control.
+Effort: 3.5 weeks    Priority:  Must-have     Depends on: None (foundation module)
+Feature
+What it does
+Product master
+SKU, variants (color/finish/blade span), pricing, images, specs — mirrored from the current Shopify catalog
+Categories & collections
+Chandelier, Luxury, Wall, Hugger, Bladeless, Wooden Blade, etc. — same structure as today's site
+Admin CMS
+Add/edit/deactivate products without touching code, same pattern as the Bharat Ceramics product master
+Search & filtering
+Storefront product search and filters — replaces Shopify's Search & Discovery app
+Basic on-page SEO
+Meta title/description, sitemap generation per product/category — replaces SEOWILL/SEOAnt
+EPIC 1.2  Order Management Engine   FOUNDATION — BLOCKS OTHER PHASES
+The system of record for every order, replacing Shopify's order backend.
+Effort: 3 weeks    Priority:  Must-have     Depends on: Epic 1.1
+Feature
+What it does
+Order lifecycle
+Placed → Confirmed → Fulfilled → Delivered, with status history
+Order detail
+Line items, pricing, discounts, taxes, shipping charge, payment status
+Admin order view
+Search/filter orders, manual status updates, order notes
+EPIC 1.3  Customer Accounts & Authentication   FOUNDATION — BLOCKS OTHER PHASES
+Replace Shopify's account.oltao.in with our own auth, ready to power the Phase 5 portal too.
+Effort: 2 weeks    Priority:  Must-have     Depends on: Epic 1.2
+Feature
+What it does
+Registration/login
+Email or mobile OTP-based login
+Account migration
+Existing Shopify customer accounts migrated across with order history intact
+Session & security baseline
+Password reset, session handling — same baseline pattern as Bharat Ceramics' customer/architect logins
+EPIC 1.4  Cart & Checkout Engine   FOUNDATION — BLOCKS OTHER PHASES
+The buying flow the whole site depends on — rebuilt outside Shopify.
+Effort: 2.5 weeks    Priority:  Must-have     Depends on: Epic 1.1, 1.2, 1.3
+Feature
+What it does
+Cart
+Add/update/remove items, saved cart per logged-in customer
+Checkout flow
+Address, shipping method, payment step, order confirmation — matching current UX on oltao.in
+Discount/coupon support
+Promo codes at checkout, since Shopify currently handles this
+EPIC 1.5  Payment Gateway Integration   FOUNDATION — BLOCKS OTHER PHASES
+Take payments directly, without routing through Shopify Payments.
+Effort: 2 weeks    Priority:  Must-have     Depends on: Epic 1.4
+Feature
+What it does
+Gateway integration
+Razorpay/Cashfree-class gateway wired to the new checkout (gateway choice pending client confirmation)
+EMI / Buy-Now-Pay-Later
+Snapmint or equivalent EMI/BNPL option at checkout — replaces Snapmint PG Customizations
+Payment reconciliation
+Payment status synced back to the order record automatically
+Refunds
+Refund flow tied to order cancellation/return
+Needs before build:  confirm which payment gateway the client wants (Razorpay, Cashfree, PayU, etc.), whether Snapmint stays as the EMI provider, and get merchant account credentials — this decides the exact integration effort.
+EPIC 1.6  Alternate Checkout Flows — COD & Partial Payment
+Replicate the two non-standard payment paths currently live via Shiprocket Smart COD and Split2Ship.
+Effort: 1.5 weeks    Priority:  High     Depends on: Epic 1.4, Epic 1.5
+Feature
+What it does
+Cash on Delivery
+COD as a checkout option, with the fraud/verification check Shiprocket Smart COD currently provides
+Partial payment + COD
+Pay part online, remainder collected on delivery — replaces Split2Ship: PayPart | Rest COD
+COD eligibility rules
+Order value/location-based rules for when COD or partial-COD is offered
+EPIC 1.7  Tax Invoicing & Order Documents
+GST-compliant paperwork generated automatically, not through three separate Shopify apps.
+Effort: 1.5 weeks    Priority:  Must-have     Depends on: Epic 1.2
+Feature
+What it does
+GST tax invoice
+Auto-generated, GST-compliant invoice per order — replaces the India GST App
+Packing slip / order documents
+Printable packing slip and order documents — replaces Order Printer
+Document delivery
+Invoice emailed/attached to the order automatically — replaces Invoice Generator
+EPIC 1.8  Shopify Data Migration & Cutover   FOUNDATION — BLOCKS OTHER PHASES
+Move existing products, customers and order history across without losing anything, and switch over with minimal downtime.
+Effort: 1.5 weeks    Priority:  Must-have     Depends on: Epic 1.1–1.7 complete
+Feature
+What it does
+Data export & mapping
+Pull products, customers, and historical orders via the Shopify Admin API
+Parallel run
+New backend runs alongside Shopify for a short window to validate before full cutover
+DNS/traffic cutover
+Final switch from Shopify checkout to the custom backend, with rollback plan
+SEO preservation
+URL structure and redirects checked so existing product page rankings aren't lost
+Phase 1 deliverable: oltao.in fully self-hosted — no Shopify dependency for products, orders, accounts, cart, checkout or payments.
+6.  Phase 2 — E-Commerce Operations
+Goal: give the ops and sales team the tools Shopify's basic admin never had — CRM, real inventory control, and proper shipping/AWB visibility.
+EPIC 2.1  CRM — Pre-Sales & Post-Sales Tracking
+Track a customer relationship from first enquiry through to post-purchase support, not just the order itself.
+Effort: 2.5 weeks    Priority:  Must-have     Depends on: Phase 1 (customer & order data)
+Feature
+What it does
+Pre-sales pipeline
+Enquiry/lead capture from the website, WhatsApp, or manual entry; stages through to Won/Lost
+Post-sales tracking
+Ties into installation & after-sales (Phase 3) for a full customer timeline
+Lead source tracking
+Attribution — which channel/campaign a lead came from
+EPIC 2.2  Inventory / Stock Management   NEEDS CLIENT INPUT
+Real stock counts, so the site never sells what isn't in the warehouse.
+Effort: 1.5–3 weeks (pending decision)    Priority:  Must-have     Depends on: Epic 1.1 (product master)
+Feature
+What it does
+Stock ledger
+Per-SKU stock in/out, multi-warehouse if needed
+Low-stock alerts
+Threshold-based alerts to restock
+Site sync
+Out-of-stock products auto-hidden or flagged on the storefront
+Needs before build:  stock is currently managed via EasyEcom, not Shopify natively — decide whether to build inventory fully custom (lower ongoing cost, more build time) or integrate with EasyEcom via API (faster to ship, keeps a third-party dependency). Effort above assumes the custom-build path; API integration would be closer to 1 week.
+EPIC 2.3  Product Barcode Generation
+Physical stock that matches the digital record.
+Effort: 1 week    Priority:  Medium     Depends on: Epic 2.2
+Feature
+What it does
+Barcode generation
+Auto-generated barcode per SKU/variant
+Print-ready labels
+Exportable label sheets for warehouse use
+Scan-to-update
+Barcode scan tied to stock in/out (Epic 2.2)
+EPIC 2.4  Sale Price Management
+Update pricing without a developer, with a change history.
+Effort: 0.5 week    Priority:  Must-have     Depends on: Epic 1.1
+Feature
+What it does
+Price editor
+Per-product/variant sale price update from the admin panel
+Scheduled pricing
+Optional start/end dates for a sale price
+Price history
+Log of who changed a price and when
+EPIC 2.5  Shipping Partner Integration   NEEDS CLIENT INPUT
+Book, track and manually enter shipments without leaving the admin panel.
+Effort: 3–3.5 weeks    Priority:  High     Depends on: Epic 1.2 (orders)
+Feature
+What it does
+Blue Dart integration
+API-based shipment booking, label generation, tracking
+Delivery One / Delhivery integration
+Same, as a second carrier option
+Shiprocket integration
+Multi-carrier aggregator, kept per client confirmation
+Manual tracking entry
+Fallback: AWB/status entered by hand for shipments not booked through an integrated carrier
+Carrier selection
+Order-level choice of which partner (or manual) handles a given shipment
+Needs before build:  the client's confirmation named carriers slightly differently in two places — "Shiprocket and Delivery One" in one line, "Blue Dart, Delhivery One" in another. We've scoped for the superset (Blue Dart + Delivery One/Delhivery + Shiprocket + manual entry) — please confirm this is the final list, or trim it, before Phase 2 is costed, since eShipz is dropped either way and each additional carrier adds integration time.
+EPIC 2.6  AWB Tracking (Customer-Facing)
+Let customers track their own shipment without calling support.
+Effort: 1 week    Priority:  High     Depends on: Epic 2.5
+Feature
+What it does
+AWB capture
+Airway bill number attached to the order once shipped
+Tracking display
+Live status shown on the order detail page / customer portal (Phase 5)
+Status notifications
+Shipped/out-for-delivery/delivered updates via Phase 4's automation
+EPIC 2.7  Manual Shipping Charges
+Simple, deliberately manual per the client's request — no dynamic rate engine.
+Effort: 0.5 week    Priority:  Medium     Depends on: Epic 1.4 (checkout)
+Feature
+What it does
+Manual entry
+Shipping charge entered per order at checkout or by ops, not auto-calculated by weight/distance
+Free-shipping threshold
+Optional override if the client wants a free-shipping rule later
+Phase 2 deliverable: CRM, inventory, pricing and shipping fully operable from the custom admin panel.
+7.  Phase 3 — Installation, Customer Support & After-Sales
+Goal: fans need installation and occasional service — this phase tracks that full lifecycle, not just the sale.
+EPIC 3.1  Installation ↔ Order Linkage
+Every installation request traceable back to the order that generated it.
+Effort: 1 week    Priority:  Must-have     Depends on: Phase 1 Epic 1.2 (orders)
+Feature
+What it does
+Auto-linked requests
+Installation request created against the original order, not a standalone ticket
+Status visibility
+Customer and ops both see installation status against the order
+EPIC 3.2  Customer Support & After-Sales Service
+One module for both general customer support and post-installation service — complaints, part replacements, and everyday support queries.
+Effort: 2 weeks    Priority:  Must-have     Depends on: Epic 3.1
+Feature
+What it does
+Service/support ticket
+Raised by customer or ops, linked to the order/installation where relevant
+Status pipeline
+Open → Assigned → In Progress → Resolved
+History
+Full service/support history per customer/product, visible to support staff
+EPIC 3.3  Technician Assignment
+Get the right technician to the right job, automatically where possible.
+Effort: 1.5 weeks    Priority:  High     Depends on: Epic 3.2
+Feature
+What it does
+Technician master
+Technician profiles, region/coverage area, availability
+Auto/manual assignment
+Auto-assign by region & availability, or manual override by ops
+Visit scheduling
+Appointment slot booked against the service ticket
+EPIC 3.4  VMS API Integration (Vendor/Visit Management)   NEEDS CLIENT INPUT
+Connect to the client's vendor/visit management system rather than duplicating it.
+Effort: 1.5–3 weeks (pending scope)    Priority:  High     Depends on: Epic 3.3, VMS API documentation
+Feature
+What it does
+API integration
+Two-way sync with VMS for technician visits/vendor data
+Data mapping
+Map VMS's visit/vendor records to our installation & service tickets
+Needs before build:  the URL shared for Vishwas Multitech Systems (vishwasmultitechsystems.co.in) resolves to a heat pump / water treatment / industrial engineering company — not a technician or vendor management software platform. Please confirm the correct company/product for the VMS integration, or share direct API documentation, before this epic can be scoped or estimated at all.
+EPIC 3.5  Warranty Add-on Management
+Sell and track extended warranty as a proper add-on — at checkout, at installation, or any time after via the customer portal.
+Effort: 1.5 weeks    Priority:  Medium     Depends on: Epic 1.4, Epic 3.2, Epic 5.2 (My Orders)
+Feature
+What it does
+Warranty add-on at checkout/installation
+Optional extended warranty offered at order or installation stage
+Post-order warranty purchase
+Customer can buy a warranty add-on later from their portal dashboard, not only at checkout
+Warranty record
+Coverage period, terms, linked to the product & customer
+Claim tracking
+Warranty claims flow into the after-sales module (Epic 3.2)
+Phase 3 deliverable: installation, customer support and after-sales fully tracked end to end, tied back to the original order.
+8.  Phase 4 — Automation & Communications
+Goal: reduce manual follow-up by automating the messages ops currently sends by hand, and give the marketing team real campaign tools.
+EPIC 4.1  WhatsApp / SMS / Email Automation
+Trigger the right message at the right moment, automatically.
+Effort: 2 weeks    Priority:  Must-have     Depends on: Phase 1–3 (orders, service tickets)
+Feature
+What it does
+Order lifecycle messages
+Order confirmed, shipped, out for delivery, delivered — auto-sent
+Service/installation updates
+Ticket status changes trigger a customer notification
+Template management
+Editable message templates per event, from the admin panel
+EPIC 4.2  WhatsApp Business API (Direct)   NEEDS CLIENT INPUT
+Move off the click-to-chat link and onto a real API integration.
+Effort: 1 week    Priority:  Must-have     Depends on: WhatsApp Business API approval
+Feature
+What it does
+WhatsApp Business API setup
+Verified business number, API access (Meta/BSP of choice)
+Two-way messaging
+Automated sends plus the ability for support to reply from the admin panel
+Needs before build:  Meta Business verification and a WhatsApp Business Solution Provider (BSP) choice — this typically has a 1–2 week approval lead time outside our control.
+EPIC 4.3  IVR Integration (My Operator)   NEEDS CLIENT INPUT
+Route and log inbound calls without a separate phone system.
+Effort: 1 week    Priority:  Medium     Depends on: My Operator account & API access, Epic 2.1 (CRM)
+Feature
+What it does
+My Operator integration
+IVR menu, call routing, and call logging via My Operator's API
+Call-to-CRM logging
+Inbound/outbound calls logged against the relevant CRM lead or service ticket
+Needs before build:  My Operator account details and API documentation to confirm what call data/events are available to sync.
+EPIC 4.4  Bulk Marketing Campaigns
+Send a campaign to a segment, not one customer at a time.
+Effort: 1.5 weeks    Priority:  Medium     Depends on: Epic 4.1, 4.2, CRM customer data
+Feature
+What it does
+Segment builder
+Filter customers by purchase history, location, product interest, etc.
+Campaign send
+Bulk WhatsApp/SMS/Email send against a segment, with a template
+Basic campaign reporting
+Sent/delivered/opened counts where the channel supports it
+EPIC 4.5  Call/Lead Tracking ("Shadow Tracking")   NEEDS CLIENT INPUT
+Attribute leads and calls back to their source.
+Effort: TBD    Priority:  Medium     Depends on: Clarification needed
+Feature
+What it does
+Tracking mechanism
+To be defined — see note below
+Needs before build:  "shadow for tracking" was noted in the meeting without further detail — we need the client to clarify what this refers to (e.g. call-tracking numbers per campaign, a UTM-style attribution layer, or literal call recording/shadowing) before this can be scoped or estimated.
+EPIC 4.6  Marketing Pixel & Conversion API   DECIDE
+Keep ad platforms fed with conversion data now that Shopify's app isn't doing it.
+Effort: 1 week    Priority:  Medium     Depends on: Epic 1.2 (orders), Epic 1.4 (checkout)
+Feature
+What it does
+Facebook Conversions API
+Server-side conversion tracking — replaces CAPI Facebook Pixel Meta API
+Browser pixel
+Standard Meta/Google pixel on the storefront for ad platform tracking
+GA4 event tracking
+Site analytics — likely replaces Analyzely, pending client confirmation
+Needs before build:  confirm whether Analyzely stays or is replaced by GA4 — this is a configuration decision, not something that needs custom development either way.
+EPIC 4.7  Analytics & Attribution Dashboard
+An admin-side reporting view — channel attribution, campaign performance, AOV — replacing Shopify's Growth/Attribution/Analytics screens.
+Effort: 1.5 weeks    Priority:  Medium     Depends on: Phase 1 (orders), Epic 4.6 (pixel/CAPI data)
+Feature
+What it does
+Channel attribution
+Sessions and orders by channel (Direct, Organic, Paid, Referral, etc.), mirroring Shopify's current Attribution report
+Campaign performance
+Basic reporting per marketing campaign — sends, conversions, revenue attributed
+Core commerce metrics
+AOV, new vs. returning customer split, orders and revenue over time
+Phase 4 deliverable: automated customer communications live across WhatsApp, SMS and Email, plus IVR call handling, bulk campaign tools, ad conversion tracking, and an admin analytics dashboard.
+9.  Phase 5 — Customer Portal
+Goal: give customers self-service visibility instead of routing everything through support.
+EPIC 5.1  Customer Login & Profile   REUSABLE FROM BHARAT CERAMICS BUILD
+Reuses the Phase 1 account system — no separate login to build.
+Effort: 1 week    Priority:  Must-have     Depends on: Epic 1.3
+Feature
+What it does
+Login
+Same OTP/email login built in Epic 1.3, surfaced as a customer-facing portal
+Profile management
+View/edit name, contact details, saved addresses
+EPIC 5.2  My Orders Dashboard
+Order history, status and shipment tracking in one place.
+Effort: 1 week    Priority:  Must-have     Depends on: Epic 1.2, Epic 2.6, Epic 3.1
+Feature
+What it does
+Order list & detail
+All past and current orders, with status and line-item detail
+AWB tracking
+Live shipment tracking pulled from Epic 2.6
+Installation/service status
+Linked installation and after-sales tickets visible against the order
+EPIC 5.3  Feedback Form
+Close the loop after delivery or service.
+Effort: 0.5 week    Priority:  Medium     Depends on: Epic 5.2
+Feature
+What it does
+Post-delivery/post-service prompt
+Triggered automatically once an order is delivered or a service ticket closes
+Rating & comments
+Star rating plus free-text feedback
+Admin visibility
+Feedback surfaced to the ops/support dashboard
+Phase 5 deliverable: customers can log in, see every order and its status, and leave feedback — without calling support.
+10.  Phase 6 — HRMS
+Goal: internal staff operations — attendance, leave and payroll — on the same architecture already built for Bharat Ceramics, which should meaningfully reduce build time here.
+EPIC 6.1  Employee Master & Attendance   REUSABLE FROM BHARAT CERAMICS BUILD
+Employee records and daily attendance tracking.
+Effort: 2 weeks    Priority:  High     Depends on: None (foundation for Phase 6)
+Feature
+What it does
+Employee master
+Personal, statutory and employment details
+Attendance
+Check-in/out, shift mapping, branch/warehouse assignment
+EPIC 6.2  Leave Management   REUSABLE FROM BHARAT CERAMICS BUILD
+Leave requests and approvals without spreadsheets.
+Effort: 1 week    Priority:  High     Depends on: Epic 6.1
+Feature
+What it does
+Leave types & balances
+Configurable leave types, balance tracking
+Apply-approve workflow
+Employee applies, manager approves, calendar view
+EPIC 6.3  Payroll Processing   REUSABLE FROM BHARAT CERAMICS BUILD
+Accurate, compliant payslips generated from attendance and leave data.
+Effort: 2.5 weeks    Priority:  Must-have     Depends on: Epic 6.1, 6.2
+Feature
+What it does
+Salary structure
+Configurable CTC breakup per employee/grade
+Payroll run
+Monthly run pulling attendance/leave automatically
+Statutory deductions
+PF, ESI, TDS, professional tax
+Payslips & disbursal
+Payslip generation and bank-transfer-ready payment file
+Phase 6 deliverable: HRMS live for Oltao's internal team, reusing the Bharat Ceramics HRMS design rather than building fresh.
+11.  Key Dependencies & Sequencing Logic
+Phase 1 blocks everything else — CRM, inventory, installation, portal and HRMS all assume the custom backend (products, orders, accounts) already exists.
+Epic 1.8 (Shopify migration & cutover) should be the last thing done in Phase 1, once Epics 1.1–1.7 — including the new COD/partial-payment and tax-invoicing epics — are validated, to minimize downtime risk.
+Phase 2's inventory (Epic 2.2) and shipping (Epic 2.5) both carry a wide effort range until the EasyEcom and carrier-list decisions in Section 3 are resolved — worth settling early since they affect Phase 2's overall timeline the most.
+Phase 5 (Customer Portal) can start as soon as Phase 1 is live — it doesn't need to wait for Phase 2 or 3, though My Orders (Epic 5.2) gets richer once Phase 2's AWB tracking and Phase 3's installation linkage exist.
+Phase 3's VMS integration (Epic 3.4) and Phase 4's IVR/shadow-tracking items (Epics 4.3, 4.5) are the least defined pieces of this plan — they need vendor docs or client clarification before they can be estimated with confidence.
+Phase 6 (HRMS) has no dependency on the other phases and could be sequenced earlier if the client wants internal tooling sooner — it's independent of the Shopify migration.
+12.  Commercial & Next Steps Note
+Everything in this document is still at Client Review stage — there's no MSA yet, so nothing here is committed. Before development starts, we'd recommend:
+Confirm Phase 1 scope and commercials first — it's the foundation and the highest-risk piece (live store migration), so it deserves its own sign-off before the rest of the roadmap is locked in.
+Walk through the Shopify App Audit (Section 3) with the client line by line — the DECIDE items (EasyEcom, carrier list, Analyzely, Core PHP Storefront) directly change Phase 1–2 effort and should be resolved before those phases are costed, not discovered mid-build.
+Resolve the remaining flagged items (payment gateway choice, VMS API docs, WhatsApp BSP choice, My Operator access, and what "shadow tracking" means) in parallel with Phase 1 planning, so Phases 3–4 aren't blocked later.
+Plan the Shopify cutover (Epic 1.8) for a low-traffic window, with a rollback plan, given oltao.in is a live, revenue-generating store.
+Issue a formal MSA covering at least Phase 1, with Phases 2–6 either bundled or phased in as separate milestones — mirroring how Bharat Ceramics' Phases 4–6 were handled as their own addendum.
+13.  Next Steps
+Client to confirm the flagged items above (gateway, carriers, VMS, WhatsApp BSP, My Operator, "shadow tracking") so Phase 1 and Phase 4 can be estimated precisely.
+Service Provider to issue Phase 1 commercials and timeline for sign-off, given it's the foundation the rest of the plan depends on.
+Once Phase 1 is approved, finalize a cutover date/window for the Shopify migration with the client's ops team.
+14.  Resources Required
+Team shape across the full six-phase roadmap. Core roles run the length of the project; specialists rotate in for the phase(s) that need them.
+Core Team (full project)
+Role
+Involvement
+Why
+Project Manager / Tech Lead
+Full-time
+Owns all 6 phases, the Shopify cutover risk, and the Section 3 clarification items that need client sign-off.
+Backend Developer × 2–3
+Full-time
+Order/catalog/customer engine (Phase 1), CRM & inventory (Phase 2), installation/service/VMS (Phase 3), automation (Phase 4), HRMS (Phase 6).
+Frontend Developer × 1–2
+Full-time
+Extends the existing Next.js site for checkout (COD/partial/EMI), customer portal, warranty purchase flow, and admin panel UI.
+QA Engineer
+Full-time
+Payments, GST invoicing, COD/partial-payment logic and the Shopify cutover are all high-stakes — regression testing can't be an afterthought here.
+Specialists (phase-specific)
+Role
+Involvement
+Why
+Migration / DevOps Engineer
+Phase 1, heaviest at cutover (Epic 1.8)
+Shopify data export/mapping, parallel run, DNS cutover and rollback plan for a live, revenue-generating store.
+Payments Specialist
+Phase 1 (Epics 1.5–1.6)
+Gateway integration, COD, partial payment, and EMI/BNPL are the riskiest checkout logic to get wrong.
+UI/UX Designer
+Heaviest in Phase 1 (checkout) & Phase 5 (portal)
+New checkout flows and the customer portal both need real design work, not just backend wiring.
+Integrations Engineer
+Rotates: Phase 2 (carriers), Phase 4 (My Operator, Meta CAPI)
+Each third-party API (Shiprocket, Blue Dart, Delivery One, My Operator, Meta) has its own quirks and auth flow.
+GST/Compliance Consultant (part-time)
+Phase 1 (Epic 1.7)
+Validates that auto-generated tax invoices are actually correct — a compliance risk, not just a coding task.
+VMS Integration Owner
+Phase 3 (Epic 3.4) — on hold
+Cannot be resourced yet — the VMS vendor/API is unconfirmed (see the flag under Epic 3.4).
+Roughly 5–6 people full-time (PM, 2–3 backend, 1–2 frontend, QA) for the bulk of the ~9–10.5 month timeline, plus 5 specialists rotating in for their specific phases. Phase 6 (HRMS) can reuse backend developers already familiar with the Bharat Ceramics HRMS build, which is part of why its estimate is lower than a from-scratch HRMS.

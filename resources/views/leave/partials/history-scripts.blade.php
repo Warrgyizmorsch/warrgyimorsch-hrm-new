@@ -74,6 +74,8 @@
         calculateDays();
     }
 
+    let applyLeaveBalance = null;
+
     function setTotalDuration(displayText, numericValue) {
         const display = document.getElementById('totalDaysDisplay');
         const hidden = document.getElementById('totalDays');
@@ -82,6 +84,50 @@
         }
         if (hidden) {
             hidden.value = numericValue ?? (parseFloat(String(displayText).replace(/[^0-9.]/g, '')) || 0);
+        }
+        updateApplyOverflowWarning();
+    }
+
+    function fetchApplyLeaveBalance(employeeId) {
+        const hint = document.getElementById('applyBalanceHint');
+        applyLeaveBalance = null;
+        if (!employeeId) {
+            if (hint) hint.textContent = 'Select one';
+            updateApplyOverflowWarning();
+            return;
+        }
+
+        fetch(`/api/leave/employee/${employeeId}/balance`)
+            .then(res => res.json())
+            .then(data => {
+                applyLeaveBalance = Math.max(Number(data.balance ?? 0), 0);
+                if (hint) {
+                    const shown = Number.isInteger(applyLeaveBalance) ? applyLeaveBalance : applyLeaveBalance.toFixed(1);
+                    hint.textContent = `${shown} day${applyLeaveBalance === 1 ? '' : 's'} available (Paid/Sick)`;
+                }
+                updateApplyOverflowWarning();
+            })
+            .catch(() => {
+                applyLeaveBalance = null;
+            });
+    }
+
+    function updateApplyOverflowWarning() {
+        const warningEl = document.getElementById('applyOverflowWarning');
+        if (!warningEl) return;
+
+        const category = document.getElementById('leaveCategory')?.value;
+        const totalDays = parseFloat(document.getElementById('totalDays')?.value || '0') || 0;
+        const isQuotaChecked = category === 'Paid Leave' || category === 'Sick Leave';
+
+        if (isQuotaChecked && applyLeaveBalance !== null && totalDays > applyLeaveBalance) {
+            const fitDays = Math.max(0, applyLeaveBalance);
+            warningEl.style.display = '';
+            warningEl.textContent = fitDays > 0
+                ? `Only ${fitDays} day(s) of ${category} remain — the rest will be submitted as Casual Leave.`
+                : `No ${category} balance remaining — this request will be submitted as Casual Leave.`;
+        } else {
+            warningEl.style.display = 'none';
         }
     }
 
@@ -111,6 +157,9 @@
         document.getElementById('leaveCategoryPicker')?.querySelectorAll('.lv-cat-chip').forEach(c => c.classList.remove('is-selected'));
         document.getElementById('leaveCategory').value = '';
         document.getElementById('catFull').checked = true;
+        applyLeaveBalance = null;
+        const hint = document.getElementById('applyBalanceHint');
+        if (hint) hint.textContent = 'Select one';
         setTotalDuration('0 Days', 0);
         toggleCategoryFields();
     }
@@ -398,6 +447,10 @@
         initLeaveCategoryPicker();
         document.getElementById('leaveCategory')?.addEventListener('change', toggleCategoryFields);
 
+        document.getElementById('applyEmployeeId')?.addEventListener('change', function () {
+            fetchApplyLeaveBalance(this.value);
+        });
+
         const applyEmpDropdown = document.getElementById('applyEmployeeDropdown');
         const applyEmpItems = applyEmpDropdown?.querySelectorAll('.wghrm-items-list .wghrm-item');
         if (applyEmpItems && applyEmpItems.length === 1) {
@@ -417,6 +470,11 @@
             }
             initLeaveCategoryPicker();
             toggleCategoryFields();
+
+            const employeeIdInput = document.getElementById('applyEmployeeId');
+            if (employeeIdInput?.value) {
+                fetchApplyLeaveBalance(employeeIdInput.value);
+            }
         });
 
         document.getElementById('applyLeaveModal')?.addEventListener('hidden.bs.offcanvas', resetApplyLeaveDrawer);
@@ -457,7 +515,7 @@
                 })
                 .then(data => {
                     if (data.success) {
-                        showToast('Leave applied successfully! Status: Pending', 'success');
+                        showToast(data.message || 'Leave applied successfully! Status: Pending', 'success');
                         setTimeout(() => window.location.reload(), 1500);
                     }
                 })

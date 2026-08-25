@@ -33,6 +33,32 @@ class LeaveApplicationController extends Controller
             ->all();
     }
 
+    /**
+     * @return string[] Y-m-d dates, excluding Sundays and holidays.
+     */
+    private function getWorkingDatesBetween(string $startDate, ?string $endDate = null): array
+    {
+        $start = Carbon::parse($startDate)->startOfDay();
+        $end = Carbon::parse($endDate ?: $startDate)->startOfDay();
+
+        if ($end->lt($start)) {
+            return [];
+        }
+
+        $holidayDates = $this->getHolidayDatesBetween($start, $end);
+        $dates = [];
+
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            if ($date->isSunday() || in_array($date->toDateString(), $holidayDates, true)) {
+                continue;
+            }
+
+            $dates[] = $date->toDateString();
+        }
+
+        return $dates;
+    }
+
     private function calculateWorkingLeaveDays(string $startDate, ?string $endDate = null): int
     {
         $start = Carbon::parse($startDate)->startOfDay();
@@ -250,14 +276,84 @@ class LeaveApplicationController extends Controller
             $data['end_date'] = $request->end_date ?? $request->start_date;
         }
 
-        // LeaveApplication::create($data);
-        $leave = LeaveApplication::create($data);
         $employee = Employee::active()->findOrFail($data['employee_id']);
+
+        // Only Paid/Sick Leave draw down the shared monthly quota and can overflow.
+        // Casual Leave, Gatepass (early leave) and WFH are never restricted.
+        $quotaCheckedCategories = ['Paid Leave', 'Sick Leave'];
+
+        if (in_array($request->leave_category, $quotaCheckedCategories, true) && (float) $data['total_days'] > 0) {
+            $balance = $this->leaveBalanceService->getEmployeeBalanceSummary(
+                $data['employee_id'],
+                Carbon::parse($data['start_date'])
+            )['balance'];
+
+            if ((float) $data['total_days'] > $balance) {
+                $this->createLeaveWithOverflowAsCasual($data, $balance);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Leave quota exceeded — the remaining days were submitted as Casual Leave.',
+                ]);
+            }
+        }
+
+        LeaveApplication::create($data);
 
         // Mail::to(env('LEAVE_APPROVER_EMAIL'))
         //     ->send((new LeaveApplicationMail($leave, $employee))->replyTo($employee->email));
 
         return response()->json(['success' => true, 'message' => 'Leave application submitted successfully']);
+    }
+
+    /**
+     * Split a Paid/Sick Leave request that exceeds the remaining balance: the days that
+     * fit stay under the original category, the rest are submitted as Casual Leave
+     * (which has no quota cap). Half-day requests aren't split — they convert wholesale.
+     */
+    private function createLeaveWithOverflowAsCasual(array $data, float $balance): void
+    {
+        $isHalfDay = (float) $data['total_days'] === 0.5;
+
+        if ($isHalfDay) {
+            if ($balance >= 0.5) {
+                LeaveApplication::create($data);
+                return;
+            }
+
+            $casualData = $data;
+            $casualData['leave_category'] = 'Casual Leave';
+            LeaveApplication::create($casualData);
+            return;
+        }
+
+        $workingDates = $this->getWorkingDatesBetween($data['start_date'], $data['end_date']);
+        $takeCount = max(0, (int) floor($balance));
+
+        if ($takeCount <= 0) {
+            $casualData = $data;
+            $casualData['leave_category'] = 'Casual Leave';
+            LeaveApplication::create($casualData);
+            return;
+        }
+
+        if ($takeCount >= count($workingDates)) {
+            // Shouldn't happen (we only get here when total_days > balance), but fall
+            // back to the original single application rather than lose the request.
+            LeaveApplication::create($data);
+            return;
+        }
+
+        $originalData = $data;
+        $originalData['end_date'] = $workingDates[$takeCount - 1];
+        $originalData['total_days'] = $takeCount;
+        LeaveApplication::create($originalData);
+
+        $casualData = $data;
+        $casualData['leave_category'] = 'Casual Leave';
+        $casualData['start_date'] = $workingDates[$takeCount];
+        $casualData['total_days'] = count($workingDates) - $takeCount;
+        LeaveApplication::create($casualData);
     }
 
     public function export(Request $request)
@@ -433,5 +529,33 @@ class LeaveApplicationController extends Controller
             ->orderBy('start_date', 'desc')
             ->get();
         return response()->json($leaves);
+    }
+
+    /**
+     * Current Paid/Sick Leave balance for the apply-leave form, so the employee sees
+     * their remaining quota before submitting. Casual Leave/WFH/Gatepass aren't quota
+     * checked, so this balance is only meaningful for Paid/Sick Leave requests.
+     */
+    public function getEmployeeBalance($employeeId)
+    {
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isTeamLeader = in_array($role, ['team_leader']);
+
+        if ($isTeamLeader) {
+            $department = $user->employee->department ?? null;
+            $targetEmployee = Employee::find($employeeId);
+            $targetRole = $targetEmployee ? str_replace(' ', '_', strtolower($targetEmployee->role ?? '')) : null;
+            if (!$department || !$targetEmployee || $targetEmployee->department !== $department || $targetRole !== 'employee') {
+                return response()->json(['message' => 'Unauthorized access to employee data.'], 403);
+            }
+        } elseif (!$isAdmin && $employeeId != $user->employee_id) {
+            return response()->json(['message' => 'Unauthorized access.'], 403);
+        }
+
+        return response()->json(
+            $this->leaveBalanceService->getEmployeeBalanceSummary((int) $employeeId)
+        );
     }
 }

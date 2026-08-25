@@ -241,6 +241,7 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     // "View" drawer on the leave history list — same view-only, department-scoped access.
     Route::get('/api/leave/details/{id}', [LeaveApplicationController::class, 'getDetails']);
     Route::get('/api/leave/employee/{employeeId}', [LeaveApplicationController::class, 'getEmployeeLeaves']);
+    Route::get('/api/leave/employee/{employeeId}/balance', [LeaveApplicationController::class, 'getEmployeeBalance']);
 
     // Same view-only, department-scoped pattern for Asset Management — team leaders additionally
     // get the update route so they can reassign/edit assets already allocated to their own team
