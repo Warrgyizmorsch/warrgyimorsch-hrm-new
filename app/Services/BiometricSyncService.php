@@ -9,7 +9,10 @@ use Illuminate\Support\Facades\Log;
 class BiometricSyncService
 {
     /**
-     * Fetch recent attendance punches from the biometric webhook.
+     * Fetch recent attendance punches from every configured biometric machine
+     * (e.g. 'zk' and 'rs9n') via the unified Attendance API and merge them
+     * into a single record set. A machine that fails does not block the
+     * others — only surfaces as a warning in the aggregated message.
      *
      * @return array{success: bool, records?: array, message?: string}
      */
@@ -24,6 +27,47 @@ class BiometricSyncService
             ];
         }
 
+        $machines = config('biometric.machines', []);
+
+        if ($machines === []) {
+            return [
+                'success' => false,
+                'message' => 'No biometric machines configured. Set BIOMETRIC_MACHINES in .env',
+            ];
+        }
+
+        $records = [];
+        $failures = [];
+
+        foreach ($machines as $machine) {
+            $result = $this->fetchFromMachine($url, $machine);
+
+            if ($result['success']) {
+                $records = array_merge($records, $result['records']);
+            } else {
+                $failures[] = "{$machine}: {$result['message']}";
+            }
+        }
+
+        if ($records === [] && $failures !== []) {
+            return [
+                'success' => false,
+                'message' => implode(' | ', $failures),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'records' => $records,
+            'message' => $failures !== [] ? 'Partial sync, some machines failed: ' . implode(' | ', $failures) : null,
+        ];
+    }
+
+    /**
+     * @return array{success: bool, records: array, message?: string}
+     */
+    private function fetchFromMachine(string $url, string $machine): array
+    {
         $token = trim((string) config('biometric.api_secret_token'));
 
         try {
@@ -35,49 +79,51 @@ class BiometricSyncService
             }
 
             $response = $request->post($url, [
-                'host'     => config('biometric.device_host'),
-                'port'     => (int) config('biometric.device_port'),
-                'password' => (int) config('biometric.device_password'),
-                'days'     => (int) config('biometric.sync_days'),
+                'machine' => $machine,
+                'days'    => (int) config('biometric.sync_days'),
             ]);
         } catch (ConnectionException $e) {
-            Log::error('Biometric webhook connection failed', ['error' => $e->getMessage()]);
+            Log::error('Biometric API connection failed', ['machine' => $machine, 'error' => $e->getMessage()]);
 
             return [
                 'success' => false,
-                'message' => 'Could not reach the biometric webhook: ' . $e->getMessage(),
+                'records' => [],
+                'message' => 'Could not reach the biometric API: ' . $e->getMessage(),
             ];
         }
 
         if ($response->failed()) {
-            Log::warning('Biometric webhook returned an error response', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
+            Log::warning('Biometric API returned an error response', [
+                'machine' => $machine,
+                'status'  => $response->status(),
+                'body'    => $response->body(),
             ]);
 
             return [
                 'success' => false,
-                'message' => 'Biometric webhook returned HTTP ' . $response->status(),
+                'records' => [],
+                'message' => 'Biometric API returned HTTP ' . $response->status(),
             ];
         }
 
         $payload = $response->json();
 
         if (!is_array($payload) || ($payload['success'] ?? false) !== true) {
-            Log::warning('Biometric webhook returned an unexpected payload', [
-                'body' => $response->body(),
+            Log::warning('Biometric API returned an unexpected payload', [
+                'machine' => $machine,
+                'body'    => $response->body(),
             ]);
 
             return [
                 'success' => false,
-                'message' => $payload['message'] ?? 'Biometric webhook returned an unexpected response.',
+                'records' => [],
+                'message' => $payload['message'] ?? 'Biometric API returned an unexpected response.',
             ];
         }
 
         return [
             'success' => true,
             'records' => $payload['data'] ?? [],
-            'message' => $payload['message'] ?? null,
         ];
     }
 }

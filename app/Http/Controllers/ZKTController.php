@@ -37,28 +37,60 @@ class ZKTController extends Controller
             ]);
         }
 
+        $rs9nMap = config('biometric.rs9n_employee_map', []);
+        $affectedCodes = [];
+
         foreach ($records as $att) {
-            // Dedupe on (user_id, timestamp) — that's the true identity of a punch.
-            // pyzk's `uid` is only the record's position within the device's current
-            // result set, not a stable per-punch ID, so it can point at a different
-            // timestamp on every sync. Keying on it let the same real punch be
-            // re-inserted as a brand new row instead of being matched and updated.
+            $rawUserId = trim((string) ($att['user_id'] ?? ''));
+
+            if (($att['machine'] ?? null) === 'rs9n') {
+                // The 'rs9n' device's own enrollment IDs (1-28) do not match
+                // employees.employee_code — they were verified and mapped by mobile
+                // number (config/biometric.php). Anything not in the map is skipped
+                // rather than guessed, since a wrong guess silently attributes a
+                // punch to the wrong employee.
+                $deviceId = ctype_digit($rawUserId) ? (int) ltrim($rawUserId, '0') ?: 0 : null;
+                $userId = $deviceId !== null ? ($rs9nMap[$deviceId] ?? null) : null;
+
+                if ($userId === null) {
+                    Log::warning('rs9n punch skipped: no employee mapping', [
+                        'rs9n_user_id' => $rawUserId,
+                        'timestamp'    => $att['timestamp'] ?? null,
+                    ]);
+
+                    continue;
+                }
+
+                $userId = (string) $userId;
+            } else {
+                // 'zk' machine codes already equal employee_code directly.
+                $userId = $rawUserId;
+            }
+
+            $affectedCodes[$userId] = true;
+
+            // Dedupe on (user_id, timestamp) — that's the true identity of a punch,
+            // stable across both the 'zk' and 'rs9n' machines since employee codes
+            // are unique company-wide. Neither machine gives a stable per-punch ID
+            // (pyzk's old `uid` was just a positional index), so keying on anything
+            // device-local risks re-inserting the same real punch as a new row.
             DB::table('attendance_logs')->updateOrInsert(
                 [
-                    'user_id'   => $att['user_id'],
+                    'user_id'   => $userId,
                     'timestamp' => $att['timestamp'],
                 ],
                 [
-                    'device_uid' => $att['uid'],
-                    'status'     => $att['status'],
-                    'punch'      => $att['punch'],
+                    'device_uid' => $att['device'] ?? $att['machine'] ?? 'unknown',
+                    // punch is a NOT NULL int column (legacy ZKTeco convention: 0 = check-in, 1 = check-out).
+                    'punch'      => ($att['direction'] ?? null) === 'OUT' ? 1 : 0,
+                    'status'     => $att['direction'] ?? null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]
             );
         }
 
-        $affectedCodes = collect($records)->pluck('user_id')->unique()->filter()->values();
+        $affectedCodes = collect(array_keys($affectedCodes));
 
         foreach ($affectedCodes as $employeeCode) {
             $service->rebuildFromDeviceLogs((string) $employeeCode);
