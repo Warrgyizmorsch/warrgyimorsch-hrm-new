@@ -321,6 +321,18 @@ class LeaveApplicationController extends Controller
                     continue;
                 }
 
+                $existing = Attendance::where('employee_id', $leave->employee_id)
+                    ->where('attendance_date', $date->format('Y-m-d'))
+                    ->first();
+
+                // A gatepass/early-leave (or any leave) approved for a day that already has
+                // real biometric punches must not overwrite them — the employee was
+                // genuinely present that day. Only fill in the leave-derived status/hours
+                // when there's no real attendance data to lose.
+                if ($existing && ($existing->check_in !== null || $existing->check_out !== null)) {
+                    continue;
+                }
+
                 Attendance::updateOrCreate(
                     [
                         'employee_id' => $leave->employee_id,
