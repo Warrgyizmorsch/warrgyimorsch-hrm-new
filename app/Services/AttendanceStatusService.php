@@ -113,6 +113,55 @@ class AttendanceStatusService
     }
 
     /**
+     * Single source of truth for crediting an approved leave against a day's raw
+     * punch-derived status. Used both when a leave is approved and on every later
+     * biometric re-sync, so the credit survives resyncs instead of being recomputed away.
+     *
+     * - Half-day leave: partial punches are expected — if the worked half alone doesn't
+     *   clear the half-day threshold, the leave covers the rest of the day.
+     * - Gatepass / Early Leave: the employee was permitted to leave ~1hr early — that
+     *   hour is credited toward the Present/Half-day threshold.
+     * - Any other (full-day) leave category is left untouched here: real punches on a
+     *   full-day-leave date mean the employee was genuinely present, which callers must
+     *   decide separately (this method never manufactures a 'leave' status).
+     *
+     * Only applies when both punches exist; a real total_hours value is never altered.
+     */
+    public static function creditApprovedLeave(
+        string $rawStatus,
+        float $hours,
+        bool $hasBothPunches,
+        string $leaveType,
+        string $leaveCategory,
+        float $fullDayHours
+    ): string {
+        if (!$hasBothPunches) {
+            return $rawStatus;
+        }
+
+        $leaveType = strtolower($leaveType);
+        $leaveCategory = strtolower($leaveCategory);
+
+        if (str_contains($leaveType, 'half')) {
+            return $hours >= self::HALF_DAY_MIN_HOURS ? $rawStatus : 'half_day';
+        }
+
+        if (str_contains($leaveCategory, 'gatepass')) {
+            $credited = $hours + 1.0;
+
+            if ($credited >= $fullDayHours) {
+                return 'present';
+            }
+
+            if ($credited >= self::HALF_DAY_MIN_HOURS) {
+                return 'half_day';
+            }
+        }
+
+        return $rawStatus;
+    }
+
+    /**
      * Derive stored DB status from punches/hours while preserving leave-derived records.
      */
     public static function resolveStoredStatus(string $currentStatus, ?float $hours, bool $hasBothPunches): string

@@ -235,6 +235,22 @@ class AttendanceService
 
             $resolved = self::resolveForEmployee($entry['punches'], $entry['employee'], $entry['attendance_date']);
 
+            if ($resolved['check_in'] !== null && $resolved['check_out'] !== null) {
+                $leave = self::approvedLeaveCoveringDate($entry['employee_id'], $entry['attendance_date']);
+
+                if ($leave) {
+                    $isNightShift = self::isNightShiftEmployee($entry['employee']);
+                    $resolved['status'] = AttendanceStatusService::creditApprovedLeave(
+                        $resolved['status'],
+                        (float) $resolved['total_hours'],
+                        true,
+                        $leave->leave_type ?? '',
+                        $leave->leave_category ?? '',
+                        $isNightShift ? 8.0 : AttendanceStatusService::FULL_DAY_HOURS
+                    );
+                }
+            }
+
             Attendance::updateOrCreate(
                 [
                     'employee_id' => $entry['employee_id'],
@@ -498,6 +514,20 @@ class AttendanceService
         }
     }
 
+    private static function approvedLeaveCoveringDate(int $employeeId, string $date): ?LeaveApplication
+    {
+        return LeaveApplication::where('employee_id', $employeeId)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($query) use ($date) {
+                $query->whereDate('end_date', '>=', $date)
+                    ->orWhere(function ($q) use ($date) {
+                        $q->whereNull('end_date')->whereDate('start_date', $date);
+                    });
+            })
+            ->first();
+    }
+
     public static function resolveForEmployee(array $punches, Employee $employee, ?string $attendanceDate = null): array
     {
         if (self::isNightShiftEmployee($employee)) {
@@ -507,7 +537,8 @@ class AttendanceService
         return self::resolveCheckInOutFromPunches(
             $punches,
             $employee->time_in,
-            $employee->time_out
+            $employee->time_out,
+            $attendanceDate
         );
     }
 
@@ -539,6 +570,8 @@ class AttendanceService
      */
     public static function resolveNightShiftCheckInOut(array $punches, Employee $employee, ?string $attendanceDate = null): array
     {
+        $isSaturday = $attendanceDate !== null && Carbon::parse($attendanceDate)->isSaturday();
+
         $punches = array_values(array_filter($punches));
         usort($punches, fn (Carbon $a, Carbon $b) => $a->timestamp <=> $b->timestamp);
 
@@ -595,7 +628,7 @@ class AttendanceService
             $checkInPunch->format('H:i:s'),
             $checkOutPunch->format('H:i:s'),
             $hours,
-            self::resolveStatusFromHours($hours, true)
+            self::resolveStatusFromHours($hours, true, $isSaturday)
         );
     }
 
@@ -649,8 +682,10 @@ class AttendanceService
     public static function resolveCheckInOutFromPunches(
         array $punches,
         ?string $timeIn = null,
-        ?string $timeOut = null
+        ?string $timeOut = null,
+        ?string $attendanceDate = null
     ): array {
+        $isSaturday = $attendanceDate !== null && Carbon::parse($attendanceDate)->isSaturday();
         $punches = array_values(array_filter($punches));
         usort($punches, fn (Carbon $a, Carbon $b) => $a->timestamp <=> $b->timestamp);
 
@@ -704,7 +739,7 @@ class AttendanceService
             $checkInPunch->format('H:i:s'),
             $checkOutPunch->format('H:i:s'),
             $hours,
-            self::resolveStatusFromHours($hours, false)
+            self::resolveStatusFromHours($hours, false, $isSaturday)
         );
     }
 
@@ -756,15 +791,21 @@ class AttendanceService
         return round($minutes / 60, 2);
     }
 
-    private static function resolveStatusFromHours(float $hours, bool $isNightShift): string
+    /**
+     * Saturdays carry a recurring 1-hour office activity in the last hour of the day that
+     * isn't captured by biometric punches. It's credited toward the Present/Half-day
+     * classification only — the real punch-derived hours are still stored as total_hours.
+     */
+    private static function resolveStatusFromHours(float $hours, bool $isNightShift, bool $isSaturday = false): string
     {
         $fullDayHours = $isNightShift ? 8.0 : AttendanceStatusService::FULL_DAY_HOURS;
+        $classificationHours = $hours + ($isSaturday ? AttendanceStatusService::SATURDAY_CREDIT_HOURS : 0);
 
-        if ($hours >= $fullDayHours) {
+        if ($classificationHours >= $fullDayHours) {
             return 'present';
         }
 
-        if ($hours >= AttendanceStatusService::HALF_DAY_MIN_HOURS) {
+        if ($classificationHours >= AttendanceStatusService::HALF_DAY_MIN_HOURS) {
             return 'half_day';
         }
 

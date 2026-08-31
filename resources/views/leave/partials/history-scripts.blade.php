@@ -231,6 +231,12 @@
         badge.className = `lh-balance-badge ${numericBalance == 0 ? 'lh-balance-badge--zero' : 'lh-balance-badge--ok'}`;
     }
 
+    function getReturnDateText(endDateString) {
+        const returnDate = new Date(endDateString + 'T00:00:00');
+        returnDate.setDate(returnDate.getDate() + 1);
+        return returnDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
     function openViewModal(id) {
         fetch(`/api/leave/details/${id}`)
             .then(res => res.json())
@@ -306,12 +312,12 @@
                 } else if (isWFH) {
                     document.getElementById('viewStartDateText').textContent = new Date(data.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
                     document.getElementById('viewStartTimeText').textContent = 'WFH Mode';
-                    document.getElementById('viewEndDateText').textContent = data.end_date ? new Date(data.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+                    document.getElementById('viewEndDateText').textContent = data.end_date ? getReturnDateText(data.end_date) : '-';
                     document.getElementById('viewEndTimeText').textContent = 'Return Date';
                 } else {
                     document.getElementById('viewStartDateText').textContent = new Date(data.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
                     document.getElementById('viewStartTimeText').textContent = 'Full Day';
-                    document.getElementById('viewEndDateText').textContent = data.end_date ? new Date(data.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+                    document.getElementById('viewEndDateText').textContent = data.end_date ? getReturnDateText(data.end_date) : '-';
                     document.getElementById('viewEndTimeText').textContent = 'Return Date';
                 }
 
