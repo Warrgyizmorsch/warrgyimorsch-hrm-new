@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'webhook_url' => env('BIOMETRIC_WEBHOOK_URL', 'https://rs9n.gjnwm.dpdns.org/api/attendance'),
+    'webhook_url' => env('BIOMETRIC_WEBHOOK_URL', 'https://rs9n.itmsu.com/api/attendance'),
 
     // Comma-separated list of machine keys to sync, e.g. "zk,rs9n".
     'machines' => array_filter(array_map('trim', explode(',', env('BIOMETRIC_MACHINES', 'zk,rs9n')))),
