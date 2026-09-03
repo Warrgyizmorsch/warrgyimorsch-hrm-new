@@ -32,18 +32,15 @@ return [
     | 'rs9n' machine employee ID map
     |--------------------------------------------------------------------------
     |
-    | The 28-member group moved to the 'rs9n' device were re-enrolled there
-    | with the device's own sequential IDs (1-28), unrelated to their real
-    | employees.employee_code. Verified against mobile_number on 2026-08-25.
+    | The rs9n device assigns its own internal enrollment ID to every person
+    | it enrolls, unrelated to employees.employee_code. This used to be
+    | hardcoded here; it now lives on employees.rs9n_device_id (set via the
+    | "Biometric Device Mapping" field on the employee Add/Edit form) so it
+    | can be maintained through the UI instead of a code deploy — see
+    | ZKTController::syncAttendance() and App\Imports\AttendanceImport.
     |
     | The 'zk' machine is unaffected — its codes already equal employee_code.
     |
     */
-    'rs9n_employee_map' => [
-        1 => 34, 2 => 46, 3 => 11, 4 => 55, 5 => 5, 6 => 37, 7 => 6, 8 => 57,
-        9 => 49, 10 => 9, 11 => 40, 12 => 45, 13 => 13, 14 => 54, 15 => 32,
-        16 => 8, 17 => 2, 18 => 39, 19 => 15, 20 => 36, 21 => 17, 22 => 50,
-        23 => 59, 24 => 56, 25 => 25, 26 => 21, 27 => 3, 28 => 16,
-    ],
 
 ];

@@ -43,6 +43,15 @@
                                     </div>
                                 </div>
                                 <div class="hrm-field">
+                                    <label>rs9n Device ID</label>
+                                    <div class="hrm-input-wrap">
+                                        <i class="bi bi-fingerprint"></i>
+                                        <input type="number" name="rs9n_device_id" class="form-control" min="0"
+                                            placeholder="Only if enrolled on rs9n device"
+                                            value="{{ old('rs9n_device_id') }}">
+                                    </div>
+                                </div>
+                                <div class="hrm-field">
                                     <label>Name <span class="req">*</span></label>
                                     <div class="hrm-input-wrap">
                                         <i class="bi bi-person"></i>

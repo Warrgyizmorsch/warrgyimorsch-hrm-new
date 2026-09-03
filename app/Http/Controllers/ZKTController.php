@@ -37,18 +37,20 @@ class ZKTController extends Controller
             ]);
         }
 
-        $rs9nMap = config('biometric.rs9n_employee_map', []);
+        $rs9nMap = \App\Models\Employee::whereNotNull('rs9n_device_id')
+            ->pluck('employee_code', 'rs9n_device_id');
         $affectedCodes = [];
 
         foreach ($records as $att) {
             $rawUserId = trim((string) ($att['user_id'] ?? ''));
 
             if (($att['machine'] ?? null) === 'rs9n') {
-                // The 'rs9n' device's own enrollment IDs (1-28) do not match
-                // employees.employee_code — they were verified and mapped by mobile
-                // number (config/biometric.php). Anything not in the map is skipped
-                // rather than guessed, since a wrong guess silently attributes a
-                // punch to the wrong employee.
+                // The rs9n device assigns its own sequential internal enrollment ID to every
+                // person it enrolls — unrelated to employees.employee_code, and not limited to
+                // the original 28-person group (new enrollees keep getting new device IDs too,
+                // e.g. #29). rs9n_employee_map is therefore the only source of truth; anything
+                // not in it is skipped rather than guessed, since a wrong guess silently
+                // attributes a punch to a different, unrelated employee (config/biometric.php).
                 $deviceId = ctype_digit($rawUserId) ? (int) ltrim($rawUserId, '0') ?: 0 : null;
                 $userId = $deviceId !== null ? ($rs9nMap[$deviceId] ?? null) : null;
 

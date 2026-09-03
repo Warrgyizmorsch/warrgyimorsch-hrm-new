@@ -18,6 +18,10 @@
                     <form action="' . route('payroll.attendance.import') . '" method="POST" enctype="multipart/form-data">
                         <input type="hidden" name="_token" value="' . csrf_token() . '">
                         <label class="form-label fw-bold small text-dark mb-2">Import Excel/CSV</label>
+                        <select class="form-select mb-2" name="machine">
+                            <option value="zk">zk device (or manual codes)</option>
+                            <option value="rs9n">rs9n device (raw export)</option>
+                        </select>
                         <input type="file" class="form-control mb-3" name="import_file" accept=".xlsx,.xls,.csv" required>
                         <button type="submit" class="zoho-btn-primary w-100">Upload & Calculate</button>
                     </form>

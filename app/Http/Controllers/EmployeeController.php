@@ -155,6 +155,7 @@ class EmployeeController extends Controller
         try {
             $validated = $request->validate([
                 'employee_code' => 'required|string|max:50|unique:employees,employee_code',
+                'rs9n_device_id' => 'nullable|integer|min:0|unique:employees,rs9n_device_id',
                 'name' => 'required|string|max:255',
                 'email' => 'nullable|email|unique:users,email',
                 'mobile_number' => 'required|string|max:20',
@@ -171,6 +172,7 @@ class EmployeeController extends Controller
 
             return DB::transaction(function () use ($request) {
                 $data = $request->all();
+                $data['rs9n_device_id'] = $request->filled('rs9n_device_id') ? (int) $request->rs9n_device_id : null;
 
                 // Password handling: store plain in employees table for admin viewing, hash for users table
                 $rawPassword = $request->filled('password') ? $request->password : '12345678';
@@ -509,6 +511,7 @@ class EmployeeController extends Controller
                 'role' => 'required|string',
                 'email' => 'nullable|email|unique:users,email,' . $userId,
                 'employee_code' => 'nullable|string|max:50|unique:employees,employee_code,' . $employee->id,
+                'rs9n_device_id' => 'nullable|integer|min:0|unique:employees,rs9n_device_id,' . $employee->id,
                 'working_mode' => 'required|in:Office,Work from home',
                 'basic_salary' => 'nullable|numeric|min:0',
                 'gross_salary' => 'nullable|numeric|min:0',
@@ -529,6 +532,7 @@ class EmployeeController extends Controller
                     'date_of_birth' => $request->date_of_birth,
                     'gender' => $request->gender ?? 'male',
                     'employee_code' => $request->employee_code,
+                    'rs9n_device_id' => $request->filled('rs9n_device_id') ? (int) $request->rs9n_device_id : null,
                     'aadhaar_number' => $request->aadhaar_number,
                     'pan_number' => $request->pan_number,
                     'address' => $request->address,

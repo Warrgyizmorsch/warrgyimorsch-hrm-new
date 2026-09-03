@@ -690,6 +690,7 @@ class PayrollController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'import_file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+                'machine' => 'nullable|in:zk,rs9n',
             ]);
 
             if ($validator->fails()) {
@@ -702,7 +703,12 @@ class PayrollController extends Controller
                 return back()->with('error', 'Uploaded file is empty.');
             }
 
-            \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\AttendanceImport, $file);
+            $import = new \App\Imports\AttendanceImport($request->input('machine', 'zk'));
+            \Maatwebsite\Excel\Facades\Excel::import($import, $file);
+
+            if ($import->skippedUnmapped) {
+                return back()->with('success', 'Attendance imported. Skipped ' . $import->skippedUnmapped . ' punch(es) with no employee mapping for the rs9n device (see logs).');
+            }
 
             return back()->with('success', 'Attendance imported successfully!');
 
