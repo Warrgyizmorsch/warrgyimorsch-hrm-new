@@ -457,7 +457,9 @@ toggleLedDepartments(document.getElementById('employeeRoleSelect')?.value);
 
 const SALARY_STRUCTURE_RATIOS = {
 @foreach($departments as $dept)
-    @php($ratios = config('salary_structure.' . \Illuminate\Support\Str::slug($dept->name, '_')))
+    @php
+        $ratios = config('salary_structure.' . \Illuminate\Support\Str::slug($dept->name, '_'));
+    @endphp
     @if($ratios)
     {{ $dept->id }}: {!! json_encode($ratios) !!},
     @endif

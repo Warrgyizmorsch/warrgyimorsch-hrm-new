@@ -135,7 +135,9 @@
                                         <select class="form-select premium-select" id="projectDepartment" multiple
                                             data-placeholder="Select Department" required>
                                             <option value=""></option>
-                                            @php($projectDepartmentIds = $project->departments->pluck('id')->all())
+                                            @php
+                                                $projectDepartmentIds = $project->departments->pluck('id')->all();
+                                            @endphp
                                             @foreach($departments as $dept)
                                                 <option value="{{ $dept->id }}"
                                                     {{ in_array($dept->id, $projectDepartmentIds) ? 'selected' : '' }}>
