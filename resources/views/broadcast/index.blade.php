@@ -8,7 +8,8 @@
         $broadcastPrimaryAction = ($isAdmin || $isTeamLeader)
             ? '<a href="javascript:void(0)" class="zoho-btn-primary" onclick="openBroadcastOffcanvas()"><i class="feather-plus"></i> New Broadcast</a>'
             : '';
-        $tlDepartment = $isTeamLeader ? (auth()->user()->employee->department ?? null) : null;
+        $tlDepartmentId = $isTeamLeader ? (auth()->user()->employee->department_id ?? null) : null;
+        $tlDepartmentName = $isTeamLeader ? (auth()->user()->employee->departmentRef->name ?? null) : null;
     @endphp
     @include('layouts.partials.zoho-people-list-header', [
         'title' => 'Broadcast',
@@ -158,8 +159,8 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <span class="badge {{ $broadcast->department === 'All' ? 'bg-primary' : 'bg-light text-dark border' }}">
-                                                {{ $broadcast->department === 'All' ? 'All Employees' : $broadcast->department }}
+                                            <span class="badge {{ !$broadcast->department_id ? 'bg-primary' : 'bg-light text-dark border' }}">
+                                                {{ $broadcast->department_id ? $broadcast->department->name : 'All Employees' }}
                                             </span>
                                         </td>
                                         <td>
@@ -176,10 +177,10 @@
                                             @if($isAdmin)
                                             <button type="button" class="btn btn-sm btn-icon btn-light-brand" title="Edit"
                                                 data-id="{{ $broadcast->id }}"
-                                                data-department="{{ addslashes($broadcast->department) }}"
+                                                data-department-id="{{ $broadcast->department_id }}"
                                                 data-message="{{ addslashes($broadcast->message) }}"
                                                 data-documents='@json($broadcast->documents ?? [])'
-                                                onclick="openBroadcastOffcanvas(this.dataset.id, this.dataset.department, this.dataset.message, JSON.parse(this.dataset.documents || '[]'))">
+                                                onclick="openBroadcastOffcanvas(this.dataset.id, this.dataset.departmentId, this.dataset.message, JSON.parse(this.dataset.documents || '[]'))">
                                                 <i class="feather-edit-2"></i>
                                             </button>
                                             @endif
@@ -227,9 +228,9 @@
                 <div class="mb-3">
                     <label class="form-label">Department <span class="text-danger">*</span></label>
                     @if($isTeamLeader)
-                        <input type="text" class="form-control" value="{{ $tlDepartment ?? 'N/A' }}" disabled
+                        <input type="text" class="form-control" value="{{ $tlDepartmentName ?? 'N/A' }}" disabled
                                style="height: 44px; border-radius: 12px;">
-                        <input type="hidden" name="department" value="{{ $tlDepartment }}" required>
+                        <input type="hidden" name="department_id" value="{{ $tlDepartmentId }}" required>
                         <small class="text-muted">You can only broadcast to your own department.</small>
                     @else
                         <div class="dropdown">
@@ -237,19 +238,19 @@
                                     type="button" id="bcDeptBtn" data-bs-toggle="dropdown" style="height: 44px; border-radius: 12px; border: 1px solid #dcdcdc; background: #fff; color: #4b5563;">
                                 <span>All Employees</span>
                             </button>
-                            <input type="hidden" name="department" id="bcDeptInput" value="All" required>
+                            <input type="hidden" name="department_id" id="bcDeptInput" value="">
 
                             <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
                                 <div class="wghrm-items-container">
-                                    <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="setBcDept('All', 'All Employees', this)">All Employees</a>
+                                    <a class="dropdown-item wghrm-custom-dropdown-item active" href="javascript:void(0);" onclick="setBcDept('', 'All Employees', this)">All Employees</a>
                                     @foreach($departments as $dept)
-                                        <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="setBcDept('{{ addslashes($dept->name) }}', '{{ addslashes($dept->name) }}', this)">{{ $dept->name }}</a>
+                                        <a class="dropdown-item wghrm-custom-dropdown-item" href="javascript:void(0);" onclick="setBcDept('{{ $dept->id }}', '{{ addslashes($dept->name) }}', this)">{{ $dept->name }}</a>
                                     @endforeach
                                 </div>
                             </div>
                         </div>
                     @endif
-                    @error('department') <small class="text-danger">{{ $message }}</small> @enderror
+                    @error('department_id') <small class="text-danger">{{ $message }}</small> @enderror
                 </div>
 
                 <div class="mb-2">
@@ -469,6 +470,7 @@
         let receiptModal = null;
         let broadcastOffcanvas = null;
         let removedDocuments = [];
+        const deptNamesById = @json($departments->pluck('name', 'id'));
 
         function escapeReceiptText(value) {
             return $('<div>').text(value || '').html();
@@ -519,14 +521,15 @@
                 document.getElementById('bcSubmitLabel').innerText = 'Update Broadcast';
                 document.getElementById('bcMessage').value = message || '';
                 if (hasDeptDropdown) {
-                    setBcDept(department, department === 'All' ? 'All Employees' : department, document.querySelector('#bcDeptBtn').closest('.dropdown').querySelector('.wghrm-custom-dropdown-item'));
+                    const deptLabel = department ? (deptNamesById[department] || department) : 'All Employees';
+                    setBcDept(department || '', deptLabel, document.querySelector('#bcDeptBtn').closest('.dropdown').querySelector('.wghrm-custom-dropdown-item'));
                 }
             } else {
                 form.action = '{{ route('broadcasts.store') }}';
                 document.getElementById('broadcastOffcanvasTitle').innerText = 'New Broadcast';
                 document.getElementById('bcSubmitLabel').innerText = 'Post Broadcast';
                 if (hasDeptDropdown) {
-                    setBcDept('All', 'All Employees', document.querySelector('#bcDeptBtn').closest('.dropdown').querySelector('.wghrm-custom-dropdown-item'));
+                    setBcDept('', 'All Employees', document.querySelector('#bcDeptBtn').closest('.dropdown').querySelector('.wghrm-custom-dropdown-item'));
                 }
             }
             updateBcMessageCount();

@@ -200,7 +200,7 @@ class DashboardController extends Controller
         // $totalEmployees = $isAdmin ? Employee::count() : 1;
 
         if(!$isAdmin && $employee){
-            $totalEmployees = Employee::active()->where('department', $employee->department)->count();
+            $totalEmployees = Employee::active()->where('department_id', $employee->department_id)->count();
         }
         else{
             $totalEmployees = Employee::active()->count();
@@ -451,21 +451,28 @@ class DashboardController extends Controller
         // Late arrival on today
         $todayLateEmployees = $this->getLateEmployeesData();
 
+        // Non-admin: absentees scoped to the viewer's own department (team leaders see all led departments)
+        $teamAbsentToday = collect();
+        if (!$isAdmin && $employee) {
+            $teamDepartmentIds = $isTeamLeader
+                ? ($employee->ledDepartmentIds() ?? [])
+                : array_filter([$employee->department_id]);
+            $teamEmployeeIds = Employee::active()
+                ->whereIn('department_id', $teamDepartmentIds)
+                ->pluck('id');
+            $teamAbsentToday = $this->getTeamAbsentToday($today, $teamEmployeeIds);
+        }
 
-        $userDepartment = $employee->department ?? auth()->user()->employee?->department ?? null;
-        $normalizedUserDepartment = $userDepartment
-            ? strtolower(str_replace('_', ' ', trim($userDepartment)))
-            : null;
 
-        $announcements = Broadcast::with('readByUsers')
-            ->where(function ($query) use ($normalizedUserDepartment) {
-                $query->where('department', 'All');
+        $userDepartmentId = $employee->department_id ?? auth()->user()->employee?->department_id ?? null;
 
-                if ($normalizedUserDepartment) {
-                    $query->orWhereRaw(
-                        "LOWER(REPLACE(TRIM(department), '_', ' ')) = ?",
-                        [$normalizedUserDepartment]
-                    );
+        // NULL department_id on a Broadcast means "everyone."
+        $announcements = Broadcast::with(['readByUsers', 'department'])
+            ->where(function ($query) use ($userDepartmentId) {
+                $query->whereNull('department_id');
+
+                if ($userDepartmentId) {
+                    $query->orWhere('department_id', $userDepartmentId);
                 }
             })
             ->orderBy('created_at', 'desc')
@@ -567,7 +574,8 @@ class DashboardController extends Controller
                 'canViewPayrollAnalytics',
                 'myNotes',
                 'myAdhocTasks',
-                'tasksIAssigned'
+                'tasksIAssigned',
+                'teamAbsentToday'
             ));
         }
 
@@ -662,8 +670,8 @@ class DashboardController extends Controller
         $employeeId = auth()->user()->employee_id;
 
         // Logged-in employee department
-        $leaderDepartment = Employee::active()->where('id', $employeeId)
-            ->value('department');
+        $leaderDepartmentId = Employee::active()->where('id', $employeeId)
+            ->value('department_id');
 
         $query = LeaveApplication::join('employees', 'leave_applications.employee_id', '=', 'employees.id')
             ->whereIn('leave_applications.status', ['approved', 'unauthorised'])
@@ -677,7 +685,7 @@ class DashboardController extends Controller
         // Team Leader → only department employees
         if ($isTeamLeader) {
 
-            $query->where('employees.department', $leaderDepartment);
+            $query->where('employees.department_id', $leaderDepartmentId);
 
             // optional employee filter
             if ($request->employee_id) {
@@ -841,6 +849,84 @@ class DashboardController extends Controller
 
     }
 
+    private function getTeamAbsentToday(string $today, $employeeIds)
+    {
+        if ($employeeIds->isEmpty()) {
+            return collect();
+        }
+
+        $approvedLeave = DB::table('leave_applications')
+            ->join('employees', 'employees.id', '=', 'leave_applications.employee_id')
+            ->whereIn('leave_applications.employee_id', $employeeIds)
+            ->whereIn('leave_applications.status', ['approved', 'unauthorised'])
+            ->whereDate('leave_applications.start_date', '<=', $today)
+            ->whereDate('leave_applications.end_date', '>=', $today)
+            ->select(
+                'employees.id as employee_id',
+                'employees.name as employee_name',
+                DB::raw("
+                    CASE
+                        WHEN leave_applications.leave_category = 'Full Day' THEN 'Full Day Leave'
+                        WHEN LOWER(leave_applications.leave_category) LIKE '%Half%' THEN 'Half Day'
+                        WHEN leave_applications.leave_category = 'Gatepass' THEN 'Early Leave'
+                        WHEN leave_applications.leave_category = 'WFH' THEN 'Working from Home'
+                        ELSE leave_applications.leave_category
+                    END as leave_type
+                ")
+            );
+
+        $attendanceLeave = DB::table('attendances')
+            ->join('employees', 'employees.id', '=', 'attendances.employee_id')
+            ->whereIn('attendances.employee_id', $employeeIds)
+            ->whereDate('attendances.attendance_date', $today)
+            ->whereIn('attendances.status', ['leave', 'half_day', 'early_leave'])
+            ->whereNotIn('attendances.employee_id', function ($q) use ($today) {
+                $q->select('employee_id')
+                    ->from('leave_applications')
+                    ->whereIn('status', ['approved', 'unauthorised'])
+                    ->whereDate('start_date', '<=', $today)
+                    ->whereDate('end_date', '>=', $today);
+            })
+            ->select(
+                'employees.id as employee_id',
+                'employees.name as employee_name',
+                DB::raw("
+                    CASE
+                        WHEN attendances.status = 'leave' THEN 'Full Day Leave'
+                        WHEN attendances.status = 'half_day' THEN 'Half Day'
+                        WHEN attendances.status = 'early_leave' THEN 'Early Leave'
+                    END as leave_type
+                ")
+            );
+
+        $absentEmployees = DB::table('attendances')
+            ->join('employees', 'employees.id', '=', 'attendances.employee_id')
+            ->whereIn('attendances.employee_id', $employeeIds)
+            ->whereDate('attendances.attendance_date', $today)
+            ->where('attendances.status', 'absent')
+            ->where(function ($q) {
+                $q->whereNull('attendances.check_in')
+                    ->orWhereNull('attendances.check_out');
+            })
+            ->whereNotIn('attendances.employee_id', function ($q) use ($today) {
+                $q->select('employee_id')
+                    ->from('leave_applications')
+                    ->where('status', 'approved')
+                    ->whereDate('start_date', '<=', $today)
+                    ->whereDate('end_date', '>=', $today);
+            })
+            ->select(
+                'employees.id as employee_id',
+                'employees.name as employee_name',
+                DB::raw("'Absent' as leave_type")
+            );
+
+        return $attendanceLeave
+            ->union($approvedLeave)
+            ->union($absentEmployees)
+            ->get();
+    }
+
     private function getLateEmployeesData()
     {
         $range = request('late_range', 'today');
@@ -859,8 +945,8 @@ class DashboardController extends Controller
         $employeeId = auth()->user()->employee_id;
 
         // Logged-in employee department
-        $leaderDepartment = Employee::active()->where('id', $employeeId)
-            ->value('department');
+        $leaderDepartmentId = Employee::active()->where('id', $employeeId)
+            ->value('department_id');
 
         $attendanceRecords = Attendance::with('employee')
             ->whereBetween('attendance_date', [$startDate, $endDate])
@@ -876,11 +962,11 @@ class DashboardController extends Controller
             })
 
             // TEAM LEADER → same department employees
-            ->when($isTeamLeader, function ($q) use ($leaderDepartment, $employeeFilter) {
+            ->when($isTeamLeader, function ($q) use ($leaderDepartmentId, $employeeFilter) {
 
-                $q->whereHas('employee', function ($sub) use ($leaderDepartment, $employeeFilter) {
+                $q->whereHas('employee', function ($sub) use ($leaderDepartmentId, $employeeFilter) {
 
-                    $sub->where('department', $leaderDepartment);
+                    $sub->where('department_id', $leaderDepartmentId);
 
                     // optional employee filter
                     if ($employeeFilter) {

@@ -68,10 +68,10 @@
                                 <div class="hrm-field">
                                     <label>Department</label>
                                     <div class="hrm-input-wrap"><i class="bi bi-building"></i>
-                                        <select name="department" id="employeeDepartmentSelect" class="form-select" required onchange="toggleGrossSalaryMode(this.value)">
+                                        <select name="department_id" id="employeeDepartmentSelect" class="form-select" required onchange="toggleGrossSalaryMode(this.value)">
                                             <option value="">Select department</option>
                                             @foreach($departments as $dept)
-                                                <option value="{{ $dept->name }}" {{ $dept->name == old('department', $employee->department) ? 'selected' : '' }}>{{ $dept->name }}</option>
+                                                <option value="{{ $dept->id }}" {{ $dept->id == old('department_id', $employee->department_id) ? 'selected' : '' }}>{{ $dept->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -126,9 +126,9 @@
                                 <div class="hrm-field" id="ledDepartmentsField" style="display: none;">
                                     <label>Additional Departments (as Team Leader)</label>
                                     <div class="hrm-input-wrap" style="align-items: flex-start;"><i class="bi bi-diagram-3"></i>
-                                        <select name="additional_led_departments[]" class="form-select" multiple size="4">
+                                        <select name="additional_led_department_ids[]" class="form-select" multiple size="4">
                                             @foreach($departments as $dept)
-                                                <option value="{{ $dept->name }}" {{ in_array($dept->name, old('additional_led_departments', $employee->additional_led_departments ?? [])) ? 'selected' : '' }}>{{ $dept->name }}</option>
+                                                <option value="{{ $dept->id }}" {{ in_array($dept->id, old('additional_led_department_ids', $employee->ledDepartmentRefs->pluck('id')->all())) ? 'selected' : '' }}>{{ $dept->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -382,14 +382,12 @@ document.getElementById('insuranceToggle')?.addEventListener('change', function 
     ['insuranceProviderOff','insurancePolicyOff'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = on ? 'none' : 'flex'; });
 });
 const SALARY_STRUCTURE_RATIOS = {
-    'Business Development': {
-        basic_salary: 0.59,
-        dearness_allowance: 4705 / 35000,
-        hra: 3345 / 35000,
-        conveyance_allowance: 1600 / 35000,
-        medical_allowance: 1200 / 35000,
-        other_allowance: 0.10,
-    },
+@foreach($departments as $dept)
+    @php($ratios = config('salary_structure.' . \Illuminate\Support\Str::slug($dept->name, '_')))
+    @if($ratios)
+    {{ $dept->id }}: {!! json_encode($ratios) !!},
+    @endif
+@endforeach
 };
 
 function toggleGrossSalaryMode(department) {

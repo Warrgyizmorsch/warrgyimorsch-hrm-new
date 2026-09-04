@@ -42,7 +42,7 @@ class EmployeeController extends Controller
         $search = trim((string) $request->query('search', ''));
         $employeeFilter = $request->query('employee_id');
         $roleFilter = trim((string) $request->query('role', ''));
-        $departmentFilter = trim((string) $request->query('department', ''));
+        $departmentFilter = $request->query('department_id');
         $statusFilter = trim((string) $request->query('status', ''));
         $pfFilter = trim((string) $request->query('pf', ''));
         $esiFilter = trim((string) $request->query('esi', ''));
@@ -59,14 +59,14 @@ class EmployeeController extends Controller
             ->get();
 
         $employees = $baseQuery
-            ->with('user')
+            ->with(['user', 'departmentRef'])
             ->leftJoin('users', 'users.employee_id', '=', 'employees.id')
             ->select('employees.*')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery->where('employees.name', 'like', "%{$search}%")
                         ->orWhere('employees.employee_code', 'like', "%{$search}%")
-                        ->orWhere('employees.department', 'like', "%{$search}%")
+                        ->orWhereHas('departmentRef', fn ($deptQuery) => $deptQuery->where('name', 'like', "%{$search}%"))
                         ->orWhere('employees.role', 'like', "%{$search}%");
                 });
             })
@@ -81,16 +81,8 @@ class EmployeeController extends Controller
                     [$normalizedRole]
                 );
             })
-            ->when($departmentFilter !== '', function ($query) use ($departmentFilter) {
-                $normalizedDepartment = strtolower(str_replace('_', ' ', trim($departmentFilter)));
-
-                $query->where(function ($subQuery) use ($departmentFilter, $normalizedDepartment) {
-                    $subQuery->whereRaw('LOWER(TRIM(employees.department)) = LOWER(TRIM(?))', [$departmentFilter])
-                        ->orWhereRaw(
-                            "LOWER(REPLACE(employees.department, '_', ' ')) = ?",
-                            [$normalizedDepartment]
-                        );
-                });
+            ->when($departmentFilter, function ($query) use ($departmentFilter) {
+                $query->where('employees.department_id', $departmentFilter);
             })
             ->when($statusFilter === 'active', function ($query) {
                 $query->where(function ($subQuery) {
@@ -159,7 +151,7 @@ class EmployeeController extends Controller
                 'name' => 'required|string|max:255',
                 'email' => 'nullable|email|unique:users,email',
                 'mobile_number' => 'required|string|max:20',
-                'department' => 'required|string',
+                'department_id' => 'required|exists:departments,id',
                 'designation' => 'required|string',
                 'role' => 'required|string',
                 'bank_name' => 'required|string|max:255',
@@ -200,7 +192,7 @@ class EmployeeController extends Controller
                 // Development), a single Gross Salary input replaces manual component entry —
                 // the backend, not the browser, is the source of truth for the split.
                 if ($request->filled('gross_salary')) {
-                    $breakdown = SalaryStructureService::breakdown((float) $request->gross_salary, (string) $request->department);
+                    $breakdown = SalaryStructureService::breakdown((float) $request->gross_salary, (int) $request->department_id);
                     if ($breakdown) {
                         $data = array_merge($data, $breakdown);
                     } else {
@@ -215,6 +207,10 @@ class EmployeeController extends Controller
 
                 // Create employee
                 $employee = Employee::create($data);
+
+                if (strtolower(str_replace(' ', '_', (string) $employee->role)) === 'team_leader') {
+                    $employee->ledDepartmentRefs()->sync(array_values(array_filter((array) $request->additional_led_department_ids)));
+                }
 
                 // Link back to the recruitment pipeline if this employee was created from a hired application
                 if ($request->filled('from_job_application_id')) {
@@ -249,7 +245,7 @@ class EmployeeController extends Controller
      */
     public function show($id)
     {
-        $employee = Employee::findOrFail($id);
+        $employee = Employee::with('departmentRef')->findOrFail($id);
         return view('employees.show', compact('employee'));
     }
 
@@ -258,7 +254,10 @@ class EmployeeController extends Controller
      */
     public function getJson($id)
     {
-        $employee = Employee::findOrFail($id);
+        $employee = Employee::with('departmentRef')->findOrFail($id);
+        $employee->department = $employee->departmentRef?->name;
+        $employee->is_business_development = $employee->department_id === Department::businessDevelopmentId();
+
         return response()->json($employee);
     }
 
@@ -505,8 +504,9 @@ class EmployeeController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'mobile_number' => 'required|string|max:20',
-                'department' => 'required|string',
-                'additional_led_departments' => 'nullable|array',
+                'department_id' => 'required|exists:departments,id',
+                'additional_led_department_ids' => 'nullable|array',
+                'additional_led_department_ids.*' => 'exists:departments,id',
                 'designation' => 'required|string',
                 'role' => 'required|string',
                 'email' => 'nullable|email|unique:users,email,' . $userId,
@@ -523,10 +523,7 @@ class EmployeeController extends Controller
                     'email' => $request->email,
                     'mobile_number' => $request->mobile_number,
                     'role' => $request->role,
-                    'department' => $request->department,
-                    'additional_led_departments' => strtolower(str_replace(' ', '_', (string) $request->role)) === 'team_leader'
-                        ? array_values(array_filter((array) $request->additional_led_departments))
-                        : [],
+                    'department_id' => $request->department_id,
                     'designation' => $request->designation,
                     'date_of_joining' => $request->date_of_joining,
                     'date_of_birth' => $request->date_of_birth,
@@ -562,7 +559,7 @@ class EmployeeController extends Controller
                 // Development), a single Gross Salary input replaces manual component entry —
                 // the backend, not the browser, is the source of truth for the split.
                 if ($request->filled('gross_salary')) {
-                    $breakdown = SalaryStructureService::breakdown((float) $request->gross_salary, (string) $request->department);
+                    $breakdown = SalaryStructureService::breakdown((float) $request->gross_salary, (int) $request->department_id);
                     if ($breakdown) {
                         $updateData = array_merge($updateData, $breakdown);
                     } else {
@@ -580,6 +577,12 @@ class EmployeeController extends Controller
                 }
 
                 $employee->update($updateData);
+
+                $employee->ledDepartmentRefs()->sync(
+                    strtolower(str_replace(' ', '_', (string) $request->role)) === 'team_leader'
+                        ? array_values(array_filter((array) $request->additional_led_department_ids))
+                        : []
+                );
 
                 // Handle photo upload
                 if ($request->hasFile('photo')) {
@@ -673,7 +676,7 @@ class EmployeeController extends Controller
 
     public function export()
     {
-        $employees = Employee::orderBy('name', 'asc')->get();
+        $employees = Employee::with('departmentRef')->orderBy('name', 'asc')->get();
         $filename = "employees_" . date('Y-m-d_H-i-s') . ".xlsx";
         return Excel::download(new EmployeesExport($employees), $filename);
     }

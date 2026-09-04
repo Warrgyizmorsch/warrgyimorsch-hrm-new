@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\DailyTask;
 use App\Models\Employee;
+use App\Models\Holiday;
+use App\Models\LeaveApplication;
 use App\Models\Project;
 use App\Models\TaskFollowUp;
 use App\Models\TaskStatusHistory;
+use App\Services\AttendanceHistoryService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,8 +20,9 @@ class DailyTaskController extends Controller
 {
     public function index(Request $request)
     {
-        $query = DailyTask::with(['project', 'employee', 'creator', 'followUps'])->orderBy('start_date', 'desc');
+        $query = DailyTask::with(['project', 'employee.departmentRef', 'creator', 'followUps'])->orderBy('start_date', 'desc');
 
+        $ownEmployeeId = null;
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
         $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
         $isAdmin = in_array($role, $adminRoles);
@@ -35,21 +40,21 @@ class DailyTaskController extends Controller
         $otherProject->update(['members' => Employee::active()->pluck('id')->toArray()]);
 
         if ($role == 'team_leader') {
-            $teamLeaderDepartments = auth()->user()->employee?->ledDepartments() ?? [];
+            $teamLeaderDepartmentIds = auth()->user()->employee?->ledDepartmentIds() ?? [];
 
-            $departmentEmployeeIds = Employee::active()->whereIn('department', $teamLeaderDepartments)
+            $departmentEmployeeIds = Employee::active()->whereIn('department_id', $teamLeaderDepartmentIds)
                 ->pluck('id');
 
             $query->whereIn('employee_id', $departmentEmployeeIds);
 
-            $employees = Employee::active()->whereIn('department', $teamLeaderDepartments)->get();
+            $employees = Employee::active()->whereIn('department_id', $teamLeaderDepartmentIds)->get();
 
-            $projects = Project::where(function ($q) use ($departmentEmployeeIds, $teamLeaderDepartments) {
+            $projects = Project::where(function ($q) use ($departmentEmployeeIds, $teamLeaderDepartmentIds) {
                 foreach ($departmentEmployeeIds as $employeeId) {
                     $q->orWhereJsonContains('members', (string) $employeeId);
                 }
-                foreach ($teamLeaderDepartments as $department) {
-                    $q->orWhere('department', 'like', '%' . $department . '%');
+                if (!empty($teamLeaderDepartmentIds)) {
+                    $q->orWhereHas('departments', fn ($dq) => $dq->whereIn('departments.id', $teamLeaderDepartmentIds));
                 }
             })->orderBy('name')->get();
         } elseif (!$isAdmin) {
@@ -62,6 +67,8 @@ class DailyTaskController extends Controller
             $projects = Project::whereJsonContains('members', (string) $employeeId)
                 ->orderBy('name')
                 ->get();
+
+            $ownEmployeeId = $employeeId;
         } else {
             $projects = Project::orderBy('name')->get();
             $employees = Employee::active()->orderBy('name')->get();
@@ -91,6 +98,27 @@ class DailyTaskController extends Controller
         if ($request->upto_date) {
             $query->where('end_date', '<=', $request->upto_date);
         }
+
+        $selectedMonth = $request->get('month') ?: now()->format('Y-m');
+        $monthStart = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
+        $monthEnd = $monthStart->copy()->endOfMonth();
+
+        if (!$request->filled('from_date') && !$request->filled('upto_date')) {
+            $query->where('start_date', '>=', $monthStart->toDateString())
+                ->where('start_date', '<=', $monthEnd->toDateString());
+        }
+
+        // The employee stat cards must reflect whatever date range is actually
+        // filtering the visible task list — prefer the explicit From/Upto range
+        // over the month picker's default when both could apply.
+        if ($request->filled('from_date') && $request->filled('upto_date')) {
+            $statsRangeStart = Carbon::parse($request->from_date)->startOfDay();
+            $statsRangeEnd = Carbon::parse($request->upto_date)->endOfDay();
+        } else {
+            $statsRangeStart = $monthStart;
+            $statsRangeEnd = $monthEnd;
+        }
+
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
@@ -128,6 +156,114 @@ class DailyTaskController extends Controller
         }
         $loggedHoursDisplay = count($loggedParts) > 0 ? implode(' ', $loggedParts) : '0m';
 
+        $employeeMonthlyStats = null;
+        $statsEmployeeId = $ownEmployeeId ?? $request->employee_id;
+        if ($statsEmployeeId) {
+            $history = app(AttendanceHistoryService::class)
+                ->buildMonthlyHistory((int) $statsEmployeeId, $statsRangeStart, $statsRangeEnd);
+
+            $presentDates = collect($history)
+                ->filter(fn ($row) => in_array($row['status_key'], [
+                    'present', 'present_activity', 'late',
+                    'half_day', 'half_day_leave', 'wfh', 'early_out', 'early_leave',
+                ], true))
+                ->pluck('date_key');
+
+            // Pulled from the Leave module directly (not derived from attendance status) —
+            // attendance can fall back to a punch-based status like "half_day" for a day that
+            // was actually an approved half-day leave, understating the real leave count.
+            // Early Leave is excluded from the day total the same way the Leave Applications
+            // page excludes it — it's shown there as an hour count, not a day of leave.
+            $overlappingLeaves = LeaveApplication::where('employee_id', $statsEmployeeId)
+                ->whereIn('status', ['approved', 'unpaid'])
+                ->whereDate('start_date', '<=', $statsRangeEnd->toDateString())
+                ->whereDate('end_date', '>=', $statsRangeStart->toDateString())
+                ->get(['leave_type', 'start_date', 'end_date', 'total_days']);
+
+            $leaveDayCount = $overlappingLeaves->where('leave_type', '!=', 'Early Leave')->sum('total_days');
+
+            // Every calendar date an approved leave covers — attendance has no punch record
+            // (or even a row) for a leave day, so buildMonthlyHistory's fallback would
+            // otherwise mislabel these as "Absent" on top of already counting them as leave.
+            $approvedLeaveDates = $overlappingLeaves->flatMap(function ($leave) {
+                $dates = [];
+                for ($d = $leave->start_date->copy(); $d->lte($leave->end_date); $d->addDay()) {
+                    $dates[] = $d->format('Y-m-d');
+                }
+
+                return $dates;
+            })->unique();
+
+            $absentDates = collect($history)
+                ->filter(fn ($row) => in_array($row['status_key'], ['absent', 'unauthorised', 'missing_punch'], true))
+                ->pluck('date_key')
+                ->diff($approvedLeaveDates);
+
+            // A day can be genuinely split — e.g. worked the morning, took an approved
+            // half-day leave for the afternoon — and attendance still shows it as a normal
+            // "half_day" (worked-hours-based) status. That day would otherwise be credited
+            // as a full present day AND its 0.5 leave day, double-counting the same date.
+            // So present credit for a date is capped at (1 - the leave fraction that date).
+            $leaveFractionByDate = [];
+            foreach ($overlappingLeaves->where('leave_type', '!=', 'Early Leave') as $leave) {
+                $daysInLeave = $leave->start_date->diffInDays($leave->end_date) + 1;
+                $perDayFraction = $daysInLeave > 0 ? $leave->total_days / $daysInLeave : 0;
+
+                for ($d = $leave->start_date->copy(); $d->lte($leave->end_date); $d->addDay()) {
+                    $dateKey = $d->format('Y-m-d');
+                    $leaveFractionByDate[$dateKey] = ($leaveFractionByDate[$dateKey] ?? 0) + $perDayFraction;
+                }
+            }
+
+            $presentDayCount = $presentDates->sum(
+                fn ($dateKey) => max(0, 1 - ($leaveFractionByDate[$dateKey] ?? 0))
+            );
+
+            // Grouped by the task's own date, not by when the follow-up was clicked/submitted —
+            // an employee who logs several days of work in one late-night session should have
+            // each of those task-days count as reported, not just the day they hit submit.
+            $dailyLogged = DB::table('daily_tasks')
+                ->join('task_follow_ups', 'task_follow_ups.daily_task_id', '=', 'daily_tasks.id')
+                ->where('daily_tasks.employee_id', $statsEmployeeId)
+                ->whereDate('daily_tasks.start_date', '>=', $statsRangeStart->toDateString())
+                ->whereDate('daily_tasks.start_date', '<=', $statsRangeEnd->toDateString())
+                ->selectRaw('DATE(daily_tasks.start_date) as log_date, SUM(CAST(task_follow_ups.time_taken AS DECIMAL(10,2))) as total_hours')
+                ->groupBy('log_date')
+                ->pluck('total_hours', 'log_date');
+
+            $totalDays = (int) $statsRangeStart->copy()->startOfDay()->diffInDays($statsRangeEnd->copy()->startOfDay()) + 1;
+
+            $sundayCount = collect($history)
+                ->filter(fn ($row) => Carbon::parse($row['date_key'])->isSunday())
+                ->count();
+
+            $holidayDates = Holiday::whereDate('date', '>=', $statsRangeStart->toDateString())
+                ->whereDate('date', '<=', $statsRangeEnd->toDateString())
+                ->pluck('date')
+                ->map(fn ($date) => Carbon::parse($date)->format('Y-m-d'));
+
+            // A holiday that lands on a Sunday shouldn't be double-subtracted from working days.
+            $holidayNotOnSunday = $holidayDates->filter(fn ($date) => !Carbon::parse($date)->isSunday())->count();
+
+            $employeeMonthlyStats = [
+                'present_days' => $presentDayCount,
+                'submitted_days' => $dailyLogged->count(),
+                'missed_days' => $presentDates->diff($dailyLogged->keys())->count(),
+                'under_target_days' => $dailyLogged->filter(fn ($hrs) => (float) $hrs < 8)->count(),
+                'total_days' => $totalDays,
+                'sunday_count' => $sundayCount,
+                'holiday_count' => $holidayDates->count(),
+                'working_days' => $totalDays - $sundayCount - $holidayNotOnSunday,
+                'leave_count' => $leaveDayCount,
+                'absent_count' => $absentDates->count(),
+                'range_label' => $statsRangeStart->isSameDay($statsRangeStart->copy()->startOfMonth())
+                    && $statsRangeEnd->isSameDay($statsRangeEnd->copy()->endOfMonth())
+                    && $statsRangeStart->isSameMonth($statsRangeEnd)
+                    ? $statsRangeStart->format('F Y')
+                    : $statsRangeStart->format('d M Y') . ' – ' . $statsRangeEnd->format('d M Y'),
+            ];
+        }
+
         $tasks = $query->latest()->paginate($perPage)->withQueryString();
 
         return view('projects.tasks.index', compact(
@@ -138,7 +274,9 @@ class DailyTaskController extends Controller
             'perPage',
             'todayCount',
             'pendingCount',
-            'loggedHoursDisplay'
+            'loggedHoursDisplay',
+            'selectedMonth',
+            'employeeMonthlyStats'
         ));
     }
 
@@ -311,6 +449,52 @@ class DailyTaskController extends Controller
         return $isAdmin || $isLead || $isAssigner || $canDeleteAsOwner;
     }
 
+    /**
+     * Whether the current user may edit/delete this work-progress entry. TaskFollowUp has no
+     * employee_id of its own (only a free-text reference_name), so ownership is derived from
+     * the parent task it was logged against — same admin/lead/owner/assigner rule as the task.
+     */
+    private function canManageFollowUp(TaskFollowUp $followUp): bool
+    {
+        $task = $followUp->dailyTask;
+        if (!$task) {
+            return false;
+        }
+
+        $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $isAdmin = in_array($role, $adminRoles);
+
+        $project = $task->project;
+        $isLead = $project && is_array($project->leaders) && in_array(auth()->user()->employee_id, $project->leaders);
+        $isOwner = auth()->user()->employee_id == $task->employee_id;
+        $isAssigner = auth()->id() == $task->assigned_by;
+
+        if (!($isAdmin || $isLead || $isOwner || $isAssigner)) {
+            return false;
+        }
+
+        // Once a task is Completed, its progress log is locked — only an admin can still
+        // correct it. Everyone else (including the task owner/lead/assigner) must reopen
+        // the task's status first if a genuine change is needed.
+        if (strcasecmp((string) $task->status, 'Completed') === 0 && !$isAdmin) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function followUpLockMessage(TaskFollowUp $followUp, string $action): string
+    {
+        $task = $followUp->dailyTask;
+
+        if ($task && strcasecmp((string) $task->status, 'Completed') === 0) {
+            return 'This task is marked Completed — its progress log is locked. Reopen the task status, or ask an admin, to ' . $action . ' this entry.';
+        }
+
+        return "Only the task owner, project lead, assigner, or an admin can {$action} this entry.";
+    }
+
     public function destroy(DailyTask $dailyTask)
     {
         if (!$this->canDeleteDailyTask($dailyTask)) {
@@ -454,6 +638,10 @@ class DailyTaskController extends Controller
     {
         $followUp = TaskFollowUp::findOrFail($id);
 
+        if (!$this->canManageFollowUp($followUp)) {
+            return response()->json(['error' => $this->followUpLockMessage($followUp, 'edit')], 403);
+        }
+
         $projectId = $request->input('project_id.0', $request->input('project_id', $followUp->project_id));
         $description = trim((string) $request->input('work_description.0', $request->input('work_description', '')));
         $hours = $request->input('hours.0', $request->input('hours'));
@@ -537,13 +725,14 @@ class DailyTaskController extends Controller
     public function getFollowUps($taskId)
     {
         $followUps = TaskFollowUp::where('daily_task_id', $taskId)
-            ->with('project')
+            ->with('project', 'dailyTask')
             ->latest()
             ->get()
             ->map(function ($followUp) {
                 $followUp->employee_name = $followUp->reference_name ?: 'Employee';
                 $followUp->employee = null;
                 $followUp->project_name = $followUp->project?->name;
+                $followUp->can_manage = $this->canManageFollowUp($followUp);
                 return $followUp;
             });
 
@@ -553,6 +742,11 @@ class DailyTaskController extends Controller
     public function destroyFollowUp($id)
     {
         $followUp = TaskFollowUp::findOrFail($id);
+
+        if (!$this->canManageFollowUp($followUp)) {
+            return response()->json(['error' => $this->followUpLockMessage($followUp, 'delete')], 403);
+        }
+
         if ($followUp->photo) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($followUp->photo);
         }

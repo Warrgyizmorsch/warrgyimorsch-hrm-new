@@ -119,7 +119,7 @@
             <div class="row g-3 sgst-grid">
                 @foreach($suggestions as $index => $suggestion)
                     @php
-                        $submitter = $suggestion->user;
+                        $submitter = $suggestion->is_anonymous ? null : $suggestion->user;
                         $employee = $submitter?->employee;
                         $photo = $employee?->photo;
                         $color = $suggestionCategoryColors[$suggestion->category] ?? 'secondary';
@@ -164,7 +164,9 @@
                             <div class="card-footer bg-transparent border-top pt-3 d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="zoho-emp-photo-wrap" style="width: 36px; height: 36px;">
-                                        @if($photo)
+                                        @if($suggestion->is_anonymous)
+                                            <div class="zoho-emp-initial"><i class="feather-eye-off"></i></div>
+                                        @elseif($photo)
                                             <img src="{{ asset('storage/' . $photo) }}" class="zoho-emp-avatar" alt=""
                                                 onerror="this.classList.add('d-none');this.parentElement.querySelector('.zoho-emp-initial').classList.remove('d-none');">
                                             <div class="zoho-emp-initial d-none">{{ strtoupper(substr($submitter->name ?? 'U', 0, 1)) }}</div>
@@ -173,8 +175,8 @@
                                         @endif
                                     </div>
                                     <div>
-                                        <div class="fw-bold text-dark small">{{ $submitter->name ?? 'Unknown' }}</div>
-                                        <div class="small text-muted">{{ $employee->designation ?? '—' }}</div>
+                                        <div class="fw-bold text-dark small">{{ $suggestion->is_anonymous ? 'Anonymous' : ($submitter->name ?? 'Unknown') }}</div>
+                                        <div class="small text-muted">{{ $suggestion->is_anonymous ? 'Identity hidden' : ($employee->designation ?? '—') }}</div>
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">

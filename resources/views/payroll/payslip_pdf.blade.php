@@ -257,7 +257,7 @@
                 <td class="label">Month:</td>
                 <td class="value">{{ \Carbon\Carbon::parse($payroll->month)->format('F Y') }}</td>
                 <td class="label">Department:</td>
-                <td class="value">{{ $payroll->employee->department ?? '—' }}</td>
+                <td class="value">{{ $payroll->employee->departmentRef->name ?? '—' }}</td>
             </tr>
         </table>
 

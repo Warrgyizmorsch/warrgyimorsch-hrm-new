@@ -27,7 +27,7 @@ class AttendanceExport implements FromCollection, WithHeadings, ShouldAutoSize, 
 
     protected ?int $employeeId;
 
-    protected ?string $department;
+    protected ?int $department;
 
     protected AttendanceHistoryService $historyService;
 
@@ -41,7 +41,7 @@ class AttendanceExport implements FromCollection, WithHeadings, ShouldAutoSize, 
         $isTeamLeader = $role === 'team_leader';
 
         $loggedEmployee = Employee::find($user->employee_id);
-        $this->department = $isTeamLeader ? ($loggedEmployee->department ?? null) : null;
+        $this->department = $isTeamLeader ? ($loggedEmployee->department_id ?? null) : null;
 
         [$this->startDate, $this->endDate] = $this->historyService->resolveExportDateRange(
             $request,
@@ -58,7 +58,7 @@ class AttendanceExport implements FromCollection, WithHeadings, ShouldAutoSize, 
         $query = Employee::active()->orderBy('name', 'asc');
 
         if (!empty($this->department)) {
-            $query->where('department', $this->department);
+            $query->where('department_id', $this->department);
         }
 
         if (!empty($this->employeeId)) {

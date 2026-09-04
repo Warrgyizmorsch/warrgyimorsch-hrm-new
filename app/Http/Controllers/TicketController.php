@@ -29,7 +29,7 @@ class TicketController extends Controller
         $user = auth()->user();
 
         if (in_array($user->role, ['super_admin', 'hr_executive'])) {
-            $tickets = Ticket::with('user')->latest()->get();
+            $tickets = Ticket::with('user.employee.departmentRef')->latest()->get();
 
         // } elseif ($user->role == 'team_leader') {
         //     $tickets = Ticket::whereHas('user', function ($query) use ($user) {

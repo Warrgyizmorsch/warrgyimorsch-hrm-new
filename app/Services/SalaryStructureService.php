@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Department;
 use Illuminate\Support\Str;
 
 class SalaryStructureService
@@ -13,9 +14,10 @@ class SalaryStructureService
      * absorbed into the last component so the parts always sum exactly to
      * the input gross.
      */
-    public static function breakdown(float $gross, string $department): ?array
+    public static function breakdown(float $gross, ?int $departmentId): ?array
     {
-        $ratios = config('salary_structure.' . Str::slug($department, '_'));
+        $name = $departmentId ? Department::find($departmentId)?->name : null;
+        $ratios = $name ? config('salary_structure.' . Str::slug($name, '_')) : null;
 
         if (empty($ratios)) {
             return null;
@@ -33,8 +35,10 @@ class SalaryStructureService
         return $components;
     }
 
-    public static function isConfigured(string $department): bool
+    public static function isConfigured(?int $departmentId): bool
     {
-        return !empty(config('salary_structure.' . Str::slug($department, '_')));
+        $name = $departmentId ? Department::find($departmentId)?->name : null;
+
+        return $name && !empty(config('salary_structure.' . Str::slug($name, '_')));
     }
 }

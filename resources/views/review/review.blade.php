@@ -103,7 +103,7 @@
                                         <label class="fw-bold mb-1">Select Employee</label>
                                         @if($isTeamLeader && !$isAdmin)
                                             <div class="small text-muted mb-1">
-                                                Department employees only: {{ $employeeRecord->department ?? 'N/A' }}
+                                                Department employees only: {{ $employeeRecord->departmentRef->name ?? 'N/A' }}
                                             </div>
                                         @endif
                                         <div class="review-select" data-select>
@@ -135,6 +135,23 @@
                                     </div>
                                 @endif
                             </div>
+
+                            @if($isTeamLeader || $isAdmin)
+                                <div class="row mt-3">
+                                    @if($isTeamLeader || $isAdmin)
+                                        <div class="col-md-6">
+                                            <label class="fw-bold mb-1">Team Leader Note</label>
+                                            <textarea class="form-control" name="author_note" id="reviewFormAuthorNote" rows="2" placeholder="Optional note from the team leader...">{{ old('author_note') }}</textarea>
+                                        </div>
+                                    @endif
+                                    @if($isAdmin)
+                                        <div class="col-md-6">
+                                            <label class="fw-bold mb-1">Admin Note</label>
+                                            <textarea class="form-control" name="admin_note" id="reviewFormAdminNote" rows="2" placeholder="Optional note from admin...">{{ old('admin_note') }}</textarea>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
 
                             <table class="table table-bordered mt-4">
                                 <thead class="table-light">
@@ -300,7 +317,7 @@
                 </form>
                 <span class="badge bg-soft-primary text-primary">
                     @if($isTeamLeader && !$isAdmin)
-                        Team leader review mode: {{ $employeeRecord->department ?? 'N/A' }}
+                        Team leader review mode: {{ $employeeRecord->departmentRef->name ?? 'N/A' }}
                     @elseif($canViewReviewAnalytics)
                         {{ $showAllReviewMonths ? 'All months included' : 'Employee of the month' }}
                     @else
@@ -384,7 +401,7 @@
                             </td>
                         @endif
                         <td data-sort-value="{{ strtolower($reviewGroup->employee_name) }}">{{ $reviewGroup->employee_name }}</td>
-                        <td data-sort-value="{{ strtolower($reviewGroup->employee->department ?? 'N/A') }}">{{ $reviewGroup->employee->department ?? 'N/A' }}</td>
+                        <td data-sort-value="{{ strtolower($reviewGroup->employee->departmentRef->name ?? 'N/A') }}">{{ $reviewGroup->employee->departmentRef->name ?? 'N/A' }}</td>
                         <td data-sort-value="{{ $reviewGroup->month }}">{{ $reviewGroup->month }}</td>
                         <td data-sort-value="{{ $reviewGroup->firstHalf ? $scoreText($reviewScore($reviewGroup->firstHalf)) : -1 }}">
                             @if($reviewGroup->firstHalf)
@@ -542,10 +559,6 @@
                 {{ $reviews->appends(request()->query())->links('pagination::bootstrap-5') }}
             </div>
         @endif
-
-        <div class="mt-2">
-            {{ $reviews->links() }}
-        </div>
     </div>
 
     @foreach($reviews as $reviewGroup)
@@ -657,7 +670,7 @@
 
                             <div class="review-report-summary">
                                 <div><b>Employee</b><span>{{ $reviewGroup->employee_name }}</span></div>
-                                <div><b>Department</b><span>{{ $reviewGroup->employee->department ?? 'N/A' }}</span></div>
+                                <div><b>Department</b><span>{{ $reviewGroup->employee->departmentRef->name ?? 'N/A' }}</span></div>
                                 <div><b>Rank</b><span>#{{ $objective['rank'] ?? '-' }}</span></div>
                                 <div><b>Team Leader Assessment</b><span>{{ $scoreText($reviewGroup->combined_total) }}/100</span></div>
                                 <div><b>Self Assessment</b><span>{{ $scoreText(($reviewGroup->firstHalf->self_total ?? 0) + ($reviewGroup->secondHalf->self_total ?? 0)) }}/100</span></div>
@@ -815,6 +828,25 @@
                                 @endif
                             </tbody>
                         </table>
+
+                        <div class="border-top pt-3 mt-3 row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold"><i class="fa fa-sticky-note me-1"></i> Team Leader Note</label>
+                                <textarea class="form-control review-note-textarea" data-review-id="{{ $review->id }}" data-note-type="author" rows="3" placeholder="No note yet." {{ ($isTeamLeader || $isAdmin) ? '' : 'readonly' }}>{{ $review->author_note ?? '' }}</textarea>
+                                @if($isTeamLeader || $isAdmin)
+                                    <button type="button" class="btn btn-sm btn-primary mt-2 review-note-save" data-review-id="{{ $review->id }}" data-note-type="author">Save</button>
+                                    <span class="review-note-status small text-muted ms-2" data-note-type="author"></span>
+                                @endif
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold"><i class="fa fa-sticky-note me-1"></i> Admin Note</label>
+                                <textarea class="form-control review-note-textarea" data-review-id="{{ $review->id }}" data-note-type="admin" rows="3" placeholder="No note yet." {{ $isAdmin ? '' : 'readonly' }}>{{ $review->admin_note ?? '' }}</textarea>
+                                @if($isAdmin)
+                                    <button type="button" class="btn btn-sm btn-primary mt-2 review-note-save" data-review-id="{{ $review->id }}" data-note-type="admin">Save</button>
+                                    <span class="review-note-status small text-muted ms-2" data-note-type="admin"></span>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1528,6 +1560,10 @@
                 });
                 // Clear numeric inputs
                 reviewForm.querySelectorAll('.self-input, .author-input, .admin-input').forEach(inp => inp.value = '');
+                const authorNoteInput = document.getElementById('reviewFormAuthorNote');
+                if (authorNoteInput) authorNoteInput.value = '';
+                const adminNoteInput = document.getElementById('reviewFormAdminNote');
+                if (adminNoteInput) adminNoteInput.value = '';
                 updateTotals();
             }
 
@@ -1546,7 +1582,8 @@
                     try {
                         const res = await fetch(`{{ url('/review-details') }}/${id}`);
                         if (!res.ok) throw new Error('Failed to fetch review details');
-                        const details = await res.json();
+                        const data = await res.json();
+                        const details = data.details || [];
 
                         reviewForm.querySelectorAll('.self-input').forEach((inp, i) => {
                             if (details[i] && details[i].self_review !== undefined && details[i].self_review !== null) {
@@ -1568,6 +1605,11 @@
                             }
                         });
 
+                        const authorNoteInput = document.getElementById('reviewFormAuthorNote');
+                        if (authorNoteInput) authorNoteInput.value = data.author_note || '';
+                        const adminNoteInput = document.getElementById('reviewFormAdminNote');
+                        if (adminNoteInput) adminNoteInput.value = data.admin_note || '';
+
                         updateTotals();
                     } catch (err) {
                         console.error(err);
@@ -1576,6 +1618,36 @@
             });
 
             updateTotals();
+
+            document.querySelectorAll('.review-note-save').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const id = this.dataset.reviewId;
+                    const noteType = this.dataset.noteType;
+                    const textarea = document.querySelector(`.review-note-textarea[data-review-id="${id}"][data-note-type="${noteType}"]`);
+                    const status = this.nextElementSibling;
+                    const token = document.querySelector('meta[name="csrf-token"]').content;
+
+                    status.textContent = 'Saving...';
+
+                    fetch(`/employee-review/${id}/note`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ note: textarea.value, type: noteType })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        status.textContent = data.success ? 'Saved' : (data.error || 'Error saving note');
+                        setTimeout(() => { status.textContent = ''; }, 2000);
+                    })
+                    .catch(() => {
+                        status.textContent = 'Error saving note';
+                    });
+                });
+            });
         });
     </script>
 @endsection

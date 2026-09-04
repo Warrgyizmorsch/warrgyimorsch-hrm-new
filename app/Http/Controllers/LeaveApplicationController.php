@@ -188,16 +188,16 @@ class LeaveApplicationController extends Controller
         if ($isAdmin) {
             $employees = Employee::active()->get();
         } elseif ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
                 // Same department AND plain "employee" role only — not other team leaders,
                 // managers, HR, etc. who happen to share the department.
                 $query->whereHas('employee', function ($q) use ($department) {
-                    $q->where('department', $department)
+                    $q->where('department_id', $department)
                         ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
                 });
                 $employees = Employee::active()
-                    ->where('department', $department)
+                    ->where('department_id', $department)
                     ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'")
                     ->get();
             } else {
@@ -362,7 +362,7 @@ class LeaveApplicationController extends Controller
 
         if (auth()->user()->role == 'team_leader') {
             $query->whereHas('employee', function ($q) {
-                $q->where('department', auth()->user()->employee->department);
+                $q->where('department_id', auth()->user()->employee->department_id);
             });
         }
         if ($request->filled('search')) {
@@ -511,9 +511,9 @@ class LeaveApplicationController extends Controller
         $isTeamLeader = in_array($role, ['team_leader']);
 
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             $targetRole = str_replace(' ', '_', strtolower($leave->employee->role ?? ''));
-            if (!$department || ($leave->employee->department ?? null) !== $department || $targetRole !== 'employee') {
+            if (!$department || ($leave->employee->department_id ?? null) !== $department || $targetRole !== 'employee') {
                 return response()->json(['message' => 'Unauthorized access to employee data.'], 403);
             }
         } elseif (!$isAdmin && $leave->employee_id != $user->employee_id) {
@@ -534,10 +534,10 @@ class LeaveApplicationController extends Controller
         $isTeamLeader = in_array($role, ['team_leader']);
 
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             $targetEmployee = Employee::find($employeeId);
             $targetRole = $targetEmployee ? str_replace(' ', '_', strtolower($targetEmployee->role ?? '')) : null;
-            if (!$department || !$targetEmployee || $targetEmployee->department !== $department || $targetRole !== 'employee') {
+            if (!$department || !$targetEmployee || $targetEmployee->department_id !== $department || $targetRole !== 'employee') {
                 return response()->json(['message' => 'Unauthorized access to employee data.'], 403);
             }
         } elseif (!$isAdmin && $employeeId != $user->employee_id) {
@@ -563,10 +563,10 @@ class LeaveApplicationController extends Controller
         $isTeamLeader = in_array($role, ['team_leader']);
 
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             $targetEmployee = Employee::find($employeeId);
             $targetRole = $targetEmployee ? str_replace(' ', '_', strtolower($targetEmployee->role ?? '')) : null;
-            if (!$department || !$targetEmployee || $targetEmployee->department !== $department || $targetRole !== 'employee') {
+            if (!$department || !$targetEmployee || $targetEmployee->department_id !== $department || $targetRole !== 'employee') {
                 return response()->json(['message' => 'Unauthorized access to employee data.'], 403);
             }
         } elseif (!$isAdmin && $employeeId != $user->employee_id) {

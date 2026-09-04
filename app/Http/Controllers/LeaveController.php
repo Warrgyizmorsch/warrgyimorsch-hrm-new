@@ -65,9 +65,9 @@ class LeaveController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
         } elseif ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
-                $employees = Employee::active()->where('department', $department)->whereDate('date_of_joining', '<', $selectedMonthStart)->orderBy('name', 'asc')->get();
+                $employees = Employee::active()->where('department_id', $department)->whereDate('date_of_joining', '<', $selectedMonthStart)->orderBy('name', 'asc')->get();
                 $employeeIds = $employees->pluck('id');
                 
                 $allotments = LeaveAllotment::whereIn('month', $monthVariants)

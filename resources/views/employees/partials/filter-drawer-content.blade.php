@@ -83,7 +83,7 @@
             <label class="zoho-filter-label">Department</label>
             <div class="wghrm-search-dropdown" id="departmentFilterDropdown">
                 <div class="wghrm-dropdown-trigger zoho-filter-input">
-                    <span class="wghrm-trigger-text">{{ $departmentFilter ?: 'All Departments' }}</span>
+                    <span class="wghrm-trigger-text">{{ $departmentFilter ? (\App\Models\Department::find($departmentFilter)->name ?? 'All Departments') : 'All Departments' }}</span>
                     <i data-feather="chevron-down"></i>
                 </div>
                 <div class="wghrm-dropdown-menu">
@@ -97,7 +97,7 @@
                             <i data-feather="check" class="wghrm-item-check"></i>
                         </div>
                         @foreach (\App\Models\Department::all() as $dept)
-                            <div class="wghrm-item {{ (string) $departmentFilter === (string) $dept->name ? 'selected' : '' }}" data-value="{{ $dept->name }}" data-text="{{ $dept->name }}">
+                            <div class="wghrm-item {{ (string) $departmentFilter === (string) $dept->id ? 'selected' : '' }}" data-value="{{ $dept->id }}" data-text="{{ $dept->name }}">
                                 <span class="wghrm-item-text">{{ $dept->name }}</span>
                                 <i data-feather="check" class="wghrm-item-check"></i>
                             </div>

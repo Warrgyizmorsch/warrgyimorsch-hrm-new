@@ -110,8 +110,8 @@
                                                                     {{ Str::limit($task->employee->name ?? '—', 16) }}
                                                                 </span>
                                                             @endif
-                                                            @if($task->employee->department ?? null)
-                                                                <span class="dt-meta-chip">{{ $task->employee->department }}</span>
+                                                            @if($task->employee->departmentRef->name ?? null)
+                                                                <span class="dt-meta-chip">{{ $task->employee->departmentRef->name }}</span>
                                                             @endif
                                                         </div>
                                                         @if($task->photo)
@@ -578,22 +578,38 @@
                             <p>Add project, time spent, and what you accomplished today.</p>
                         </div>
                     </div>
-                    <div class="d-none" id="followUpFormColumn">
-                        <form id="followUpForm" enctype="multipart/form-data">
-                            @csrf
-                            <input type="hidden" name="daily_task_id" id="followUpTaskId">
-                            <input type="hidden" name="follow_up_id" id="followUpId">
-                            <input type="hidden" name="time_taken" id="totalFollowUpHours" value="0">
-
+                    <div class="row g-3">
+                        <div class="col-lg-12" id="followUpHistoryColumn">
                             <div class="dt-fu-toolbar">
-                                <span class="dt-fu-toolbar-label">Progress entries</span>
-                                <button type="button" onclick="addTaskClone()" class="zoho-btn-outline btn-sm">
-                                    <i class="feather-plus"></i> Add entry
-                                </button>
+                                <span class="dt-fu-toolbar-label">Work history</span>
+                                <input type="text" id="modalSearch" class="form-control form-control-sm"
+                                    placeholder="Search history..." style="max-width: 220px;"
+                                    oninput="filterModalHistory()">
                             </div>
+                            <div id="followUpHistoryBody"
+                                style="max-height: 480px; overflow-y: auto; border: 1px solid #eef2f7; border-radius: 10px;"></div>
+                            <div class="d-flex align-items-center justify-content-between mt-2">
+                                <small class="text-muted" id="modalEntriesInfo"></small>
+                                <div class="d-flex gap-1" id="modalPaginationButtons"></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-8 d-none" id="followUpFormColumn">
+                            <form id="followUpForm" enctype="multipart/form-data">
+                                @csrf
+                                <input type="hidden" name="daily_task_id" id="followUpTaskId">
+                                <input type="hidden" name="follow_up_id" id="followUpId">
+                                <input type="hidden" name="time_taken" id="totalFollowUpHours" value="0">
 
-                            <div id="taskAddContainer"></div>
-                        </form>
+                                <div class="dt-fu-toolbar">
+                                    <span class="dt-fu-toolbar-label">Progress entries</span>
+                                    <button type="button" onclick="addTaskClone()" class="zoho-btn-outline btn-sm">
+                                        <i class="feather-plus"></i> Add entry
+                                    </button>
+                                </div>
+
+                                <div id="taskAddContainer"></div>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer dt-modal-foot d-none" id="followUpModalFooter">
@@ -1747,25 +1763,25 @@
                 const formCol = document.getElementById('followUpFormColumn');
                 const modalFooter = document.getElementById('followUpModalFooter');
                 const historyCol = document.getElementById('followUpHistoryColumn');
-                const modalDialog = document.querySelector('#followUpModal .modal-dialog');
+                const modalEl = document.getElementById('followUpModal');
 
                 if (mode === 'add') {
                     formCol.classList.remove('d-none');
                     if (modalFooter) modalFooter.classList.remove('d-none');
                     if (historyCol) {
                         historyCol.classList.remove('col-lg-12');
-                        historyCol.classList.add('col-lg-7');
+                        historyCol.classList.add('col-lg-4');
                     }
-                    if (modalDialog) modalDialog.classList.add('modal-xl');
+                    if (modalEl) modalEl.classList.add('dt-progress-modal--wide');
                     document.getElementById('followUpModalLabel').innerText = 'Add Work Progress';
                 } else {
                     formCol.classList.add('d-none');
                     if (modalFooter) modalFooter.classList.add('d-none');
                     if (historyCol) {
-                        historyCol.classList.remove('col-lg-7');
+                        historyCol.classList.remove('col-lg-4');
                         historyCol.classList.add('col-lg-12');
                     }
-                    if (modalDialog) modalDialog.classList.remove('modal-xl');
+                    if (modalEl) modalEl.classList.remove('dt-progress-modal--wide');
                     document.getElementById('followUpModalLabel').innerText = 'Work History';
                 }
             }
@@ -1956,8 +1972,12 @@
                         timeDisplay = display.length > 0 ? display.join(' ') : '0m';
                     }
 
-                    let editBtn = `<a href="javascript:void(0);" onclick="editFollowUp(${fu.id})" class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle shadow-none me-2" title="Edit Entry" style="width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; text-decoration:none;"><i class="feather-edit-3" style="font-size:14px;"></i></a>`;
-                    let delBtn = `<a href="javascript:void(0);" onclick="deleteFollowUp(${fu.id})" class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle shadow-none" title="Delete" style="width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; text-decoration:none;"><i class="feather-trash-2" style="font-size:14px;"></i></a>`;
+                    let editBtn = fu.can_manage
+                        ? `<a href="javascript:void(0);" onclick="editFollowUp(${fu.id})" class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle shadow-none me-2" title="Edit Entry" style="width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; text-decoration:none;"><i class="feather-edit-3" style="font-size:14px;"></i></a>`
+                        : '';
+                    let delBtn = fu.can_manage
+                        ? `<a href="javascript:void(0);" onclick="deleteFollowUp(${fu.id})" class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle shadow-none" title="Delete" style="width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; text-decoration:none;"><i class="feather-trash-2" style="font-size:14px;"></i></a>`
+                        : '';
 
                     body.innerHTML += `
                                         <div class="work-history-feed-item"
@@ -2130,7 +2150,15 @@
                     if (hoursInput) hoursInput.value = h > 0 ? h : '';
                     if (minutesInput) minutesInput.value = m > 0 ? m : '';
                     if (descriptionInput) {
-                        descriptionInput.value = $('<div>').html(fu.work_description || '').text().trim();
+                        // work_description is stored as the fully formatted display block
+                        // ("• ProjectName - 4h" summary line + a <li> per description line).
+                        // Pull just the <li> text back out so editing doesn't re-inject that
+                        // summary line as if it were part of the original typed description.
+                        const $parsed = $('<div>').html(fu.work_description || '');
+                        const items = $parsed.find('li').map(function () {
+                            return $(this).text().trim();
+                        }).get();
+                        descriptionInput.value = items.length ? items.join('\n') : $parsed.text().trim();
                     }
                 }
                 document.getElementById('totalFollowUpHours').value = totalHours;
@@ -2157,9 +2185,9 @@
                 const historyCol = document.getElementById('followUpHistoryColumn');
                 if (historyCol) {
                     historyCol.classList.remove('col-lg-12');
-                    historyCol.classList.add('col-lg-7');
+                    historyCol.classList.add('col-lg-4');
                 }
-                document.querySelector('#followUpModal .modal-dialog').classList.add('modal-xl');
+                document.getElementById('followUpModal').classList.add('dt-progress-modal--wide');
             }
 
             let searchTimeout;
@@ -2308,18 +2336,20 @@
                     } 
                 })
                 .then(res => {
-                    // Intercept HTTP status codes (200 OK or 422 Validation Error are valid JSON payloads)
-                    if (res.ok || res.status === 422) {
+                    // Intercept HTTP status codes with a JSON payload worth showing to the user
+                    if (res.ok || res.status === 422 || res.status === 403) {
                         return res.json();
                     }
                     // Force non-JSON crashes (e.g. 500 Internal Server Error) straight to the catch handler
                     throw new Error('Server Exception');
                 })
                 .then(data => {
-                    btn.innerText = origText; 
+                    btn.innerText = origText;
                     btn.disabled = false;
 
-                    if (data.success) {
+                    if (data.error) {
+                        Toast.fire({ icon: 'error', title: data.error });
+                    } else if (data.success) {
                         this.reset();
                         resetFollowUpRows();
                         if ($('#workDesc').length) {
@@ -2542,6 +2572,8 @@
                             if (data.success) {
                                 Toast.fire({ icon: 'success', title: data.success });
                                 loadFollowUpHistory(document.getElementById('followUpTaskId').value);
+                            } else if (data.error) {
+                                Toast.fire({ icon: 'error', title: data.error });
                             }
                         });
                     }

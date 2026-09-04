@@ -27,10 +27,10 @@ class LoginActivityController extends Controller
             $employees = Employee::orderBy('name')->get(['id', 'name']);
             $canFilterByEmployee = true;
         } elseif ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
 
             $teamEmployees = $department
-                ? Employee::where('department', $department)
+                ? Employee::where('department_id', $department)
                     ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'")
                     ->orderBy('name')
                     ->get(['id', 'name'])
@@ -45,7 +45,7 @@ class LoginActivityController extends Controller
             $query->where(function ($q) use ($department, $user) {
                 $q->where('user_id', $user->id)
                     ->orWhereHas('employee', function ($eq) use ($department) {
-                        $eq->where('department', $department)
+                        $eq->where('department_id', $department)
                             ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
                     });
             });

@@ -10,10 +10,12 @@
     $currentLeads = $leaderNames->isNotEmpty() ? $leaderNames->take(2)->join(', ') : 'Assign lead';
     $currentMembers = $memberNames->isNotEmpty() ? $memberNames->take(2)->join(', ') : 'Assign team';
     $statusSlug = strtolower(str_replace(' ', '-', $normalizedStatus));
+    $projectDepartmentNames = $project->departments->pluck('name');
+    $projectDepartmentIds = $project->departments->pluck('id')->all();
     $searchBlob = strtolower(implode(' ', array_filter([
         $project->name,
         $project->technology,
-        is_array($project->department) ? implode(' ', $project->department) : $project->department,
+        $projectDepartmentNames->implode(' '),
         strip_tags($project->description ?? ''),
     ])));
 @endphp
@@ -21,7 +23,7 @@
     data-name="{{ strtolower($project->name) }}"
     data-search="{{ $searchBlob }}"
     data-status="{{ $normalizedStatus }}"
-    data-department="{{ is_array($project->department) ? implode(',', $project->department) : $project->department }}">
+    data-department="{{ $projectDepartmentNames->implode(',') }}">
     <td class="pm-col-check">
         <input type="checkbox" class="form-check-input shadow-none pm-project-check"
                value="{{ $project->id }}" data-project-id="{{ $project->id }}">
@@ -51,8 +53,8 @@
                     @if($project->technology)
                         <span class="pm-tag pm-tag--tech">{{ $project->technology }}</span>
                     @endif
-                    @if(is_array($project->department) && count($project->department))
-                        <span class="pm-tag pm-tag--dept">{{ implode(', ', $project->department) }}</span>
+                    @if($projectDepartmentNames->isNotEmpty())
+                        <span class="pm-tag pm-tag--dept">{{ $projectDepartmentNames->implode(', ') }}</span>
                     @endif
                     @if($taskTotal > 0)
                         <a href="{{ route('daily-tasks.index', ['project_id' => $project->id]) }}" class="pm-tag pm-tag--tasks pm-tag--link">
@@ -84,7 +86,7 @@
                 <li><a class="dropdown-item pm-dropdown-item lead-item" href="javascript:void(0);"
                        onclick="updateProjectLeads('{{ $project->slug }}', [])">No leads</a></li>
                 @foreach($employees as $emp)
-                    @if(in_array($emp->department, (array) $project->department))
+                    @if(in_array($emp->department_id, $projectDepartmentIds, true))
                         <li><a class="dropdown-item pm-dropdown-item lead-item {{ in_array($emp->id, $leaders) ? 'active' : '' }}"
                                href="javascript:void(0);"
                                onclick='toggleProjectLead("{{ $project->slug }}", @json($leaders), {{ $emp->id }})'>{{ $emp->name }}</a></li>
@@ -116,7 +118,7 @@
                 <li><a class="dropdown-item pm-dropdown-item lead-item" href="javascript:void(0);"
                        onclick='updateProjectMembers("{{ $project->slug }}", [])'>No members</a></li>
                 @foreach($employees as $emp)
-                    @if(in_array($emp->department, (array) $project->department))
+                    @if(in_array($emp->department_id, $projectDepartmentIds, true))
                         <li><a class="dropdown-item pm-dropdown-item lead-item {{ in_array($emp->id, $members) ? 'active' : '' }}"
                                href="javascript:void(0);"
                                onclick='toggleProjectMember("{{ $project->slug }}", @json($members), {{ $emp->id }})'>{{ $emp->name }}</a></li>

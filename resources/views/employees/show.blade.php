@@ -20,8 +20,8 @@
                             @if($employee->designation)
                                 <span><i class="feather-briefcase"></i> {{ $employee->designation }}</span>
                             @endif
-                            @if($employee->department)
-                                <span><i class="feather-layers"></i> {{ ucwords($employee->department) }}</span>
+                            @if($employee->departmentRef)
+                                <span><i class="feather-layers"></i> {{ $employee->departmentRef->name }}</span>
                             @endif
                             @if($employee->email)
                                 <span><i class="feather-mail"></i> {{ $employee->email }}</span>
@@ -98,7 +98,7 @@
                             <div class="zoho-detail-label">Basic Salary</div>
                             <div class="zoho-detail-value is-highlight">₹ {{ number_format($employee->basic_salary ?? 0, 2) }}</div>
                         </div>
-                        @if($employee->department === 'Business Development')
+                        @if($employee->department_id === \App\Models\Department::businessDevelopmentId())
                         <div class="zoho-detail-row">
                             <div class="zoho-detail-label">Dearness Allowance</div>
                             <div class="zoho-detail-value">₹ {{ number_format($employee->dearness_allowance ?? 0, 2) }}</div>

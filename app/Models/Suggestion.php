@@ -24,6 +24,7 @@ class Suggestion extends Model
 
     protected $fillable = [
         'user_id',
+        'is_anonymous',
         'category',
         'message',
         'status',
@@ -36,6 +37,7 @@ class Suggestion extends Model
     protected function casts(): array
     {
         return [
+            'is_anonymous' => 'boolean',
             'appreciated' => 'boolean',
             'replied_at' => 'datetime',
         ];

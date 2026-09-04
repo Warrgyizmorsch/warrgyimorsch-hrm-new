@@ -135,18 +135,14 @@
                                         <select class="form-select premium-select" id="projectDepartment" multiple
                                             data-placeholder="Select Department" required>
                                             <option value=""></option>
+                                            @php($projectDepartmentIds = $project->departments->pluck('id')->all())
                                             @foreach($departments as $dept)
-                                                <option value="{{ $dept->name }}"
-                                                    {{ (auth()->user()->role == 'team_leader' && $dept->name == auth()->user()->employee->department) || (is_array($project->department) ? in_array($dept->name, $project->department) : $project->department == $dept->name) ? 'selected' : '' }}>
+                                                <option value="{{ $dept->id }}"
+                                                    {{ in_array($dept->id, $projectDepartmentIds) ? 'selected' : '' }}>
                                                     {{ $dept->name }}
                                                 </option>
                                             @endforeach
                                         </select>
-                                        @if(auth()->user()->role == 'team_leader')
-                                            <input type="hidden"
-                                                name="department"
-                                                value="{{ auth()->user()->employee->department }}">
-                                        @endif
                                     </div>
                                     <div class="col-md-4 mb-4">
                                         <label class="form-label fw-bold fs-12 text-muted text-uppercase">Project Leads
@@ -221,8 +217,8 @@
                             <input type="hidden" name="description" id="hiddenDesc">
                             <input type="hidden" name="start_date" id="hiddenStartDate">
                             <input type="hidden" name="end_date" id="hiddenEndDate">
-                            <input type="hidden" name="department" id="hiddenDepartment">
                             <input type="hidden" name="status" id="hiddenStatus">
+                            <div id="hiddenDepartmentContainer"></div>
                             <div id="hiddenMembersContainer"></div>
                             <div id="hiddenLeadersContainer"></div>
                         </form>
@@ -484,8 +480,17 @@
                 $('#hiddenDesc').val($('#summernote-main').summernote('code'));
                 $('#hiddenStartDate').val($('#projectStartDate').val());
                 $('#hiddenEndDate').val($('#projectEndDate').val());
-                $('#hiddenDepartment').val($('#projectDepartment').val());
                 $('#hiddenStatus').val($('#projectStatus').val());
+
+                // Sync Departments
+                var depts = $('#projectDepartment').val();
+                var deptsHtml = '';
+                if (depts && depts.length > 0) {
+                    depts.forEach(function (id) {
+                        deptsHtml += '<input type="hidden" name="department_ids[]" value="' + id + '">';
+                    });
+                }
+                $('#hiddenDepartmentContainer').html(deptsHtml);
 
                 // Sync Members
                 var members = $('#projectMembers').val();
@@ -594,9 +599,9 @@
 
                 const filteredEmployees = allEmployees.filter(emp => {
                     if (Array.isArray(selectedDepartment)) {
-                        return selectedDepartment.includes(emp.department);
+                        return selectedDepartment.includes(String(emp.department_id));
                     }
-                    return selectedDepartment && emp.department === selectedDepartment;
+                    return selectedDepartment && String(emp.department_id) === selectedDepartment;
                 });
 
                 filteredEmployees.forEach(function (emp) {

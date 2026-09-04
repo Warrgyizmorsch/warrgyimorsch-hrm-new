@@ -27,7 +27,49 @@
             <span class="dt-hero-stat-label">Pending</span>
         </div>
     </div>
+    @if($employeeMonthlyStats ?? null)
+        <div class="dt-hero-stat dt-hero-stat--present">
+            <div class="dt-hero-stat-icon"><i class="feather-check-circle"></i></div>
+            <div>
+                <span class="dt-hero-stat-value">{{ rtrim(rtrim(number_format($employeeMonthlyStats['present_days'], 1), '0'), '.') ?: '0' }}<small class="dt-hero-stat-value-of">/{{ $employeeMonthlyStats['working_days'] }}</small></span>
+                <span class="dt-hero-stat-label">Days present</span>
+            </div>
+        </div>
+        <div class="dt-hero-stat dt-hero-stat--submitted">
+            <div class="dt-hero-stat-icon"><i class="feather-file-text"></i></div>
+            <div>
+                <span class="dt-hero-stat-value">{{ $employeeMonthlyStats['submitted_days'] }}</span>
+                <span class="dt-hero-stat-label">Report submitted</span>
+            </div>
+        </div>
+        <div class="dt-hero-stat dt-hero-stat--missed">
+            <div class="dt-hero-stat-icon"><i class="feather-x-circle"></i></div>
+            <div>
+                <span class="dt-hero-stat-value">{{ $employeeMonthlyStats['missed_days'] }}</span>
+                <span class="dt-hero-stat-label">Missed (no report)</span>
+            </div>
+        </div>
+        <div class="dt-hero-stat dt-hero-stat--under-target">
+            <div class="dt-hero-stat-icon"><i class="feather-trending-down"></i></div>
+            <div>
+                <span class="dt-hero-stat-value">{{ $employeeMonthlyStats['under_target_days'] }}</span>
+                <span class="dt-hero-stat-label">Under 8h target</span>
+            </div>
+        </div>
+    @endif
 </div>
+@if($employeeMonthlyStats ?? null)
+    <div class="dt-hero-stats-context">
+        <i class="feather-calendar"></i>
+        {{ $employeeMonthlyStats['range_label'] }}:
+        <strong>{{ $employeeMonthlyStats['total_days'] }}</strong> days ·
+        <strong>{{ $employeeMonthlyStats['sunday_count'] }}</strong> Sunday{{ $employeeMonthlyStats['sunday_count'] == 1 ? '' : 's' }} ·
+        <strong>{{ $employeeMonthlyStats['holiday_count'] }}</strong> holiday{{ $employeeMonthlyStats['holiday_count'] == 1 ? '' : 's' }} ·
+        <strong>{{ $employeeMonthlyStats['working_days'] }}</strong> working days ·
+        <strong>{{ rtrim(rtrim(number_format($employeeMonthlyStats['leave_count'], 1), '0'), '.') ?: '0' }}</strong> leave{{ $employeeMonthlyStats['leave_count'] == 1 ? '' : 's' }} ·
+        <strong>{{ $employeeMonthlyStats['absent_count'] }}</strong> absent
+    </div>
+@endif
 
 <div class="attendance-filter-panel dt-filter-panel">
     <div class="dt-filter-panel-head">
@@ -82,6 +124,11 @@
                         <option value="Review" {{ request('status') == 'Review' ? 'selected' : '' }}>Review</option>
                         <option value="Rework" {{ request('status') == 'Rework' ? 'selected' : '' }}>Rework</option>
                     </select>
+                </div>
+
+                <div class="attendance-filter-field">
+                    <label>Month</label>
+                    <input type="month" name="month" class="form-control" value="{{ $selectedMonth ?? request('month') }}">
                 </div>
 
                 <div class="attendance-filter-field">

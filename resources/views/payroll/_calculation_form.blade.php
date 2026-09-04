@@ -378,7 +378,7 @@
         document.getElementById('inputESI').value = p.esi_deduction;
         document.getElementById('inputOther').value = p.other_deduction || 0;
 
-        const isBD = p.department === 'Business Development';
+        const isBD = p.is_business_development;
         document.getElementById('rowDearnessAllowance').style.display = isBD ? '' : 'none';
         document.getElementById('rowVariableEarning').style.display = isBD ? '' : 'none';
         document.getElementById('rowEpf').style.display = isBD ? '' : 'none';

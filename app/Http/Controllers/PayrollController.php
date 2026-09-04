@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payroll;
 use App\Models\Attendance;
+use App\Models\Department;
 use App\Models\LeaveApplication;
 use App\Models\LeaveAllotment;
 use App\Models\Employee;
@@ -42,9 +43,9 @@ class PayrollController extends Controller
         $query->whereDate('attendances.attendance_date', '<=', now()->toDateString());
 
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
-                $query->where('employees.department', $department);
+                $query->where('employees.department_id', $department);
             }
         }
 
@@ -118,9 +119,9 @@ class PayrollController extends Controller
 
         $empQuery = Employee::active()->orderBy('name', 'asc');
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
-                $empQuery->where('department', $department);
+                $empQuery->where('department_id', $department);
             }
         }
         $employees = $empQuery->get();
@@ -143,10 +144,10 @@ class PayrollController extends Controller
             $query = Attendance::with('employee')->visible()->where('attendance_date', $date);
 
             if ($isTeamLeader) {
-                $department = $user->employee->department ?? null;
+                $department = $user->employee->department_id ?? null;
                 if ($department) {
                     $query->whereHas('employee', function ($q) use ($department) {
-                        $q->where('department', $department);
+                        $q->where('department_id', $department);
                     });
                 }
             } elseif (!$isAdmin) {
@@ -201,9 +202,9 @@ class PayrollController extends Controller
         $query = Attendance::with('employee')->visible()->join('employees', 'attendances.employee_id', '=', 'employees.id');
 
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
-                $query->where('employees.department', $department);
+                $query->where('employees.department_id', $department);
             }
         } elseif (!$isAdmin) {
             $query->where('attendances.employee_id', $user->employee_id);
@@ -437,7 +438,7 @@ class PayrollController extends Controller
             $overrideSalary = $request->override_salary ?? null;
             $unpaidDays = $totalDays - $payableDays;
 
-            $isBusinessDevelopment = $employee->department === 'Business Development';
+            $isBusinessDevelopment = $employee->department_id === Department::businessDevelopmentId();
 
             // 💰 STEP 2: Monthly Salary (Annual → Monthly)
             $monthlySalary = (
@@ -506,7 +507,8 @@ class PayrollController extends Controller
                 'employee_id' => $employeeId,
                 'month' => $month,
                 'emp_name' => $employee->name,
-                'department' => $employee->department,
+                'department' => $employee->departmentRef?->name,
+                'department_id' => $employee->department_id,
                 'is_business_development' => $isBusinessDevelopment,
                 'overtime_hours' => round($overtimeHours, 2),
                 'overtime_days' => round($overtimeDays, 2),
@@ -980,7 +982,7 @@ class PayrollController extends Controller
                         $data[] = [
                             $payroll->employee->name,
                             $payroll->employee->id,
-                            $payroll->employee->department ?? '-',
+                            $payroll->employee->departmentRef?->name ?? '-',
                         $shiftTime,
                         $monthDays,
                             $payroll->payable_days,
@@ -1290,9 +1292,9 @@ class PayrollController extends Controller
         $query->whereDate('attendances.attendance_date', '<=', now()->toDateString());
 
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
-                $query->where('employees.department', $department);
+                $query->where('employees.department_id', $department);
             }
         }
 
@@ -1382,7 +1384,9 @@ class PayrollController extends Controller
                     'id' => $payroll->id,
                     'employee_id' => $payroll->employee_id,
                     'employee_name' => $payroll->employee->name,
-                    'department' => $payroll->employee->department,
+                    'department' => $payroll->employee->departmentRef?->name,
+                    'department_id' => $payroll->employee->department_id,
+                    'is_business_development' => $payroll->employee->department_id === Department::businessDevelopmentId(),
                     'month' => $payroll->month,
                     'payable_days' => $payroll->payable_days,
                     'basic_salary' => $payroll->basic_salary,
@@ -1504,11 +1508,11 @@ class PayrollController extends Controller
 
         $empQuery = Employee::active()->orderBy('name', 'asc');
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
                 // Team leaders only see plain "employee" role records in their own department —
                 // not other team leaders, managers, HR, etc. who happen to share the department.
-                $empQuery->where('department', $department)
+                $empQuery->where('department_id', $department)
                     ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
             }
         }
@@ -1526,9 +1530,9 @@ class PayrollController extends Controller
             ));
 
         if ($isTeamLeader) {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
-                $query->where('employees.department', $department)
+                $query->where('employees.department_id', $department)
                     ->whereRaw("LOWER(REPLACE(employees.role, ' ', '_')) = 'employee'");
             }
         }
@@ -1622,10 +1626,10 @@ class PayrollController extends Controller
 
             // Security check for Team Leader — same department AND plain "employee" role only.
             if ($isTeamLeader) {
-                $department = $user->employee->department ?? null;
+                $department = $user->employee->department_id ?? null;
                 $targetEmployee = Employee::active()->find($request->employee_id);
                 $targetRole = $targetEmployee ? str_replace(' ', '_', strtolower($targetEmployee->role ?? '')) : null;
-                if (!$department || !$targetEmployee || $targetEmployee->department !== $department || $targetRole !== 'employee') {
+                if (!$department || !$targetEmployee || $targetEmployee->department_id !== $department || $targetRole !== 'employee') {
                     return response()->json(['success' => false, 'message' => 'Unauthorized access to employee data.'], 403);
                 }
             } elseif (!$isAdmin && $request->employee_id != $user->employee_id) {
@@ -1746,7 +1750,7 @@ class PayrollController extends Controller
      */
     public function downloadPdf($id)
     {
-        $payroll = Payroll::with('employee')->findOrFail($id);
+        $payroll = Payroll::with('employee.departmentRef')->findOrFail($id);
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('payroll.payslip_pdf', compact('payroll'))
             ->setPaper('a4', 'portrait')
             ->setOptions([
@@ -1765,7 +1769,7 @@ class PayrollController extends Controller
      */
     public function bulkDownloadPdf(Request $request)
     {
-        $query = Payroll::with('employee');
+        $query = Payroll::with('employee.departmentRef');
 
         if ($request->filled('month')) {
             $query->where('month', $request->month);

@@ -15,7 +15,6 @@ class Project extends Model
         'start_date',
         'end_date',
         'status',
-        'department',
         'description',
         'technology',
         // 'type',
@@ -38,37 +37,20 @@ class Project extends Model
         return 'slug';
     }
 
-    public function getDepartmentAttribute($value)
-    {
-        if (empty($value)) {
-            return [];
-        }
-        $decoded = json_decode($value, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
-        return array_map('trim', explode(',', $value));
-    }
-
-    public function setDepartmentAttribute($value)
-    {
-        if (is_array($value)) {
-            $this->attributes['department'] = json_encode(array_values(array_filter($value)));
-        } elseif (is_string($value)) {
-            if (str_starts_with($value, '[') && str_ends_with($value, ']')) {
-                $this->attributes['department'] = $value;
-            } else {
-                $parts = array_map('trim', explode(',', $value));
-                $this->attributes['department'] = json_encode($parts);
-            }
-        } else {
-            $this->attributes['department'] = json_encode([]);
-        }
-    }
-
     public function tasks()
     {
         return $this->hasMany(DailyTask::class);
+    }
+
+    // Departments this project is tagged with (a project can belong to several).
+    public function departments()
+    {
+        return $this->belongsToMany(Department::class, 'department_project');
+    }
+
+    public function checklistTemplates()
+    {
+        return $this->hasMany(ProjectChecklistTemplate::class)->orderBy('sort_order');
     }
 
     public function getNormalizedStatusAttribute(): string

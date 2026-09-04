@@ -12,7 +12,9 @@ class EmployeeReview extends Model
         'period',
         'self_total',
         'author_total',
-        'admin_total'
+        'admin_total',
+        'author_note',
+        'admin_note'
     ];
 
     public function details() {

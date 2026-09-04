@@ -14,6 +14,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProjectChecklistController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SuggestionController;
@@ -87,6 +88,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/employee-review/store', [ReviewController::class, 'store']);
     Route::post('/employee-review/{id}/update', [ReviewController::class, 'update']);
     Route::get('/review-details/{id}', [ReviewController::class, 'details'])->name('employee.review.details');
+    Route::post('/employee-review/{id}/note', [ReviewController::class, 'updateNote'])->name('employee.review.note.update');
 
     Route::get('/daily-tasks', [DailyTaskController::class, 'index'])->name('daily-tasks.index');
     Route::post('/daily-tasks', [DailyTaskController::class, 'store'])->name('daily-tasks.store');
@@ -265,6 +267,12 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     Route::post('/projects/bulk-delete', [ProjectController::class, 'bulkDelete'])->name('projects.bulk-delete');
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
     Route::get('/projects/{project}/tasks-summary', [ProjectController::class, 'tasksSummary'])->name('projects.tasks-summary');
+
+    Route::get('/projects/{project}/checklist', [ProjectChecklistController::class, 'index'])->name('projects.checklist.index');
+    Route::post('/projects/{project}/checklist/templates', [ProjectChecklistController::class, 'storeTemplate'])->name('projects.checklist.templates.store');
+    Route::patch('/projects/checklist/templates/{template}', [ProjectChecklistController::class, 'updateTemplate'])->name('projects.checklist.templates.update');
+    Route::delete('/projects/checklist/templates/{template}', [ProjectChecklistController::class, 'destroyTemplate'])->name('projects.checklist.templates.destroy');
+    Route::patch('/projects/checklist/templates/{template}/toggle', [ProjectChecklistController::class, 'toggleCompletion'])->name('projects.checklist.toggle');
     Route::get('/payroll/attendance/details', [PayrollController::class, 'getAttendanceDetails'])->name('payroll.attendance.details');
 
     // Team leaders only get the requirement board (scoped to what they've placed in the

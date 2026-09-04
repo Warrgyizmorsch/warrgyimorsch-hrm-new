@@ -196,6 +196,7 @@
                                     <th>Name <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
                                     <th>Role <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
                                     <th>Department <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
+                                    <th>Device ID</th>
                                     <th class="text-center">PF / ESI / INS</th>
                                     <th class="col-attendance">Attendance</th>
                                     <th class="col-photo">Photo</th>
@@ -208,7 +209,7 @@
                                         $isInactive = ($emp->user->account_status ?? 'active') === 'inactive';
                                     @endphp
                                     <tr class="fade-row {{ $isInactive ? 'employee-row-inactive' : '' }}" id="emp-row-{{ $emp->id }}"
-                                        data-employee-id="{{ $emp->id }}" data-employee-dept="{{ $emp->department }}"
+                                        data-employee-id="{{ $emp->id }}" data-employee-dept="{{ $emp->departmentRef->name ?? '' }}"
                                         data-employee-role="{{ $emp->role }}"
                                         data-employee-search="{{ strtolower($emp->name . ' ' . ($emp->employee_code ?? $emp->id)) }}">
                                         <td><input type="checkbox" class="emp-checkbox" data-id="{{ $emp->id }}"></td>
@@ -231,7 +232,14 @@
                                             </div>
                                         </td>
                                         <td>{{ ucfirst(str_replace('_', ' ', $emp->role)) }}</td>
-                                        <td>{{ ucfirst(str_replace('_', ' ', $emp->department)) }}</td>
+                                        <td>{{ $emp->departmentRef->name ?? '—' }}</td>
+                                        <td>
+                                            @if($emp->rs9n_device_id)
+                                                <span class="badge bg-soft-primary text-primary fw-bold">{{ $emp->rs9n_device_id }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">
                                             @include('employees.partials.list-benefit-badges', ['employee' => $emp])
                                         </td>
@@ -264,7 +272,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="9" class="text-center py-5 text-muted">No employees found.</td></tr>
+                                    <tr><td colspan="10" class="text-center py-5 text-muted">No employees found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -278,7 +286,7 @@
                             @endphp
                             <div class="employee-card-mobile fade-row {{ $isInactive ? 'employee-row-inactive' : '' }}" data-employee-id="{{ $emp->id }}" 
                                  data-employee-name="{{ strtolower($emp->name . ' ' . ($emp->employee_code ?? $emp->id)) }}"
-                                 data-employee-dept="{{ strtolower($emp->department) }}" 
+                                 data-employee-dept="{{ strtolower($emp->departmentRef->name ?? '') }}"
                                  data-employee-role="{{ strtolower($emp->role) }}">
                                 
                                 <div class="checkbox-wrapper">
@@ -306,7 +314,7 @@
                                     </div>
                                     <div class="detail-item">
                                         <span class="detail-label">Department</span>
-                                        <span class="detail-value text-truncate">{{ ucfirst(str_replace('_', ' ', $emp->department)) }}</span>
+                                        <span class="detail-value text-truncate">{{ $emp->departmentRef->name ?? '—' }}</span>
                                     </div>
                                     <div class="detail-item detail-item--full">
                                         <span class="detail-label">Benefits</span>
@@ -1462,7 +1470,7 @@
                                                                                         <div class="salary-label"><i class="bi bi-cash"></i>Basic Salary</div>
                                                                                         <div class="salary-amount">₹ ${parseFloat(emp.basic_salary || 0).toLocaleString('en-IN')}</div>
                                                                                     </div>
-                                                                                    ${emp.department === 'Business Development' ? `
+                                                                                    ${emp.is_business_development ? `
                                                                                     <div class="salary-item">
                                                                                         <div class="salary-label"><i class="bi bi-cash"></i>Dearness Allowance</div>
                                                                                         <div class="salary-amount">₹ ${parseFloat(emp.dearness_allowance || 0).toLocaleString('en-IN')}</div>
@@ -1781,7 +1789,7 @@
 
                 setOrDelete('employee_id', employeeId);
                 setOrDelete('search', globalSearch);
-                setOrDelete('department', department);
+                setOrDelete('department_id', department);
                 setOrDelete('role', role);
                 setOrDelete('status', status);
                 setOrDelete('pf', pf);

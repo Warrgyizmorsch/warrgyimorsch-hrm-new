@@ -87,9 +87,8 @@
                         $isRead = $announcement->readByUsers->contains(auth()->id());
                         $message = trim($announcement->message);
                         $isLong = strlen($message) > 180;
-                        $dept = strtolower($announcement->department ?? 'company');
-                        $deptLabel = ucfirst(str_replace('_', ' ', $announcement->department ?? 'Company'));
-                        $deptSlug = Str::slug($dept ?: 'company');
+                        $deptLabel = $announcement->department->name ?? 'All Employees';
+                        $deptSlug = Str::slug($deptLabel ?: 'company');
                     @endphp
                     <article class="bc-item bc-card {{ $isRead ? 'is-read' : 'is-unread' }}"
                              id="msg-card-{{ $announcement->id }}"

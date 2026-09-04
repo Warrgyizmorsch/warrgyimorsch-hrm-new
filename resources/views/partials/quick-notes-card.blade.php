@@ -106,7 +106,7 @@
                         <span class="qn-assign-label"><i class="feather-user-plus"></i> Assign to</span>
                         <select id="qnAssignTo" class="qn-assign-select" onchange="qnAssignChanged(this)">
                             <option value="">Just me (personal note)</option>
-                            @php $employeesByDept = ($employees ?? collect())->where('id', '!=', auth()->user()->employee_id)->groupBy(fn($e) => $e->department ?: 'Other'); @endphp
+                            @php $employeesByDept = ($employees ?? collect())->where('id', '!=', auth()->user()->employee_id)->groupBy(fn($e) => $e->departmentRef->name ?? 'Other'); @endphp
                             @foreach($employeesByDept as $department => $deptEmployees)
                                 <optgroup label="{{ $department }}">
                                     @foreach($deptEmployees as $emp)

@@ -6,6 +6,8 @@
         $openCount = $tickets->where('status', 'Open')->count();
         $progressCount = $tickets->where('status', 'In Progress')->count();
         $resolvedCount = $tickets->whereIn('status', ['Resolved', 'Closed'])->count();
+
+        $ticketRaisers = $tickets->pluck('user')->filter()->unique('id')->sortBy('name')->values();
     @endphp
 
     <div class="tickets-container">
@@ -76,6 +78,17 @@
                     Resolved / Closed
                 </button>
             </div>
+
+            @if($ticketRaisers->count() > 1)
+                <div class="tickets-employee-filter">
+                    <select id="employeeFilterSelect" class="employee-filter-select" onchange="filterByEmployee(this.value)">
+                        <option value="All">All Employees</option>
+                        @foreach($ticketRaisers as $raiser)
+                            <option value="{{ $raiser->id }}">{{ $raiser->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
         </div>
 
         <!-- Tickets Grid Section -->
@@ -103,7 +116,7 @@
                         }
                     @endphp
 
-                    <div class="premium-card-wrapper ticket-item-card" data-status="{{ $ticket->status }}">
+                    <div class="premium-card-wrapper ticket-item-card" data-status="{{ $ticket->status }}" data-user-id="{{ $ticket->user_id }}">
                         <div class="premium-card ticket-theme">
                             <div class="card-glow"></div>
                             <div class="premium-card-body">
@@ -129,8 +142,8 @@
                                     <div class="user-info-text">
                                         <span class="user-label">Raised By</span>
                                         <h4 class="user-name">{{ $ticket->user->name ?? 'Unknown User' }}</h4>
-                                        @if($ticket->user && $ticket->user->department)
-                                            <span class="user-dept" style="font-size: 11px; color: #94a3b8; font-weight: 500;">{{ $ticket->user->department->name ?? '' }}</span>
+                                        @if($ticket->user && ($ticket->user->employee->departmentRef->name ?? null))
+                                            <span class="user-dept" style="font-size: 11px; color: #94a3b8; font-weight: 500;">{{ $ticket->user->employee->departmentRef->name }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -387,11 +400,38 @@
         /* Switcher Tabs */
         .tickets-header-actions {
             display: flex;
-            justify-content: flex-start;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
             margin-bottom: 30px;
             max-width: 1400px;
             margin-left: auto;
             margin-right: auto;
+        }
+
+        .tickets-employee-filter {
+            display: flex;
+            align-items: center;
+        }
+
+        .employee-filter-select {
+            appearance: none;
+            background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E") no-repeat right 14px center;
+            border: 1px solid #e2e8f0;
+            border-radius: 30px;
+            padding: 10px 34px 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        .employee-filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(56, 88, 249, 0.12);
         }
 
         .tickets-switcher {
@@ -937,6 +977,9 @@
             historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
         });
 
+        let currentStatusFilter = 'All';
+        let currentEmployeeFilter = 'All';
+
         function switchTicketTab(status, el) {
             document.querySelectorAll('.switcher-btn').forEach(btn => btn.classList.remove('active'));
             el.classList.add('active');
@@ -945,6 +988,8 @@
         }
 
         function filterByStatus(status) {
+            currentStatusFilter = status;
+
             // Sync switcher button highlight
             const switcherButtons = document.querySelectorAll('.switcher-btn');
             switcherButtons.forEach(btn => {
@@ -956,22 +1001,35 @@
                 }
             });
 
+            applyTicketFilters();
+        }
+
+        function filterByEmployee(userId) {
+            currentEmployeeFilter = userId;
+            applyTicketFilters();
+        }
+
+        function applyTicketFilters() {
             const cards = document.querySelectorAll('.ticket-item-card');
             let visibleCount = 0;
 
             cards.forEach(card => {
                 const cardStatus = card.getAttribute('data-status');
-                let isVisible = false;
+                const cardUserId = card.getAttribute('data-user-id');
 
-                if (status === 'All') {
-                    isVisible = true;
-                } else if (status === 'Open') {
-                    isVisible = (cardStatus === 'Open');
-                } else if (status === 'In Progress') {
-                    isVisible = (cardStatus === 'In Progress');
-                } else if (status === 'Resolved') {
-                    isVisible = (cardStatus === 'Resolved' || cardStatus === 'Closed');
+                let statusMatch = false;
+                if (currentStatusFilter === 'All') {
+                    statusMatch = true;
+                } else if (currentStatusFilter === 'Open') {
+                    statusMatch = (cardStatus === 'Open');
+                } else if (currentStatusFilter === 'In Progress') {
+                    statusMatch = (cardStatus === 'In Progress');
+                } else if (currentStatusFilter === 'Resolved') {
+                    statusMatch = (cardStatus === 'Resolved' || cardStatus === 'Closed');
                 }
+
+                const employeeMatch = (currentEmployeeFilter === 'All' || cardUserId === currentEmployeeFilter);
+                const isVisible = statusMatch && employeeMatch;
 
                 if (isVisible) {
                     card.style.display = '';

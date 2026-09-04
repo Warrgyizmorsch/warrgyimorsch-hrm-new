@@ -236,7 +236,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted small mb-3">Help us improve work culture — share your feedback or suggestions. Your name and designation will only be visible to management.</p>
+                    <p class="text-muted small mb-3" id="suggestionVisibilityNote">Help us improve work culture — share your feedback or suggestions. Your name and designation will only be visible to management.</p>
                     <div class="mb-3">
                         <label class="form-label">Category</label>
                         <select name="category" class="form-control" required>
@@ -254,6 +254,10 @@
                         </label>
                         <textarea name="message" id="suggestionMessage" class="form-control" maxlength="5000" placeholder="What's working well? What could be better?" required style="height: 180px; min-height: 180px; resize: vertical;">{{ old('message') }}</textarea>
                         @error('message') <small class="text-danger">{{ $message }}</small> @enderror
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="is_anonymous" id="suggestionAnonymous" value="1" {{ old('is_anonymous') ? 'checked' : '' }}>
+                        <label class="form-check-label" for="suggestionAnonymous">Submit anonymously</label>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -293,7 +297,7 @@
                         <span class="qn-assign-label"><i class="feather-user-plus"></i> Assign to</span>
                         <select id="qhAssignTo" class="qn-assign-select" onchange="qhAssignChanged(this)">
                             <option value="">Just me (personal note)</option>
-                            @php $qhEmployeesByDept = \App\Models\Employee::active()->where('id', '!=', auth()->user()->employee_id)->orderBy('name')->get()->groupBy(fn($e) => $e->department ?: 'Other'); @endphp
+                            @php $qhEmployeesByDept = \App\Models\Employee::active()->where('id', '!=', auth()->user()->employee_id)->with('departmentRef')->orderBy('name')->get()->groupBy(fn($e) => $e->departmentRef->name ?? 'Other'); @endphp
                             @foreach($qhEmployeesByDept as $qhDepartment => $qhDeptEmployees)
                                 <optgroup label="{{ $qhDepartment }}">
                                     @foreach($qhDeptEmployees as $qhEmp)
@@ -324,6 +328,18 @@
             };
             suggestionMessage.addEventListener('input', updateSuggestionCount);
             updateSuggestionCount();
+        }
+
+        var suggestionAnonymous = document.getElementById('suggestionAnonymous');
+        var suggestionVisibilityNote = document.getElementById('suggestionVisibilityNote');
+        if (suggestionAnonymous && suggestionVisibilityNote) {
+            var updateVisibilityNote = function () {
+                suggestionVisibilityNote.textContent = suggestionAnonymous.checked
+                    ? 'Help us improve work culture — share your feedback or suggestions. This suggestion will be submitted anonymously; management will not see your name.'
+                    : 'Help us improve work culture — share your feedback or suggestions. Your name and designation will only be visible to management.';
+            };
+            suggestionAnonymous.addEventListener('change', updateVisibilityNote);
+            updateVisibilityNote();
         }
     }
     if (document.readyState === 'loading') {

@@ -12,7 +12,7 @@ class Broadcast extends Model
     protected $table = 'broadcasts';
 
     protected $fillable = [
-        'department',
+        'department_id',
         'message',
         'documents',
     ];
@@ -24,5 +24,11 @@ class Broadcast extends Model
     public function readByUsers()
     {
         return $this->belongsToMany(User::class)->withPivot('read_at');
+    }
+
+    // NULL department_id means "broadcast to everyone."
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
     }
 }

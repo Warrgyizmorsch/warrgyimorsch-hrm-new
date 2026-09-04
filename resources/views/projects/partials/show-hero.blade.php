@@ -34,8 +34,8 @@
                 @if($project->technology)
                     <span class="pm-tag pm-tag--tech">{{ $project->technology }}</span>
                 @endif
-                @if(is_array($project->department) && count($project->department))
-                    <span class="pm-tag pm-tag--dept">{{ implode(', ', $project->department) }}</span>
+                @if($project->departments->isNotEmpty())
+                    <span class="pm-tag pm-tag--dept">{{ $project->departments->pluck('name')->implode(', ') }}</span>
                 @endif
                 @if(($project->type ?? null))
                     <span class="pm-tag pm-tag--muted">{{ $project->type }}</span>

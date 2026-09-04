@@ -13,8 +13,7 @@ class Employee extends Model
         'email',
         'mobile_number',
         'role',
-        'department',
-        'additional_led_departments',
+        'department_id',
         'designation',
         'date_of_joining',
         'date_of_birth',
@@ -48,36 +47,24 @@ class Employee extends Model
         'working_mode',
     ];
 
-    public function getAdditionalLedDepartmentsAttribute($value)
-    {
-        if (empty($value)) {
-            return [];
-        }
-        $decoded = json_decode($value, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
-        return array_map('trim', explode(',', $value));
-    }
-
-    public function setAdditionalLedDepartmentsAttribute($value)
-    {
-        if (is_array($value)) {
-            $this->attributes['additional_led_departments'] = json_encode(array_values(array_filter($value)));
-        } elseif (is_string($value) && $value !== '') {
-            $this->attributes['additional_led_departments'] = json_encode(array_map('trim', explode(',', $value)));
-        } else {
-            $this->attributes['additional_led_departments'] = null;
-        }
-    }
-
-    // Departments this employee has visibility/edit rights over as Team Leader
+    // Department IDs this employee has visibility/edit rights over as Team Leader
     // (their own department plus any additionally assigned ones)
-    public function ledDepartments(): array
+    public function ledDepartmentIds(): array
     {
         return array_values(array_unique(array_filter(
-            array_merge([$this->department], (array) $this->additional_led_departments)
+            array_merge([$this->department_id], $this->ledDepartmentRefs->pluck('id')->all())
         )));
+    }
+
+    public function departmentRef()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    // Departments this employee additionally leads as Team Leader, on top of their own.
+    public function ledDepartmentRefs()
+    {
+        return $this->belongsToMany(Department::class, 'department_employee_led');
     }
 
     public function leaveAllotments()

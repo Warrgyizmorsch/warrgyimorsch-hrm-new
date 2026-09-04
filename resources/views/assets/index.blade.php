@@ -119,7 +119,7 @@
                                         elseif($asset->status == 'Faulty') $statusClass = 'status-rework';
 
                                         $assignedUser = $asset->activeAllocation->user ?? null;
-                                        $assignedDept = $assignedUser->employee->department ?? $assignedUser->role ?? '';
+                                        $assignedDept = $assignedUser->employee->departmentRef->name ?? $assignedUser->role ?? '';
                                         $assetSummary = $inventoryGroup->map(function($item) {
                                             $serial = $item->serial_number ? ' - SN: ' . $item->serial_number : '';
                                             return $item->name . $serial;
@@ -306,7 +306,7 @@
                                                 </div>
                                                 <div class="d-flex flex-column">
                                                     <span class="fw-bold text-dark fs-6">{{ $req->user->name ?? 'Unknown User' }}</span>
-                                                    <span class="text-muted small" style="font-size: 11px;">{{ $req->user->employee->department ?? $req->user->role ?? '' }}</span>
+                                                    <span class="text-muted small" style="font-size: 11px;">{{ $req->user->employee->departmentRef->name ?? $req->user->role ?? '' }}</span>
                                                 </div>
                                             </div>
                                         </td>
@@ -397,7 +397,7 @@
                                     @php
                                         $firstAlloc = $userAllocations->first();
                                         $user = $firstAlloc->user;
-                                        $dept = $user->employee->department ?? $user->role ?? 'N/A';
+                                        $dept = $user->employee->departmentRef->name ?? $user->role ?? 'N/A';
                                         $latestAlloc = $userAllocations->sortByDesc(fn($a) => $a->allocated_at ?? $a->updated_at)->first();
                                         $assignedDate = $latestAlloc->allocated_at ? $latestAlloc->allocated_at->format('d M, Y') : $latestAlloc->updated_at->format('d M, Y');
                                         $assetSummary = $userAllocations->map(function($a) {
@@ -499,7 +499,7 @@
                                 @endphp
                                 @forelse($returnedRequests as $req)
                                     @php
-                                        $dept = $req->user->employee->department ?? $req->user->role ?? 'N/A';
+                                        $dept = $req->user->employee->departmentRef->name ?? $req->user->role ?? 'N/A';
                                     @endphp
                                     <tr style="height: 75px; border-bottom: 1px solid #f1f5f9;">
                                         <td class="ps-4">
@@ -612,7 +612,7 @@
                                     @php
                                         $firstAlloc = $userAllocations->first();
                                         $user = $firstAlloc->user;
-                                        $dept = $user->employee->department ?? $user->role ?? 'N/A';
+                                        $dept = $user->employee->departmentRef->name ?? $user->role ?? 'N/A';
                                         $latestAlloc = $userAllocations->sortByDesc(fn($a) => $a->allocated_at ?? $a->updated_at)->first();
                                         $assignedDate = $latestAlloc->allocated_at ? $latestAlloc->allocated_at->format('d M, Y') : $latestAlloc->updated_at->format('d M, Y');
                                         $assetSummary = $userAllocations->map(function($a) {

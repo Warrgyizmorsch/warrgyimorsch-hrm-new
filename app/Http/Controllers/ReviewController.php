@@ -58,8 +58,8 @@ class ReviewController extends Controller
 
         if ($isTeamLeader) {
             return $employeeRecord
-                && $employeeRecord->department
-                && $targetEmployee->department === $employeeRecord->department;
+                && $employeeRecord->department_id
+                && $targetEmployee->department_id === $employeeRecord->department_id;
         }
 
         return (int) $targetEmployee->id === (int) ($employeeRecord?->id ?? 0);
@@ -99,15 +99,15 @@ class ReviewController extends Controller
 
         $employeeRecord = $this->resolveEmployeeRecord($user);
         
-        $query = EmployeeReview::with(['employee', 'details'])
+        $query = EmployeeReview::with(['employee.departmentRef', 'details'])
             ->whereHas('employee.user', function ($q) {
                 $q->where('account_status', 'active');
             });
         
         if ($isTeamLeader && !$isAdmin) {
-            $department = $employeeRecord->department ?? null;
-            $employeeIds = $department
-                ? Employee::active()->where('department', $department)->pluck('id')
+            $departmentId = $employeeRecord->department_id ?? null;
+            $employeeIds = $departmentId
+                ? Employee::active()->where('department_id', $departmentId)->pluck('id')
                 : collect([$employeeRecord?->id ?? 0]);
 
             $query->whereIn('employee_id', $employeeIds);
@@ -115,12 +115,12 @@ class ReviewController extends Controller
             $empId = $employeeRecord ? $employeeRecord->id : 0;
             $query->where('employee_id', $empId);
         }
-        
+
         if ($isAdmin) {
             $employees = Employee::active()->orderBy('name')->get();
-        } elseif ($isTeamLeader && $employeeRecord?->department) {
+        } elseif ($isTeamLeader && $employeeRecord?->department_id) {
             $employees = Employee::active()
-                ->where('department', $employeeRecord->department)
+                ->where('department_id', $employeeRecord->department_id)
                 ->orderBy('name')
                 ->get();
         } else {
@@ -568,6 +568,8 @@ class ReviewController extends Controller
             'self_review.*' => 'nullable|numeric|min:0',
             'author_review.*' => 'nullable|numeric|min:0',
             'admin_review.*' => 'nullable|numeric|min:0',
+            'author_note' => 'nullable|string|max:5000',
+            'admin_note' => 'nullable|string|max:5000',
         ]);
 
         if (($isAdmin || $isTeamLeader) && !empty($validated['user_id'])) {
@@ -607,6 +609,8 @@ class ReviewController extends Controller
             'self_total'   => $selfTotal,
             'author_total' => $authorTotal ?? 0,
             'admin_total' => $adminTotal ?? 0,
+            'author_note' => ($isTeamLeader || $isAdmin) ? ($validated['author_note'] ?? null) : null,
+            'admin_note' => $isAdmin ? ($validated['admin_note'] ?? null) : null,
         ]);
 
         foreach ($validated['criteria_name'] as $key => $row) {
@@ -616,7 +620,7 @@ class ReviewController extends Controller
                 'criteria_point' => $validated['criteria_point'][$key],
                 'self_review'    => $validated['self_review'][$key] ?? 0,
                 'author_review'  => $validated['author_review'][$key] ?? 0,
-                'admin_review'  => $validated['admin_review'][$key] ?? 0
+                'admin_review'  => $validated['admin_review'][$key] ?? 0,
             ]);
         }
 
@@ -658,6 +662,9 @@ class ReviewController extends Controller
             $rules['admin_review'] = 'nullable|array';
         }
 
+        $rules['author_note'] = 'nullable|string|max:5000';
+        $rules['admin_note'] = 'nullable|string|max:5000';
+
         $validated = $request->validate($rules);
 
         // Update each detail in order
@@ -673,9 +680,54 @@ class ReviewController extends Controller
 
         $review->author_total = $authorTotal;
         $review->admin_total = $adminTotal;
+        if ($isTeamLeader || $isAdmin) {
+            $review->author_note = array_key_exists('author_note', $validated) ? $validated['author_note'] : $review->author_note;
+        }
+        if ($isAdmin) {
+            $review->admin_note = array_key_exists('admin_note', $validated) ? $validated['admin_note'] : $review->admin_note;
+        }
         $review->save();
 
         return back()->with('success', 'Review updated successfully.');
+    }
+
+    public function updateNote(Request $request, $id) {
+        $review = EmployeeReview::with('employee')->find($id);
+        if (!$review) {
+            return response()->json(['error' => 'Review not found.'], 404);
+        }
+
+        $user = auth()->user();
+        if (!$this->canAccessReviewEmployee($user, $review->employee)) {
+            abort(403, 'Unauthorized access');
+        }
+
+        ['isAdmin' => $isAdmin, 'isTeamLeader' => $isTeamLeader] = $this->resolveRoleFlags($user);
+
+        $validated = $request->validate([
+            'type' => 'required|in:author,admin',
+            'note' => 'nullable|string|max:5000',
+        ]);
+
+        if ($validated['type'] === 'admin') {
+            if (!$isAdmin) {
+                abort(403, 'Only admins can edit the admin note.');
+            }
+            $review->admin_note = $validated['note'] ?? null;
+        } else {
+            if (!$isAdmin && !$isTeamLeader) {
+                abort(403, 'Only a team leader or admin can edit this note.');
+            }
+            $review->author_note = $validated['note'] ?? null;
+        }
+
+        $review->save();
+
+        return response()->json([
+            'success' => 'Note saved.',
+            'author_note' => $review->author_note,
+            'admin_note' => $review->admin_note,
+        ]);
     }
 
     public function details($id) {
@@ -686,7 +738,11 @@ class ReviewController extends Controller
             abort(403, 'Unauthorized access');
         }
 
-        return response()->json(EmployeeReviewDetail::where('review_id', $id)->get());
+        return response()->json([
+            'details' => EmployeeReviewDetail::where('review_id', $id)->get(),
+            'author_note' => $review->author_note,
+            'admin_note' => $review->admin_note,
+        ]);
     }
 
     
@@ -703,10 +759,10 @@ class ReviewController extends Controller
         if ($isAdmin) {
             $query->latest();
         } elseif ($isTeamLeader) {
-            $userDepartment = $employeeRecord->department ?? null;
-            if ($userDepartment) {
+            $userDepartmentId = $employeeRecord->department_id ?? null;
+            if ($userDepartmentId) {
                 $employeeIds = Employee::active()
-                    ->where('department', $userDepartment)
+                    ->where('department_id', $userDepartmentId)
                     ->pluck('id');
 
                 $query->whereIn('employee_id', $employeeIds)
@@ -721,7 +777,7 @@ class ReviewController extends Controller
         }
         $employees = $isTeamLeader && !$isAdmin && $employeeRecord
             ? Employee::active()
-                ->where('department', $employeeRecord->department)
+                ->where('department_id', $employeeRecord->department_id)
                 ->orderBy('name')
                 ->get()
             : Employee::active()
@@ -729,7 +785,7 @@ class ReviewController extends Controller
                 ->get();
 
         $departments = Department::all();
-        $evaluations = TechnicalReviewEvaluation::where(['status' => 1,'department' => $employeeRecord->department ?? null])
+        $evaluations = TechnicalReviewEvaluation::where(['status' => 1, 'department_id' => $employeeRecord->department_id ?? null])
             ->orderBy('sort_order')
             ->get();
 
@@ -924,7 +980,7 @@ class ReviewController extends Controller
     public function storeTechnicalEvaluation(Request $request)
     {
         $validated = $request->validate([
-            'department' => 'required|string',
+            'department_id' => 'required|exists:departments,id',
             'criterianame' => 'nullable|array',
             'criterianame.*' => 'nullable|string',
             'maxpoint' => 'nullable|array',
@@ -933,7 +989,7 @@ class ReviewController extends Controller
 
         $criteriaNames = $validated['criterianame'] ?? [];
         $maxPoints = $validated['maxpoint'] ?? [];
-        $department = $validated['department'];
+        $departmentId = $validated['department_id'];
 
         $rows = [];
 
@@ -945,7 +1001,7 @@ class ReviewController extends Controller
             }
 
             $rows[] = [
-                'department' => $department,
+                'department_id' => $departmentId,
                 'criteria_name' => $criteria,
                 'max_point' => $maxPoints[$index] ?? 0,
                 'sort_order' => count($rows) + 1,
@@ -955,8 +1011,8 @@ class ReviewController extends Controller
             ];
         }
 
-        DB::transaction(function () use ($department, $rows) {
-            TechnicalReviewEvaluation::where('department', $department)->delete();
+        DB::transaction(function () use ($departmentId, $rows) {
+            TechnicalReviewEvaluation::where('department_id', $departmentId)->delete();
 
             if (!empty($rows)) {
                 TechnicalReviewEvaluation::insert($rows);
@@ -966,12 +1022,12 @@ class ReviewController extends Controller
         return back()->with('success', 'Evaluation saved successfully.');
     }
 
-    public function fetchByDepartment(Request $request) 
+    public function fetchByDepartment(Request $request)
     {
-        $department = $request->get('department');
-        
-        // Grabs database array lines for criteria matching this exact selected department text
-        $savedData = TechnicalReviewEvaluation::where('department', $department)->get();
+        $departmentId = $request->get('department_id');
+
+        // Grabs database array lines for criteria matching this exact selected department
+        $savedData = TechnicalReviewEvaluation::where('department_id', $departmentId)->get();
 
         return response()->json($savedData);
     }

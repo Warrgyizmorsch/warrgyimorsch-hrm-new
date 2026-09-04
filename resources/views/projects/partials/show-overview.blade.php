@@ -17,7 +17,7 @@
                 <div class="pd-meta-grid">
                     <div class="pd-meta-item">
                         <span class="pd-meta-label">Department</span>
-                        <span class="pd-meta-value">{{ is_array($project->department) ? implode(', ', $project->department) : ($project->department ?: '—') }}</span>
+                        <span class="pd-meta-value">{{ $project->departments->pluck('name')->implode(', ') ?: '—' }}</span>
                     </div>
                     <div class="pd-meta-item">
                         <span class="pd-meta-label">Technology</span>
@@ -116,7 +116,7 @@
                             <span class="pd-team-avatar pd-team-avatar--lead">{{ strtoupper(substr($emp->name, 0, 1)) }}</span>
                             <div>
                                 <strong>{{ $emp->name }}</strong>
-                                <small>{{ $emp->department ?? 'Lead' }}</small>
+                                <small>{{ $emp->departmentRef->name ?? 'Lead' }}</small>
                             </div>
                         </div>
                     @empty
@@ -131,7 +131,7 @@
                             <span class="pd-team-avatar">{{ strtoupper(substr($emp->name, 0, 1)) }}</span>
                             <div>
                                 <strong>{{ $emp->name }}</strong>
-                                <small>{{ $emp->department ?? 'Member' }}</small>
+                                <small>{{ $emp->departmentRef->name ?? 'Member' }}</small>
                             </div>
                         </div>
                     @empty

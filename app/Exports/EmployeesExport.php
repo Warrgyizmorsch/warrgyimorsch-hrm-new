@@ -85,7 +85,7 @@ class EmployeesExport extends DefaultValueBinder implements FromCollection, With
             $emp->date_of_birth ?? '-',
             $emp->date_of_joining ?? '-',
             $emp->role ? ucfirst(str_replace('_', ' ', $emp->role)) : '-',
-            $emp->department ? ucfirst(str_replace('_', ' ', $emp->department)) : '-',
+            $emp->departmentRef->name ?? '-',
             $emp->designation ?? '-',
             $emp->aadhaar_number ?? '-',
             $emp->pan_number ?? '-',

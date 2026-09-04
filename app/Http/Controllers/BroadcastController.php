@@ -19,17 +19,17 @@ class BroadcastController extends Controller
             $perPage = 20;
         }
 
-        $query = Broadcast::withCount('readByUsers')->orderBy('created_at', 'desc');
+        $query = Broadcast::withCount('readByUsers')->with('department')->orderBy('created_at', 'desc');
 
         // Team leaders see only broadcasts sent to their own department (or company-wide).
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
         if ($role === 'team_leader') {
-            $department = $user->employee->department ?? null;
-            $query->where(function ($q) use ($department) {
-                $q->where('department', 'All');
-                if ($department) {
-                    $q->orWhere('department', $department);
+            $departmentId = $user->employee->department_id ?? null;
+            $query->where(function ($q) use ($departmentId) {
+                $q->whereNull('department_id');
+                if ($departmentId) {
+                    $q->orWhere('department_id', $departmentId);
                 }
             });
         }
@@ -38,7 +38,7 @@ class BroadcastController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('message', 'like', "%{$search}%")
-                    ->orWhere('department', 'like', "%{$search}%");
+                    ->orWhereHas('department', fn ($dq) => $dq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -60,7 +60,7 @@ class BroadcastController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'department'    => 'required|string',
+            'department_id' => 'nullable|exists:departments,id',
             'message'       => 'required|string|max:5000',
             'documents.*'   => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
         ]);
@@ -70,9 +70,9 @@ class BroadcastController extends Controller
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
         if ($role === 'team_leader') {
-            $department = $user->employee->department ?? null;
-            abort_if(!$department, 403, 'No department found for this account.');
-            $validated['department'] = $department;
+            $departmentId = $user->employee->department_id ?? null;
+            abort_if(!$departmentId, 403, 'No department found for this account.');
+            $validated['department_id'] = $departmentId;
         }
 
         $documents = [];
@@ -103,7 +103,7 @@ class BroadcastController extends Controller
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'department'    => 'required|string',
+            'department_id' => 'nullable|exists:departments,id',
             'message'       => 'required|string|max:5000',
             'documents.*'   => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
         ]);

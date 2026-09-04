@@ -26,8 +26,11 @@ class SuggestionController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('message', 'like', "%{$search}%")
-                    ->orWhereHas('user', function ($uq) use ($search) {
-                        $uq->where('name', 'like', "%{$search}%");
+                    ->orWhere(function ($nameQ) use ($search) {
+                        $nameQ->where('is_anonymous', false)
+                            ->whereHas('user', function ($uq) use ($search) {
+                                $uq->where('name', 'like', "%{$search}%");
+                            });
                     });
             });
         }
@@ -45,10 +48,14 @@ class SuggestionController extends Controller
         $validated = $request->validate([
             'category' => 'required|string|in:' . implode(',', Suggestion::CATEGORIES),
             'message' => 'required|string|max:5000',
+            'is_anonymous' => 'nullable|boolean',
         ]);
 
+        $isAnonymous = $request->boolean('is_anonymous');
+
         Suggestion::create([
-            'user_id' => auth()->id(),
+            'user_id' => $isAnonymous ? null : auth()->id(),
+            'is_anonymous' => $isAnonymous,
             'category' => $validated['category'],
             'message' => $validated['message'],
         ]);

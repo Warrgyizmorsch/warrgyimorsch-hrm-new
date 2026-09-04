@@ -23,10 +23,10 @@ class AssetController extends Controller
         if ($isTeamLeader) {
             // Scoped to their own department's plain "employee" role members. They can view
             // (and, since they get the update route too) edit/reassign only these assets.
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             $teamUserIds = $department
                 ? \App\Models\User::whereHas('employee', function ($q) use ($department) {
-                    $q->where('department', $department)
+                    $q->where('department_id', $department)
                         ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
                 })->pluck('id')
                 : collect();
@@ -124,10 +124,10 @@ class AssetController extends Controller
 
         $teamUserIds = collect();
         if ($isTeamLeader) {
-            $department = $authUser->employee->department ?? null;
+            $department = $authUser->employee->department_id ?? null;
             $teamUserIds = $department
                 ? \App\Models\User::whereHas('employee', function ($q) use ($department) {
-                    $q->where('department', $department)
+                    $q->where('department_id', $department)
                         ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
                 })->pluck('id')
                 : collect();
@@ -296,10 +296,10 @@ class AssetController extends Controller
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
 
         if ($role === 'team_leader') {
-            $department = $user->employee->department ?? null;
+            $department = $user->employee->department_id ?? null;
             if ($department) {
                 $teamUserIds = \App\Models\User::whereHas('employee', function ($q) use ($department) {
-                    $q->where('department', $department)
+                    $q->where('department_id', $department)
                         ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
                 })->pluck('id');
 

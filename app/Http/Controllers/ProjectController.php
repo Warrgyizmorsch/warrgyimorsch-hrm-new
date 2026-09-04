@@ -39,16 +39,12 @@ class ProjectController extends Controller
             $view = 'list';
         }
 
-        $query = Project::query()->with(['tasks.employee']);
+        $query = Project::query()->with(['tasks.employee', 'departments']);
 
         if ($isTeamLeader) {
-            $departments = $user->employee?->ledDepartments() ?? [];
-            if (!empty($departments)) {
-                $query->where(function ($q) use ($departments) {
-                    foreach ($departments as $department) {
-                        $this->orWhereDepartmentMatches($q, $department);
-                    }
-                });
+            $departmentIds = $user->employee?->ledDepartmentIds() ?? [];
+            if (!empty($departmentIds)) {
+                $query->whereHas('departments', fn ($q) => $q->whereIn('departments.id', $departmentIds));
             } else {
                 $query->whereRaw('1=0');
             }
@@ -74,11 +70,9 @@ class ProjectController extends Controller
             $query->whereIn('status', $statuses);
         }
 
-        if ($request->filled('department')) {
-            $departmentFilter = $request->department;
-            $query->where(function ($q) use ($departmentFilter) {
-                $this->orWhereDepartmentMatches($q, $departmentFilter);
-            });
+        if ($request->filled('department_id')) {
+            $departmentId = $request->department_id;
+            $query->whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId));
         }
 
         $sort = $request->query('sort', 'latest');
@@ -143,19 +137,6 @@ class ProjectController extends Controller
         ));
     }
 
-    /**
-     * Match a department against the `department` column, which normally holds a
-     * JSON-encoded array (via the Project model's mutator) but may contain legacy
-     * plain-text values from data imported before that mutator existed. JSON_CONTAINS
-     * errors out on non-JSON column values, so it's guarded with JSON_VALID and backed
-     * by a plain LIKE for the legacy rows.
-     */
-    private function orWhereDepartmentMatches($query, string $department): void
-    {
-        $query->orWhereRaw('JSON_VALID(department) AND JSON_CONTAINS(department, ?)', [json_encode($department)])
-              ->orWhere('department', 'like', '%' . $department . '%');
-    }
-
     public function create()
     {
         $user = auth()->user();
@@ -205,7 +186,8 @@ class ProjectController extends Controller
             'name' => 'required|string|max:255',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'department' => 'required|string',
+            'department_ids' => 'required|array|min:1',
+            'department_ids.*' => 'exists:departments,id',
             'description' => 'required',
             'documents.*' => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
             // 'type' => 'required',
@@ -235,7 +217,6 @@ class ProjectController extends Controller
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
             'status' => $request->status,
-            'department' => $request->department,
             'description' => $request->description,
             'technology' => $request->technology,
             'leaders' => $request->leaders,
@@ -244,13 +225,14 @@ class ProjectController extends Controller
             // 'type' => $request->type,
             // 'manage' => $request->manage,
         ]);
+        $project->departments()->sync($request->department_ids);
 
         return redirect()->route('projects.index')->with('success', 'Project created successfully');
     }
 
     public function show(Project $project)
     {
-        $employees = \App\Models\Employee::active()->get();
+        $employees = \App\Models\Employee::active()->with('departmentRef')->get();
         $employeesById = $employees->keyBy('id');
         $departments = \App\Models\Department::all();
 
@@ -367,7 +349,8 @@ class ProjectController extends Controller
             'name' => 'required|string|max:255',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'department' => 'required|string',
+            'department_ids' => 'required|array|min:1',
+            'department_ids.*' => 'exists:departments,id',
             'description' => 'required',
             'documents.*' => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
             // 'type' => 'required',
@@ -407,7 +390,6 @@ class ProjectController extends Controller
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
             'status' => $request->status,
-            'department' => $request->department,
             'description' => $request->description,
             'technology' => $request->technology,
             'leaders' => $request->leaders,
@@ -416,6 +398,7 @@ class ProjectController extends Controller
             // 'type' => $request->type,
             // 'manage' => $request->manage,
         ]);
+        $project->departments()->sync($request->department_ids);
 
         return redirect()->route('projects.index')->with('success', 'Project updated successfully');
     }
@@ -436,9 +419,9 @@ class ProjectController extends Controller
 
         $isDepartmentTeamLeader = false;
         if ($role === 'team_leader') {
-            $ledDepartments = auth()->user()->employee?->ledDepartments() ?? [];
-            $projectDepartments = is_array($project->department) ? $project->department : [];
-            $isDepartmentTeamLeader = !empty(array_intersect($ledDepartments, $projectDepartments));
+            $ledDepartmentIds = auth()->user()->employee?->ledDepartmentIds() ?? [];
+            $projectDepartmentIds = $project->departments()->pluck('departments.id')->all();
+            $isDepartmentTeamLeader = !empty(array_intersect($ledDepartmentIds, $projectDepartmentIds));
         }
 
         foreach ($fields as $field) {

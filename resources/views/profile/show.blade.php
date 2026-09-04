@@ -295,7 +295,7 @@
                                     <span
                                         class="badge badge-premium bg-soft-primary text-primary border border-primary border-opacity-10">{{ $employee?->designation ?? 'Team Member' }}</span>
                                     <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 1px;">
-                                        <i class="feather-box me-1"></i> {{ $employee?->department ?? 'General' }}
+                                        <i class="feather-box me-1"></i> {{ $employee?->departmentRef?->name ?? 'General' }}
                                     </span>
                                     <span class="text-muted small fw-bold">|</span>
                                     <span class="text-muted small fw-bold text-uppercase">ID: <span

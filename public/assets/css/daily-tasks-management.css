@@ -138,6 +138,60 @@
     color: #d97706;
 }
 
+.dt-hero-stat--present .dt-hero-stat-icon {
+    background: #ecfdf5;
+    color: #16a34a;
+}
+
+.dt-hero-stat--submitted .dt-hero-stat-icon {
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.dt-hero-stat--missed .dt-hero-stat-icon {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.dt-hero-stat--under-target .dt-hero-stat-icon {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.dt-hero-stat-value-of {
+    font-size: 13px;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0;
+    margin-left: 1px;
+}
+
+.dt-hero-stats-context {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: -4px 0 14px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border: 1px solid #e8edf3;
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: #64748b;
+}
+
+.dt-hero-stats-context i {
+    width: 14px;
+    height: 14px;
+    margin-right: 2px;
+    color: #94a3b8;
+}
+
+.dt-hero-stats-context strong {
+    color: #334155;
+    font-weight: 700;
+}
+
 /* Filter panel head */
 .dt-filter-panel-head {
     display: flex;
@@ -737,6 +791,12 @@
 
 .dt-progress-modal .modal-dialog {
     max-width: min(720px, 94vw);
+}
+
+/* Add-mode shows the work-history list alongside the entry form, which needs real room —
+   the plain modal-dialog cap above is for the read-only history-only view. */
+.dt-progress-modal--wide .modal-dialog {
+    max-width: min(1140px, 94vw);
 }
 
 .dt-progress-modal .modal-header {

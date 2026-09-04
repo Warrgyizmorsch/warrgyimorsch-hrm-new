@@ -804,6 +804,44 @@
                 </div>
                 <!-- [Today Leave Records] end -->
 
+                @php
+                    $isTeamLeaderView = strtolower(str_replace(' ', '_', trim(auth()->user()->role ?? ''))) === 'team_leader';
+                    $teamAbsentCardTitle = $isTeamLeaderView ? 'My Team — Absent Today' : 'My Department — Absent Today';
+                    $teamAbsentCardSubtitle = $isTeamLeaderView ? 'from your team away' : 'from your department away';
+                @endphp
+                @if(isset($teamAbsentToday))
+                <!-- [My Team Absent Today] start -->
+                <div class="col-md-4">
+                    <div class="card stretch stretch-full">
+                        <div class="card-header hrm-resp-card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title">{{ $teamAbsentCardTitle }}</h5>
+                                <p class="text-muted fs-12 mb-0">{{ count($teamAbsentToday) }} {{ $teamAbsentCardSubtitle }}</p>
+                            </div>
+                            <span class="badge bg-soft-danger text-danger">{{ count($teamAbsentToday) }}</span>
+                        </div>
+                        <div class="card-body p-0" style="max-height: 320px; overflow-y: auto;">
+                            @forelse($teamAbsentToday as $absentee)
+                                <div class="p-3 border border-dashed rounded-3 mt-3 mx-auto" style="max-width: 95%;">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="avatar-text avatar-md bg-soft-danger text-danger">
+                                            {{ strtoupper(substr($absentee->employee_name ?? 'N', 0, 1)) }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">{{ $absentee->employee_name ?? 'N/A' }}</div>
+                                            <div class="fs-11 text-muted">{{ $absentee->leave_type }} Today</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center py-4 text-muted">Everyone in your department is present today.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+                <!-- [My Team Absent Today] end -->
+                @endif
+
                 <!-- [Late Arrivals] start -->
                 <div class="col-md-4">
                     <div class="card stretch stretch-full">

@@ -39,13 +39,13 @@
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Department</label>
                             @if($isTeamLeader)
-                                <div class="form-control-plaintext fw-bold">{{ $employeeRecord->department ?? 'N/A' }}</div>
-                                <input type="hidden" id="department" name="department" value="{{ $employeeRecord->department ?? '' }}">
+                                <div class="form-control-plaintext fw-bold">{{ $employeeRecord->departmentRef->name ?? 'N/A' }}</div>
+                                <input type="hidden" id="department" name="department_id" value="{{ $employeeRecord->department_id ?? '' }}">
                             @else
-                                <select id="department" name="department" class="form-select evaluation-department-select" required>
+                                <select id="department" name="department_id" class="form-select evaluation-department-select" required>
                                     <option value="">Select Department</option>
                                     @foreach($departments as $department)
-                                        <option value="{{ $department->name }}">
+                                        <option value="{{ $department->id }}">
                                             {{ $department->name }}
                                         </option>
                                     @endforeach
@@ -195,10 +195,6 @@
                                     </tr>
                                 </thead>
                                 <tbody id="technicalReviewCriteriaBody">
-                                    @php
-                                        $department = $employeeRecord->department ?? '';
-                                    @endphp
-
                                     @foreach($evaluations as $evaluation)
                                         <tr>
                                             <td>
@@ -1024,13 +1020,13 @@
                 calculateTotal();
             }
 
-            function loadDepartmentRows(deptName) {
-                if (!deptName) {
+            function loadDepartmentRows(departmentId) {
+                if (!departmentId) {
                     renderRows([]);
                     return;
                 }
 
-                fetch(`{{ url('technical-review-evaluation/fetch') }}?department=${encodeURIComponent(deptName)}`)
+                fetch(`{{ url('technical-review-evaluation/fetch') }}?department_id=${encodeURIComponent(departmentId)}`)
                     .then(response => response.json())
                     .then(data => {
                         renderRows(data);
