@@ -31,17 +31,17 @@ class PayrollImport implements ToCollection
         foreach ($rows as $row) {
             $name = trim((string) ($row[0] ?? ''));
             $employeeCode = trim((string) ($row[1] ?? ''));
-            $payableDays = $row[4] ?? null;
-            $basicSalary = $row[5] ?? null;
-            $grossSalary = $row[7] ?? null;
-            $addNote = trim((string) ($row[10] ?? ''));
+            $payableDays = $row[3] ?? null;   // "Pay" (days present)
+            $basicSalary = $row[4] ?? null;   // "Salary" (monthly base)
+            $grossSalary = $row[6] ?? null;   // "Paid" (prorated gross for the month)
+            $addNote = trim((string) ($row[9] ?? ''));
 
             // Skip header rows and blank trailing rows.
             if ($name === '' || $name === 'Name' || !is_numeric($payableDays) || !is_numeric($grossSalary)) {
                 continue;
             }
 
-            $employee = $this->findEmployee($employeeCode, $name);
+            $employee = $this->findEmployee($employeeCode);
 
             if (!$employee) {
                 $this->skipped[] = $name . ($employeeCode !== '' ? " (code {$employeeCode})" : '');
@@ -86,15 +86,12 @@ class PayrollImport implements ToCollection
         }
     }
 
-    private function findEmployee(string $employeeCode, string $name): ?Employee
+    private function findEmployee(string $employeeCode): ?Employee
     {
-        if ($employeeCode !== '' && is_numeric($employeeCode)) {
-            $employee = Employee::where('employee_code', $employeeCode)->first();
-            if ($employee) {
-                return $employee;
-            }
+        if ($employeeCode === '' || !is_numeric($employeeCode)) {
+            return null;
         }
 
-        return Employee::whereRaw('LOWER(name) = ?', [strtolower($name)])->first();
+        return Employee::where('employee_code', $employeeCode)->first();
     }
 }
