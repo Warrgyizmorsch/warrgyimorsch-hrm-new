@@ -70,6 +70,11 @@
             <button type="button" class="la-page-tab" data-la-tab="balance" role="tab" aria-selected="false" aria-controls="laTabBalance">
                 <i class="feather-pie-chart"></i> Leave Balance
             </button>
+            @if($isAdmin)
+                <button type="button" class="la-page-tab" data-la-tab="yearly" role="tab" aria-selected="false" aria-controls="laTabYearly">
+                    <i class="feather-calendar"></i> Yearly Summary
+                </button>
+            @endif
         </div>
 
         <div class="row g-3">
@@ -378,6 +383,84 @@
                                 </nav>
                             </div>
                         </div>
+
+                        {{-- Yearly Summary tab --}}
+                        @if($isAdmin)
+                        <div id="laTabYearly" class="la-tab-panel" role="tabpanel" hidden>
+                            <div class="zoho-people-table-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div class="la-panel-head-main px-0 py-0 border-0 bg-transparent">
+                                    <span class="la-panel-icon"><i class="feather-calendar"></i></span>
+                                    <div>
+                                        <h3 class="mb-0" style="font-size:14px;">Yearly Leave Balance</h3>
+                                        <p class="mb-0">All employees · Jan – Dec {{ $selectedYear }}</p>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <select id="yearlyYearSelect" class="form-select la-entries-select" style="width:100px;" onchange="updateYearlyYear()">
+                                        @foreach($availableYears as $y)
+                                            <option value="{{ $y }}" {{ (int) $selectedYear === (int) $y ? 'selected' : '' }}>{{ $y }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select id="yearlyMetricSelect" class="form-select la-entries-select" style="width:120px;" onchange="applyYearlyMetric()">
+                                        <option value="available" selected>Available</option>
+                                        <option value="allotted">Allotted</option>
+                                        <option value="used">Used</option>
+                                    </select>
+                                    <div class="zoho-people-table-search">
+                                        <i class="feather-search"></i>
+                                        <input type="text" id="yearlySearch" placeholder="Search employee...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body p-0 zoho-list-body la-panel-body--history">
+                                <div class="table-responsive la-desktop-table">
+                                    <table class="table zoho-data-table mb-0" id="yearlyTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee</th>
+                                                @foreach(range(1, 12) as $m)
+                                                    <th class="text-center">{{ date('M', mktime(0, 0, 0, $m, 1)) }}</th>
+                                                @endforeach
+                                                <th class="text-center">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="yearlyTableBody">
+                                            @forelse($yearlyMatrix as $row)
+                                                <tr class="yearly-row">
+                                                    <td>
+                                                        <div class="la-emp-cell">
+                                                            <span class="la-emp-avatar">{{ strtoupper(substr($row['employee']->name, 0, 1)) }}</span>
+                                                            <span class="la-emp-name">{{ $row['employee']->name }}</span>
+                                                        </div>
+                                                    </td>
+                                                    @foreach(range(1, 12) as $m)
+                                                        @php $cell = $row['months'][$m]; @endphp
+                                                        <td class="text-center la-year-cell"
+                                                            data-allotted="{{ number_format($cell['allotted'], 1, '.', '') }}"
+                                                            data-used="{{ number_format($cell['used'], 1, '.', '') }}"
+                                                            data-available="{{ number_format($cell['available'], 1, '.', '') }}">
+                                                            {{ number_format($cell['available'], 1) }}
+                                                        </td>
+                                                    @endforeach
+                                                    <td class="text-center la-year-total"
+                                                        data-allotted="{{ number_format($row['total_allotted'], 1, '.', '') }}"
+                                                        data-used="{{ number_format($row['total_used'], 1, '.', '') }}"
+                                                        data-available="{{ number_format($row['total_available'], 1, '.', '') }}">
+                                                        <span class="la-badge la-badge--primary">{{ number_format($row['total_available'], 1) }}</span>
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="14" class="text-center py-5 text-muted">No leave data found.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>

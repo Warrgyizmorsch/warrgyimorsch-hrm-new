@@ -14,6 +14,40 @@
         window.location.href = allotmentUrl + '?month=' + encodeURIComponent(month);
     };
 
+    window.updateYearlyYear = function () {
+        const year = document.getElementById('yearlyYearSelect')?.value;
+        if (!year) return;
+        const month = document.getElementById('monthSelect')?.value;
+        const params = new URLSearchParams();
+        if (month) params.set('month', month);
+        params.set('year', year);
+        params.set('tab', 'yearly');
+        window.location.href = allotmentUrl + '?' + params.toString();
+    };
+
+    window.applyYearlyMetric = function () {
+        const metric = document.getElementById('yearlyMetricSelect')?.value || 'available';
+        document.querySelectorAll('#yearlyTable .la-year-cell').forEach(function (cell) {
+            cell.textContent = parseFloat(cell.dataset[metric] || '0').toFixed(1);
+        });
+        document.querySelectorAll('#yearlyTable .la-year-total').forEach(function (cell) {
+            const badge = cell.querySelector('.la-badge');
+            const value = parseFloat(cell.dataset[metric] || '0').toFixed(1);
+            if (badge) {
+                badge.textContent = value;
+            } else {
+                cell.textContent = value;
+            }
+        });
+    };
+
+    function filterYearlyRows() {
+        const term = (document.getElementById('yearlySearch')?.value || '').trim().toLowerCase();
+        document.querySelectorAll('#yearlyTableBody tr.yearly-row').forEach(function (row) {
+            row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+        });
+    }
+
     window.removeRow = function (btn) {
         const container = btn.closest('tr') || btn.closest('.la-mobile-card');
         const input = container?.querySelector('.allotment-input');
@@ -94,31 +128,41 @@
         const panels = {
             history: document.getElementById('laTabHistory'),
             balance: document.getElementById('laTabBalance'),
+            yearly: document.getElementById('laTabYearly'),
         };
+
+        function activateTab(target) {
+            if (!target || !panels[target]) return;
+
+            tabs.forEach(function (t) {
+                const active = t.dataset.laTab === target;
+                t.classList.toggle('is-active', active);
+                t.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+
+            Object.keys(panels).forEach(function (key) {
+                const panel = panels[key];
+                if (!panel) return;
+                const active = key === target;
+                panel.classList.toggle('is-active', active);
+                panel.hidden = !active;
+            });
+
+            if (target === 'balance') {
+                renderBalancePagination();
+            }
+        }
 
         tabs.forEach(function (tab) {
             tab.addEventListener('click', function () {
-                const target = tab.dataset.laTab;
-                if (!target || !panels[target]) return;
-
-                tabs.forEach(function (t) {
-                    const active = t === tab;
-                    t.classList.toggle('is-active', active);
-                    t.setAttribute('aria-selected', active ? 'true' : 'false');
-                });
-
-                Object.keys(panels).forEach(function (key) {
-                    const panel = panels[key];
-                    const active = key === target;
-                    panel.classList.toggle('is-active', active);
-                    panel.hidden = !active;
-                });
-
-                if (target === 'balance') {
-                    renderBalancePagination();
-                }
+                activateTab(tab.dataset.laTab);
             });
         });
+
+        const requestedTab = new URLSearchParams(window.location.search).get('tab');
+        if (requestedTab && panels[requestedTab]) {
+            activateTab(requestedTab);
+        }
     }
 
     function getHistorySearchTerm() {
@@ -304,6 +348,11 @@
 
         if (document.getElementById('balanceTableBody')) {
             renderBalancePagination();
+        }
+
+        const yearlySearch = document.getElementById('yearlySearch');
+        if (yearlySearch) {
+            yearlySearch.addEventListener('input', filterYearlyRows);
         }
     });
 })();

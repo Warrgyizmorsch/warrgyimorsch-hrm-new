@@ -108,6 +108,10 @@ class LeaveController extends Controller
                 ->get();
         }
 
+        $selectedYear = (int) $request->get('year', Carbon::now()->format('Y'));
+        $yearlyMatrix = $this->leaveBalanceService->getBulkYearlyBalanceMatrix($employees, $selectedYear);
+        $availableYears = range((int) Carbon::now()->format('Y') + 1, (int) Carbon::now()->format('Y') - 2);
+
         if ($isTeamLeader) {
             $monthDate = Carbon::createFromDate((int) $year, (int) $month, 1);
             $balances = $this->calculateBalances($employees, $monthDate);
@@ -117,7 +121,7 @@ class LeaveController extends Controller
         $monthDate = Carbon::createFromDate((int) $year, (int) $month, 1);
         $balances = $this->calculateBalances($employees, $monthDate);
 
-        return view('leave.allotment', compact('employees', 'allotments', 'selectedMonth', 'history', 'isAdmin', 'balances'));
+        return view('leave.allotment', compact('employees', 'allotments', 'selectedMonth', 'history', 'isAdmin', 'balances', 'yearlyMatrix', 'selectedYear', 'availableYears'));
     }
 
     public function storeAllotment(Request $request)

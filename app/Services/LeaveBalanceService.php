@@ -91,6 +91,101 @@ class LeaveBalanceService
         return $summaries;
     }
 
+    /**
+     * Year x all-employees matrix: for each employee, Jan-Dec allotted/used/available,
+     * computed the same way as the monthly balance (carry-forward, unpaid conversion).
+     *
+     * @return array<int, array{employee: Employee, months: array<int, array{allotted: float, used: float, available: float}>, total_allotted: float, total_used: float, total_available: float}>
+     */
+    public function getBulkYearlyBalanceMatrix(iterable $employees, int $year): array
+    {
+        $employees = collect($employees)->filter()->values();
+        if ($employees->isEmpty()) {
+            return [];
+        }
+
+        $yearEnd = Carbon::createFromDate($year, 12, 31)->endOfMonth();
+        $employeeIds = $employees->pluck('id')->all();
+
+        $allotmentsByEmployee = LeaveAllotment::whereIn('employee_id', $employeeIds)
+            ->get()
+            ->groupBy('employee_id');
+
+        $leavesByEmployee = LeaveApplication::whereIn('employee_id', $employeeIds)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $yearEnd->toDateString())
+            ->orderBy('start_date')
+            ->get()
+            ->groupBy('employee_id');
+
+        $yearStart = Carbon::createFromDate($year, 1, 1)->startOfYear();
+        $rangeStart = $yearStart->copy();
+        foreach ($employees as $employee) {
+            $firstMonth = $this->resolveFirstLeaveBalanceMonth(
+                $yearStart,
+                $allotmentsByEmployee->get($employee->id, collect()),
+                $leavesByEmployee->get($employee->id, collect())
+            );
+            if ($firstMonth->lt($rangeStart)) {
+                $rangeStart = $firstMonth->copy();
+            }
+        }
+
+        $holidayLookup = $this->buildHolidayLookup($rangeStart, $yearEnd);
+        $lastMonthOfYear = Carbon::createFromDate($year, 12, 1)->startOfMonth();
+
+        $matrix = [];
+        foreach ($employees as $employee) {
+            $employeeAllotments = $allotmentsByEmployee->get($employee->id, collect());
+            $employeeLeaves = $leavesByEmployee->get($employee->id, collect());
+            $allotmentMap = $this->buildAllotmentMap($employeeAllotments);
+            $usedByMonth = $this->buildMonthlyUsedMap($employeeLeaves, $yearEnd, $holidayLookup);
+
+            $cursor = $this->resolveFirstLeaveBalanceMonth($yearStart, $employeeAllotments, $employeeLeaves);
+            $balance = 0.0;
+            $months = [];
+            $totalAllotted = 0.0;
+            $totalUsed = 0.0;
+
+            while ($cursor->lte($lastMonthOfYear)) {
+                $monthKey = $cursor->format('Y') . '-' . ((int) $cursor->format('m'));
+                $allotted = $this->allottedFromMap($allotmentMap, $cursor);
+                $used = (float) ($usedByMonth[$monthKey] ?? 0);
+                $result = $this->closeMonthBalance($balance, $allotted, $used);
+
+                if ((int) $cursor->format('Y') === $year) {
+                    $months[(int) $cursor->format('n')] = [
+                        'allotted' => $allotted,
+                        'used' => $used,
+                        'available' => $result['closing'],
+                    ];
+                    $totalAllotted += $allotted;
+                    $totalUsed += $used;
+                }
+
+                $balance = $result['carry_forward'];
+                $cursor->addMonth();
+            }
+
+            for ($m = 1; $m <= 12; $m++) {
+                if (!isset($months[$m])) {
+                    $months[$m] = ['allotted' => 0.0, 'used' => 0.0, 'available' => 0.0];
+                }
+            }
+            ksort($months);
+
+            $matrix[$employee->id] = [
+                'employee' => $employee,
+                'months' => $months,
+                'total_allotted' => $totalAllotted,
+                'total_used' => $totalUsed,
+                'total_available' => $months[12]['available'] ?? 0.0,
+            ];
+        }
+
+        return $matrix;
+    }
+
     public function getEmployeeBalanceSummary(int $employeeId, ?Carbon $monthDate = null): array
     {
         $employee = Employee::find($employeeId);
