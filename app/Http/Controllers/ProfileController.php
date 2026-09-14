@@ -13,7 +13,6 @@ use Illuminate\Validation\Rules\Password;
 use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\LeaveApplication;
-use App\Models\LeaveAllotment;
 use App\Models\Holiday;
 use App\Services\LeaveBalanceService;
 
@@ -142,18 +141,21 @@ class ProfileController extends Controller
             $leaves = LeaveApplication::where('employee_id', $employee->id)->orderBy('created_at', 'desc')->get();
         }
 
-        $total_allotted = $employee
-            ? LeaveAllotment::where('employee_id', $employee->id)->sum('leave_count')
-            : 0;
-        $total_used = $employee
-            ? $this->leaveBalanceService->getDeductibleLeaveDaysForEmployee($employee->id)
-            : 0;
-
+        // Same carry-forward summary as the Leave Balance page and the apply-time quota check.
         $totalLeaveCycle = [
-            'allotted' => $total_allotted,
-            'used' => $total_used,
-            'available' => max(0, $total_allotted - $total_used),
+            'allotted' => 0,
+            'used' => 0,
+            'available' => 0,
         ];
+
+        if ($employee) {
+            $currentSummary = $this->leaveBalanceService->getEmployeeBalanceSummary($employee->id);
+            $totalLeaveCycle = [
+                'allotted' => $currentSummary['total_allotted'],
+                'used' => $currentSummary['total_taken'],
+                'available' => $currentSummary['balance'],
+            ];
+        }
 
         return view('profile.leave-history', [
             'user' => $user,
