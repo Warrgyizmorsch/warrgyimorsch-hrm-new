@@ -80,6 +80,10 @@ class Employee extends Model
     {
         return $this->hasMany(Attendance::class);
     }
+    public function documents()
+    {
+        return $this->hasMany(EmployeeDocument::class);
+    }
     public function user()
     {
         return $this->hasOne(User::class, 'employee_id');

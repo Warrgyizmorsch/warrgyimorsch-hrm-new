@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\EmployeeDocument;
+use Illuminate\Support\Facades\Storage;
 use App\Exports\EmployeesExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
@@ -160,7 +162,7 @@ class EmployeeController extends Controller
                 'basic_salary' => 'required_without:gross_salary|nullable|numeric|min:0',
                 'gross_salary' => 'required_without:basic_salary|nullable|numeric|min:0',
                 'working_mode' => 'required|in:Office,Work from home',
-            ]);
+            ] + EmployeeDocument::validationRules(), [], EmployeeDocument::validationAttributes());
 
             return DB::transaction(function () use ($request) {
                 $data = $request->all();
@@ -208,6 +210,8 @@ class EmployeeController extends Controller
                 // Create employee
                 $employee = Employee::create($data);
 
+                $this->storeDocuments($request, $employee);
+
                 if (strtolower(str_replace(' ', '_', (string) $employee->role)) === 'team_leader') {
                     $employee->ledDepartmentRefs()->sync(array_values(array_filter((array) $request->additional_led_department_ids)));
                 }
@@ -245,7 +249,7 @@ class EmployeeController extends Controller
      */
     public function show($id)
     {
-        $employee = Employee::with('departmentRef')->findOrFail($id);
+        $employee = Employee::with(['departmentRef', 'documents'])->findOrFail($id);
         return view('employees.show', compact('employee'));
     }
 
@@ -254,9 +258,19 @@ class EmployeeController extends Controller
      */
     public function getJson($id)
     {
-        $employee = Employee::with('departmentRef')->findOrFail($id);
+        $employee = Employee::with(['departmentRef', 'documents'])->findOrFail($id);
         $employee->department = $employee->departmentRef?->name;
         $employee->is_business_development = $employee->department_id === Department::businessDevelopmentId();
+
+        // One entry per document type (uploaded or not) for the Documents tab in the list drawer.
+        $docsByType = $employee->documents->keyBy('type');
+        $employee->document_list = collect(EmployeeDocument::TYPES)->map(fn ($meta, $type) => [
+            'label' => $meta['label'],
+            'name' => $docsByType->get($type)?->original_name,
+            'url' => $docsByType->has($type) ? route('employee-documents.download', $docsByType->get($type)->id) : null,
+            'uploaded_at' => $docsByType->get($type)?->updated_at?->format('d M Y'),
+        ])->values();
+        $employee->unsetRelation('documents');
 
         return response()->json($employee);
     }
@@ -515,7 +529,7 @@ class EmployeeController extends Controller
                 'working_mode' => 'required|in:Office,Work from home',
                 'basic_salary' => 'nullable|numeric|min:0',
                 'gross_salary' => 'nullable|numeric|min:0',
-            ]);
+            ] + EmployeeDocument::validationRules(), [], EmployeeDocument::validationAttributes());
 
             return DB::transaction(function () use ($request, $employee, $user) {
                 $updateData = [
@@ -601,6 +615,8 @@ class EmployeeController extends Controller
                     $employee->update(['photo' => $path]);
                 }
 
+                $this->storeDocuments($request, $employee);
+
                 // Sync with User table
                 if ($request->filled('email')) {
                     $user = User::where('employee_id', $employee->id)->orWhere('email', $employee->email)->first();
@@ -626,6 +642,8 @@ class EmployeeController extends Controller
                 return redirect()->route('employees.index')
                     ->with('success', 'Employee and User account updated successfully! ✓');
             });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
             return back()->with('error', 'Error: ' . $e->getMessage())
                 ->withInput();
@@ -670,8 +688,23 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
         $employee->delete();
 
+        // Document rows cascade with the employee; remove their files too.
+        Storage::disk(EmployeeDocument::DISK)->deleteDirectory("employee-documents/{$employee->id}");
+
         return redirect()->route('employees.index')
             ->with('success', 'Employee deleted successfully! ✓');
+    }
+
+    /**
+     * Save any uploaded documents[type] files; re-uploading a type replaces the old file.
+     */
+    private function storeDocuments(Request $request, Employee $employee): void
+    {
+        foreach (array_keys(EmployeeDocument::TYPES) as $type) {
+            if ($request->hasFile("documents.$type")) {
+                EmployeeDocument::storeFor($employee, $type, $request->file("documents.$type"));
+            }
+        }
     }
 
     public function export()

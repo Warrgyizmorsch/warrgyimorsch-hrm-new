@@ -18,6 +18,12 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link" id="documents-tab" type="button" data-bs-toggle="tab" data-bs-target="#documents"
+            role="tab" aria-controls="documents" aria-selected="false">
+            <i class="bi bi-folder2-open"></i> Documents
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link" id="security-tab" type="button" data-bs-toggle="tab" data-bs-target="#security"
             role="tab" aria-controls="security" aria-selected="false">
             <i class="bi bi-shield-lock"></i> Login &amp; Security

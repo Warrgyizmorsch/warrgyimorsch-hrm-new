@@ -329,6 +329,9 @@
                     <button class="premium-tab" onclick="switchPremiumTab('salary', this)">
                         <i class="feather-activity"></i> Payroll Structure
                     </button>
+                    <button class="premium-tab" onclick="switchPremiumTab('documents', this)">
+                        <i class="feather-folder"></i> Documents
+                    </button>
                 </div>
 
                 <!-- Tab Panels -->
@@ -491,6 +494,29 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- DOCUMENTS -->
+                    <div id="pane-documents" class="tab-pane-fade">
+                        @php $myDocs = $employee ? $employee->documents->keyBy('type') : collect(); @endphp
+                        <div class="info-grid">
+                            @foreach(\App\Models\EmployeeDocument::TYPES as $type => $meta)
+                                @php $doc = $myDocs->get($type); @endphp
+                                <div class="info-item-card">
+                                    <div class="card-icon-circle"><i class="feather-file-text"></i></div>
+                                    <div class="card-content"><span class="card-label">{{ $meta['label'] }}</span>
+                                        @if($doc)
+                                            <p class="card-value text-break">
+                                                <a href="{{ route('employee-documents.download', $doc->id) }}" target="_blank">{{ $doc->original_name }}</a>
+                                            </p>
+                                        @else
+                                            <p class="card-value text-muted">Not uploaded</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <p class="text-muted small mt-3 mb-0">Documents are managed by HR. Contact HR if something is missing or wrong.</p>
                     </div>
                 </div>
             </div>

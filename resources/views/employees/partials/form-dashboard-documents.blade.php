@@ -1,6 +1,8 @@
 @php
     $emp = $employee ?? null;
     $photoUrl = ($emp && $emp->photo) ? asset('storage/' . $emp->photo) : '';
+    $docTypes = \App\Models\EmployeeDocument::TYPES;
+    $existingDocs = $emp ? $emp->documents->keyBy('type') : collect();
 @endphp
 
 <div class="hrm-card hrm-card-full">
@@ -28,50 +30,35 @@
                 <input type="file" id="photoInput" name="photo" accept="image/*">
             </div>
 
-            {{-- Aadhaar --}}
-            <div class="hrm-doc-box" data-doc-type="file">
-                <div class="hrm-doc-preview">
-                    <img class="hrm-doc-preview-img" alt="Aadhaar preview" hidden>
-                    <span class="hrm-doc-preview-icon">
-                        <i class="bi bi-file-earmark-person"></i>
-                    </span>
+            {{-- Aadhaar / PAN / Offer Letter — types, limits and labels come from EmployeeDocument::TYPES --}}
+            @foreach($docTypes as $type => $meta)
+                @php
+                    $doc = $existingDocs->get($type);
+                    $isWord = str_contains($meta['rules'], 'docx');
+                @endphp
+                <div class="hrm-doc-box {{ $doc ? 'has-file has-preview' : '' }}" data-doc-type="file">
+                    <div class="hrm-doc-preview">
+                        <img class="hrm-doc-preview-img" alt="{{ $meta['label'] }} preview" hidden>
+                        <span class="hrm-doc-preview-icon">
+                            <i class="bi {{ $doc ? 'bi-file-earmark-check' : $meta['icon'] }}"></i>
+                        </span>
+                    </div>
+                    <strong>{{ $meta['label'] }}</strong>
+                    <small>{{ $isWord ? 'Max size 10MB · PDF or DOC' : 'Max size 5MB · PDF or image' }}</small>
+                    <span class="hrm-doc-btn">{{ $doc ? 'Replace File' : 'Choose File' }}</span>
+                    <span class="hrm-doc-filename">{{ $doc?->original_name }}</span>
+                    @if($doc)
+                        <a href="{{ route('employee-documents.download', $doc->id) }}" target="_blank" class="hrm-doc-view">
+                            <i class="bi bi-eye"></i> View current
+                        </a>
+                    @endif
+                    @error("documents.$type")
+                        <span class="hrm-doc-error">{{ $message }}</span>
+                    @enderror
+                    <input type="file" name="documents[{{ $type }}]"
+                        accept="{{ $isWord ? '.pdf,.doc,.docx' : '.pdf,.png,.jpg,.jpeg,.webp' }}">
                 </div>
-                <strong>Aadhaar Card</strong>
-                <small>Max size 5MB · PDF or image</small>
-                <span class="hrm-doc-btn">Choose File</span>
-                <span class="hrm-doc-filename"></span>
-                <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp">
-            </div>
-
-            {{-- PAN --}}
-            <div class="hrm-doc-box" data-doc-type="file">
-                <div class="hrm-doc-preview">
-                    <img class="hrm-doc-preview-img" alt="PAN preview" hidden>
-                    <span class="hrm-doc-preview-icon">
-                        <i class="bi bi-file-earmark-text"></i>
-                    </span>
-                </div>
-                <strong>PAN Card</strong>
-                <small>Max size 5MB · PDF or image</small>
-                <span class="hrm-doc-btn">Choose File</span>
-                <span class="hrm-doc-filename"></span>
-                <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp">
-            </div>
-
-            {{-- Offer Letter --}}
-            <div class="hrm-doc-box" data-doc-type="file">
-                <div class="hrm-doc-preview">
-                    <img class="hrm-doc-preview-img" alt="Offer letter preview" hidden>
-                    <span class="hrm-doc-preview-icon">
-                        <i class="bi bi-file-earmark-richtext"></i>
-                    </span>
-                </div>
-                <strong>Offer Letter</strong>
-                <small>Max size 10MB · PDF or DOC</small>
-                <span class="hrm-doc-btn">Choose File</span>
-                <span class="hrm-doc-filename"></span>
-                <input type="file" accept=".pdf,.doc,.docx">
-            </div>
+            @endforeach
 
         </div>
     </div>

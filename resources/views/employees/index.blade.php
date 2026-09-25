@@ -1273,6 +1273,13 @@
             });
 
             // View Employee Details in Right Side Panel
+            // Uploaded file names are user-supplied — escape before putting them in innerHTML.
+            function escapeDocHtml(value) {
+                const div = document.createElement('div');
+                div.textContent = value ?? '';
+                return div.innerHTML;
+            }
+
             function viewEmployee(empId) {
                 // Store current employee ID for edit/delete buttons
                 window.currentEmployeeId = empId;
@@ -1318,6 +1325,7 @@
                                                                         <button class="nav-tab active" id="tabPersonal" onclick="showTab('personal')"><i class="bi bi-person"></i>PERSONAL</button>
                                                                         <button class="nav-tab" id="tabBank" onclick="showTab('bank')"><i class="bi bi-bank"></i>BANK</button>
                                                                         <button class="nav-tab" id="tabSalary" onclick="showTab('salary')"><i class="bi bi-cash-coin"></i>SALARY</button>
+                                                                        <button class="nav-tab" id="tabDocuments" onclick="showTab('documents')"><i class="bi bi-folder2-open"></i>DOCUMENTS</button>
                                                                     </div>
 
                                                                     <div class="tab-content" id="modalTabContent">
@@ -1497,6 +1505,24 @@
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
+                                                                        </div>
+
+                                                                        <!-- DOCUMENTS TAB -->
+                                                                        <div id="employeeTabDocuments" class="tab-pane">
+                                                                            <div class="details-grid">
+                                                                                ${(emp.document_list || []).map(doc => `
+                                                                                <div class="detail-card full-width">
+                                                                                    <div class="detail-icon"><i class="bi ${doc.url ? 'bi-file-earmark-check' : 'bi-file-earmark'}"></i></div>
+                                                                                    <div class="detail-content">
+                                                                                        <label class="detail-label">${escapeDocHtml(doc.label)}</label>
+                                                                                        ${doc.url
+                                                                                            ? `<p class="detail-value"><a href="${doc.url}" target="_blank">${escapeDocHtml(doc.name)}</a></p>
+                                                                                               <small class="text-muted">Uploaded ${escapeDocHtml(doc.uploaded_at || '')}</small>`
+                                                                                            : `<p class="detail-value text-muted">Not uploaded</p>`}
+                                                                                    </div>
+                                                                                </div>`).join('')}
+                                                                            </div>
+                                                                            <p class="small text-muted px-3 mt-2">Upload or replace from Edit Employee.</p>
                                                                         </div>
 
                                                                         <!-- ATTENDANCE TAB -->

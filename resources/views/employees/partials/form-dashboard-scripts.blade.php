@@ -198,7 +198,9 @@
         let firstField = null;
         Object.keys(messages).forEach(function (name) {
             const msg = messages[name][0];
-            const field = form.querySelector('[name="' + name + '"]');
+            // Laravel reports array fields dotted (documents.aadhaar); the input is named documents[aadhaar]
+            const inputName = name.replace(/\.([^.]+)/g, '[$1]');
+            const field = form.querySelector('[name="' + inputName + '"]');
             if (field) {
                 showFieldError(field, msg);
                 if (!firstField) firstField = field;

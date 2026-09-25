@@ -139,6 +139,37 @@
                     </div>
                 </div>
 
+                <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
+                    @php $docsByType = $employee->documents->keyBy('type'); @endphp
+                    <div class="zoho-detail-grid">
+                        @foreach(\App\Models\EmployeeDocument::TYPES as $type => $meta)
+                            @php $doc = $docsByType->get($type); @endphp
+                            <div class="zoho-detail-row">
+                                <div class="zoho-detail-label"><i class="bi {{ $meta['icon'] }}"></i> {{ $meta['label'] }}</div>
+                                <div class="zoho-detail-value">
+                                    @if($doc)
+                                        <a href="{{ route('employee-documents.download', $doc->id) }}" target="_blank">{{ $doc->original_name }}</a>
+                                        <div class="text-muted small">
+                                            {{ number_format($doc->size / 1024, 0) }} KB · uploaded {{ $doc->updated_at->format('d M Y') }}
+                                        </div>
+                                        <form method="POST" action="{{ route('employee-documents.destroy', $doc->id) }}" class="d-inline"
+                                            onsubmit="return confirm('Remove {{ $meta['label'] }}? The file will be deleted.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-link btn-sm text-danger p-0 mt-1">
+                                                <i class="bi bi-trash"></i> Remove
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-muted">Not uploaded</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <p class="text-muted small mb-0 mt-3">Upload or replace documents from the Edit Employee screen.</p>
+                </div>
+
                 <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
                     <div class="zoho-detail-grid">
                         <div class="zoho-detail-row zoho-detail-span-full">

@@ -6,6 +6,7 @@ use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DailyTaskController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeDocumentController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\LeaveApplicationController;
 use App\Http\Controllers\LeaveController;
@@ -152,6 +153,7 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::get('/employees-export', [EmployeeController::class, 'export'])->name('employees.export');
     Route::post('/employee/update-accountStatus', [EmployeeController::class, 'updateAccountStatus'])->name('users.update-accountStatus');
+    Route::delete('/employee-documents/{id}', [EmployeeDocumentController::class, 'destroy'])->name('employee-documents.destroy');
 
     Route::get('/broadcasts/{id}/edit', [BroadcastController::class, 'edit'])->name('broadcasts.edit');
     Route::put('/broadcasts/{id}', [BroadcastController::class, 'update'])->name('broadcasts.update');
@@ -307,6 +309,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/leave/apply', [LeaveApplicationController::class, 'store'])->name('leave.apply');
 
     Route::get('/profile/details', [ProfileController::class, 'show'])->name('profile.show');
+    // Admins can open any employee's documents, everyone else only their own (checked in the controller).
+    Route::get('/employee-documents/{id}', [EmployeeDocumentController::class, 'download'])->name('employee-documents.download');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
