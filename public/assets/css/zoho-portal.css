@@ -2555,6 +2555,7 @@ body.zoho-portal .avatar-text.bg-soft-primary {
     background: var(--brand-surface);
     border: 1px solid var(--brand-border);
     margin: 0;
+    padding:10px;
 }
 
 .zoho-people-table-card.zoho-list-loading {

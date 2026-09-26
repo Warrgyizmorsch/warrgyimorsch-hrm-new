@@ -641,6 +641,18 @@ class PayrollController extends Controller
 
     private function calculatePayrollInternal($employeeId, $month)
     {
+        // Prefer the already-calculated, stored payroll for this month — it may have been
+        // manually adjusted/finalized after calculation, and attendance/leave data can keep
+        // changing after the fact. Only recalculate live if this month was never saved.
+        $existing = Payroll::with('employee.departmentRef')
+            ->where('employee_id', $employeeId)
+            ->where('month', $month)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
         $request = new Request([
             'employee_id' => $employeeId,
             'month' => $month
@@ -900,6 +912,15 @@ class PayrollController extends Controller
     public function export(Request $request)
     {
         $query = Payroll::with('employee');
+
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+
+        if (!$isAdmin) {
+            // Employees can only export their own payslips, whatever id/employee_id was requested.
+            $query->where('employee_id', $user->employee_id);
+        }
 
         if ($request->filled('month')) {
             $query->where('month', $request->month);
@@ -1751,6 +1772,14 @@ class PayrollController extends Controller
     public function downloadPdf($id)
     {
         $payroll = Payroll::with('employee.departmentRef')->findOrFail($id);
+
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        if (!$isAdmin && (int) $user->employee_id !== (int) $payroll->employee_id) {
+            abort(403);
+        }
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('payroll.payslip_pdf', compact('payroll'))
             ->setPaper('a4', 'portrait')
             ->setOptions([
@@ -1770,6 +1799,13 @@ class PayrollController extends Controller
     public function bulkDownloadPdf(Request $request)
     {
         $query = Payroll::with('employee.departmentRef');
+
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        if (!$isAdmin) {
+            $query->where('employee_id', $user->employee_id);
+        }
 
         if ($request->filled('month')) {
             $query->where('month', $request->month);

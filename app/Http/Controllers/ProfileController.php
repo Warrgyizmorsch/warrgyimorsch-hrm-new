@@ -86,10 +86,23 @@ class ProfileController extends Controller
             $all_employees = \App\Models\User::with('employee')->orderBy('name')->get();
         }
 
+        $kraAssignments = collect();
+        $kpiAssignments = collect();
+        $sops = collect();
+
+        if ($employee) {
+            $kraAssignments = $employee->kraAssignments()->with('items')->orderByDesc('month')->get();
+            $kpiAssignments = $employee->kpiAssignments()->with('items')->orderByDesc('month')->get();
+            $sops = \App\Models\Sop::active()->applicableTo($employee)->with(['acknowledgements' => fn ($q) => $q->where('user_id', $user->id)])->get();
+        }
+
         return view('profile.show', [
             'user' => $user,
             'employee' => $employee,
-            'all_employees' => $all_employees
+            'all_employees' => $all_employees,
+            'kraAssignments' => $kraAssignments,
+            'kpiAssignments' => $kpiAssignments,
+            'sops' => $sops,
         ]);
     }
 

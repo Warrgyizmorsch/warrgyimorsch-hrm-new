@@ -249,8 +249,9 @@ class EmployeeController extends Controller
      */
     public function show($id)
     {
-        $employee = Employee::with(['departmentRef', 'documents'])->findOrFail($id);
-        return view('employees.show', compact('employee'));
+        $employee = Employee::with(['departmentRef', 'documents', 'letters' => fn ($q) => $q->latest()])->findOrFail($id);
+        $letterTemplates = \App\Models\LetterTemplate::active()->orderBy('type')->orderBy('title')->get();
+        return view('employees.show', compact('employee', 'letterTemplates'));
     }
 
     /**

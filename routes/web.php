@@ -7,7 +7,12 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DailyTaskController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeDocumentController;
+use App\Http\Controllers\EmployeeLetterController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\KraController;
+use App\Http\Controllers\KpiController;
+use App\Http\Controllers\LetterTemplateController;
+use App\Http\Controllers\SopController;
 use App\Http\Controllers\LeaveApplicationController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\MasterController;
@@ -155,6 +160,9 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::post('/employee/update-accountStatus', [EmployeeController::class, 'updateAccountStatus'])->name('users.update-accountStatus');
     Route::delete('/employee-documents/{id}', [EmployeeDocumentController::class, 'destroy'])->name('employee-documents.destroy');
 
+    Route::post('/employees/{employee}/letters', [EmployeeLetterController::class, 'store'])->name('employee-letters.store');
+    Route::delete('/employee-letters/{id}', [EmployeeLetterController::class, 'destroy'])->name('employee-letters.destroy');
+
     Route::get('/broadcasts/{id}/edit', [BroadcastController::class, 'edit'])->name('broadcasts.edit');
     Route::put('/broadcasts/{id}', [BroadcastController::class, 'update'])->name('broadcasts.update');
 
@@ -179,6 +187,36 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::post('/master/role', [MasterController::class, 'storeRole'])->name('master.role.store');
     Route::put('/master/role/{id}', [MasterController::class, 'updateRole'])->name('master.role.update');
     Route::delete('/master/role/{id}', [MasterController::class, 'destroyRole'])->name('master.role.destroy');
+
+    Route::get('/master/letter-templates', [LetterTemplateController::class, 'index'])->name('master.letter-templates');
+    Route::post('/master/letter-template', [LetterTemplateController::class, 'store'])->name('master.letter-template.store');
+    Route::put('/master/letter-template/{id}', [LetterTemplateController::class, 'update'])->name('master.letter-template.update');
+    Route::delete('/master/letter-template/{id}', [LetterTemplateController::class, 'destroy'])->name('master.letter-template.destroy');
+
+    // KRA — assignment of the existing department-wise technical review criteria to an employee.
+    Route::get('/kra', [KraController::class, 'index'])->name('kra.index');
+    Route::post('/kra/assign', [KraController::class, 'assign'])->name('kra.assign');
+    Route::delete('/kra/{id}', [KraController::class, 'destroy'])->name('kra.destroy');
+
+    // KPI — master templates + per-employee assignment + actuals.
+    Route::get('/kpis', [KpiController::class, 'index'])->name('kpis.index');
+    Route::post('/kpis', [KpiController::class, 'store'])->name('kpis.store');
+    Route::put('/kpis/{id}', [KpiController::class, 'update'])->name('kpis.update');
+    Route::delete('/kpis/{id}', [KpiController::class, 'destroy'])->name('kpis.destroy');
+    Route::get('/kpi-assignments', [KpiController::class, 'assignments'])->name('kpi-assignments.index');
+    Route::post('/kpi-assignments/assign', [KpiController::class, 'assign'])->name('kpi-assignments.assign');
+    Route::post('/kpi-assignments/{id}/actuals', [KpiController::class, 'updateActuals'])->name('kpi-assignments.actuals');
+    Route::post('/kpi-assignments/{id}/recompute', [KpiController::class, 'recompute'])->name('kpi-assignments.recompute');
+    Route::delete('/kpi-assignments/{id}', [KpiController::class, 'destroyAssignment'])->name('kpi-assignments.destroy');
+
+    // SOP — department/role-scoped documents with versioning.
+    Route::get('/sops', [SopController::class, 'index'])->name('sops.index');
+    Route::post('/sops', [SopController::class, 'store'])->name('sops.store');
+    Route::put('/sops/{id}', [SopController::class, 'update'])->name('sops.update');
+    Route::delete('/sops/{id}', [SopController::class, 'destroy'])->name('sops.destroy');
+    Route::get('/sops/{id}/recipients', [SopController::class, 'recipients'])->name('sops.recipients');
+    Route::get('/sops/{id}/history', [SopController::class, 'history'])->name('sops.history');
+    Route::post('/sops/{id}/acknowledge-for/{employeeId}', [SopController::class, 'acknowledgeFor'])->name('sops.acknowledge-for');
 
     Route::post('/holidays', [HolidayController::class, 'store'])->name('holidays.store');
     Route::get('/holidays/{id}/edit', [HolidayController::class, 'edit'])->name('holidays.edit');
@@ -311,6 +349,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile/details', [ProfileController::class, 'show'])->name('profile.show');
     // Admins can open any employee's documents, everyone else only their own (checked in the controller).
     Route::get('/employee-documents/{id}', [EmployeeDocumentController::class, 'download'])->name('employee-documents.download');
+    // Admins can open any employee's letters, everyone else only their own (checked in the controller).
+    Route::get('/employee-letters/{id}/download', [EmployeeLetterController::class, 'download'])->name('employee-letters.download');
+
+    // Acknowledgement — any authenticated user, own record enforced inside each controller.
+    Route::post('/kra/{id}/acknowledge', [KraController::class, 'acknowledge'])->name('kra.acknowledge');
+    Route::post('/kpi-assignments/{id}/acknowledge', [KpiController::class, 'acknowledge'])->name('kpi-assignments.acknowledge');
+    Route::post('/sops/{id}/acknowledge', [SopController::class, 'acknowledge'])->name('sops.acknowledge');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

@@ -6,6 +6,7 @@
         ['label' => 'Departments', 'url' => route('master.departments'), 'active' => ($masterActive ?? '') === 'departments'],
         ['label' => 'Designations', 'url' => route('master.designations'), 'active' => ($masterActive ?? '') === 'designations'],
         ['label' => 'Roles', 'url' => route('master.roles'), 'active' => ($masterActive ?? '') === 'roles'],
+        ['label' => 'Letter Templates', 'url' => route('master.letter-templates'), 'active' => ($masterActive ?? '') === 'letter-templates'],
     ],
     'primaryAction' => $primaryAction ?? null,
 ])

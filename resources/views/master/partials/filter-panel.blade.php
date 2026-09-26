@@ -41,9 +41,6 @@
             </div>
 
             <div class="attendance-filter-actions">
-                <button type="submit" class="zoho-btn-primary">
-                    <i class="feather-search"></i> Apply
-                </button>
                 <a href="{{ $filterRoute }}" class="zoho-btn-outline">Reset</a>
             </div>
 

@@ -170,6 +170,52 @@
                     <p class="text-muted small mb-0 mt-3">Upload or replace documents from the Edit Employee screen.</p>
                 </div>
 
+                <div class="tab-pane fade" id="letters" role="tabpanel" aria-labelledby="letters-tab">
+                    <form method="POST" action="{{ route('employee-letters.store', $employee->id) }}" class="d-flex gap-2 align-items-end flex-wrap mb-4">
+                        @csrf
+                        <div>
+                            <label class="form-label small fw-bold text-muted text-uppercase mb-1">Generate a new letter</label>
+                            <select name="letter_template_id" class="form-select" style="min-width: 260px;" required>
+                                <option value="">Select letter template</option>
+                                @foreach($letterTemplates as $template)
+                                    <option value="{{ $template->id }}">{{ $template->label }} — {{ $template->title }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="zoho-btn-primary">
+                            <i class="feather-file-plus"></i> Generate
+                        </button>
+                    </form>
+
+                    @if($letterTemplates->isEmpty())
+                        <p class="text-muted small">No active letter templates configured. Add one from Master Module &gt; Letter Templates.</p>
+                    @endif
+
+                    <div class="zoho-detail-grid">
+                        @forelse($employee->letters as $letter)
+                            <div class="zoho-detail-row">
+                                <div class="zoho-detail-label"><i class="bi bi-envelope-paper"></i> {{ $letter->title }}</div>
+                                <div class="zoho-detail-value">
+                                    <a href="{{ route('employee-letters.download', $letter->id) }}" target="_blank">Download PDF</a>
+                                    <div class="text-muted small">
+                                        generated {{ $letter->created_at->format('d M Y, h:i A') }}
+                                    </div>
+                                    <form method="POST" action="{{ route('employee-letters.destroy', $letter->id) }}" class="d-inline"
+                                        onsubmit="return confirm('Remove this letter? The file will be deleted.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-link btn-sm text-danger p-0 mt-1">
+                                            <i class="bi bi-trash"></i> Remove
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="text-muted small">No letters generated yet.</p>
+                        @endforelse
+                    </div>
+                </div>
+
                 <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
                     <div class="zoho-detail-grid">
                         <div class="zoho-detail-row zoho-detail-span-full">

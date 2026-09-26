@@ -128,6 +128,12 @@
                                     <span class="nxl-mtext">Roles</span>
                                 </a>
                             </li>
+                            <li class="nxl-item">
+                                <a href="{{ route('master.letter-templates') }}" class="nxl-link">
+                                    <span class="nxl-micon"><i class="feather-circle"></i></span>
+                                    <span class="nxl-mtext">Letter Templates</span>
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
@@ -306,6 +312,42 @@
                         <span class="nxl-mtext">Employee Payroll</span>
                     </a>
                 </li>
+
+                @if ($isAdmin)
+                    <li class="nxl-item nxl-hasmenu {{ $navOpen('kra.*', 'kpis.*', 'kpi-assignments.*', 'sops.*') }}">
+                        <a href="javascript:void(0);" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-target"></i></span>
+                            <span class="nxl-mtext">Performance</span>
+                            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li class="nxl-item">
+                                <a href="{{ route('kra.index') }}" class="nxl-link {{ $navLinkActive('kra.*') }}">
+                                    <span class="nxl-micon"><i class="feather-crosshair"></i></span>
+                                    <span class="nxl-mtext">KRA</span>
+                                </a>
+                            </li>
+                            <li class="nxl-item">
+                                <a href="{{ route('kpis.index') }}" class="nxl-link {{ $navLinkActive('kpis.*') }}">
+                                    <span class="nxl-micon"><i class="feather-bar-chart-2"></i></span>
+                                    <span class="nxl-mtext">KPIs</span>
+                                </a>
+                            </li>
+                            <li class="nxl-item">
+                                <a href="{{ route('kpi-assignments.index') }}" class="nxl-link {{ $navLinkActive('kpi-assignments.*') }}">
+                                    <span class="nxl-micon"><i class="feather-clipboard"></i></span>
+                                    <span class="nxl-mtext">KPI Assignments</span>
+                                </a>
+                            </li>
+                            <li class="nxl-item">
+                                <a href="{{ route('sops.index') }}" class="nxl-link {{ $navLinkActive('sops.*') }}">
+                                    <span class="nxl-micon"><i class="feather-file-text"></i></span>
+                                    <span class="nxl-mtext">SOPs</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                @endif
 
                 @if ($isAdmin || $isTeamLeader)
                     <li class="nxl-item {{ $navItemActive('broadcasts.*') }}">

@@ -332,6 +332,9 @@
                     <button class="premium-tab" onclick="switchPremiumTab('documents', this)">
                         <i class="feather-folder"></i> Documents
                     </button>
+                    <button class="premium-tab" onclick="switchPremiumTab('performance', this)">
+                        <i class="feather-target"></i> Performance
+                    </button>
                 </div>
 
                 <!-- Tab Panels -->
@@ -517,6 +520,104 @@
                             @endforeach
                         </div>
                         <p class="text-muted small mt-3 mb-0">Documents are managed by HR. Contact HR if something is missing or wrong.</p>
+
+                        @if($employee && $employee->letters->isNotEmpty())
+                            <hr class="my-4">
+                            <span class="card-label d-block mb-2">My Letters</span>
+                            <div class="info-grid">
+                                @foreach($employee->letters as $letter)
+                                    <div class="info-item-card">
+                                        <div class="card-icon-circle"><i class="feather-file-text"></i></div>
+                                        <div class="card-content"><span class="card-label">{{ $letter->title }}</span>
+                                            <p class="card-value text-break">
+                                                <a href="{{ route('employee-letters.download', $letter->id) }}" target="_blank">Download PDF</a>
+                                            </p>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- PERFORMANCE: KRA / KPI / SOP -->
+                    <div id="pane-performance" class="tab-pane-fade">
+                        <span class="card-label d-block mb-2">My KRAs</span>
+                        @forelse($kraAssignments as $kra)
+                            <div class="info-item-card mb-2" style="display:block;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>{{ $kra->month }}</strong>
+                                    @if($kra->acknowledged_at)
+                                        <span class="mst-status-badge mst-status-badge--active">Acknowledged {{ $kra->acknowledged_at->format('d M Y') }}</span>
+                                    @else
+                                        <form method="POST" action="{{ route('kra.acknowledge', $kra->id) }}">
+                                            @csrf
+                                            <button type="submit" class="zoho-btn-primary btn-sm">Acknowledge</button>
+                                        </form>
+                                    @endif
+                                </div>
+                                <ul class="mb-0 mt-2">
+                                    @foreach($kra->items as $item)
+                                        <li>{{ $item->criteria_name }} — {{ number_format($item->max_point, 2) }} pts</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @empty
+                            <p class="text-muted small">No KRAs assigned yet.</p>
+                        @endforelse
+
+                        <hr class="my-4">
+                        <span class="card-label d-block mb-2">My KPIs</span>
+                        @forelse($kpiAssignments as $kpi)
+                            <div class="info-item-card mb-2" style="display:block;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>{{ $kpi->month }}</strong>
+                                    @if($kpi->overall_score !== null)
+                                        <span class="mst-meta-badge">Overall: {{ $kpi->overall_score }}%</span>
+                                    @endif
+                                    @if($kpi->acknowledged_at)
+                                        <span class="mst-status-badge mst-status-badge--active">Acknowledged {{ $kpi->acknowledged_at->format('d M Y') }}</span>
+                                    @else
+                                        <form method="POST" action="{{ route('kpi-assignments.acknowledge', $kpi->id) }}">
+                                            @csrf
+                                            <button type="submit" class="zoho-btn-primary btn-sm">Acknowledge</button>
+                                        </form>
+                                    @endif
+                                </div>
+                                <ul class="mb-0 mt-2">
+                                    @foreach($kpi->items as $item)
+                                        <li>{{ $item->title }} — Target: {{ number_format($item->target_value, 2) }} {{ $item->unit }}
+                                            @if($item->actual_value !== null)
+                                                | Actual: {{ number_format($item->actual_value, 2) }} ({{ $item->percentage }}%)
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @empty
+                            <p class="text-muted small">No KPIs assigned yet.</p>
+                        @endforelse
+
+                        <hr class="my-4">
+                        <span class="card-label d-block mb-2">SOPs</span>
+                        @forelse($sops as $sop)
+                            @php $acked = $sop->isAcknowledgedBy($user->id); @endphp
+                            <div class="info-item-card mb-2" style="display:block;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>{{ $sop->title }}</strong> <span class="mst-meta-badge">v{{ $sop->version }}</span>
+                                    @if($acked)
+                                        <span class="mst-status-badge mst-status-badge--active">Acknowledged</span>
+                                    @else
+                                        <form method="POST" action="{{ route('sops.acknowledge', $sop->id) }}">
+                                            @csrf
+                                            <button type="submit" class="zoho-btn-primary btn-sm">Acknowledge</button>
+                                        </form>
+                                    @endif
+                                </div>
+                                <div class="text-muted small mt-2">{!! $sop->content !!}</div>
+                            </div>
+                        @empty
+                            <p class="text-muted small">No SOPs apply to you yet.</p>
+                        @endforelse
                     </div>
                 </div>
             </div>

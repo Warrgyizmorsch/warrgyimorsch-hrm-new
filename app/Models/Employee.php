@@ -84,6 +84,18 @@ class Employee extends Model
     {
         return $this->hasMany(EmployeeDocument::class);
     }
+    public function letters()
+    {
+        return $this->hasMany(EmployeeLetter::class);
+    }
+    public function kraAssignments()
+    {
+        return $this->hasMany(KraAssignment::class);
+    }
+    public function kpiAssignments()
+    {
+        return $this->hasMany(KpiAssignment::class);
+    }
     public function user()
     {
         return $this->hasOne(User::class, 'employee_id');

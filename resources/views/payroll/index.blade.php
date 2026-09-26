@@ -83,16 +83,20 @@
                             <input type="hidden" id="salaryEmployeeId" name="employee_id" value="">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted mb-2">From Date</label>
-                            <input type="date" name="from_date" class="form-control">
+                            <label class="form-label small fw-bold text-muted mb-2">From Month</label>
+                            <input type="month" id="salaryFromMonth" name="from_date" class="form-control" required>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted mb-2">To Date</label>
-                            <input type="date" name="to_date" class="form-control">
+                            <label class="form-label small fw-bold text-muted mb-2">To Month</label>
+                            <input type="month" id="salaryToMonth" name="to_date" class="form-control" required>
                         </div>
                         <div class="col-md-1">
                             <button type="submit" class="zoho-btn-primary w-100"><i class="feather-send"></i></button>
                         </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="zoho-btn-outline btn-sm" onclick="fillSalaryMonthRange(3)">Last 3 Months</button>
+                        <button type="button" class="zoho-btn-outline btn-sm" onclick="fillSalaryMonthRange(6)">Last 6 Months</button>
                     </div>
                 </form>
             </div>
@@ -666,6 +670,17 @@
             });
 
         });
+
+        function fillSalaryMonthRange(monthsBack) {
+            const now = new Date();
+            const toMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            const fromDate = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1);
+            const fromMonth = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}`;
+
+            document.getElementById('salaryFromMonth').value = fromMonth;
+            document.getElementById('salaryToMonth').value = toMonth;
+        }
 
         document.getElementById("shareReportBtn").addEventListener("click", function () {
             let section = document.getElementById("salaryFormSection");
