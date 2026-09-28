@@ -23,7 +23,11 @@ class KpiController extends Controller
         $query = Kpi::with('department')->orderBy('department_id')->orderBy('sort_order');
 
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhereHas('department', fn ($d) => $d->where('name', 'like', "%{$search}%"));
+            });
         }
 
         if ($request->filled('status')) {
