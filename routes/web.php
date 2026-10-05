@@ -225,6 +225,8 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
 
     Route::get('/leave/allotment', [LeaveController::class, 'allotment'])->name('leave.allotment');
     Route::post('/leave/allotment', [LeaveController::class, 'storeAllotment'])->name('leave.storeAllotment');
+    Route::post('/leave/allotment/rules', [LeaveController::class, 'updateAllotmentRules'])->name('leave.allotmentRules');
+    Route::post('/leave/allotment/status/{employee}', [LeaveController::class, 'updateEmploymentStatus'])->name('leave.employmentStatus');
     Route::get('/leave/balance', [LeaveController::class, 'allotment'])->name('leave.balance');
     Route::get('/leave/balance/export', [LeaveController::class, 'exportBalances'])->name('leave.balance.export');
     Route::get('/api/leave/balance', [LeaveController::class, 'apiBalanceList']);

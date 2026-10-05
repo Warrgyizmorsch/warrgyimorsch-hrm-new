@@ -104,6 +104,47 @@
                         </div>
                     </div>
 
+                    @php
+                        $statusCounts = $allotmentRows->countBy('status');
+                        $newJoinerCount = $allotmentRows->where('is_new_joiner', true)->count();
+                        $ruleOptions = $employmentStatuses + [\App\Models\Employee::NEW_JOINER => 'New joiner (< 1 month)'];
+                    @endphp
+
+                    <div class="la-filter-bar">
+                        <div class="la-filter-chips" role="group" aria-label="Filter by status">
+                            <button type="button" class="la-filter-chip is-active" data-la-filter="all">All <span>{{ $allotmentRows->count() }}</span></button>
+                            @if($newJoinerCount)
+                                <button type="button" class="la-filter-chip" data-la-filter="new_joiner">New joiners <span>{{ $newJoinerCount }}</span></button>
+                            @endif
+                            @foreach($employmentStatuses as $statusKey => $statusLabel)
+                                <button type="button" class="la-filter-chip" data-la-filter="{{ $statusKey }}">{{ $statusLabel }} <span>{{ $statusCounts[$statusKey] ?? 0 }}</span></button>
+                            @endforeach
+                        </div>
+                        @if($isAdmin)
+                            <button type="button" class="la-rules-toggle" onclick="toggleAllotmentRules()" title="Choose which statuses get leave">
+                                <i class="feather-sliders"></i> Rules
+                            </button>
+                        @endif
+                    </div>
+
+                    @if($isAdmin)
+                        <div class="la-rules-box" id="laRulesBox" hidden>
+                            <p class="la-rules-hint">Allot leave (from employee master) to:</p>
+                            <div class="la-rules-options">
+                                @foreach($ruleOptions as $ruleKey => $ruleLabel)
+                                    <label class="la-rule-option">
+                                        <input type="checkbox" class="la-rule-input" value="{{ $ruleKey }}" {{ in_array($ruleKey, $eligibleStatuses, true) ? 'checked' : '' }}>
+                                        {{ $ruleLabel }}
+                                    </label>
+                                @endforeach
+                            </div>
+                            <p class="la-rules-hint mb-2">Unchecked statuses are prefilled with 0. You can still edit any count manually.</p>
+                            <button type="button" class="zoho-btn-primary btn-sm" onclick="saveAllotmentRules()">
+                                <i class="feather-check"></i> Save rules
+                            </button>
+                        </div>
+                    @endif
+
                     <div class="la-panel-body">
                         <div class="table-responsive la-desktop-table">
                             <table class="table zoho-data-table mb-0" id="employeeTable">
@@ -117,12 +158,36 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($employees as $emp)
-                                        <tr>
+                                    @foreach($allotmentRows as $row)
+                                        @php $emp = $row->employee; @endphp
+                                        <tr class="la-allot-row {{ $row->is_new_joiner ? 'la-allot-row--new' : '' }}"
+                                            data-status="{{ $row->status }}"
+                                            data-new-joiner="{{ $row->is_new_joiner ? 1 : 0 }}">
                                             <td>
                                                 <div class="la-emp-cell">
                                                     <span class="la-emp-avatar">{{ strtoupper(substr($emp->name, 0, 1)) }}</span>
-                                                    <span class="la-emp-name">{{ $emp->name }}</span>
+                                                    <div class="la-emp-meta">
+                                                        <span class="la-emp-name">{{ $emp->name }}</span>
+                                                        <div class="la-emp-tags">
+                                                            @if($row->is_new_joiner)
+                                                                <span class="la-tag la-tag--new" title="Joined {{ $row->joined_on->format('d M Y') }}">New joiner · {{ $row->joined_on->format('d M') }}</span>
+                                                            @endif
+                                                            @if($isAdmin)
+                                                                <select class="la-status-select la-status--{{ $row->status }}"
+                                                                        data-employee-id="{{ $emp->id }}"
+                                                                        onchange="changeEmploymentStatus(this)">
+                                                                    @foreach($employmentStatuses as $statusKey => $statusLabel)
+                                                                        <option value="{{ $statusKey }}" {{ $row->status === $statusKey ? 'selected' : '' }}>{{ $statusLabel }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            @else
+                                                                <span class="la-tag la-status--{{ $row->status }}">{{ $row->status_label }}</span>
+                                                            @endif
+                                                            @if(!$row->eligible && !$row->is_saved)
+                                                                <span class="la-tag la-tag--muted" title="Status not eligible under current rules">No allotment</span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td class="text-center">
@@ -131,10 +196,13 @@
                                                            step="0.5"
                                                            min="0"
                                                            class="form-control la-allot-input allotment-input"
+                                                           data-master-leave="{{ $row->master_leave + 0 }}"
+                                                           data-new-joiner="{{ $row->is_new_joiner ? 1 : 0 }}"
                                                            data-employee-id="{{ $emp->id }}"
-                                                           value="{{ $allotments[$emp->id]->leave_count ?? 1.5 }}">
+                                                           title="Employee master: {{ rtrim(rtrim(number_format($row->master_leave, 2), '0'), '.') }}"
+                                                           value="{{ $row->count + 0 }}">
                                                 @else
-                                                    <span class="la-count-readonly">{{ $allotments[$emp->id]->leave_count ?? 1.5 }}</span>
+                                                    <span class="la-count-readonly">{{ $row->count + 0 }}</span>
                                                 @endif
                                             </td>
                                             @if($isAdmin)
@@ -154,12 +222,23 @@
                         </div>
 
                         <div class="la-mobile-list">
-                            @foreach($employees as $emp)
-                                <div class="la-mobile-card">
+                            @foreach($allotmentRows as $row)
+                                @php $emp = $row->employee; @endphp
+                                <div class="la-mobile-card la-allot-row {{ $row->is_new_joiner ? 'la-allot-row--new' : '' }}"
+                                     data-status="{{ $row->status }}"
+                                     data-new-joiner="{{ $row->is_new_joiner ? 1 : 0 }}">
                                     <div class="la-mobile-card-head">
                                         <div class="la-emp-cell">
                                             <span class="la-emp-avatar">{{ strtoupper(substr($emp->name, 0, 1)) }}</span>
-                                            <span class="la-emp-name">{{ $emp->name }}</span>
+                                            <div class="la-emp-meta">
+                                                <span class="la-emp-name">{{ $emp->name }}</span>
+                                                <div class="la-emp-tags">
+                                                    @if($row->is_new_joiner)
+                                                        <span class="la-tag la-tag--new">New joiner · {{ $row->joined_on->format('d M') }}</span>
+                                                    @endif
+                                                    <span class="la-tag la-status--{{ $row->status }}">{{ $row->status_label }}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                         @if($isAdmin)
                                             <button type="button" class="zoho-icon-btn zoho-icon-btn--danger" onclick="removeRow(this)">
@@ -174,10 +253,12 @@
                                                    step="0.5"
                                                    min="0"
                                                    class="form-control la-allot-input allotment-input"
+                                                   data-master-leave="{{ $row->master_leave + 0 }}"
+                                                   data-new-joiner="{{ $row->is_new_joiner ? 1 : 0 }}"
                                                    data-employee-id="{{ $emp->id }}"
-                                                   value="{{ $allotments[$emp->id]->leave_count ?? 1.5 }}">
+                                                   value="{{ $row->count + 0 }}">
                                         @else
-                                            <span class="la-count-readonly">{{ $allotments[$emp->id]->leave_count ?? 1.5 }}</span>
+                                            <span class="la-count-readonly">{{ $row->count + 0 }}</span>
                                         @endif
                                     </div>
                                 </div>

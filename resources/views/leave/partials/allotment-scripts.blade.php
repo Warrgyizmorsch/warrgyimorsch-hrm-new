@@ -64,6 +64,127 @@
         });
     };
 
+    const rulesUrl = @json(route('leave.allotmentRules'));
+    const statusUrlTemplate = @json(route('leave.employmentStatus', ['employee' => '__ID__']));
+    let eligibleStatuses = @json($eligibleStatuses ?? []);
+    const statusLabels = @json($employmentStatuses ?? []);
+
+    function postJson(url, payload) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        }).then(function (res) {
+            return res.json().then(function (data) {
+                return { ok: res.ok, data: data };
+            });
+        });
+    }
+
+    function isEligible(status, isNewJoiner) {
+        return eligibleStatuses.includes(status)
+            && (!isNewJoiner || eligibleStatuses.includes('new_joiner'));
+    }
+
+    // Prefill an employee's count per current rules: master leave if eligible, else 0.
+    function applyRuleToEmployee(empId, status) {
+        document.querySelectorAll('.allotment-input[data-employee-id="' + empId + '"]').forEach(function (input) {
+            const eligible = isEligible(status, input.dataset.newJoiner === '1');
+            input.value = eligible ? (parseFloat(input.dataset.masterLeave) || 0) : 0;
+        });
+    }
+
+    let activeFilter = 'all';
+    function applyStatusFilter() {
+        document.querySelectorAll('.leave-allotment-page .la-allot-row').forEach(function (row) {
+            const show = activeFilter === 'all'
+                || (activeFilter === 'new_joiner' ? row.dataset.newJoiner === '1' : row.dataset.status === activeFilter);
+            row.style.display = show ? '' : 'none';
+        });
+    }
+
+    function refreshFilterCounts() {
+        const rows = document.querySelectorAll('#employeeTable .la-allot-row');
+        document.querySelectorAll('.la-filter-chip').forEach(function (chip) {
+            const key = chip.dataset.laFilter;
+            const count = Array.from(rows).filter(function (row) {
+                if (key === 'all') return true;
+                if (key === 'new_joiner') return row.dataset.newJoiner === '1';
+                return row.dataset.status === key;
+            }).length;
+            const badge = chip.querySelector('span');
+            if (badge) badge.textContent = count;
+        });
+    }
+
+    window.changeEmploymentStatus = function (select) {
+        const empId = select.dataset.employeeId;
+        const status = select.value;
+        const previous = select.closest('.la-allot-row')?.dataset.status;
+        select.disabled = true;
+
+        postJson(statusUrlTemplate.replace('__ID__', empId), { employment_status: status })
+            .then(function (result) {
+                if (!(result.ok && result.data.success)) {
+                    select.value = previous;
+                    Toast.fire({ icon: 'error', title: result.data.error || result.data.message || 'Could not update status' });
+                    return;
+                }
+                document.querySelectorAll('.la-allot-row').forEach(function (row) {
+                    if (!row.querySelector('.allotment-input[data-employee-id="' + empId + '"]')) return;
+                    row.dataset.status = status;
+                    row.querySelectorAll('.la-status-select, .la-tag[class*="la-status--"]').forEach(function (el) {
+                        el.className = el.className.replace(/la-status--\S+/, 'la-status--' + status);
+                        if (el.tagName === 'SPAN') el.textContent = statusLabels[status] || status;
+                    });
+                });
+                applyRuleToEmployee(empId, status);
+                refreshFilterCounts();
+                applyStatusFilter();
+                Toast.fire({ icon: 'success', title: 'Status updated — remember to Save Allotments' });
+            })
+            .catch(function () {
+                select.value = previous;
+                Toast.fire({ icon: 'error', title: 'Something went wrong!' });
+            })
+            .finally(function () {
+                select.disabled = false;
+            });
+    };
+
+    window.toggleAllotmentRules = function () {
+        const box = document.getElementById('laRulesBox');
+        if (box) box.hidden = !box.hidden;
+    };
+
+    window.saveAllotmentRules = function () {
+        const selected = Array.from(document.querySelectorAll('.la-rule-input:checked')).map(function (el) { return el.value; });
+
+        postJson(rulesUrl, { eligible_statuses: selected })
+            .then(function (result) {
+                if (!(result.ok && result.data.success)) {
+                    Toast.fire({ icon: 'error', title: result.data.error || result.data.message || 'Could not save rules' });
+                    return;
+                }
+                eligibleStatuses = selected;
+                // Re-prefill counts for every employee under the new rules (not yet saved).
+                document.querySelectorAll('#employeeTable .la-allot-row').forEach(function (row) {
+                    const input = row.querySelector('.allotment-input');
+                    if (input) applyRuleToEmployee(input.dataset.employeeId, row.dataset.status);
+                });
+                document.getElementById('laRulesBox').hidden = true;
+                Toast.fire({ icon: 'success', title: 'Rules saved — counts refreshed, click Save Allotments to apply' });
+            })
+            .catch(function () {
+                Toast.fire({ icon: 'error', title: 'Something went wrong!' });
+            });
+    };
+
     function collectAllotments() {
         const allotments = {};
         const isMobile = window.matchMedia('(max-width: 767.98px)').matches;
@@ -317,6 +438,16 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         initTabSwitching();
+
+        document.querySelectorAll('.la-filter-chip').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                activeFilter = chip.dataset.laFilter;
+                document.querySelectorAll('.la-filter-chip').forEach(function (c) {
+                    c.classList.toggle('is-active', c === chip);
+                });
+                applyStatusFilter();
+            });
+        });
 
         const historySearch = document.getElementById('historySearch');
         if (historySearch) {

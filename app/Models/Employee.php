@@ -45,7 +45,32 @@ class Employee extends Model
         'medical_allowance',
         'other_allowance',
         'working_mode',
+        'employment_status',
     ];
+
+    public const EMPLOYMENT_STATUSES = [
+        'working' => 'Working',
+        'probation' => 'Probation',
+        'notice_period' => 'Notice Period',
+        'pip' => 'PIP',
+    ];
+
+    // Pseudo-status for employees with under one month of service; not stored,
+    // derived from date_of_joining, but has its own allotment rule.
+    public const NEW_JOINER = 'new_joiner';
+
+    public const LEAVE_ELIGIBILITY_SETTING = 'leave_allotment.eligible_statuses';
+    public const DEFAULT_LEAVE_ELIGIBLE_STATUSES = ['working', 'pip'];
+
+    public static function leaveEligibleStatuses(): array
+    {
+        return (array) AppSetting::getValue(self::LEAVE_ELIGIBILITY_SETTING, self::DEFAULT_LEAVE_ELIGIBLE_STATUSES);
+    }
+
+    public function getEmploymentStatusLabelAttribute(): string
+    {
+        return self::EMPLOYMENT_STATUSES[$this->employment_status ?: 'working'] ?? 'Working';
+    }
 
     // Department IDs this employee has visibility/edit rights over as Team Leader
     // (their own department plus any additionally assigned ones)

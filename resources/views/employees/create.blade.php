@@ -158,6 +158,16 @@
                                     </div>
                                 </div>
                                 <div class="hrm-field">
+                                    <label>Employment Status</label>
+                                    <div class="hrm-input-wrap"><i class="bi bi-person-badge"></i>
+                                        <select name="employment_status" class="form-select">
+                                            @foreach(\App\Models\Employee::EMPLOYMENT_STATUSES as $statusKey => $statusLabel)
+                                                <option value="{{ $statusKey }}" {{ old('employment_status', 'probation') == $statusKey ? 'selected' : '' }}>{{ $statusLabel }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="hrm-field">
                                     <label>Password</label>
                                     <div class="hrm-input-wrap hrm-input-wrap--pw">
                                         <i class="bi bi-lock"></i>

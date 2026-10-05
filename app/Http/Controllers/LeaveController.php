@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppSetting;
 use App\Models\Employee;
 use App\Models\LeaveAllotment;
 // use App\Models\Attendance;
@@ -48,10 +49,19 @@ class LeaveController extends Controller
             'team_leader'
         ]);
 
-        $selectedMonthStart = Carbon::createFromDate($year, $month, 1);
+        $selectedMonthStart = Carbon::createFromDate($year, $month, 1)->startOfDay();
+        $selectedMonthEnd = $selectedMonthStart->copy()->endOfMonth();
 
         if ($isAdmin) {
-            $employees = Employee::active()->whereDate('date_of_joining', '<', $selectedMonthStart)->orderBy('name', 'asc')->get();
+            // Include employees who join during the selected month too; they are
+            // flagged as new joiners below and listed on top.
+            $employees = Employee::active()
+                ->where(function ($q) use ($selectedMonthEnd) {
+                    $q->whereNull('date_of_joining')
+                        ->orWhereDate('date_of_joining', '<=', $selectedMonthEnd);
+                })
+                ->orderBy('name', 'asc')
+                ->get();
             $allotments = LeaveAllotment::whereIn('month', $monthVariants)
                 ->where('year', $year)
                 ->get()
@@ -121,7 +131,87 @@ class LeaveController extends Controller
         $monthDate = Carbon::createFromDate((int) $year, (int) $month, 1);
         $balances = $this->calculateBalances($employees, $monthDate);
 
-        return view('leave.allotment', compact('employees', 'allotments', 'selectedMonth', 'history', 'isAdmin', 'balances', 'yearlyMatrix', 'selectedYear', 'availableYears'));
+        $eligibleStatuses = Employee::leaveEligibleStatuses();
+        $allotmentRows = $this->buildAllotmentRows($employees, $allotments, $selectedMonthStart, $eligibleStatuses);
+        $employmentStatuses = Employee::EMPLOYMENT_STATUSES;
+
+        return view('leave.allotment', compact('employees', 'allotments', 'selectedMonth', 'history', 'isAdmin', 'balances', 'yearlyMatrix', 'selectedYear', 'availableYears', 'allotmentRows', 'eligibleStatuses', 'employmentStatuses'));
+    }
+
+    /**
+     * One row per employee for the Monthly Allotment panel: status, whether they
+     * have completed a month of service, and the leave count to prefill. Employees
+     * under one month are listed first.
+     */
+    private function buildAllotmentRows($employees, $allotments, Carbon $monthStart, array $eligibleStatuses)
+    {
+        // Under one month of service as of the start of the selected month.
+        $newJoinerCutoff = $monthStart->copy()->subMonthNoOverflow();
+
+        return $employees->map(function ($emp) use ($allotments, $newJoinerCutoff, $eligibleStatuses) {
+            $status = $emp->employment_status ?: 'working';
+            $joined = $emp->date_of_joining ? Carbon::parse($emp->date_of_joining) : null;
+            $isNewJoiner = $joined && $joined->gt($newJoinerCutoff);
+
+            $eligible = in_array($status, $eligibleStatuses, true)
+                && (!$isNewJoiner || in_array(Employee::NEW_JOINER, $eligibleStatuses, true));
+
+            $saved = $allotments[$emp->id] ?? null;
+            $count = $saved ? (float) $saved->leave_count : ($eligible ? (float) $emp->leave : 0.0);
+
+            return (object) [
+                'employee' => $emp,
+                'status' => $status,
+                'status_label' => Employee::EMPLOYMENT_STATUSES[$status] ?? 'Working',
+                'is_new_joiner' => $isNewJoiner,
+                'joined_on' => $joined,
+                'eligible' => $eligible,
+                'master_leave' => (float) $emp->leave,
+                'count' => $count,
+                'is_saved' => (bool) $saved,
+            ];
+        })->sortBy(fn ($row) => [$row->is_new_joiner ? 0 : 1, strtolower($row->employee->name)])->values();
+    }
+
+    private function canManageAllotments(): bool
+    {
+        $roleId = DB::table('roles_master')
+            ->where('slug', auth()->user()->role)
+            ->value('id');
+
+        return in_array($roleId, [1, 2, 3, 4]);
+    }
+
+    public function updateEmploymentStatus(Request $request, Employee $employee)
+    {
+        if (!$this->canManageAllotments()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'employment_status' => 'required|in:' . implode(',', array_keys(Employee::EMPLOYMENT_STATUSES)),
+        ]);
+
+        $employee->update(['employment_status' => $validated['employment_status']]);
+
+        return response()->json(['success' => true, 'message' => 'Status updated']);
+    }
+
+    public function updateAllotmentRules(Request $request)
+    {
+        if (!$this->canManageAllotments()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $allowed = array_merge(array_keys(Employee::EMPLOYMENT_STATUSES), [Employee::NEW_JOINER]);
+        $validated = $request->validate([
+            'eligible_statuses' => 'present|array',
+            'eligible_statuses.*' => 'in:' . implode(',', $allowed),
+        ]);
+
+        AppSetting::setValue(Employee::LEAVE_ELIGIBILITY_SETTING, array_values(array_unique($validated['eligible_statuses'])));
+
+        return response()->json(['success' => true, 'message' => 'Allotment rules saved']);
     }
 
     public function storeAllotment(Request $request)

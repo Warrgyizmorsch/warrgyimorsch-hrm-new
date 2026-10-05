@@ -162,6 +162,7 @@ class EmployeeController extends Controller
                 'basic_salary' => 'required_without:gross_salary|nullable|numeric|min:0',
                 'gross_salary' => 'required_without:basic_salary|nullable|numeric|min:0',
                 'working_mode' => 'required|in:Office,Work from home',
+                'employment_status' => 'nullable|in:' . implode(',', array_keys(Employee::EMPLOYMENT_STATUSES)),
             ] + EmployeeDocument::validationRules(), [], EmployeeDocument::validationAttributes());
 
             return DB::transaction(function () use ($request) {
@@ -177,6 +178,7 @@ class EmployeeController extends Controller
                 $data['time_in'] = $request->time_in ?? '09:00';
                 $data['time_out'] = $request->time_out ?? '19:00';
                 $data['leave'] = $request->leave ?? 0;
+                $data['employment_status'] = $request->employment_status ?: 'probation';
 
                 // Toggles
                 $data['pf'] = $request->has('pf');
@@ -528,6 +530,7 @@ class EmployeeController extends Controller
                 'employee_code' => 'nullable|string|max:50|unique:employees,employee_code,' . $employee->id,
                 'rs9n_device_id' => 'nullable|integer|min:0|unique:employees,rs9n_device_id,' . $employee->id,
                 'working_mode' => 'required|in:Office,Work from home',
+                'employment_status' => 'nullable|in:' . implode(',', array_keys(Employee::EMPLOYMENT_STATUSES)),
                 'basic_salary' => 'nullable|numeric|min:0',
                 'gross_salary' => 'nullable|numeric|min:0',
             ] + EmployeeDocument::validationRules(), [], EmployeeDocument::validationAttributes());
@@ -568,6 +571,7 @@ class EmployeeController extends Controller
                     'medical_allowance' => $request->medical_allowance ?? 0,
                     'other_allowance' => $request->other_allowance ?? 0,
                     'working_mode' => $request->working_mode,
+                    'employment_status' => $request->employment_status ?: ($employee->employment_status ?: 'working'),
                 ];
 
                 // For departments with a configured salary structure (currently Business
