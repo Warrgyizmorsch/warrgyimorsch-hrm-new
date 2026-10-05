@@ -11,6 +11,7 @@ use App\Services\LeaveBalanceService;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 // use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 // use App\Mail\LeaveApplicationMail;
@@ -178,8 +179,9 @@ class LeaveApplicationController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        // Overlap match: include leaves that span into the range, not only ones starting in it.
         if ($request->filled('from_date')) {
-            $query->whereDate('start_date', '>=', $request->from_date);
+            $query->whereDate(DB::raw('COALESCE(end_date, start_date)'), '>=', $request->from_date);
         }
         if ($request->filled('to_date')) {
             $query->whereDate('start_date', '<=', $request->to_date);
@@ -376,8 +378,9 @@ class LeaveApplicationController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        // Overlap match: include leaves that span into the range, not only ones starting in it.
         if ($request->filled('from_date')) {
-            $query->whereDate('start_date', '>=', $request->from_date);
+            $query->whereDate(DB::raw('COALESCE(end_date, start_date)'), '>=', $request->from_date);
         }
         if ($request->filled('to_date')) {
             $query->whereDate('start_date', '<=', $request->to_date);
@@ -404,6 +407,11 @@ class LeaveApplicationController extends Controller
                 $this->shouldSkipNonWorkingDays($leave)
                 && ($date->isSunday() || in_array($date->toDateString(), $holidayDates, true))
             ) {
+                continue;
+            }
+
+            // A WFH range must not overwrite days inside it that have an approved actual leave.
+            if ($leave->isWfh() && $this->hasApprovedActualLeaveOn($leave, $date->toDateString())) {
                 continue;
             }
 
@@ -458,6 +466,36 @@ class LeaveApplicationController extends Controller
         }
     }
 
+    private function hasApprovedActualLeaveOn(LeaveApplication $leave, string $date): bool
+    {
+        $winner = LeaveApplication::where('employee_id', $leave->employee_id)
+            ->where('status', 'approved')
+            ->where('id', '!=', $leave->id)
+            ->coveringDate($date)
+            ->preferActualLeave()
+            ->first();
+
+        return $winner && !$winner->isWfh();
+    }
+
+    // After an approval is revoked and its attendance rows cleared, re-apply other
+    // approved applications overlapping that range (e.g. a WFH around a revoked leave).
+    private function reapplyOverlappingApprovedLeaves(LeaveApplication $revoked, Carbon $start, Carbon $end): void
+    {
+        LeaveApplication::where('employee_id', $revoked->employee_id)
+            ->where('status', 'approved')
+            ->where('id', '!=', $revoked->id)
+            ->whereDate('start_date', '<=', $end->toDateString())
+            ->where(function ($q) use ($start) {
+                $q->whereDate('end_date', '>=', $start->toDateString())
+                    ->orWhere(function ($q2) use ($start) {
+                        $q2->whereNull('end_date')->whereDate('start_date', '>=', $start->toDateString());
+                    });
+            })
+            ->get()
+            ->each(fn (LeaveApplication $other) => $this->applyApprovedLeaveToAttendance($other));
+    }
+
     public function updateAction(Request $request)
     {
         $request->validate([
@@ -483,6 +521,10 @@ class LeaveApplicationController extends Controller
         }
 
         $leave->update(['status' => $request->status]);
+
+        if ($oldStatus === 'approved' && $newStatus !== 'approved') {
+            $this->reapplyOverlappingApprovedLeaves($leave, $startDate, $endDate);
+        }
 
         $employee = Employee::active()->find($leave->employee_id);
 

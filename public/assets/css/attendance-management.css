@@ -1165,3 +1165,13 @@
         justify-content: center;
     }
 }
+
+/* Single-employee day-wise view: Sundays/holidays + payroll-matching summary */
+.att-emp-status--off { background: #f1f5f9; color: #475569; }
+.att-emp-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #eef1f5; }
+.att-emp-summary-chip { padding: 4px 10px; border-radius: 999px; background: #f1f5f9; color: #475569; font-size: 12px; font-weight: 600; }
+.att-emp-summary-chip--present { background: #ecfdf5; color: #047857; }
+.att-emp-summary-chip--half-day { background: #fef3c7; color: #a16207; }
+.att-emp-summary-chip--leave, .att-emp-summary-chip--absent, .att-emp-summary-chip--missing-punch { background: #fef2f2; color: #b91c1c; }
+.att-emp-summary-chip--wfh { background: #f3e8ff; color: #7e22ce; }
+.att-emp-summary-total { margin-left: auto; font-size: 13px; font-weight: 600; color: #1d4ed8; }

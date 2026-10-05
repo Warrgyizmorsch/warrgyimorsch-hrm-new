@@ -112,11 +112,6 @@ class PayrollController extends Controller
             $perPage = 20;
         }
 
-        $attendance = $query->select($select)
-            ->groupBy($groupBy)
-            ->orderBy('attendances.attendance_date', 'desc')
-            ->paginate($perPage);
-
         $empQuery = Employee::active()->orderBy('name', 'asc');
         if ($isTeamLeader) {
             $department = $user->employee->department_id ?? null;
@@ -126,7 +121,98 @@ class PayrollController extends Controller
         }
         $employees = $empQuery->get();
 
-        return view('payroll.attendance', compact('attendance', 'employees', 'perPage'));
+        // Single employee + date range: list every calendar day (Sundays and holidays
+        // included) from the same history payroll uses, so counts match the payslip.
+        $employeeSummary = null;
+        if ($request->filled('employee_id') && $request->filled('start_date') && $request->filled('end_date')) {
+            [$attendance, $employeeSummary] = $this->employeeDayWiseAttendance($request, $employees, $perPage);
+
+            return view('payroll.attendance', compact('attendance', 'employees', 'perPage', 'employeeSummary'));
+        }
+
+        $attendance = $query->select($select)
+            ->groupBy($groupBy)
+            ->orderBy('attendances.attendance_date', 'desc')
+            ->paginate($perPage);
+
+        return view('payroll.attendance', compact('attendance', 'employees', 'perPage', 'employeeSummary'));
+    }
+
+    /**
+     * @return array{0: \Illuminate\Pagination\LengthAwarePaginator, 1: array}
+     */
+    private function employeeDayWiseAttendance(Request $request, $visibleEmployees, int $perPage): array
+    {
+        $employeeId = (int) $request->employee_id;
+        $start = Carbon::parse($request->start_date)->startOfDay();
+        $end = Carbon::parse($request->end_date)->startOfDay()->min(Carbon::today());
+
+        // Team leaders only see their own department's employees.
+        $rows = collect();
+        if ($visibleEmployees->contains('id', $employeeId) && $start->lte($end)) {
+            $historyService = app(AttendanceHistoryService::class);
+            $history = $historyService->buildMonthlyHistory($employeeId, $start, $end);
+            $records = Attendance::where('employee_id', $employeeId)
+                ->whereDate('attendance_date', '>=', $start->toDateString())
+                ->whereDate('attendance_date', '<=', $end->toDateString())
+                ->get()
+                ->keyBy(fn ($a) => $a->attendance_date->format('Y-m-d'));
+
+            $rows = collect($history)->map(function ($row) use ($records, $historyService) {
+                $record = $records->get($row['date_key']);
+
+                return (object) [
+                    'attendance_date' => $row['date_key'],
+                    'status' => $row['status_key'],
+                    'status_label' => $row['status'],
+                    'check_in' => $record?->check_in,
+                    'check_out' => $record?->check_out,
+                    'total_hours' => $record?->total_hours ?? 0,
+                    'payable' => $historyService->resolvePayableFractionForHistoryRow($row),
+                    'missing_count' => $row['status_key'] === 'missing_punch' ? 1 : 0,
+                    'has_record' => (bool) $record,
+                ];
+            });
+        }
+
+        $groupFor = fn ($key) => match (true) {
+            in_array($key, ['present', 'present_activity', 'late', 'early_out', 'early_leave', 'overtime'], true) => 'Present',
+            in_array($key, ['half_day', 'half_day_leave'], true) => 'Half Day',
+            in_array($key, ['leave', 'unpaid_leave'], true) => 'Leave',
+            $key === 'wfh' => 'WFH',
+            $key === 'missing_punch' => 'Missing Punch',
+            $key === 'sunday' => 'Sunday',
+            $key === 'holiday' => 'Holiday',
+            default => 'Absent',
+        };
+
+        if ($request->filled('search')) {
+            $term = strtolower(trim($request->search));
+            $rows = $rows->filter(fn ($r) => str_contains(strtolower($r->status_label . ' ' . Carbon::parse($r->attendance_date)->format('d M Y d-m-Y')), $term))->values();
+        }
+
+        $order = ['Present', 'Half Day', 'Leave', 'Absent', 'WFH', 'Missing Punch', 'Sunday', 'Holiday'];
+        $counts = array_fill_keys($order, 0);
+        foreach ($rows as $r) {
+            $counts[$groupFor($r->status)]++;
+        }
+
+        $employeeSummary = [
+            'counts' => $counts,
+            'payable' => round($rows->sum('payable'), 2),
+            'days' => $rows->count(),
+        ];
+
+        $page = max(1, (int) $request->query('page', 1));
+        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rows->forPage($page, $perPage)->values(),
+            $rows->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return [$paginator, $employeeSummary];
     }
 
     /**
@@ -556,6 +642,7 @@ class PayrollController extends Controller
                 'perdaysalary' => round($perDaySalary, 2),
                 'pf_enabled' => (bool) $employee->pf,
                 'esi_enabled' => (bool) $employee->esi,
+                'day_breakdown' => $this->buildPayableDayBreakdown($employee, $history, $date, $leaveSummary, $historyService),
             ];
 
             // echo "<pre>";print_r($payrollData);exit;
@@ -1896,6 +1983,122 @@ class PayrollController extends Controller
         } catch (\Exception $e) {
             return 8 * 60 + 30;
         }
+    }
+
+    /**
+     * Review data for the payroll page: every day not paid as a plain full working day
+     * (half day, absent, holiday, leave, missing punch, WFH…) with the reason, plus how
+     * the month's leave was split into paid/unpaid against the balance — the same
+     * allocation adjustLeaveAttendanceAfterPayroll applies when payroll is saved.
+     */
+    private function buildPayableDayBreakdown(Employee $employee, array $history, Carbon $monthDate, array $leaveSummary, AttendanceHistoryService $historyService): array
+    {
+        $fullDay = AttendanceStatusService::FULL_DAY_HOURS;
+        $days = [];
+        $lostDays = 0.0;
+        $monthStart = $monthDate->copy()->startOfMonth();
+        $monthEnd = $monthDate->copy()->endOfMonth();
+
+        // Paid/unpaid split of this month's leave dates against the balance, in date order.
+        $paidRemaining = (float) ($leaveSummary['paid_leave_days'] ?? 0);
+        $leaveAllocation = [];
+        $leaveByDate = [];
+        foreach ($this->leaveBalanceService->getDeductibleLeaveDatesBetween($employee, $monthStart, $monthEnd) as $leaveDate => $leaveDays) {
+            $paid = min($paidRemaining, (float) $leaveDays);
+            $paidRemaining -= $paid;
+            $leaveByDate[$leaveDate] = ['days' => (float) $leaveDays, 'paid' => round($paid, 2), 'unpaid' => round((float) $leaveDays - $paid, 2)];
+            $leaveAllocation[] = ['date' => Carbon::parse($leaveDate)->format('d M (D)')] + $leaveByDate[$leaveDate];
+        }
+
+        foreach (array_reverse($history) as $row) {
+            $key = strtolower($row['status_key'] ?? '');
+            $fraction = $historyService->resolvePayableFractionForHistoryRow($row);
+            $date = Carbon::parse($row['date_key']);
+            $hours = (float) ($row['total_hours_decimal'] ?? 0);
+            $satCredit = $date->isSaturday() && $hours > 0 ? AttendanceStatusService::SATURDAY_CREDIT_HOURS : 0.0;
+
+            $isNotable = $fraction < 1
+                || in_array($key, ['missing_punch', 'wfh', 'early_leave', 'present_activity', 'late'], true);
+            if (!$isNotable || $key === 'sunday') {
+                continue;
+            }
+
+            if (!empty($row['excluded_from_payable'])) {
+                $reason = 'Not counted (future date or after last working day)';
+            } else {
+                $reason = match ($key) {
+                    'half_day' => sprintf(
+                        'Worked %sh%s — below %sh full day',
+                        number_format($hours, 2),
+                        $satCredit ? ' + ' . rtrim(rtrim(number_format($satCredit, 1), '0'), '.') . 'h Saturday credit' : '',
+                        rtrim(rtrim(number_format($fullDay, 1), '0'), '.')
+                    ),
+                    'absent' => $hours > 0
+                        ? sprintf('Worked only %sh — below half-day minimum', number_format($hours, 2))
+                        : 'No punches and no approved leave',
+                    'holiday' => 'Official holiday — paid',
+                    'leave' => 'Full-day leave',
+                    'half_day_leave' => 'Half-day leave — 0.5 paid as attendance, other half from leave balance',
+                    'unpaid_leave' => 'Marked unpaid leave',
+                    'unauthorised' => 'Unauthorised absence',
+                    'missing_punch' => 'Only one punch recorded — currently paid as full day',
+                    'wfh' => 'Approved work from home — paid as full day',
+                    'early_leave' => 'Gatepass / early leave — paid as full day',
+                    'late' => 'Late arrival — paid as full day',
+                    'present_activity' => 'Activity day — paid as full day',
+                    default => 'Not counted as a payable day',
+                };
+            }
+
+            if ($leave = $leaveByDate[$row['date_key']] ?? null) {
+                $reason .= sprintf(
+                    ' · %s day leave applied: %s paid from balance%s',
+                    rtrim(rtrim(number_format($leave['days'], 1), '0'), '.'),
+                    rtrim(rtrim(number_format($leave['paid'], 1), '0'), '.'),
+                    $leave['unpaid'] > 0 ? ', ' . rtrim(rtrim(number_format($leave['unpaid'], 1), '0'), '.') . ' unpaid (balance exhausted)' : ''
+                );
+            }
+
+            $lostDays += max(0, 1 - $fraction);
+
+            $days[] = [
+                'date' => $date->format('d M (D)'),
+                'status' => $row['status'] ?? '',
+                'status_key' => $key,
+                'punch_in' => $row['punch_in'] ?? '--:--',
+                'punch_out' => $row['punch_out'] ?? '--:--',
+                'hours' => $hours > 0 ? round($hours, 2) : null,
+                'paid' => $fraction,
+                'reason' => $reason,
+            ];
+        }
+
+        // Leave applications touching this month (any status, for context).
+        $applications = LeaveApplication::where('employee_id', $employee->id)
+            ->whereDate('start_date', '<=', $monthEnd->toDateString())
+            ->whereDate(DB::raw('COALESCE(end_date, start_date)'), '>=', $monthStart->toDateString())
+            ->orderBy('start_date')
+            ->get()
+            ->map(fn ($l) => [
+                'dates' => $l->start_date->format('d M') . ($l->end_date && !$l->end_date->eq($l->start_date) ? ' – ' . $l->end_date->format('d M') : ''),
+                'category' => $l->leave_category,
+                'type' => $l->leave_type,
+                'days' => (float) $l->total_days,
+                'status' => $l->status,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'days' => $days,
+            'attendance_days_lost' => round($lostDays, 2),
+            'leave_applications' => $applications,
+            'leave_allocation' => $leaveAllocation,
+            'leave_balance' => round((float) ($leaveSummary['available_balance'] ?? 0), 2),
+            'leave_taken' => round((float) ($leaveSummary['current_month_leave_days'] ?? 0), 2),
+            'leave_paid' => round((float) ($leaveSummary['paid_leave_days'] ?? 0), 2),
+            'leave_unpaid' => round((float) ($leaveSummary['unpaid_leave_days'] ?? 0), 2),
+        ];
     }
 
     private function getPayrollLeaveSummary(Employee $employee, Carbon $monthDate): array

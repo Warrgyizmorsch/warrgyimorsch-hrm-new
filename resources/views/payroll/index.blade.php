@@ -239,6 +239,7 @@
 
                                 <div id="overtime_box" class="mt-3" style="display:none;"></div>
                                 <div id="payrollBreakdownBox" class="small text-muted mt-2" style="display:none;"></div>
+                                <div id="payDayBreakdown" class="pay-day-breakdown mt-3" style="display:none;"></div>
                             </div>
                         </div>
 
@@ -1370,7 +1371,92 @@
             }
         }
 
+        renderPayDayBreakdown(p);
         recalculate();
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    // Review panel: why each non-full day was paid the way it was, and how leave hit the balance.
+    function renderPayDayBreakdown(p) {
+        const box = document.getElementById('payDayBreakdown');
+        const b = p.day_breakdown;
+        if (!box || !b) { if (box) box.style.display = 'none'; return; }
+
+        const fmt = n => Number(n || 0).toFixed(2).replace(/\.?0+$/, '') || '0';
+        const toneFor = (d) => d.paid >= 1 ? 'info' : (d.paid > 0 ? 'warn' : 'loss');
+
+        const dayRows = b.days.length ? b.days.map(d => `
+            <tr class="pdb-row pdb-row--${toneFor(d)}">
+                <td class="text-nowrap">${escapeHtml(d.date)}</td>
+                <td><span class="pdb-status pdb-status--${toneFor(d)}">${escapeHtml(d.status)}</span></td>
+                <td class="text-nowrap">${escapeHtml(d.punch_in)} – ${escapeHtml(d.punch_out)}</td>
+                <td class="text-end">${d.hours !== null ? fmt(d.hours) + 'h' : '—'}</td>
+                <td class="text-end fw-semibold">${fmt(d.paid)}</td>
+                <td class="small">${escapeHtml(d.reason)}</td>
+            </tr>`).join('') : `<tr><td colspan="6" class="text-center text-muted py-3">Every working day was a full paid day.</td></tr>`;
+
+        const leaveRows = b.leave_applications.length ? b.leave_applications.map(l => `
+            <tr>
+                <td class="text-nowrap">${escapeHtml(l.dates)}</td>
+                <td>${escapeHtml(l.category)}</td>
+                <td>${escapeHtml(l.type || '')}</td>
+                <td class="text-end">${fmt(l.days)}</td>
+                <td><span class="pdb-leave-status pdb-leave-status--${escapeHtml(String(l.status).toLowerCase())}">${escapeHtml(l.status)}</span></td>
+            </tr>`).join('') : `<tr><td colspan="5" class="text-center text-muted py-3">No leave applications this month.</td></tr>`;
+
+        const allocation = b.leave_allocation.length
+            ? b.leave_allocation.map(a => `<span class="pdb-chip ${a.unpaid > 0 ? 'pdb-chip--loss' : ''}">${escapeHtml(a.date)}: ${fmt(a.days)}d → ${fmt(a.paid)} paid${a.unpaid > 0 ? ', ' + fmt(a.unpaid) + ' unpaid' : ''}</span>`).join('')
+            : '<span class="text-muted">No deductible leave this month.</span>';
+
+        const totalDays = Number(p.total_days || 0);
+        const payable = Number(p.payable_days || 0);
+
+        box.innerHTML = `
+            <div class="pdb-card">
+                <div class="pdb-head">
+                    <div>
+                        <h6 class="mb-0">Payable Days Breakdown</h6>
+                        <small class="text-muted">Review before submitting / locking payroll</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-light" onclick="this.closest('.pdb-card').classList.toggle('is-collapsed')">Show / hide</button>
+                </div>
+                <div class="pdb-body">
+                    <div class="pdb-summary">
+                        <span>${fmt(totalDays)} calendar days</span>
+                        <span class="pdb-minus">− ${fmt(b.attendance_days_lost)} not paid by attendance</span>
+                        <span class="pdb-plus">+ ${fmt(b.leave_paid)} paid leave</span>
+                        <span class="pdb-eq">= ${fmt(payable)} payable</span>
+                        <span class="pdb-minus">(${fmt(Math.max(0, totalDays - payable))} unpaid)</span>
+                    </div>
+
+                    <div class="pdb-section-title">Days not paid as a regular full day</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0 pdb-table">
+                            <thead><tr><th>Date</th><th>Marked as</th><th>Punch</th><th class="text-end">Hours</th><th class="text-end">Paid</th><th>Reason</th></tr></thead>
+                            <tbody>${dayRows}</tbody>
+                        </table>
+                    </div>
+
+                    <div class="pdb-section-title">Leave</div>
+                    <div class="pdb-leave-stats">
+                        <span>Balance before month: <strong>${fmt(b.leave_balance)}</strong></span>
+                        <span>Taken (deductible): <strong>${fmt(b.leave_taken)}</strong></span>
+                        <span>Paid: <strong class="text-success">${fmt(b.leave_paid)}</strong></span>
+                        <span>Unpaid: <strong class="text-danger">${fmt(b.leave_unpaid)}</strong></span>
+                    </div>
+                    <div class="pdb-chips">${allocation}</div>
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm align-middle mb-0 pdb-table">
+                            <thead><tr><th>Dates</th><th>Category</th><th>Type</th><th class="text-end">Days</th><th>Status</th></tr></thead>
+                            <tbody>${leaveRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+        box.style.display = 'block';
     }
 
     function savePayroll(btn) {
@@ -1380,8 +1466,9 @@
         const payrollId = document.getElementById('payrollIdForUpdate').value;
         const isEditMode = document.getElementById('isEditMode').value === 'true';
         
+        const { day_breakdown, ...payrollFields } = currentPayrollData;
         const payloadData = {
-            ...currentPayrollData,
+            ...payrollFields,
             basic_salary: document.getElementById('inputBasic').value,
             hra: document.getElementById('inputHRA').value,
             conveyance_allowance: document.getElementById('inputConveyance').value,

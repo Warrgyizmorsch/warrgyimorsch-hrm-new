@@ -31,6 +31,44 @@
 
         <div class="lh-filter-card">
             <form action="{{ route('leave.history') }}" method="GET" class="lh-filter-grid">
+                @php
+                    $quickRanges = [
+                        '' => 'All Time',
+                        'today' => 'Today',
+                        'yesterday' => 'Yesterday',
+                        'week' => 'This Week',
+                        'month' => 'This Month',
+                        'lastMonth' => 'Last Month',
+                        '3months' => 'Last 3 Months',
+                        '6months' => 'Last 6 Months',
+                        '1year' => 'Last 1 Year',
+                        'custom' => 'Custom Date',
+                    ];
+                    $selectedRange = array_key_exists((string) request('range'), $quickRanges) ? (string) request('range') : '';
+                    if ($selectedRange === '' && (request('from_date') || request('to_date'))) {
+                        $selectedRange = 'custom';
+                    }
+                @endphp
+                <div class="lh-filter-field">
+                    <label>Quick Range</label>
+                    <div class="wghrm-search-dropdown" id="filterRangeDropdown">
+                        <div class="wghrm-dropdown-trigger">
+                            <span class="wghrm-trigger-text">{{ $quickRanges[$selectedRange] }}</span>
+                            <i data-feather="chevron-down"></i>
+                        </div>
+                        <div class="wghrm-dropdown-menu">
+                            <div class="wghrm-items-list">
+                                @foreach($quickRanges as $rangeValue => $rangeLabel)
+                                    <div class="wghrm-item {{ $selectedRange === (string) $rangeValue ? 'selected' : '' }}" data-value="{{ $rangeValue }}" data-text="{{ $rangeLabel }}">
+                                        <span class="wghrm-item-text">{{ $rangeLabel }}</span>
+                                        <i data-feather="check" class="wghrm-item-check"></i>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        <input type="hidden" name="range" id="leaveQuickRange" value="{{ $selectedRange }}">
+                    </div>
+                </div>
                 <div class="lh-filter-field">
                     <label>Search Employee</label>
                     <div class="wghrm-search-dropdown" id="filterEmployeeDropdown">
@@ -115,11 +153,11 @@
                 </div>
                 <div class="lh-filter-field">
                     <label>From</label>
-                    <input type="date" name="from_date" class="form-control lh-filter-input" value="{{ request('from_date') }}">
+                    <input type="date" name="from_date" id="leaveFromDate" class="form-control lh-filter-input" value="{{ request('from_date') }}">
                 </div>
                 <div class="lh-filter-field">
                     <label>Upto</label>
-                    <input type="date" name="to_date" class="form-control lh-filter-input" value="{{ request('to_date') }}">
+                    <input type="date" name="to_date" id="leaveToDate" class="form-control lh-filter-input" value="{{ request('to_date') }}">
                 </div>
                 <div class="lh-filter-field lh-filter-actions">
                     <button type="submit" class="zoho-btn-primary">Search</button>
@@ -265,3 +303,53 @@
                 </div>
             @endif
         </div>
+
+@push('scripts')
+<script>
+(function () {
+    const rangeInput = document.getElementById('leaveQuickRange');
+    const fromInput = document.getElementById('leaveFromDate');
+    const toInput = document.getElementById('leaveToDate');
+    if (!rangeInput || !fromInput || !toInput) return;
+
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    // Leave can be applied for future dates, so month/week ranges run to the end of the
+    // current period rather than stopping at today.
+    function rangeDates(range) {
+        const t = new Date();
+        const y = t.getFullYear(), m = t.getMonth(), d = t.getDate();
+        switch (range) {
+            case 'today': return [t, t];
+            case 'yesterday': { const x = new Date(y, m, d - 1); return [x, x]; }
+            case 'week': return [new Date(y, m, d - t.getDay()), new Date(y, m, d - t.getDay() + 6)];
+            case 'month': return [new Date(y, m, 1), new Date(y, m + 1, 0)];
+            case 'lastMonth': return [new Date(y, m - 1, 1), new Date(y, m, 0)];
+            case '3months': return [new Date(y, m - 2, 1), new Date(y, m + 1, 0)];
+            case '6months': return [new Date(y, m - 5, 1), new Date(y, m + 1, 0)];
+            case '1year': return [new Date(y, m - 11, 1), new Date(y, m + 1, 0)];
+            case '': return ['', ''];
+            default: return null; // custom: keep whatever dates are entered
+        }
+    }
+
+    rangeInput.addEventListener('change', function () {
+        const dates = rangeDates(rangeInput.value);
+        if (!dates) return;
+        fromInput.value = dates[0] ? fmt(dates[0]) : '';
+        toInput.value = dates[1] ? fmt(dates[1]) : '';
+    });
+
+    // Editing a date by hand switches the range to Custom Date.
+    [fromInput, toInput].forEach(function (el) {
+        el.addEventListener('change', function () {
+            if (rangeInput.value === 'custom') return;
+            rangeInput.value = 'custom';
+            const dropdown = document.getElementById('filterRangeDropdown');
+            dropdown?.querySelector('.wghrm-trigger-text') && (dropdown.querySelector('.wghrm-trigger-text').textContent = 'Custom Date');
+            dropdown?.querySelectorAll('.wghrm-item').forEach(i => i.classList.toggle('selected', i.dataset.value === 'custom'));
+        });
+    });
+})();
+</script>
+@endpush

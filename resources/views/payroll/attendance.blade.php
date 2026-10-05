@@ -158,6 +158,14 @@
 
             <div class="zoho-people-table-card">
                 <div id="attendanceTableContainer">
+                    @if(!empty($employeeSummary))
+                        <div class="att-emp-summary">
+                            @foreach($employeeSummary['counts'] as $summaryLabel => $summaryCount)
+                                <span class="att-emp-summary-chip att-emp-summary-chip--{{ \Illuminate\Support\Str::slug($summaryLabel) }}">{{ $summaryLabel }} <strong>{{ $summaryCount }}</strong></span>
+                            @endforeach
+                            <span class="att-emp-summary-total" title="Paid leave from the leave balance is added on top of this in payroll">{{ $employeeSummary['days'] }} days · Attendance payable <strong>{{ rtrim(rtrim(number_format($employeeSummary['payable'], 2), '0'), '.') }}</strong></span>
+                        </div>
+                    @endif
                     <div class="d-none d-lg-block">
                         <div class="zoho-people-table-toolbar">
                             <div class="zoho-people-table-search">
@@ -206,11 +214,12 @@
                                                                 'half_day' => 'att-emp-status--half_day',
                                                                 'wfh' => 'att-emp-status--wfh',
                                                                 'overtime' => 'att-emp-status--overtime',
+                                                                'sunday', 'holiday' => 'att-emp-status--off',
                                                                 default => 'att-emp-status--default',
                                                             };
                                                         @endphp
                                                         <div class="att-emp-day">
-                                                            <span class="att-emp-status {{ $empStatusClass }}">{{ str_replace('_', ' ', $att->status) }}</span>
+                                                            <span class="att-emp-status {{ $empStatusClass }}">{{ $att->status_label ?? str_replace('_', ' ', $att->status) }}</span>
                                                             <div class="att-time-stat">
                                                                 <div class="att-time-stat-label">Check In</div>
                                                                 <div class="att-time-stat-value">{{ $att->check_in ? date('h:i A', strtotime($att->check_in)) : '--' }}</div>
@@ -223,6 +232,12 @@
                                                                 <div class="att-time-stat-label">Work Hours</div>
                                                                 <div class="att-time-stat-value att-time-stat-value--primary">{{ \App\Models\Attendance::formatTotalHours($att->total_hours) }}</div>
                                                             </div>
+                                                            @isset($att->payable)
+                                                                <div class="att-time-stat">
+                                                                    <div class="att-time-stat-label">Payable</div>
+                                                                    <div class="att-time-stat-value">{{ rtrim(rtrim(number_format($att->payable, 1), '0'), '.') }}</div>
+                                                                </div>
+                                                            @endisset
                                                         </div>
                                                     @else
                                                         <div class="att-stat-chips">
@@ -325,7 +340,7 @@
                                                     ][$att->status] ?? 'bg-soft-secondary text-secondary';
                                                 @endphp
                                                 <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded" style="background: #f8fafc;">
-                                                    <span class="badge {{ $statusClass }} fw-bold text-uppercase px-2 py-1" style="font-size: 10px;">{{ str_replace('_', ' ', $att->status) }}</span>
+                                                    <span class="badge {{ $statusClass }} fw-bold text-uppercase px-2 py-1" style="font-size: 10px;">{{ $att->status_label ?? str_replace('_', ' ', $att->status) }}</span>
                                                     <div class="fw-bold text-primary">{{ \App\Models\Attendance::formatTotalHours($att->total_hours) }}</div>
                                                 </div>
                                                 <div class="d-flex gap-2">

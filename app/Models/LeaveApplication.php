@@ -34,4 +34,31 @@ class LeaveApplication extends Model
     {
         return $this->belongsTo(Employee::class);
     }
+
+    public function isWfh(): bool
+    {
+        return str_contains(strtolower($this->leave_category ?? ''), 'wfh')
+            || str_contains(strtolower($this->leave_type ?? ''), 'wfh');
+    }
+
+    // Applications whose range covers $date (single-day ones may have a null end_date).
+    public function scopeCoveringDate($query, string $date)
+    {
+        return $query->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereDate('end_date', '>=', $date)
+                    ->orWhere(function ($q2) use ($date) {
+                        $q2->whereNull('end_date')->whereDate('start_date', $date);
+                    });
+            });
+    }
+
+    // When a long WFH range overlaps an actual leave, the leave wins for that day —
+    // order real leaves first so ->first() picks them over WFH.
+    public function scopePreferActualLeave($query)
+    {
+        return $query->orderByRaw(
+            "CASE WHEN LOWER(COALESCE(leave_category, '')) LIKE '%wfh%' OR LOWER(COALESCE(leave_type, '')) LIKE '%wfh%' THEN 1 ELSE 0 END"
+        )->orderByDesc('id');
+    }
 }

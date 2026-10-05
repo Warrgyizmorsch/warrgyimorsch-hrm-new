@@ -62,6 +62,10 @@ class AttendanceHistoryService
 
                 $resolved = $record->resolvePayrollDisplayStatus($isHoliday, $isActivityDay, $isSunday);
 
+                if ($resolved['key'] === 'holiday' && ($title = $holidayMap->get($dayStr)?->title)) {
+                    $resolved['label'] = 'Holiday (' . $title . ')';
+                }
+
                 $history[] = [
                     'date' => $date->format('d M, Y (D)'),
                     'date_key' => $dayStr,
@@ -320,7 +324,8 @@ class AttendanceHistoryService
         $key = strtolower($row['status_key'] ?? '');
 
         return match (true) {
-            in_array($key, ['present', 'present_activity', 'late', 'wfh', 'missing_punch', 'early_out', 'early_leave', 'sunday'], true) => 1.0,
+            // Official holidays (holiday master) are paid, like Sundays.
+            in_array($key, ['present', 'present_activity', 'late', 'wfh', 'missing_punch', 'early_out', 'early_leave', 'sunday', 'holiday'], true) => 1.0,
             in_array($key, ['half_day', 'half_day_leave'], true) => 0.5,
             default => 0.0,
         };

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Attendance;
 use App\Models\Employee;
+use App\Models\Holiday;
 use App\Models\LeaveApplication;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -441,6 +442,10 @@ class AttendanceService
         }
 
         $employees = Employee::active()->get();
+        $holidayDates = Holiday::whereIn(DB::raw('DATE(date)'), $allDates)
+            ->pluck('date')
+            ->map(fn ($d) => Carbon::parse($d)->toDateString())
+            ->all();
 
         foreach ($employees as $employee) {
             foreach ($allDates as $date) {
@@ -458,17 +463,15 @@ class AttendanceService
                     continue;
                 }
 
-                $leaveApplication = LeaveApplication::where('employee_id', $employee->id)
-                    ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
-                    ->whereDate('start_date', '<=', $date)
-                    ->where(function ($query) use ($date) {
-                        $query->whereDate('end_date', '>=', $date)
-                            ->orWhere(function ($q) use ($date) {
-                                $q->whereNull('end_date')
-                                    ->whereDate('start_date', $date);
-                            });
-                    })
-                    ->first();
+                // A holiday-master date stays a holiday: a WFH/leave range spanning it
+                // must not stamp it (an 'absent' row on a holiday displays as Holiday).
+                $leaveApplication = in_array($carbonDate->toDateString(), $holidayDates, true)
+                    ? null
+                    : LeaveApplication::where('employee_id', $employee->id)
+                        ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
+                        ->coveringDate($date)
+                        ->preferActualLeave()
+                        ->first();
 
                 $status = 'absent';
                 $totalHours = 0;
@@ -518,13 +521,8 @@ class AttendanceService
     {
         return LeaveApplication::where('employee_id', $employeeId)
             ->where('status', 'approved')
-            ->whereDate('start_date', '<=', $date)
-            ->where(function ($query) use ($date) {
-                $query->whereDate('end_date', '>=', $date)
-                    ->orWhere(function ($q) use ($date) {
-                        $q->whereNull('end_date')->whereDate('start_date', $date);
-                    });
-            })
+            ->coveringDate($date)
+            ->preferActualLeave()
             ->first();
     }
 

@@ -191,7 +191,9 @@ class AttendanceStatusService
         $hasPunches = $record->getRawPunchTime('check_in') && $record->getRawPunchTime('check_out');
         $fullDayHours = self::fullDayHoursForRecord($record);
 
-        if ($isHoliday && $status === 'absent') {
+        // A holiday-master date reads as Holiday unless the employee actually punched —
+        // a WFH/leave range spanning the holiday doesn't turn it into a WFH/leave day.
+        if ($isHoliday && !$hasPunches && in_array($status, ['absent', 'wfh', 'leave', ''], true)) {
             return self::result('Holiday', 'holiday', false);
         }
 

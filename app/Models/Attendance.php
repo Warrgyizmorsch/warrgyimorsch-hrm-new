@@ -231,7 +231,8 @@ class Attendance extends Model
     {
         $status = strtolower($this->status ?? '');
 
-        if ($isHoliday && $status === 'absent') {
+        $hasPunches = $this->getRawPunchTime('check_in') && $this->getRawPunchTime('check_out');
+        if ($isHoliday && !$hasPunches && in_array($status, ['absent', 'wfh', 'leave', ''], true)) {
             return 'Holiday';
         }
 
