@@ -53,6 +53,7 @@ class Employee extends Model
         'probation' => 'Probation',
         'notice_period' => 'Notice Period',
         'pip' => 'PIP',
+        'internship' => 'Internship',
     ];
 
     // Pseudo-status for employees with under one month of service; not stored,

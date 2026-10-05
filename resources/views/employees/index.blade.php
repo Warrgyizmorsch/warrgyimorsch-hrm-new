@@ -259,15 +259,16 @@
                                             @if($isInactive)
                                                 <span class="employee-inactive-label">Deactivated</span>
                                             @endif
-                                            <select class="form-select account-status {{ $isInactive ? 'account-status--inactive' : '' }}" data-user-id="{{ $emp->user->id ?? $emp->id }}">
-                                                <option value="active"
-                                                    {{ ($emp->user->account_status ?? 'active') == 'active' ? 'selected' : '' }}>
-                                                    Active
-                                                </option>
-                                                <option value="inactive"
-                                                    {{ ($emp->user->account_status ?? 'active') == 'inactive' ? 'selected' : '' }}>
-                                                    Inactive
-                                                </option>
+                                            {{-- One box: employment status while active, or Inactive (left) --}}
+                                            @php $empStatus = $isInactive ? 'inactive' : ($emp->employment_status ?: 'working'); @endphp
+                                            <select class="form-select employee-status employment-status--{{ $empStatus }} {{ $isInactive ? 'account-status--inactive' : '' }}"
+                                                    data-user-id="{{ $emp->user->id ?? $emp->id }}"
+                                                    data-employee-id="{{ $emp->id }}"
+                                                    data-previous="{{ $empStatus }}" title="Status">
+                                                @foreach(\App\Models\Employee::EMPLOYMENT_STATUSES as $statusKey => $statusLabel)
+                                                    <option value="{{ $statusKey }}" {{ $empStatus === $statusKey ? 'selected' : '' }}>{{ $statusLabel }}</option>
+                                                @endforeach
+                                                <option value="inactive" {{ $isInactive ? 'selected' : '' }}>Inactive (Left)</option>
                                             </select>
                                         </td>
                                     </tr>
@@ -319,6 +320,10 @@
                                     <div class="detail-item detail-item--full">
                                         <span class="detail-label">Benefits</span>
                                         @include('employees.partials.list-benefit-badges', ['employee' => $emp])
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Status</span>
+                                        <span class="employment-status-badge employment-status--{{ $emp->employment_status ?: 'working' }}">{{ $emp->employment_status_label }}</span>
                                     </div>
                                     @if($isInactive)
                                         <div class="detail-item detail-item--full">
@@ -879,6 +884,16 @@
                 border-color: #fecaca !important;
                 background: #fff5f5 !important;
             }
+
+            /* Employment status (Working / Probation / Notice Period / PIP / Internship) */
+            .employee-status { font-weight: 600; font-size: 12px !important; }
+            .employee-status.employment-status--inactive { color: #b91c1c !important; }
+            .employment-status-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+            .employment-status--working { background-color: #ecfdf5 !important; color: #047857 !important; }
+            .employment-status--probation { background-color: #eff6ff !important; color: #1d4ed8 !important; }
+            .employment-status--notice_period { background-color: #fef2f2 !important; color: #b91c1c !important; }
+            .employment-status--pip { background-color: #fefce8 !important; color: #a16207 !important; }
+            .employment-status--internship { background-color: #f5f3ff !important; color: #6d28d9 !important; }
 
             .detail-item--full {
                 grid-column: 1 / -1;
@@ -2237,10 +2252,28 @@
                 });
             }
 
-            $(document).on('change', '.account-status', function () {
+            function saveEmploymentStatus(select, status) {
+                return fetch(@json(route('leave.employmentStatus', ['employee' => '__ID__'])).replace('__ID__', select.dataset.employeeId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': @json(csrf_token()),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ employment_status: status })
+                })
+                    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                    .then(({ ok, data }) => {
+                        if (!(ok && data.success)) throw new Error(data.error || data.message || 'Could not update status');
+                    });
+            }
+
+            // Single Status box: Working / Probation / Notice Period / PIP / Internship, or Inactive (Left).
+            $(document).on('change', '.employee-status', function () {
                 const select = this;
-                const status = $(select).val();
-                const previousStatus = status === 'inactive' ? 'active' : 'inactive';
+                const status = select.value;
+                const previous = select.dataset.previous;
 
                 if (status === 'inactive') {
                     Swal.fire({
@@ -2265,12 +2298,29 @@
                         if (result.isConfirmed) {
                             submitAccountStatus(select, 'inactive', result.value);
                         } else {
-                            $(select).val(previousStatus);
+                            select.value = previous;
                         }
                     });
-                } else {
-                    submitAccountStatus(select, 'active', null);
+                    return;
                 }
+
+                select.disabled = true;
+                saveEmploymentStatus(select, status)
+                    .then(() => {
+                        if (previous === 'inactive') {
+                            // Re-activating: reactivate the account too (reloads the list).
+                            submitAccountStatus(select, 'active', null);
+                            return;
+                        }
+                        select.className = select.className.replace(/employment-status--\S+/, 'employment-status--' + status);
+                        select.dataset.previous = status;
+                        Toast.fire({ icon: 'success', title: 'Status updated' });
+                    })
+                    .catch(err => {
+                        select.value = previous;
+                        Toast.fire({ icon: 'error', title: err.message || 'Something went wrong!' });
+                    })
+                    .finally(() => { select.disabled = false; });
             });
 
             // Filter drawer: search filter fields
