@@ -1442,17 +1442,31 @@ class PayrollController extends Controller
         $employeeId = $request->integer('employee_id') ?: null;
 
         // A single employee gets every day of the month (late, on time, leave, absent…).
-        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null, (bool) $employeeId)
+        $sheet = $this->buildMonthlySheet($lateArrivals, $from, $to, $employeeId, (bool) $employeeId);
+        $employees = Employee::orderBy('name')->get(['id', 'name', 'employee_code']);
+
+        return view('payroll.attendance-late', compact('sheet', 'employees', 'month', 'from', 'to', 'employeeId'));
+    }
+
+    /**
+     * One payroll sheet row per employee: the same status counts + payable days the
+     * Employee Wise list and payroll use, merged with the late-arrival figures. Shared by
+     * the Monthly Attendance page and its CSV exports.
+     */
+    private function buildMonthlySheet(LateArrivalService $lateArrivals, Carbon $from, Carbon $to, ?int $employeeId, bool $everyDay): \Illuminate\Support\Collection
+    {
+        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null, $everyDay)
             ->keyBy(fn (array $row) => $row['employee']->id);
 
         $sheetEmployees = $employeeId
             ? Employee::whereKey($employeeId)->get()
             : Employee::active()->orderBy('name')->get();
 
-        // One payroll sheet row per employee: the same status counts + payable days the
-        // Employee Wise list and payroll use, merged with the late-arrival figures.
-        $sheet = $sheetEmployees->map(function (Employee $employee) use ($report, $from, $to) {
-            $payroll = $this->monthlyPayrollFigures($employee, $from, $to);
+        // One shared instance so company-wide lookups (activity days) are computed once, not per employee.
+        $historyService = app(AttendanceHistoryService::class);
+
+        return $sheetEmployees->map(function (Employee $employee) use ($report, $from, $to, $historyService) {
+            $payroll = $this->monthlyPayrollFigures($employee, $from, $to, $historyService);
             $late = $report->get($employee->id);
 
             if ($late && $late['days'] instanceof \Illuminate\Support\Collection) {
@@ -1465,10 +1479,6 @@ class PayrollController extends Controller
 
             return ['employee' => $employee, 'payroll' => $payroll['counts'], 'late' => $late];
         })->values();
-
-        $employees = Employee::orderBy('name')->get(['id', 'name', 'employee_code']);
-
-        return view('payroll.attendance-late', compact('sheet', 'employees', 'month', 'from', 'to', 'employeeId'));
     }
 
     /**
@@ -1477,30 +1487,30 @@ class PayrollController extends Controller
      *
      * @return array{counts: array, days: array<string, array{status: string, payable: float}>}
      */
-    private function monthlyPayrollFigures(Employee $employee, Carbon $from, Carbon $to): array
+    private function monthlyPayrollFigures(Employee $employee, Carbon $from, Carbon $to, AttendanceHistoryService $historyService): array
     {
-        $historyService = app(AttendanceHistoryService::class);
         $history = $historyService->buildMonthlyHistory($employee->id, $from, $to);
         $includePaidLeave = $historyService->shouldIncludePaidLeaveForRange($from, $to);
         $paidLeaveDays = $includePaidLeave
             ? (float) ($this->getPayrollLeaveSummary($employee, $from->copy()->startOfMonth())['paid_leave_days'] ?? 0)
             : 0.0;
 
+        // Same sum as calculateAttendancePayableDays(), without rebuilding the history twice.
+        $days = [];
+        $attendancePayable = 0.0;
+        foreach ($history as $row) {
+            $payable = $historyService->resolvePayableFractionForHistoryRow($row);
+            $attendancePayable += $payable;
+            $days[$row['date_key']] = ['status' => $row['status'], 'payable' => $payable];
+        }
+
         $counts = $historyService->summaryToListCounts(
             $historyService->buildMonthlySummary($history),
-            $historyService->calculateAttendancePayableDays($employee->id, $from, $to),
+            round($attendancePayable, 2),
             $paidLeaveDays,
             $historyService->countCalendarDays($from, $to),
             $includePaidLeave
         );
-
-        $days = [];
-        foreach ($history as $row) {
-            $days[$row['date_key']] = [
-                'status' => $row['status'],
-                'payable' => $historyService->resolvePayableFractionForHistoryRow($row),
-            ];
-        }
 
         return ['counts' => $counts, 'days' => $days];
     }
@@ -1512,33 +1522,41 @@ class PayrollController extends Controller
         $summary = $request->query('type') === 'summary';
 
         // Day-wise export lists every day (with day status + leave); the summary needs only late days.
-        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null, !$summary);
-        $filename = 'late-arrivals-' . ($summary ? 'summary-' : 'daily-') . $month . '.csv';
+        $sheet = $this->buildMonthlySheet($lateArrivals, $from, $to, $employeeId, !$summary);
+        $filename = 'monthly-attendance-' . ($summary ? 'summary-' : 'daily-') . $month . '.csv';
 
-        return response()->streamDownload(function () use ($report, $summary) {
+        return response()->streamDownload(function () use ($sheet, $summary) {
             $out = fopen('php://output', 'w');
 
             if ($summary) {
-                fputcsv($out, ['Employee', 'Code', 'Late days (11-30 min)', 'Late minutes', 'Very late days (30+ min)', 'Very late minutes', 'Total late days', 'Total late minutes', 'Stayed after shift (min)', 'Late days covered', 'Net minutes (late - stayed)']);
+                fputcsv($out, [
+                    'Employee', 'Code', 'Present', 'Half day', 'Leave', 'WFH', 'Early out', 'Missing punch', 'Absent', 'Sundays / holidays',
+                    'Late days (11-30 min)', 'Late minutes', 'Very late days (30+ min)', 'Very late minutes', 'Total late days', 'Total late minutes',
+                    'Stayed after shift (min)', 'Net minutes (late - stayed)', 'Paid leave credited', 'Payable days', 'Unpaid days',
+                ]);
 
-                foreach ($report->where('total_days', '>', 0) as $row) {
+                foreach ($sheet as $row) {
+                    $p = $row['payroll'];
+                    $l = $row['late'] ?? [];
+
                     fputcsv($out, [
                         $row['employee']->name, $row['employee']->employee_code,
-                        $row['late_days'], $row['late_minutes'],
-                        $row['very_late_days'], $row['very_late_minutes'],
-                        $row['total_days'], $row['total_minutes'],
-                        $row['stay_minutes'], $row['covered_days'], $row['net_minutes'],
+                        $p['present_count'], $p['half_day_count'], $p['leave_count'], $p['wfh_count'], $p['early_count'],
+                        $p['missing_punch_count'], $p['absent_count'], $p['weekly_off_count'],
+                        $l['late_days'] ?? 0, $l['late_minutes'] ?? 0, $l['very_late_days'] ?? 0, $l['very_late_minutes'] ?? 0,
+                        $l['total_days'] ?? 0, $l['total_minutes'] ?? 0, $l['stay_minutes'] ?? 0, $l['net_minutes'] ?? 0,
+                        $p['paid_leave_days'], $p['payable_days'], $p['unpaid_days'],
                     ]);
                 }
             } else {
-                fputcsv($out, ['Employee', 'Code', 'Date', 'Day', 'Day status', 'Leave / gatepass', 'Shift start', 'Shift end', 'Check-in', 'Minutes after shift start', 'Counted late minutes', 'Late result', 'Check-out', 'Left early (min)', 'Stayed after shift (min)', 'Covered']);
+                fputcsv($out, ['Employee', 'Code', 'Date', 'Day', 'Day status', 'Payable', 'Leave / gatepass', 'Shift start', 'Shift end', 'Check-in', 'Minutes after shift start', 'Counted late minutes', 'Late result', 'Check-out', 'Left early (min)', 'Stayed after shift (min)', 'Covered']);
 
-                foreach ($report as $row) {
-                    foreach ($row['days'] as $day) {
+                foreach ($sheet as $row) {
+                    foreach ($row['late']['days'] ?? [] as $day) {
                         fputcsv($out, [
                             $row['employee']->name, $row['employee']->employee_code,
                             $day['date']->format('Y-m-d'), $day['date']->format('D'),
-                            $day['day_status'] ?? '', implode('; ', $day['leaves'] ?? []),
+                            $day['day_status'] ?? '', $day['payable'] ?? '', implode('; ', $day['leaves'] ?? []),
                             $day['shift_start'], $day['shift_end'], $day['check_in'],
                             $day['minutes'], $day['counted_minutes'],
                             !($day['worked'] ?? true) ? '' : ($day['category'] ? $day['label'] : 'On time'),

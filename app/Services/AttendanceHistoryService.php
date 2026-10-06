@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 
 class AttendanceHistoryService
 {
+    /** @var array<string, array> computeActivityDays() results keyed by the date list */
+    private array $activityDaysCache = [];
+
     /**
      * Build one row per calendar day in the range, using payroll display rules.
      */
@@ -33,7 +36,10 @@ class AttendanceHistoryService
             ->get()
             ->keyBy(fn ($holiday) => Carbon::parse($holiday->date)->format('Y-m-d'));
 
-        $activityDays = Attendance::computeActivityDays($dateStrings);
+        // Activity days are company-wide (not per employee), so reuse them across employees
+        // when one service instance builds history for many people in the same range.
+        $activityDays = $this->activityDaysCache[implode(',', $dateStrings)]
+            ??= Attendance::computeActivityDays($dateStrings);
         $todayStr = Carbon::today()->format('Y-m-d');
         $lastWorkingDay = $this->employeeLastWorkingDay($employeeId);
         $lastWorkingDayStr = $lastWorkingDay?->format('Y-m-d');
