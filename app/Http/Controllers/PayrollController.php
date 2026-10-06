@@ -1466,7 +1466,7 @@ class PayrollController extends Controller
             $out = fopen('php://output', 'w');
 
             if ($summary) {
-                fputcsv($out, ['Employee', 'Code', 'Late days (11-30 min)', 'Late minutes', 'Very late days (30+ min)', 'Very late minutes', 'Total late days', 'Total late minutes']);
+                fputcsv($out, ['Employee', 'Code', 'Late days (11-30 min)', 'Late minutes', 'Very late days (30+ min)', 'Very late minutes', 'Total late days', 'Total late minutes', 'Stayed after shift (min)', 'Late days covered', 'Net minutes (late - stayed)']);
 
                 foreach ($report->where('total_days', '>', 0) as $row) {
                     fputcsv($out, [
@@ -1474,18 +1474,20 @@ class PayrollController extends Controller
                         $row['late_days'], $row['late_minutes'],
                         $row['very_late_days'], $row['very_late_minutes'],
                         $row['total_days'], $row['total_minutes'],
+                        $row['stay_minutes'], $row['covered_days'], $row['net_minutes'],
                     ]);
                 }
             } else {
-                fputcsv($out, ['Employee', 'Code', 'Date', 'Day', 'Shift start', 'Check-in', 'Minutes after shift start', 'Counted late minutes', 'Result']);
+                fputcsv($out, ['Employee', 'Code', 'Date', 'Day', 'Shift start', 'Shift end', 'Check-in', 'Minutes after shift start', 'Counted late minutes', 'Result', 'Check-out', 'Stayed after shift (min)', 'Covered']);
 
                 foreach ($report as $row) {
                     foreach ($row['days'] as $day) {
                         fputcsv($out, [
                             $row['employee']->name, $row['employee']->employee_code,
                             $day['date']->format('Y-m-d'), $day['date']->format('D'),
-                            $day['shift_start'], $day['check_in'],
-                            $day['minutes'], $day['counted_minutes'], $day['label'],
+                            $day['shift_start'], $day['shift_end'], $day['check_in'],
+                            $day['minutes'], $day['counted_minutes'], $day['category'] ? $day['label'] : 'On time',
+                            $day['check_out'], $day['stay_minutes'], $day['covered'] ? 'Yes' : '',
                         ]);
                     }
                 }

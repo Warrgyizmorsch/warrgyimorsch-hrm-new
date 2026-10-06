@@ -96,11 +96,11 @@ class DashboardController extends Controller
 
         // Late = check-in past the allowance, same rule as the Late Arrivals widget. It
         // depends on each employee's own shift start, so it can't be a plain SQL SUM.
-        $holidayDates = $this->getHolidayDatesBetween(Carbon::parse($fromDate), Carbon::parse($toDate));
+        $lateContext = $this->lateArrivalContext(Carbon::parse($fromDate), Carbon::parse($toDate));
         $analytics->late_count = $query->whereNotNull('check_in')
             ->with('employee')
             ->get()
-            ->filter(fn (Attendance $attendance) => $this->getAttendanceLateMinutes($attendance, $holidayDates) > 0)
+            ->filter(fn (Attendance $attendance) => $this->getAttendanceLateMinutes($attendance, $lateContext) > 0)
             ->count();
 
         return $analytics;
@@ -981,11 +981,11 @@ class DashboardController extends Controller
             })
             ->get();
 
-        $holidayDates = $this->getHolidayDatesBetween(Carbon::parse($startDate), Carbon::parse($endDate));
+        $lateContext = $this->lateArrivalContext(Carbon::parse($startDate), Carbon::parse($endDate));
 
         $lateRecords = $attendanceRecords
-            ->map(function ($item) use ($holidayDates) {
-                $item->late_minutes = $this->getAttendanceLateMinutes($item, $holidayDates);
+            ->map(function ($item) use ($lateContext) {
+                $item->late_minutes = $this->getAttendanceLateMinutes($item, $lateContext);
 
                 return $item;
             })
@@ -1014,11 +1014,23 @@ class DashboardController extends Controller
      * Counted late minutes for one day — rule lives in LateArrivalService so the dashboard
      * and the payroll Late Arrivals report always agree.
      *
-     * @param  array<string, bool>  $holidayDates
+     * @param  array{holidays: array<string, bool>, excused: array<string, string>}  $context  from lateArrivalContext()
      */
-    private function getAttendanceLateMinutes(Attendance $attendance, array $holidayDates): int
+    private function getAttendanceLateMinutes(Attendance $attendance, array $context): int
     {
-        return LateArrivalService::classify($attendance, $holidayDates)['counted_minutes'];
+        return LateArrivalService::classify($attendance, $context['holidays'], $context['excused'])['counted_minutes'];
+    }
+
+    /**
+     * Holidays and approved gatepass / first-half leave days for a range — loaded once per
+     * request rather than per attendance row.
+     */
+    private function lateArrivalContext(Carbon $from, Carbon $to): array
+    {
+        return [
+            'holidays' => LateArrivalService::holidayDatesBetween($from, $to),
+            'excused' => LateArrivalService::excusedDaysBetween($from, $to),
+        ];
     }
 
 

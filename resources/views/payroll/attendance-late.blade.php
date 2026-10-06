@@ -28,6 +28,7 @@
             'allowance' => 'att-stat-chip--present',
             'holiday' => 'att-stat-chip--weekly',
             'sunday' => 'att-stat-chip--weekly',
+            'excused' => 'att-stat-chip--leave',
         ];
         $exportQuery = array_filter(['month' => $month, 'employee_id' => $employeeId]);
     @endphp
@@ -48,7 +49,7 @@
         ])
 
         <div class="main-content zoho-module-content">
-            <form method="GET" action="{{ route('payroll.attendance.late') }}" class="attendance-filter-panel">
+            <form method="GET" action="{{ route('payroll.attendance.late') }}" class="attendance-filter-panel" id="lateFilterForm">
                 <div class="attendance-filter-grid">
                     <div class="attendance-filter-field">
                         <label>Month</label>
@@ -56,12 +57,30 @@
                     </div>
                     <div class="attendance-filter-field">
                         <label>Employee</label>
-                        <select name="employee_id" class="form-select">
-                            <option value="">All employees</option>
-                            @foreach($employees as $emp)
-                                <option value="{{ $emp->id }}" @selected($employeeId == $emp->id)>{{ $emp->name }}{{ $emp->employee_code ? ' (' . $emp->employee_code . ')' : '' }}</option>
-                            @endforeach
-                        </select>
+                        @php $selectedEmp = $employees->firstWhere('id', $employeeId); @endphp
+                        <div class="dropdown">
+                            <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                                {{ $selectedEmp ? $selectedEmp->name : 'All Employees' }}
+                            </button>
+                            <div class="dropdown-menu wghrm-custom-dropdown-menu">
+                                <div class="wghrm-custom-search-box">
+                                    <input type="text" class="wghrm-custom-search-input" placeholder="Search name or code..."
+                                        onkeyup="lateFilterEmployees(this)">
+                                </div>
+                                <div class="wghrm-items-container">
+                                    <a class="dropdown-item wghrm-custom-dropdown-item {{ !$employeeId ? 'active' : '' }}"
+                                        href="javascript:void(0);" data-employee-id="" onclick="lateSelectEmployee(this)">All Employees</a>
+                                    @foreach($employees as $emp)
+                                        <a class="dropdown-item wghrm-custom-dropdown-item {{ $employeeId == $emp->id ? 'active' : '' }}"
+                                            href="javascript:void(0);" data-employee-id="{{ $emp->id }}" onclick="lateSelectEmployee(this)">
+                                            {{ $emp->name }}@if($emp->employee_code) <span class="text-muted">({{ $emp->employee_code }})</span>@endif
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="employee_id" id="lateEmployeeId" value="{{ $employeeId }}">
                     </div>
                     <div class="attendance-filter-actions">
                         <button type="submit" class="zoho-btn-primary"><i class="feather-search"></i> Apply</button>
@@ -73,7 +92,8 @@
             <div class="late-rule-note">
                 <strong>Rule:</strong> check-in up to {{ $allowance }} min after shift start is not late.
                 After that, the day counts as late by the full minutes from shift start (9:45 on a 9:30 shift = 15 min).
-                More than {{ $veryLate }} min = <strong>very late</strong>. Sundays (without a Sunday shift) and holidays are not counted.
+                More than {{ $veryLate }} min = <strong>very late</strong>. Sundays (without a Sunday shift), holidays, and days with an approved <strong>Gatepass / Early Leave</strong> or first-half leave are not counted.
+                <strong>Stayed after shift</strong> = minutes between shift end and check-out; shown only to help you balance late time manually — it does not reduce the counted late minutes.
                 Period: <strong>{{ $from->format('d M Y') }} – {{ $to->format('d M Y') }}</strong>.
             </div>
 
@@ -95,7 +115,9 @@
                                     <th class="text-center">Very late days<br><small class="text-muted">{{ $veryLate }}+ min</small></th>
                                     <th class="text-center">Total late days</th>
                                     <th class="text-center">Total late minutes</th>
-                                    <th class="text-center">Within allowance<br><small class="text-muted">not counted</small></th>
+                                    <th class="text-center">Not counted<br><small class="text-muted">allowance / gatepass</small></th>
+                                    <th class="text-center">Stayed after shift<br><small class="text-muted">after check-out time</small></th>
+                                    <th class="text-center">Net<br><small class="text-muted">late − stayed</small></th>
                                     <th style="width: 40px;"></th>
                                 </tr>
                             </thead>
@@ -110,36 +132,62 @@
                                         <td class="text-center {{ $row['very_late_days'] ? 'text-danger fw-bold' : '' }}">{{ $row['very_late_days'] }} <span class="text-muted fs-11 fw-normal">({{ $row['very_late_minutes'] }} min)</span></td>
                                         <td class="text-center fw-bold">{{ $row['total_days'] }}</td>
                                         <td class="text-center fw-bold">{{ $row['total_minutes'] }} min<div class="fs-11 text-muted fw-normal">{{ $row['total_duration'] }}</div></td>
-                                        <td class="text-center text-muted">{{ $row['allowance_days'] }}</td>
+                                        <td class="text-center text-muted">{{ $row['allowance_days'] }} / {{ $row['excused_days'] }}</td>
+                                        <td class="text-center text-success">{{ $row['stay_minutes'] }} min<div class="fs-11 text-muted">{{ $row['stay_days'] }} days</div></td>
+                                        <td class="text-center fw-bold {{ $row['net_minutes'] > 0 ? 'text-danger' : 'text-success' }}">
+                                            {{ $row['net_minutes'] > 0 ? $row['net_minutes'] . ' min short' : abs($row['net_minutes']) . ' min extra' }}
+                                        </td>
                                         <td><i class="feather-chevron-down"></i></td>
                                     </tr>
                                     <tr class="collapse {{ $employeeId ? 'show' : '' }}" id="lateDays{{ $i }}">
-                                        <td colspan="7" class="p-0">
+                                        <td colspan="9" class="p-0">
                                             <table class="table late-days-table mb-0">
                                                 <thead>
                                                     <tr>
                                                         <th class="ps-4">Date</th>
-                                                        <th>Shift start</th>
+                                                        <th>Shift</th>
                                                         <th>Check-in</th>
-                                                        <th>Minutes after shift start</th>
-                                                        <th>Counted late minutes</th>
+                                                        <th>Late by</th>
+                                                        <th>Counted late</th>
                                                         <th>Result</th>
+                                                        <th>Check-out</th>
+                                                        <th>Stayed after shift</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @foreach($row['days'] as $day)
-                                                        <tr class="{{ $day['counted_minutes'] ? '' : 'not-counted' }}">
+                                                        <tr class="{{ $day['counted_minutes'] || $day['stay_minutes'] ? '' : 'not-counted' }}">
                                                             <td class="ps-4">{{ $day['date']->format('d M Y (D)') }}</td>
-                                                            <td>{{ $day['shift_start'] }}</td>
+                                                            <td>{{ $day['shift_start'] }}–{{ $day['shift_end'] }}</td>
                                                             <td>{{ $day['check_in'] }}</td>
-                                                            <td>{{ $day['minutes'] }} min</td>
+                                                            <td>{{ $day['minutes'] ? $day['minutes'] . ' min' : '—' }}</td>
                                                             <td class="fw-bold">{{ $day['counted_minutes'] ? $day['counted_minutes'] . ' min' : '—' }}</td>
-                                                            <td><span class="att-stat-chip {{ $badgeClass[$day['category']] ?? '' }}">{{ $day['label'] }}</span></td>
+                                                            <td>
+                                                                @if($day['category'])
+                                                                    <span class="att-stat-chip {{ $badgeClass[$day['category']] ?? '' }}">{{ $day['label'] }}</span>
+                                                                @else
+                                                                    <span class="text-muted">On time</span>
+                                                                @endif
+                                                            </td>
+                                                            <td>{{ $day['check_out'] ?? '—' }}</td>
+                                                            <td class="{{ $day['stay_minutes'] ? 'text-success fw-bold' : '' }}">
+                                                                {{ $day['stay_minutes'] ? '+' . $day['stay_minutes'] . ' min' : '—' }}
+                                                                @if($day['covered'])
+                                                                    <span class="att-stat-chip att-stat-chip--present ms-1" title="Stayed back at least as long as they were late">Covered</span>
+                                                                @endif
+                                                            </td>
                                                         </tr>
                                                     @endforeach
                                                     <tr>
-                                                        <td colspan="4" class="ps-4 text-end fw-bold">Total counted</td>
-                                                        <td class="fw-bold" colspan="2">{{ $row['total_days'] }} days · {{ $row['total_minutes'] }} min ({{ $row['total_duration'] }})</td>
+                                                        <td colspan="4" class="ps-4 text-end fw-bold">Totals</td>
+                                                        <td class="fw-bold" colspan="2">Late: {{ $row['total_days'] }} days · {{ $row['total_minutes'] }} min</td>
+                                                        <td class="fw-bold" colspan="2">
+                                                            Stayed: {{ $row['stay_minutes'] }} min ·
+                                                            <span class="{{ $row['net_minutes'] > 0 ? 'text-danger' : 'text-success' }}">
+                                                                Net {{ $row['net_minutes'] > 0 ? $row['net_minutes'] . ' min short' : abs($row['net_minutes']) . ' min extra' }}
+                                                            </span>
+                                                            · {{ $row['covered_days'] }} of {{ $row['total_days'] }} late days covered
+                                                        </td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -147,7 +195,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7">
+                                        <td colspan="9">
                                             <div class="attendance-empty">
                                                 <i class="feather-check-circle"></i>
                                                 <p>No late arrivals in this period.</p>
@@ -163,3 +211,19 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    function lateFilterEmployees(input) {
+        const filter = input.value.toLowerCase();
+        input.closest('.wghrm-custom-dropdown-menu').querySelectorAll('.wghrm-custom-dropdown-item').forEach(item => {
+            item.style.setProperty('display', item.textContent.toLowerCase().includes(filter) ? 'block' : 'none', 'important');
+        });
+    }
+
+    function lateSelectEmployee(item) {
+        document.getElementById('lateEmployeeId').value = item.dataset.employeeId;
+        document.getElementById('lateFilterForm').submit();
+    }
+</script>
+@endpush
