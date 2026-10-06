@@ -80,6 +80,78 @@ class LateArrivalService
     }
 
     /**
+     * Every leave application touching each day (all categories — leave, half day, WFH,
+     * gatepass), for the report's Day status column. Pending/rejected ones are left out;
+     * unpaid/unauthorised ones are shown with that outcome.
+     *
+     * @param  int[]|null  $employeeIds
+     * @return array<string, string[]> "employeeId|Y-m-d" => descriptions
+     */
+    public static function leavesByDay(Carbon $from, Carbon $to, ?array $employeeIds = null): array
+    {
+        $byDay = [];
+
+        LeaveApplication::query()
+            ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
+            ->whereDate('start_date', '<=', $to->toDateString())
+            ->whereDate(DB::raw('COALESCE(end_date, start_date)'), '>=', $from->toDateString())
+            ->when($employeeIds !== null, fn ($q) => $q->whereIn('employee_id', $employeeIds))
+            ->get()
+            ->each(function (LeaveApplication $leave) use (&$byDay, $from, $to) {
+                $category = strtolower($leave->leave_category) === 'wfh' ? 'WFH' : $leave->leave_category;
+                $text = trim($category . ' · ' . $leave->leave_type, ' ·');
+
+                $isGatepass = stripos($leave->leave_category . ' ' . $leave->leave_type, 'gatepass') !== false
+                    || stripos((string) $leave->leave_type, 'early') !== false;
+
+                if ($isGatepass && $leave->start_time && $leave->end_time) {
+                    $text .= ' ' . Carbon::parse($leave->start_time)->format('H:i') . '–' . Carbon::parse($leave->end_time)->format('H:i');
+                }
+
+                if ($leave->status !== 'approved') {
+                    $text .= ' (' . ucfirst($leave->status) . ')';
+                }
+
+                $day = Carbon::parse($leave->start_date)->max($from->copy()->startOfDay())->copy();
+                $last = Carbon::parse($leave->end_date ?: $leave->start_date)->min($to->copy()->startOfDay())->copy();
+
+                for (; $day->lte($last); $day->addDay()) {
+                    $byDay[$leave->employee_id . '|' . $day->toDateString()][] = $text;
+                }
+            });
+
+        return $byDay;
+    }
+
+    /**
+     * Human label for a stored attendance status, holiday/Sunday aware for punch-less days.
+     */
+    public static function dayStatusLabel(?string $status, Carbon $date, bool $hasPunch, array $holidayDates): string
+    {
+        if (!$hasPunch && isset($holidayDates[$date->toDateString()])) {
+            return 'Holiday';
+        }
+
+        if (!$hasPunch && $date->isSunday()) {
+            return 'Sunday';
+        }
+
+        return match (strtolower((string) $status)) {
+            'present' => 'Present',
+            'half_day' => 'Half Day',
+            'leave' => 'Leave',
+            'half_day_leave' => 'Half Day Leave',
+            'wfh' => 'WFH',
+            'early_leave' => 'Early Leave',
+            'missing_punch' => 'Missing Punch',
+            'unpaid_leave' => 'Unpaid Leave',
+            'unauthorised' => 'Unauthorised',
+            '', 'absent' => 'Absent',
+            default => ucwords(str_replace('_', ' ', (string) $status)),
+        };
+    }
+
+    /**
      * Classify one attendance day. `minutes` is the raw lateness after shift start;
      * `counted_minutes` is what counts toward late arrivals (0 when not counted).
      *
@@ -161,9 +233,31 @@ class LateArrivalService
      */
     public static function stayOverMinutes(Attendance $attendance, array $holidayDates): int
     {
+        return max(self::checkOutOffsetMinutes($attendance, $holidayDates) ?? 0, 0);
+    }
+
+    /**
+     * Minutes the employee left before their scheduled shift end (0 if they stayed until
+     * shift end or later, have no check-out, or it was an off day).
+     *
+     * @param  array<string, bool>  $holidayDates
+     */
+    public static function earlyOutMinutes(Attendance $attendance, array $holidayDates): int
+    {
+        return max(-(self::checkOutOffsetMinutes($attendance, $holidayDates) ?? 0), 0);
+    }
+
+    /**
+     * Signed minutes between check-out and shift end (+ stayed back, − left early), or null
+     * when there's nothing to compare (no punches, or an off day).
+     *
+     * @param  array<string, bool>  $holidayDates
+     */
+    private static function checkOutOffsetMinutes(Attendance $attendance, array $holidayDates): ?int
+    {
         if (!$attendance->employee || !$attendance->check_in || !$attendance->check_out
             || self::isOffDay($attendance, $holidayDates)) {
-            return 0;
+            return null;
         }
 
         $date = Carbon::parse($attendance->attendance_date)->toDateString();
@@ -175,7 +269,7 @@ class LateArrivalService
             $checkOut->addDay();
         }
 
-        return max(intdiv($checkOut->timestamp - self::shiftEnd($attendance)->timestamp, 60), 0);
+        return intdiv($checkOut->timestamp - self::shiftEnd($attendance)->timestamp, 60);
     }
 
     public static function categoryLabel(?string $category): string
@@ -199,57 +293,70 @@ class LateArrivalService
     }
 
     /**
-     * Per-employee late-arrival report for a date range. Every day with a check-in after
-     * shift start, or a check-out after shift end, is listed (including ones not counted,
-     * with the reason) so payroll can see exactly how each total was reached and balance
-     * late arrivals against time stayed back manually.
+     * Per-employee late-arrival report for a date range. Every day the employee checked in
+     * is listed — late, within allowance, excused, or on time — so payroll can see exactly
+     * how each total was reached and balance late arrivals against time stayed back.
      *
      * @param  int[]|null  $employeeIds  restrict to these employees (null = everyone)
+     * @param  bool  $includeNonWorkedDays  also list days without a check-in (leave, WFH,
+     *                                     absent, holiday) — used for the single-employee view
      * @return Collection<int, array>
      */
-    public function report(Carbon $from, Carbon $to, ?array $employeeIds = null): Collection
+    public function report(Carbon $from, Carbon $to, ?array $employeeIds = null, bool $includeNonWorkedDays = false): Collection
     {
         $holidayDates = self::holidayDatesBetween($from, $to);
         $excusedDays = self::excusedDaysBetween($from, $to);
+        $leavesByDay = $includeNonWorkedDays ? self::leavesByDay($from, $to, $employeeIds) : [];
 
         $records = Attendance::with('employee')
             ->whereBetween('attendance_date', [$from->toDateString(), $to->toDateString()])
-            ->whereNotNull('check_in')
+            ->when(!$includeNonWorkedDays, fn ($q) => $q->whereNotNull('check_in'))
             ->when($employeeIds !== null, fn ($q) => $q->whereIn('employee_id', $employeeIds))
             ->orderBy('attendance_date')
             ->get();
 
         return $records
-            ->map(function (Attendance $attendance) use ($holidayDates, $excusedDays) {
+            ->map(function (Attendance $attendance) use ($holidayDates, $excusedDays, $leavesByDay) {
                 if (!$attendance->employee) {
                     return null;
                 }
 
-                $result = self::classify($attendance, $holidayDates, $excusedDays);
-                $stayOver = self::stayOverMinutes($attendance, $holidayDates);
-
-                if ($result['minutes'] <= 0 && $stayOver <= 0) {
-                    return null;
-                }
-
                 $employee = $attendance->employee;
-                $checkOut = $attendance->getRawPunchTime('check_out');
-
-                return $result + [
+                $date = Carbon::parse($attendance->attendance_date);
+                $base = [
                     'employee_id' => $employee->id,
-                    'date' => Carbon::parse($attendance->attendance_date),
+                    'date' => $date,
                     'shift_start' => AttendanceStatusService::resolveShiftStart($attendance, $employee)->format('H:i'),
                     'shift_end' => self::shiftEnd($attendance)->format('H:i'),
+                    'day_status' => self::dayStatusLabel($attendance->status, $date, (bool) $attendance->check_in, $holidayDates),
+                    'leaves' => $leavesByDay[$employee->id . '|' . $date->toDateString()] ?? [],
+                ];
+
+                if (!$attendance->check_in) {
+                    return $base + [
+                        'minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null,
+                        'check_in' => null, 'check_out' => null, 'stay_minutes' => 0, 'early_minutes' => 0,
+                        'covered' => false, 'label' => 'No check-in', 'worked' => false,
+                    ];
+                }
+
+                $result = self::classify($attendance, $holidayDates, $excusedDays);
+                $stayOver = self::stayOverMinutes($attendance, $holidayDates);
+                $checkOut = $attendance->getRawPunchTime('check_out');
+
+                return $result + $base + [
                     'check_in' => Carbon::parse($attendance->getRawPunchTime('check_in'))->format('H:i'),
                     'check_out' => $checkOut ? Carbon::parse($checkOut)->format('H:i') : null,
+                    'early_minutes' => self::earlyOutMinutes($attendance, $holidayDates),
                     'stay_minutes' => $stayOver,
                     'covered' => $result['counted_minutes'] > 0 && $stayOver >= $result['counted_minutes'],
                     'label' => $result['excuse'] ?? self::categoryLabel($result['category']),
+                    'worked' => true,
                 ];
             })
             ->filter()
             ->groupBy('employee_id')
-            ->map(function (Collection $days) use ($records) {
+            ->map(function (Collection $days) use ($records, $includeNonWorkedDays, $from, $to, $holidayDates, $leavesByDay) {
                 $employee = $records->firstWhere('employee_id', $days->first()['employee_id'])->employee;
                 $late = $days->where('category', self::CATEGORY_LATE);
                 $veryLate = $days->where('category', self::CATEGORY_VERY_LATE);
@@ -258,7 +365,9 @@ class LateArrivalService
 
                 return [
                     'employee' => $employee,
-                    'days' => $days->values(),
+                    'days' => $includeNonWorkedDays
+                        ? self::withMissingCalendarDays($days, $from, $to, $holidayDates, $leavesByDay, $employee->id)
+                        : $days->values(),
                     'late_days' => $late->count(),
                     'late_minutes' => (int) $late->sum('counted_minutes'),
                     'very_late_days' => $veryLate->count(),
@@ -277,5 +386,46 @@ class LateArrivalService
             })
             ->sortByDesc('total_minutes')
             ->values();
+    }
+
+    /**
+     * Pad a day list so every calendar date in the range appears — Sundays, holidays and
+     * dates with no attendance record get a placeholder row instead of silently vanishing.
+     *
+     * @param  array<string, bool>  $holidayDates
+     */
+    private static function withMissingCalendarDays(
+        Collection $days,
+        Carbon $from,
+        Carbon $to,
+        array $holidayDates,
+        array $leavesByDay,
+        int $employeeId
+    ): Collection {
+        $byDate = $days->keyBy(fn (array $day) => $day['date']->toDateString());
+        $padded = collect();
+
+        for ($date = $from->copy()->startOfDay(); $date->lte($to); $date->addDay()) {
+            $key = $date->toDateString();
+            $leaves = $leavesByDay[$employeeId . '|' . $key] ?? [];
+
+            $padded->push($byDate[$key] ?? [
+                'date' => $date->copy(),
+                'shift_start' => '—', 'shift_end' => '—',
+                'minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null,
+                'check_in' => null, 'check_out' => null, 'stay_minutes' => 0, 'early_minutes' => 0, 'covered' => false,
+                'day_status' => match (true) {
+                    isset($holidayDates[$key]) => 'Holiday',
+                    $date->isSunday() => 'Sunday',
+                    $leaves !== [] => 'Leave',
+                    default => 'No record',
+                },
+                'leaves' => $leaves,
+                'label' => 'No check-in',
+                'worked' => false,
+            ]);
+        }
+
+        return $padded;
     }
 }

@@ -306,11 +306,17 @@ class AttendanceService
                 ->map(fn ($log) => Carbon::parse($log->timestamp))
                 ->all();
 
-            $this->clearAttendanceForEmployeeRebuild($employee, $punches);
+            $clearedDates = $this->clearAttendanceForEmployeeRebuild($employee, $punches);
 
             $dates = $this->processEmployeePunchSet($employee, $punches);
             $processedGroups += count($dates);
             $allDates = array_merge($allDates, $dates);
+
+            // The clear above wiped every non-manual day in the employee's punch range,
+            // including WFH / leave / half-day-leave days that have no punches. Restore
+            // those from their leave applications (or mark absent) for this employee —
+            // otherwise each sync silently erased approved WFH and leave.
+            $this->fillMissingAttendanceForDates($clearedDates, [$employee->id]);
         }
 
         $this->fillMissingAttendanceForDates(array_unique($allDates));
@@ -330,11 +336,12 @@ class AttendanceService
      * Remove existing attendance rows before a log rebuild so stale midday punches do not remain.
      *
      * @param  Carbon[]  $punches
+     * @return string[] every calendar date (Y-m-d) in the cleared range, capped at today
      */
-    private function clearAttendanceForEmployeeRebuild(Employee $employee, array $punches): void
+    private function clearAttendanceForEmployeeRebuild(Employee $employee, array $punches): array
     {
         if ($punches === []) {
-            return;
+            return [];
         }
 
         $calendarDates = array_map(
@@ -349,6 +356,15 @@ class AttendanceService
             ->whereBetween('attendance_date', [$minDate, $maxDate])
             ->where('is_manual', false)
             ->delete();
+
+        $cleared = [];
+        $last = Carbon::parse($maxDate)->min(Carbon::today());
+
+        for ($date = Carbon::parse($minDate); $date->lte($last); $date->addDay()) {
+            $cleared[] = $date->toDateString();
+        }
+
+        return $cleared;
     }
 
     /**
@@ -435,13 +451,19 @@ class AttendanceService
         return $punchDate->toDateString() > $user->last_working_day->toDateString();
     }
 
-    private function fillMissingAttendanceForDates(array $allDates): void
+    /**
+     * @param  string[]  $allDates
+     * @param  int[]|null  $employeeIds  limit to these employees (null = every active employee)
+     */
+    private function fillMissingAttendanceForDates(array $allDates, ?array $employeeIds = null): void
     {
         if ($allDates === []) {
             return;
         }
 
-        $employees = Employee::active()->get();
+        $employees = Employee::active()
+            ->when($employeeIds !== null, fn ($q) => $q->whereIn('id', $employeeIds))
+            ->get();
         $holidayDates = Holiday::whereIn(DB::raw('DATE(date)'), $allDates)
             ->pluck('date')
             ->map(fn ($d) => Carbon::parse($d)->toDateString())

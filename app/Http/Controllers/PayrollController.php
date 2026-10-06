@@ -1441,16 +1441,68 @@ class PayrollController extends Controller
         [$month, $from, $to] = $this->lateArrivalMonth($request);
         $employeeId = $request->integer('employee_id') ?: null;
 
-        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null);
+        // A single employee gets every day of the month (late, on time, leave, absent…).
+        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null, (bool) $employeeId)
+            ->keyBy(fn (array $row) => $row['employee']->id);
 
-        // With no employee picked, list only people who actually have counted late days.
-        if (!$employeeId) {
-            $report = $report->filter(fn (array $row) => $row['total_days'] > 0)->values();
-        }
+        $sheetEmployees = $employeeId
+            ? Employee::whereKey($employeeId)->get()
+            : Employee::active()->orderBy('name')->get();
+
+        // One payroll sheet row per employee: the same status counts + payable days the
+        // Employee Wise list and payroll use, merged with the late-arrival figures.
+        $sheet = $sheetEmployees->map(function (Employee $employee) use ($report, $from, $to) {
+            $payroll = $this->monthlyPayrollFigures($employee, $from, $to);
+            $late = $report->get($employee->id);
+
+            if ($late && $late['days'] instanceof \Illuminate\Support\Collection) {
+                // Day status + payable per day come from the payroll history so they match payroll exactly.
+                $late['days'] = $late['days']->map(fn (array $day) => array_merge($day, [
+                    'day_status' => $payroll['days'][$day['date']->toDateString()]['status'] ?? ($day['day_status'] ?? '—'),
+                    'payable' => $payroll['days'][$day['date']->toDateString()]['payable'] ?? null,
+                ]));
+            }
+
+            return ['employee' => $employee, 'payroll' => $payroll['counts'], 'late' => $late];
+        })->values();
 
         $employees = Employee::orderBy('name')->get(['id', 'name', 'employee_code']);
 
-        return view('payroll.attendance-late', compact('report', 'employees', 'month', 'from', 'to', 'employeeId'));
+        return view('payroll.attendance-late', compact('sheet', 'employees', 'month', 'from', 'to', 'employeeId'));
+    }
+
+    /**
+     * Status counts, payable / unpaid days and a per-day status + payable map for one
+     * employee — the same figures as the Employee Wise attendance list.
+     *
+     * @return array{counts: array, days: array<string, array{status: string, payable: float}>}
+     */
+    private function monthlyPayrollFigures(Employee $employee, Carbon $from, Carbon $to): array
+    {
+        $historyService = app(AttendanceHistoryService::class);
+        $history = $historyService->buildMonthlyHistory($employee->id, $from, $to);
+        $includePaidLeave = $historyService->shouldIncludePaidLeaveForRange($from, $to);
+        $paidLeaveDays = $includePaidLeave
+            ? (float) ($this->getPayrollLeaveSummary($employee, $from->copy()->startOfMonth())['paid_leave_days'] ?? 0)
+            : 0.0;
+
+        $counts = $historyService->summaryToListCounts(
+            $historyService->buildMonthlySummary($history),
+            $historyService->calculateAttendancePayableDays($employee->id, $from, $to),
+            $paidLeaveDays,
+            $historyService->countCalendarDays($from, $to),
+            $includePaidLeave
+        );
+
+        $days = [];
+        foreach ($history as $row) {
+            $days[$row['date_key']] = [
+                'status' => $row['status'],
+                'payable' => $historyService->resolvePayableFractionForHistoryRow($row),
+            ];
+        }
+
+        return ['counts' => $counts, 'days' => $days];
     }
 
     public function exportLateArrivals(Request $request, LateArrivalService $lateArrivals)
@@ -1459,7 +1511,8 @@ class PayrollController extends Controller
         $employeeId = $request->integer('employee_id') ?: null;
         $summary = $request->query('type') === 'summary';
 
-        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null);
+        // Day-wise export lists every day (with day status + leave); the summary needs only late days.
+        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null, !$summary);
         $filename = 'late-arrivals-' . ($summary ? 'summary-' : 'daily-') . $month . '.csv';
 
         return response()->streamDownload(function () use ($report, $summary) {
@@ -1478,16 +1531,18 @@ class PayrollController extends Controller
                     ]);
                 }
             } else {
-                fputcsv($out, ['Employee', 'Code', 'Date', 'Day', 'Shift start', 'Shift end', 'Check-in', 'Minutes after shift start', 'Counted late minutes', 'Result', 'Check-out', 'Stayed after shift (min)', 'Covered']);
+                fputcsv($out, ['Employee', 'Code', 'Date', 'Day', 'Day status', 'Leave / gatepass', 'Shift start', 'Shift end', 'Check-in', 'Minutes after shift start', 'Counted late minutes', 'Late result', 'Check-out', 'Left early (min)', 'Stayed after shift (min)', 'Covered']);
 
                 foreach ($report as $row) {
                     foreach ($row['days'] as $day) {
                         fputcsv($out, [
                             $row['employee']->name, $row['employee']->employee_code,
                             $day['date']->format('Y-m-d'), $day['date']->format('D'),
+                            $day['day_status'] ?? '', implode('; ', $day['leaves'] ?? []),
                             $day['shift_start'], $day['shift_end'], $day['check_in'],
-                            $day['minutes'], $day['counted_minutes'], $day['category'] ? $day['label'] : 'On time',
-                            $day['check_out'], $day['stay_minutes'], $day['covered'] ? 'Yes' : '',
+                            $day['minutes'], $day['counted_minutes'],
+                            !($day['worked'] ?? true) ? '' : ($day['category'] ? $day['label'] : 'On time'),
+                            $day['check_out'], $day['early_minutes'] ?? 0, $day['stay_minutes'], $day['covered'] ? 'Yes' : '',
                         ]);
                     }
                 }

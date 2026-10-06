@@ -30,6 +30,20 @@
             'sunday' => 'att-stat-chip--weekly',
             'excused' => 'att-stat-chip--leave',
         ];
+        $dayStatusClass = [
+            'Present' => 'att-stat-chip--present',
+            'Half Day' => 'att-stat-chip--half',
+            'Leave' => 'att-stat-chip--leave',
+            'Half Day Leave' => 'att-stat-chip--leave',
+            'WFH' => 'att-stat-chip--wfh',
+            'Early Leave' => 'att-stat-chip--early',
+            'Missing Punch' => 'att-stat-chip--missing',
+            'Absent' => 'att-stat-chip--absent',
+            'Unpaid Leave' => 'att-stat-chip--absent',
+            'Unauthorised' => 'att-stat-chip--absent',
+            'Holiday' => 'att-stat-chip--weekly',
+            'Sunday' => 'att-stat-chip--weekly',
+        ];
         $exportQuery = array_filter(['month' => $month, 'employee_id' => $employeeId]);
     @endphp
 
@@ -145,31 +159,48 @@
                                                 <thead>
                                                     <tr>
                                                         <th class="ps-4">Date</th>
+                                                        @if($employeeId)<th>Day status</th>@endif
                                                         <th>Shift</th>
                                                         <th>Check-in</th>
                                                         <th>Late by</th>
                                                         <th>Counted late</th>
-                                                        <th>Result</th>
+                                                        <th>Late result</th>
                                                         <th>Check-out</th>
                                                         <th>Stayed after shift</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @foreach($row['days'] as $day)
-                                                        <tr class="{{ $day['counted_minutes'] || $day['stay_minutes'] ? '' : 'not-counted' }}">
+                                                        <tr class="{{ ($day['worked'] ?? true) ? '' : 'not-counted' }}">
                                                             <td class="ps-4">{{ $day['date']->format('d M Y (D)') }}</td>
+                                                            @if($employeeId)
+                                                                <td>
+                                                                    <span class="att-stat-chip {{ $dayStatusClass[$day['day_status'] ?? ''] ?? '' }}">{{ $day['day_status'] ?? '—' }}</span>
+                                                                    {{-- A WFH/leave range spanning a Sunday or holiday doesn't apply to that day. --}}
+                                                                    @foreach(in_array($day['day_status'] ?? '', ['Sunday', 'Holiday'], true) ? [] : ($day['leaves'] ?? []) as $leaveText)
+                                                                        <div class="fs-11 text-muted mt-1">{{ $leaveText }}</div>
+                                                                    @endforeach
+                                                                </td>
+                                                            @endif
                                                             <td>{{ $day['shift_start'] }}–{{ $day['shift_end'] }}</td>
-                                                            <td>{{ $day['check_in'] }}</td>
+                                                            <td>{{ $day['check_in'] ?? '—' }}</td>
                                                             <td>{{ $day['minutes'] ? $day['minutes'] . ' min' : '—' }}</td>
                                                             <td class="fw-bold">{{ $day['counted_minutes'] ? $day['counted_minutes'] . ' min' : '—' }}</td>
                                                             <td>
-                                                                @if($day['category'])
+                                                                @if(!($day['worked'] ?? true))
+                                                                    <span class="text-muted">—</span>
+                                                                @elseif($day['category'])
                                                                     <span class="att-stat-chip {{ $badgeClass[$day['category']] ?? '' }}">{{ $day['label'] }}</span>
                                                                 @else
-                                                                    <span class="text-muted">On time</span>
+                                                                    <span class="att-stat-chip att-stat-chip--present">On time</span>
                                                                 @endif
                                                             </td>
-                                                            <td>{{ $day['check_out'] ?? '—' }}</td>
+                                                            <td>
+                                                                {{ $day['check_out'] ?? '—' }}
+                                                                @if(($day['early_minutes'] ?? 0) > 0)
+                                                                    <div class="fs-11 text-danger">left {{ $day['early_minutes'] }} min early</div>
+                                                                @endif
+                                                            </td>
                                                             <td class="{{ $day['stay_minutes'] ? 'text-success fw-bold' : '' }}">
                                                                 {{ $day['stay_minutes'] ? '+' . $day['stay_minutes'] . ' min' : '—' }}
                                                                 @if($day['covered'])
@@ -179,7 +210,7 @@
                                                         </tr>
                                                     @endforeach
                                                     <tr>
-                                                        <td colspan="4" class="ps-4 text-end fw-bold">Totals</td>
+                                                        <td colspan="{{ $employeeId ? 5 : 4 }}" class="ps-4 text-end fw-bold">Totals</td>
                                                         <td class="fw-bold" colspan="2">Late: {{ $row['total_days'] }} days · {{ $row['total_minutes'] }} min</td>
                                                         <td class="fw-bold" colspan="2">
                                                             Stayed: {{ $row['stay_minutes'] }} min ·
