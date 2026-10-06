@@ -140,10 +140,10 @@
                     <div class="late-summary-card"><div class="value {{ $p['unpaid_days'] > 0 ? 'text-danger' : '' }}">{{ $p['unpaid_days'] }}</div><div class="label">Unpaid days</div></div>
                     <div class="late-summary-card"><div class="value">{{ $p['present_count'] }}</div><div class="label">Present</div></div>
                     <div class="late-summary-card"><div class="value">{{ $p['half_day_count'] }}</div><div class="label">Half day</div></div>
-                    <div class="late-summary-card"><div class="value">{{ $p['leave_count'] }}</div><div class="label">Leave</div></div>
+                    <div class="late-summary-card"><div class="value">{{ $p['leave_count'] }}</div><div class="label">Leave (full day)@if($l && $l['half_day_leave_days']) <span class="text-dark">+ {{ $l['half_day_leave_days'] }} half-day leave</span>@endif</div></div>
                     <div class="late-summary-card"><div class="value">{{ $p['paid_leave_days'] }}</div><div class="label">Paid leave credited</div></div>
                     <div class="late-summary-card"><div class="value">{{ $p['wfh_count'] }}</div><div class="label">WFH</div></div>
-                    <div class="late-summary-card"><div class="value">{{ $p['early_count'] }}</div><div class="label">Early out</div></div>
+                    <div class="late-summary-card"><div class="value {{ ($l['early_out_days'] ?? 0) ? 'text-danger' : '' }}">{{ $l['early_out_days'] ?? 0 }} <span class="fs-12 fw-normal">({{ $l['early_out_minutes'] ?? 0 }} min)</span></div><div class="label">Early out (left before shift end)@if($l && $l['gatepass_days']) · <span class="text-dark">{{ $l['gatepass_days'] }} gatepass day(s)</span>@endif</div></div>
                     <div class="late-summary-card"><div class="value">{{ $p['missing_punch_count'] }}</div><div class="label">Missing punch</div></div>
                     <div class="late-summary-card"><div class="value {{ $p['absent_count'] ? 'text-danger' : '' }}">{{ $p['absent_count'] }}</div><div class="label">Absent</div></div>
                     <div class="late-summary-card"><div class="value">{{ $p['weekly_off_count'] }}</div><div class="label">Sundays / holidays</div></div>
@@ -279,9 +279,9 @@
                                             </td>
                                             <td>{{ $p['present_count'] }}</td>
                                             <td>{{ $p['half_day_count'] ?: '—' }}</td>
-                                            <td>{{ $p['leave_count'] ?: '—' }}</td>
+                                            <td>{{ $p['leave_count'] ?: '—' }}@if($l && $l['half_day_leave_days'])<div class="fs-11 text-muted">+{{ $l['half_day_leave_days'] }} half</div>@endif</td>
                                             <td>{{ $p['wfh_count'] ?: '—' }}</td>
-                                            <td>{{ $p['early_count'] ?: '—' }}</td>
+                                            <td class="{{ ($l['early_out_days'] ?? 0) ? 'text-danger' : '' }}">{{ ($l['early_out_days'] ?? 0) ?: '—' }}@if($l && $l['gatepass_days'])<div class="fs-11 text-muted">{{ $l['gatepass_days'] }} gatepass</div>@endif</td>
                                             <td class="{{ $p['missing_punch_count'] ? 'text-warning fw-bold' : '' }}">{{ $p['missing_punch_count'] ?: '—' }}</td>
                                             <td class="{{ $p['absent_count'] ? 'text-danger fw-bold' : '' }}">{{ $p['absent_count'] ?: '—' }}</td>
                                             <td class="text-muted">{{ $p['weekly_off_count'] }}</td>

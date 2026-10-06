@@ -306,7 +306,8 @@ class LateArrivalService
     {
         $holidayDates = self::holidayDatesBetween($from, $to);
         $excusedDays = self::excusedDaysBetween($from, $to);
-        $leavesByDay = $includeNonWorkedDays ? self::leavesByDay($from, $to, $employeeIds) : [];
+        // Always loaded (one query): the per-employee early-out / gatepass / half-day-leave counts need it.
+        $leavesByDay = self::leavesByDay($from, $to, $employeeIds);
 
         $records = Attendance::with('employee')
             ->whereBetween('attendance_date', [$from->toDateString(), $to->toDateString()])
@@ -380,12 +381,37 @@ class LateArrivalService
                     'stay_days' => $days->where('stay_minutes', '>', 0)->count(),
                     'stay_minutes' => $stayMinutes,
                     'covered_days' => $days->where('covered', true)->count(),
+                    // Based on actual check-out vs shift end, so a gatepass / half-day-leave day that
+                    // payroll ends up calling "Half Day" still shows as an early out here.
+                    'early_out_days' => $days->where('early_minutes', '>', 0)->count(),
+                    'early_out_minutes' => (int) $days->sum('early_minutes'),
+                    'gatepass_days' => $days->filter(fn (array $day) => self::hasLeaveLike($day, 'gatepass'))->count(),
+                    'half_day_leave_days' => $days->filter(fn (array $day) => self::hasLeaveLike($day, 'half day'))->count(),
                     // Positive = still owes time; negative = stayed back more than they were late.
                     'net_minutes' => $totalMinutes - $stayMinutes,
                 ];
             })
             ->sortByDesc('total_minutes')
             ->values();
+    }
+
+    /**
+     * Whether any leave application on this day matches the text (case-insensitive),
+     * ignoring Sundays/holidays a longer leave range happens to span.
+     */
+    private static function hasLeaveLike(array $day, string $needle): bool
+    {
+        if ($day['date']->isSunday() || ($day['day_status'] ?? '') === 'Holiday') {
+            return false;
+        }
+
+        foreach ($day['leaves'] ?? [] as $text) {
+            if (stripos($text, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

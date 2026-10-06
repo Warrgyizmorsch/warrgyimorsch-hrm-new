@@ -1530,7 +1530,7 @@ class PayrollController extends Controller
 
             if ($summary) {
                 fputcsv($out, [
-                    'Employee', 'Code', 'Present', 'Half day', 'Leave', 'WFH', 'Early out', 'Missing punch', 'Absent', 'Sundays / holidays',
+                    'Employee', 'Code', 'Present', 'Half day', 'Leave (full day)', 'Half-day leave', 'WFH', 'Early out days', 'Early out minutes', 'Gatepass days', 'Missing punch', 'Absent', 'Sundays / holidays',
                     'Late days (11-30 min)', 'Late minutes', 'Very late days (30+ min)', 'Very late minutes', 'Total late days', 'Total late minutes',
                     'Stayed after shift (min)', 'Net minutes (late - stayed)', 'Paid leave credited', 'Payable days', 'Unpaid days',
                 ]);
@@ -1541,7 +1541,8 @@ class PayrollController extends Controller
 
                     fputcsv($out, [
                         $row['employee']->name, $row['employee']->employee_code,
-                        $p['present_count'], $p['half_day_count'], $p['leave_count'], $p['wfh_count'], $p['early_count'],
+                        $p['present_count'], $p['half_day_count'], $p['leave_count'], $l['half_day_leave_days'] ?? 0, $p['wfh_count'],
+                        $l['early_out_days'] ?? 0, $l['early_out_minutes'] ?? 0, $l['gatepass_days'] ?? 0,
                         $p['missing_punch_count'], $p['absent_count'], $p['weekly_off_count'],
                         $l['late_days'] ?? 0, $l['late_minutes'] ?? 0, $l['very_late_days'] ?? 0, $l['very_late_minutes'] ?? 0,
                         $l['total_days'] ?? 0, $l['total_minutes'] ?? 0, $l['stay_minutes'] ?? 0, $l['net_minutes'] ?? 0,
