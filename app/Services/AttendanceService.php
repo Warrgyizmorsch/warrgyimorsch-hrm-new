@@ -597,11 +597,15 @@ class AttendanceService
         // Pick the punch closest to the scheduled time rather than the earliest/latest one.
         // A stray scan hours before shift start (device glitch, accidental read) must not be
         // mistaken for the real check-in just because it happens to be first chronologically.
-        // If the nearest candidate is still implausibly far from the scheduled time (and no
-        // closer one exists), discard it rather than fabricating an oversized shift — the day
-        // falls back to "missing punch" for manual review instead.
-        $checkInPunch = self::nearestPunchWithinTolerance($eveningPunches, $scheduledStartMinutes);
-        $checkOutPunch = self::nearestPunchWithinTolerance($morningPunches, $scheduledEndMinutes);
+        // When nothing falls within tolerance, still use the nearest punch inside the shift
+        // window — an employee arriving early (e.g. 15:21 on a holiday) or very late (23:27)
+        // genuinely punched, and discarding it showed the day as Absent with no punches at all.
+        // The evening/morning windows above already exclude daytime gate scans, and
+        // calculateWorkedHours() rejects any pairing over 16h.
+        $checkInPunch = self::nearestPunchWithinTolerance($eveningPunches, $scheduledStartMinutes)
+            ?? self::nearestPunchToMinutes($eveningPunches, $scheduledStartMinutes);
+        $checkOutPunch = self::nearestPunchWithinTolerance($morningPunches, $scheduledEndMinutes)
+            ?? self::nearestPunchToMinutes($morningPunches, $scheduledEndMinutes);
 
         if (!$checkInPunch && !$checkOutPunch) {
             return self::punchResult(null, null, 0, 'absent');

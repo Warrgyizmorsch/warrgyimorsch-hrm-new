@@ -267,6 +267,8 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::put('/payroll/attendance/employee/{employee_id}/update', [PayrollController::class, 'updateByName'])->name('payroll.attendance.employee.updateByName');
 
     Route::get('/payroll/attendance/missing-punches', [PayrollController::class, 'missingPunches'])->name('payroll.attendance.missing');
+    Route::get('/payroll/attendance/late-arrivals', [PayrollController::class, 'lateArrivals'])->name('payroll.attendance.late');
+    Route::get('/payroll/attendance/late-arrivals/export', [PayrollController::class, 'exportLateArrivals'])->name('payroll.attendance.late.export');
     Route::get('/payroll/attendance/missing-punches/{attendance_date}/edit', [PayrollController::class, 'editMissingPunchesByDate'])->name('payroll.attendance.missing.editByDate');
 
 });

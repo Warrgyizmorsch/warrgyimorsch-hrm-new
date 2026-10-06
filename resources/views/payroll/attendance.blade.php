@@ -42,6 +42,9 @@
             <a href="' . route('payroll.attendance.missing') . '" class="zoho-btn-outline">
                 <i class="feather-alert-triangle"></i> Missing Punches
             </a>
+            ' . ($isAdmin ? '<a href="' . route('payroll.attendance.late') . '" class="zoho-btn-outline">
+                <i class="feather-clock"></i> Late Arrivals
+            </a>' : '') . '
             ' . $syncBiometricButton . '
             ' . $importDropdown . '
             <button type="button" class="zoho-icon-btn" onclick="exportAttendance()" title="Export">

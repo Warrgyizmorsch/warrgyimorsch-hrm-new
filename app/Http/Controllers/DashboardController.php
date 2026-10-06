@@ -11,6 +11,8 @@ use App\Models\LeaveAllotment;
 use App\Models\Broadcast;
 use App\Models\Note;
 use App\Models\DailyTask;
+use App\Services\AttendanceStatusService;
+use App\Services\LateArrivalService;
 use App\Services\LeaveBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -83,27 +85,25 @@ class DashboardController extends Controller
             $query->where('employee_id', $employeeId);
         }
 
-        return $query->selectRaw("
+        $analytics = (clone $query)->selectRaw("
             SUM(IF(status IN ('present', 'half_day', 'late', 'wfh') OR check_in IS NOT NULL, 1, 0)) as present_count,
             SUM(IF(status = 'wfh', 1, 0)) as wfh_count,
             SUM(IF(status = 'half_day', 1, 0)) as halfDay_count,
             SUM(IF(status = 'leave', 1, 0)) as leave_count,
-            SUM(IF(
-                status = 'late'
-                OR (
-                    check_in IS NOT NULL
-                    AND check_out IS NOT NULL
-                    AND (
-                        (status IN ('half_day', 'half_day_leave') AND total_hours < 4)
-                        OR (status NOT IN ('half_day', 'half_day_leave', 'leave', 'wfh', 'absent', 'missing_punch', 'unpaid_leave', 'unauthorised') AND total_hours < 8.5)
-                    )
-                ),
-                1,
-                0
-            )) as late_count,
             SUM(IF(status = 'early_leave', 1, 0)) as early_count,
             SUM(IF(status = 'absent', 1, 0)) as absent_count
         ")->first();
+
+        // Late = check-in past the allowance, same rule as the Late Arrivals widget. It
+        // depends on each employee's own shift start, so it can't be a plain SQL SUM.
+        $holidayDates = $this->getHolidayDatesBetween(Carbon::parse($fromDate), Carbon::parse($toDate));
+        $analytics->late_count = $query->whereNotNull('check_in')
+            ->with('employee')
+            ->get()
+            ->filter(fn (Attendance $attendance) => $this->getAttendanceLateMinutes($attendance, $holidayDates) > 0)
+            ->count();
+
+        return $analytics;
     }
 
     private function getEmployeeLeaveTaken(int $employeeId, ?Carbon $from = null, ?Carbon $to = null): float
@@ -981,86 +981,44 @@ class DashboardController extends Controller
             })
             ->get();
 
+        $holidayDates = $this->getHolidayDatesBetween(Carbon::parse($startDate), Carbon::parse($endDate));
+
         $lateRecords = $attendanceRecords
-            ->map(function ($item) {
-                $item->late_minutes = $this->getAttendanceLateMinutes($item);
+            ->map(function ($item) use ($holidayDates) {
+                $item->late_minutes = $this->getAttendanceLateMinutes($item, $holidayDates);
 
                 return $item;
             })
             ->filter(fn ($item) => $item->late_minutes > 0);
 
         return $lateRecords->groupBy('employee_id')->map(function ($records) {
-
-            $totalLateMinutes = 0;
-
-            foreach ($records as $item) {
-                $totalLateMinutes += $item->late_minutes;
-            }
-
-            $employee = $records->first()->employee;
-
-            $hours = floor($totalLateMinutes / 60);
+            $totalLateMinutes = (int) $records->sum('late_minutes');
+            $hours = intdiv($totalLateMinutes, 60);
             $minutes = $totalLateMinutes % 60;
 
             return [
-                'employee' => $employee,
+                'employee' => $records->first()->employee,
                 'late_duration' => $hours > 0
                     ? $hours . ' hr ' . $minutes . ' min'
                     : $minutes . ' min',
-                'late_days' => $records->count(), // ✅ optional but useful
+                'late_minutes' => $totalLateMinutes,
+                'late_days' => $records->count(),
+                'very_late_days' => $records
+                    ->filter(fn ($item) => $item->late_minutes > AttendanceStatusService::VERY_LATE_ARRIVAL_MINUTES)
+                    ->count(),
             ];
-        });
+        })->sortByDesc('late_minutes');
     }
 
     /**
-     * Late arrival = check-in after the employee's scheduled shift start, full stop.
-     * Check-out time and hours worked have no bearing on whether the arrival was late.
+     * Counted late minutes for one day — rule lives in LateArrivalService so the dashboard
+     * and the payroll Late Arrivals report always agree.
+     *
+     * @param  array<string, bool>  $holidayDates
      */
-    private function getAttendanceLateMinutes(Attendance $attendance): int
+    private function getAttendanceLateMinutes(Attendance $attendance, array $holidayDates): int
     {
-        if (!$attendance->employee || !$attendance->check_in) {
-            return 0;
-        }
-
-        $checkIn = $this->parseAttendancePunch($attendance, $attendance->check_in);
-        [$shiftStart] = $this->getAttendanceShiftWindow($attendance);
-
-        return max(intdiv($checkIn->timestamp - $shiftStart->timestamp, 60), 0);
-    }
-
-    private function parseAttendancePunch(Attendance $attendance, $time): Carbon
-    {
-        $date = Carbon::parse($attendance->attendance_date)->toDateString();
-
-        return Carbon::parse($date . ' ' . Carbon::parse($time)->format('H:i:s'));
-    }
-
-    private function getAttendanceShiftWindow(Attendance $attendance): array
-    {
-        $date = Carbon::parse($attendance->attendance_date)->toDateString();
-        $employee = $attendance->employee;
-        $isSunday = Carbon::parse($date)->isSunday();
-
-        $timeIn = ($isSunday && $employee->sunday_time_in)
-            ? $employee->sunday_time_in
-            : ($employee->time_in ?? '09:30:00');
-        $timeOut = ($isSunday && $employee->sunday_time_out)
-            ? $employee->sunday_time_out
-            : ($employee->time_out ?? '18:00:00');
-
-        try {
-            $shiftStart = Carbon::parse($date . ' ' . Carbon::parse($timeIn)->format('H:i:s'));
-            $shiftEnd = Carbon::parse($date . ' ' . Carbon::parse($timeOut)->format('H:i:s'));
-        } catch (\Exception $e) {
-            $shiftStart = Carbon::parse($date . ' 09:30:00');
-            $shiftEnd = Carbon::parse($date . ' 18:00:00');
-        }
-
-        if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
-            $shiftEnd->addDay();
-        }
-
-        return [$shiftStart, $shiftEnd];
+        return LateArrivalService::classify($attendance, $holidayDates)['counted_minutes'];
     }
 
 
@@ -1138,13 +1096,15 @@ class DashboardController extends Controller
                 return [$today->copy()->startOfMonth(), $today];
 
             case 'last_month':
+                // NoOverflow: on the 31st, subMonth() lands on "Sep 31" → Oct 1 (the current month).
                 return [
-                    $today->copy()->subMonth()->startOfMonth(),
-                    $today->copy()->subMonth()->endOfMonth()
+                    $today->copy()->subMonthNoOverflow()->startOfMonth(),
+                    $today->copy()->subMonthNoOverflow()->endOfMonth()
                 ];
 
             case '3months':
-                return [$today->copy()->subMonths(3)->startOfMonth(), $today];
+                // Current month + the two before it.
+                return [$today->copy()->subMonthsNoOverflow(2)->startOfMonth(), $today];
 
             case 'year':
                 return [$today->copy()->startOfYear(), $today];
@@ -1457,11 +1417,11 @@ class DashboardController extends Controller
         return match ($request->get('late_range', 'today')) {
             'today' => 'Today',
             'yesterday' => 'Yesterday',
-            'week' => 'Last Week',
+            'week' => 'Last 7 Days',
             'month' => 'Current Month',
             'last_month' => 'Last Month',
             '3months' => '3 Months',
-            'year' => '1 Year',
+            'year' => 'This Year',
             default => 'Today',
         };
     }

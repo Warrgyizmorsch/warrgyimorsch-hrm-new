@@ -1153,9 +1153,12 @@
                             <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
                                 <div>
                                     <h5 class="card-title">Late Arrivals</h5>
-                                    <p class="text-muted fs-12 mb-0">Filtered by period</p>
+                                    <p class="text-muted fs-12 mb-0">
+                                        More than {{ \App\Services\AttendanceStatusService::LATE_ARRIVAL_ALLOWANCE_MINUTES }} min after shift start ·
+                                        <a href="{{ route('payroll.attendance.late') }}" class="text-primary fw-bold">Day-wise report →</a>
+                                    </p>
                                 </div>
-                                <span class="badge bg-soft-warning text-warning" id="lateArrivalsCount">{{ count($todayLateEmployees) }}</span>
+                                <span class="badge bg-soft-warning text-warning" id="lateArrivalsCount" title="Employees late in this period">{{ count($todayLateEmployees) }}</span>
                             </div>
                             <div class="card-header-action hrm-resp-card-header-action mt-2">
                                 <div class="d-flex flex-wrap gap-2 w-100" id="lateFilterContainerUnique">
@@ -1195,11 +1198,11 @@
                                                 $lateRangeLabel = match (request('late_range', 'today')) {
                                                     'today' => 'Today',
                                                     'yesterday' => 'Yesterday',
-                                                    'week' => 'Last Week',
+                                                    'week' => 'Last 7 Days',
                                                     'month' => 'Current Month',
                                                     'last_month' => 'Last Month',
                                                     '3months' => '3 Months',
-                                                    'year' => '1 Year',
+                                                    'year' => 'This Year',
                                                     'custom' => (request('late_custom_start') && request('late_custom_end'))
                                                         ? \Carbon\Carbon::parse(request('late_custom_start'))->format('d M Y') . ' → ' . \Carbon\Carbon::parse(request('late_custom_end'))->format('d M Y')
                                                         : 'Custom Range',
@@ -1220,7 +1223,7 @@
                                                 <button type="button" class="dropdown-item wghrm-custom-dropdown-item"
                                                     onclick="applyLateRangeFilter('yesterday')">Yesterday</button>
                                                 <button type="button" class="dropdown-item wghrm-custom-dropdown-item"
-                                                    onclick="applyLateRangeFilter('week')">Last Week</button>
+                                                    onclick="applyLateRangeFilter('week')">Last 7 Days</button>
                                                 <button type="button" class="dropdown-item wghrm-custom-dropdown-item"
                                                     onclick="applyLateRangeFilter('month')">Current Month</button>
                                                 <button type="button" class="dropdown-item wghrm-custom-dropdown-item"
@@ -1228,7 +1231,7 @@
                                                 <button type="button" class="dropdown-item wghrm-custom-dropdown-item"
                                                     onclick="applyLateRangeFilter('3months')">3 Months</button>
                                                 <button type="button" class="dropdown-item wghrm-custom-dropdown-item"
-                                                    onclick="applyLateRangeFilter('year')">1 Year</button>
+                                                    onclick="applyLateRangeFilter('year')">This Year</button>
                                                 <div class="wghrm-custom-dropdown-divider"></div>
                                                 <a href="javascript:void(0);"
                                                     class="dropdown-item wghrm-custom-dropdown-item text-primary fw-bold"

@@ -11,6 +11,7 @@ use App\Models\Employee;
 use App\Models\Holiday;
 use App\Services\AttendanceHistoryService;
 use App\Services\AttendanceStatusService;
+use App\Services\LateArrivalService;
 use App\Services\LeaveBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1430,6 +1431,83 @@ class PayrollController extends Controller
             ->paginate($perPage);
 
         return view('payroll.attendance-missing', compact('attendance', 'perPage'));
+    }
+
+    /**
+     * Late Arrivals report — per-employee totals with a per-day breakdown, for payroll.
+     */
+    public function lateArrivals(Request $request, LateArrivalService $lateArrivals)
+    {
+        [$month, $from, $to] = $this->lateArrivalMonth($request);
+        $employeeId = $request->integer('employee_id') ?: null;
+
+        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null);
+
+        // With no employee picked, list only people who actually have counted late days.
+        if (!$employeeId) {
+            $report = $report->filter(fn (array $row) => $row['total_days'] > 0)->values();
+        }
+
+        $employees = Employee::orderBy('name')->get(['id', 'name', 'employee_code']);
+
+        return view('payroll.attendance-late', compact('report', 'employees', 'month', 'from', 'to', 'employeeId'));
+    }
+
+    public function exportLateArrivals(Request $request, LateArrivalService $lateArrivals)
+    {
+        [$month, $from, $to] = $this->lateArrivalMonth($request);
+        $employeeId = $request->integer('employee_id') ?: null;
+        $summary = $request->query('type') === 'summary';
+
+        $report = $lateArrivals->report($from, $to, $employeeId ? [$employeeId] : null);
+        $filename = 'late-arrivals-' . ($summary ? 'summary-' : 'daily-') . $month . '.csv';
+
+        return response()->streamDownload(function () use ($report, $summary) {
+            $out = fopen('php://output', 'w');
+
+            if ($summary) {
+                fputcsv($out, ['Employee', 'Code', 'Late days (11-30 min)', 'Late minutes', 'Very late days (30+ min)', 'Very late minutes', 'Total late days', 'Total late minutes']);
+
+                foreach ($report->where('total_days', '>', 0) as $row) {
+                    fputcsv($out, [
+                        $row['employee']->name, $row['employee']->employee_code,
+                        $row['late_days'], $row['late_minutes'],
+                        $row['very_late_days'], $row['very_late_minutes'],
+                        $row['total_days'], $row['total_minutes'],
+                    ]);
+                }
+            } else {
+                fputcsv($out, ['Employee', 'Code', 'Date', 'Day', 'Shift start', 'Check-in', 'Minutes after shift start', 'Counted late minutes', 'Result']);
+
+                foreach ($report as $row) {
+                    foreach ($row['days'] as $day) {
+                        fputcsv($out, [
+                            $row['employee']->name, $row['employee']->employee_code,
+                            $day['date']->format('Y-m-d'), $day['date']->format('D'),
+                            $day['shift_start'], $day['check_in'],
+                            $day['minutes'], $day['counted_minutes'], $day['label'],
+                        ]);
+                    }
+                }
+            }
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    /**
+     * @return array{0: string, 1: Carbon, 2: Carbon} [Y-m, month start, month end (capped at today)]
+     */
+    private function lateArrivalMonth(Request $request): array
+    {
+        $month = preg_match('/^\d{4}-\d{2}$/', (string) $request->query('month'))
+            ? $request->query('month')
+            : now()->format('Y-m');
+
+        $from = Carbon::createFromFormat('Y-m-d', $month . '-01')->startOfDay();
+        $to = $from->copy()->endOfMonth()->min(Carbon::today());
+
+        return [$month, $from, $to];
     }
 
     /**

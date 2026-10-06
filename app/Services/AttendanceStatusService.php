@@ -14,6 +14,12 @@ class AttendanceStatusService
     /** Forgiven late arrivals allowed per calendar month before the grace credit stops applying. */
     public const LATE_ARRIVAL_GRACE_LIMIT_PER_MONTH = 2;
 
+    /** Check-in allowance after shift start (e.g. 9:30 shift → punch until 9:40) before an arrival counts as late. */
+    public const LATE_ARRIVAL_ALLOWANCE_MINUTES = 10;
+
+    /** Late arrivals beyond this many minutes after shift start are reported separately as "very late". */
+    public const VERY_LATE_ARRIVAL_MINUTES = 30;
+
     public const FULL_DAY_HOURS = 8.5;
 
     public const NIGHT_SHIFT_FULL_DAY_HOURS = 8.0;

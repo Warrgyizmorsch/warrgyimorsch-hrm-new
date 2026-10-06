@@ -53,14 +53,20 @@ class AttendanceHistoryService
             $excludedFromPayable = $dayStr > $todayStr || ($lastWorkingDayStr && $dayStr > $lastWorkingDayStr);
 
             if ($record) {
+                $actualHours = (float) ($record->total_hours ?? 0);
+
                 if (!empty($graceCredits[$dayStr])) {
                     // Forgiven late arrival (see computeLateArrivalGraceCredits): credit the late
                     // minutes back into worked hours so this day isn't downgraded to Half Day for
                     // a punctuality slip the company still allows this month.
-                    $record->total_hours = (float) ($record->total_hours ?? 0) + ($graceCredits[$dayStr] / 60);
+                    $record->total_hours = $actualHours + ($graceCredits[$dayStr] / 60);
                 }
 
                 $resolved = $record->resolvePayrollDisplayStatus($isHoliday, $isActivityDay, $isSunday);
+
+                // The credit only affects the status above — display the real punch-derived
+                // hours so this view matches the Attendance List for the same day.
+                $record->total_hours = $actualHours;
 
                 if ($resolved['key'] === 'holiday' && ($title = $holidayMap->get($dayStr)?->title)) {
                     $resolved['label'] = 'Holiday (' . $title . ')';
