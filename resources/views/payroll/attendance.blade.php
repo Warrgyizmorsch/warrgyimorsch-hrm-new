@@ -43,7 +43,7 @@
                 <i class="feather-alert-triangle"></i> Missing Punches
             </a>
             ' . ($isAdmin ? '<a href="' . route('payroll.attendance.late') . '" class="zoho-btn-outline">
-                <i class="feather-clock"></i> Late Arrivals
+                <i class="feather-calendar"></i> Monthly Attendance
             </a>' : '') . '
             ' . $syncBiometricButton . '
             ' . $importDropdown . '
