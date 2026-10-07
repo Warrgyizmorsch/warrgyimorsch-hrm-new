@@ -973,6 +973,8 @@
 
     <!-- [ Main Content ] start -->
     <div class="main-content pt-md-2 pt-2 hrm-resp-main-content">
+        @include('partials.today-punch-card')
+
         {{-- Zoho-style quick summary row --}}
         <div class="row g-3 mb-3">
             <div class="col-12">

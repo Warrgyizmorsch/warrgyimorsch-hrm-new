@@ -3,13 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Employee extends Model
 {
+    // A deleted former employee is a soft-deleted shell kept only for payroll history
+    // (see EmployeePurgeService) — hidden from every normal Employee query.
+    use SoftDeletes;
+
     protected $fillable = [
         'name',
         'employee_code',
-        'rs9n_device_id',
         'email',
         'mobile_number',
         'role',
@@ -46,7 +50,34 @@ class Employee extends Model
         'other_allowance',
         'working_mode',
         'employment_status',
+        'profile_status',
     ];
+
+    /**
+     * Self-service onboarding (see EmployeeProfileRequest). NULL = fully active. While in one
+     * of these states the employee can only use the "Complete your profile" page.
+     */
+    public const PROFILE_PENDING = 'pending_profile';   // HR created the account, employee hasn't submitted
+    public const PROFILE_SUBMITTED = 'submitted';       // waiting for HR approval
+    public const PROFILE_RETURNED = 'returned';         // HR sent it back with a note
+
+    public function isProfileLocked(): bool
+    {
+        return in_array($this->profile_status, [self::PROFILE_PENDING, self::PROFILE_SUBMITTED, self::PROFILE_RETURNED], true);
+    }
+
+    public function profileRequests()
+    {
+        return $this->hasMany(EmployeeProfileRequest::class)->latest();
+    }
+
+    /** The request currently open (waiting for HR, or sent back to the employee), if any. */
+    public function openProfileRequest(): ?EmployeeProfileRequest
+    {
+        return $this->profileRequests()
+            ->whereIn('status', [EmployeeProfileRequest::STATUS_PENDING, EmployeeProfileRequest::STATUS_RETURNED])
+            ->first();
+    }
 
     public const EMPLOYMENT_STATUSES = [
         'working' => 'Working',
@@ -71,6 +102,12 @@ class Employee extends Model
     public function getEmploymentStatusLabelAttribute(): string
     {
         return self::EMPLOYMENT_STATUSES[$this->employment_status ?: 'working'] ?? 'Working';
+    }
+
+    /** This employee's user ID on each biometric machine (see BiometricEnrollment). */
+    public function biometricEnrollments()
+    {
+        return $this->hasMany(BiometricEnrollment::class)->orderBy('machine');
     }
 
     // Department IDs this employee has visibility/edit rights over as Team Leader

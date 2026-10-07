@@ -36,7 +36,8 @@
                     $doc = $existingDocs->get($type);
                     $isWord = str_contains($meta['rules'], 'docx');
                 @endphp
-                <div class="hrm-doc-box {{ $doc ? 'has-file has-preview' : '' }}" data-doc-type="file">
+                <div class="hrm-doc-box {{ $doc ? 'has-file has-preview' : '' }}" data-doc-type="file"
+                    @if(in_array($type, \App\Models\EmployeeProfileRequest::DOCUMENT_TYPES, true)) data-self-service @endif>
                     <div class="hrm-doc-preview">
                         <img class="hrm-doc-preview-img" alt="{{ $meta['label'] }} preview" hidden>
                         <span class="hrm-doc-preview-icon">

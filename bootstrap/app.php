@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         'role.access' => \App\Http\Middleware\RoleAccess::class,
         ]);
 
+        // New employees with an unapproved self-service profile only see "Complete your profile".
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureProfileApproved::class);
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

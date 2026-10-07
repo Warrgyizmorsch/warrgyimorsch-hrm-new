@@ -61,7 +61,7 @@ class EmployeeController extends Controller
             ->get();
 
         $employees = $baseQuery
-            ->with(['user', 'departmentRef'])
+            ->with(['user', 'departmentRef', 'biometricEnrollments'])
             ->leftJoin('users', 'users.employee_id', '=', 'employees.id')
             ->select('employees.*')
             ->when($search !== '', function ($query) use ($search) {
@@ -86,6 +86,17 @@ class EmployeeController extends Controller
             ->when($departmentFilter, function ($query) use ($departmentFilter) {
                 $query->where('employees.department_id', $departmentFilter);
             })
+            ->when($pfFilter === 'yes', fn ($query) => $query->where('employees.pf', true))
+            ->when($pfFilter === 'no', fn ($query) => $query->where('employees.pf', false))
+            ->when($esiFilter === 'yes', fn ($query) => $query->where('employees.esi', true))
+            ->when($esiFilter === 'no', fn ($query) => $query->where('employees.esi', false))
+            ->when($insuranceFilter === 'yes', fn ($query) => $query->where('employees.insurance', true))
+            ->when($insuranceFilter === 'no', fn ($query) => $query->where('employees.insurance', false));
+
+        // Status tab counts — every filter above applies, only the status itself is left open.
+        $statusCounts = $this->statusTabCounts(clone $employees);
+
+        $employees = $employees
             ->when($statusFilter === 'active', function ($query) {
                 $query->where(function ($subQuery) {
                     $subQuery->whereNull('users.account_status')
@@ -95,6 +106,20 @@ class EmployeeController extends Controller
             ->when($statusFilter === 'inactive', function ($query) {
                 $query->where('users.account_status', 'inactive');
             })
+            // Employment status (Working / Probation / …) — only among active accounts, matching
+            // the list's Status box, where a deactivated account shows as "Inactive (Left)".
+            ->when(array_key_exists($statusFilter, Employee::EMPLOYMENT_STATUSES), function ($query) use ($statusFilter) {
+                $query->where(function ($subQuery) {
+                    $subQuery->whereNull('users.account_status')
+                        ->orWhere('users.account_status', 'active');
+                })->where(function ($subQuery) use ($statusFilter) {
+                    $subQuery->where('employees.employment_status', $statusFilter);
+                    if ($statusFilter === 'working') {
+                        // Blank status is shown as Working on the list.
+                        $subQuery->orWhereNull('employees.employment_status')->orWhere('employees.employment_status', '');
+                    }
+                });
+            })
             // No explicit status filter and no search term: hide inactive accounts by default.
             // A search term is allowed to surface inactive matches too.
             ->when($statusFilter === '' && $search === '', function ($query) {
@@ -103,12 +128,6 @@ class EmployeeController extends Controller
                         ->orWhere('users.account_status', 'active');
                 });
             })
-            ->when($pfFilter === 'yes', fn ($query) => $query->where('employees.pf', true))
-            ->when($pfFilter === 'no', fn ($query) => $query->where('employees.pf', false))
-            ->when($esiFilter === 'yes', fn ($query) => $query->where('employees.esi', true))
-            ->when($esiFilter === 'no', fn ($query) => $query->where('employees.esi', false))
-            ->when($insuranceFilter === 'yes', fn ($query) => $query->where('employees.insurance', true))
-            ->when($insuranceFilter === 'no', fn ($query) => $query->where('employees.insurance', false))
             ->orderByRaw("CASE WHEN COALESCE(users.account_status, 'active') = 'inactive' THEN 1 ELSE 0 END")
             ->orderBy('employees.name')
             ->paginate($perPage)
@@ -125,8 +144,35 @@ class EmployeeController extends Controller
             'statusFilter',
             'pfFilter',
             'esiFilter',
-            'insuranceFilter'
+            'insuranceFilter',
+            'statusCounts'
         ));
+    }
+
+    /**
+     * Employees per status tab, using the same rules as the list's Status box: a deactivated
+     * account is "inactive" whatever its employment status, and a blank status counts as Working.
+     *
+     * @return array<string, int> '' (all active), each EMPLOYMENT_STATUSES key, 'inactive'
+     */
+    private function statusTabCounts($query): array
+    {
+        $rows = $query
+            ->reorder()
+            ->with([])
+            ->select(DB::raw("CASE WHEN users.account_status = 'inactive' THEN 'inactive'
+                ELSE COALESCE(NULLIF(employees.employment_status, ''), 'working') END AS tab_status"), DB::raw('COUNT(*) AS total'))
+            ->groupBy('tab_status')
+            ->pluck('total', 'tab_status');
+
+        $counts = ['' => 0];
+        foreach (array_keys(Employee::EMPLOYMENT_STATUSES) as $status) {
+            $counts[$status] = (int) ($rows[$status] ?? 0);
+            $counts[''] += $counts[$status];
+        }
+        $counts['inactive'] = (int) ($rows['inactive'] ?? 0);
+
+        return $counts;
     }
 
 
@@ -147,27 +193,40 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         try {
+            // Self-service: the employee fills personal/ID/bank details after logging in, so
+            // those aren't required here — but an email is, or they could never log in.
+            $selfService = $request->boolean('employee_completes_profile');
+            $bankRule = $selfService ? 'nullable' : 'required';
+
             $validated = $request->validate([
                 'employee_code' => 'required|string|max:50|unique:employees,employee_code',
-                'rs9n_device_id' => 'nullable|integer|min:0|unique:employees,rs9n_device_id',
                 'name' => 'required|string|max:255',
-                'email' => 'nullable|email|unique:users,email',
+                'email' => ($selfService ? 'required' : 'nullable') . '|email|unique:users,email',
                 'mobile_number' => 'required|string|max:20',
                 'department_id' => 'required|exists:departments,id',
                 'designation' => 'required|string',
                 'role' => 'required|string',
-                'bank_name' => 'required|string|max:255',
-                'account_number' => 'required|string|max:50',
-                'ifsc_code' => 'required|string|max:20',
+                'bank_name' => "$bankRule|string|max:255",
+                'account_number' => "$bankRule|string|max:50",
+                'ifsc_code' => "$bankRule|string|max:20",
                 'basic_salary' => 'required_without:gross_salary|nullable|numeric|min:0',
                 'gross_salary' => 'required_without:basic_salary|nullable|numeric|min:0',
                 'working_mode' => 'required|in:Office,Work from home',
                 'employment_status' => 'nullable|in:' . implode(',', array_keys(Employee::EMPLOYMENT_STATUSES)),
             ] + EmployeeDocument::validationRules(), [], EmployeeDocument::validationAttributes());
 
-            return DB::transaction(function () use ($request) {
+            $biometricRows = $this->validatedBiometricRows($request);
+
+            return DB::transaction(function () use ($request, $biometricRows, $selfService) {
                 $data = $request->all();
-                $data['rs9n_device_id'] = $request->filled('rs9n_device_id') ? (int) $request->rs9n_device_id : null;
+
+                if ($selfService) {
+                    // Left for the employee; nothing HR may have typed before switching is kept.
+                    foreach (array_keys(\App\Models\EmployeeProfileRequest::FIELDS) as $field) {
+                        $data[$field] = null;
+                    }
+                    $data['profile_status'] = Employee::PROFILE_PENDING;
+                }
 
                 // Password handling: store plain in employees table for admin viewing, hash for users table
                 $rawPassword = $request->filled('password') ? $request->password : '12345678';
@@ -212,6 +271,8 @@ class EmployeeController extends Controller
                 // Create employee
                 $employee = Employee::create($data);
 
+                $recovered = $this->syncBiometricEnrollments($employee, $biometricRows);
+
                 $this->storeDocuments($request, $employee);
 
                 if (strtolower(str_replace(' ', '_', (string) $employee->role)) === 'team_leader') {
@@ -236,7 +297,9 @@ class EmployeeController extends Controller
                 }
 
                 return redirect()->route('employees.index')
-                    ->with('success', 'Employee added and User account created successfully! ✓');
+                    ->with('success', ($selfService
+                        ? "Account created for {$employee->name}. Ask them to log in and complete their profile — it will appear under Profile Approvals once submitted."
+                        : 'Employee added and User account created successfully! ✓') . $this->recoveredMessage($recovered));
             });
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()->withErrors($e->validator)->withInput();
@@ -244,6 +307,78 @@ class EmployeeController extends Controller
             return back()->with('error', 'Error: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+
+    /**
+     * The "Biometric IDs" rows from the employee form: one (machine, device user ID) per
+     * machine. A device ID may repeat across machines (zk 17 ≠ rs9n 17) but not within one.
+     *
+     * @return array<int, array{machine: string, device_user_id: string}>
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    private function validatedBiometricRows(Request $request, ?Employee $employee = null): array
+    {
+        $machines = \App\Models\BiometricEnrollment::machines();
+        $rows = collect((array) $request->input('biometric', []))
+            ->map(fn ($row) => [
+                'machine' => trim((string) ($row['machine'] ?? '')),
+                'device_user_id' => \App\Models\BiometricEnrollment::normalizeId($row['device_user_id'] ?? ''),
+            ])
+            ->filter(fn ($row) => $row['device_user_id'] !== '')
+            ->values();
+
+        $errors = [];
+
+        foreach ($rows as $row) {
+            $label = $machines[$row['machine']] ?? $row['machine'];
+
+            if (!isset($machines[$row['machine']])) {
+                $errors[] = 'Choose a machine for biometric ID ' . $row['device_user_id'] . '.';
+            } elseif (!preg_match('/^[A-Za-z0-9_-]{1,50}$/', $row['device_user_id'])) {
+                $errors[] = "{$label}: device ID may only contain letters and numbers.";
+            } elseif ($taken = \App\Models\BiometricEnrollment::with('employee')
+                ->where('machine', $row['machine'])
+                ->where('device_user_id', $row['device_user_id'])
+                ->when($employee, fn ($q) => $q->where('employee_id', '!=', $employee->id))
+                ->first()) {
+                $errors[] = "{$label} ID {$row['device_user_id']} is already linked to " . ($taken->employee->name ?? 'another employee') . '.';
+            }
+        }
+
+        foreach ($rows->groupBy('machine')->filter(fn ($g) => $g->count() > 1) as $machine => $group) {
+            $errors[] = 'Only one ID per machine — ' . ($machines[$machine] ?? $machine) . ' is listed twice.';
+        }
+
+        if ($errors) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['biometric' => $errors]);
+        }
+
+        return $rows->all();
+    }
+
+    /**
+     * Replace the employee's biometric IDs with the form rows, then pull in any punches
+     * that arrived for those IDs before they were linked.
+     *
+     * @return int punches recovered from the unmapped queue
+     */
+    private function syncBiometricEnrollments(Employee $employee, array $rows): int
+    {
+        $keep = [];
+        foreach ($rows as $row) {
+            $keep[] = $employee->biometricEnrollments()->updateOrCreate(
+                ['machine' => $row['machine']],
+                ['device_user_id' => $row['device_user_id']]
+            )->id;
+        }
+        $employee->biometricEnrollments()->whereNotIn('id', $keep)->delete();
+
+        return \App\Models\BiometricEnrollment::replayUnmappedFor($employee->fresh('biometricEnrollments'));
+    }
+
+    private function recoveredMessage(int $recovered): string
+    {
+        return $recovered > 0 ? " {$recovered} earlier punch(es) from the linked biometric ID were added to attendance." : '';
     }
 
     /**
@@ -453,10 +588,20 @@ class EmployeeController extends Controller
 
         $summary = app(AttendanceHistoryService::class)->buildMonthlySummary($history);
 
+        // Same late-arrival rules as the dashboard widget and the payroll Late Arrivals report.
+        $lateReport = app(\App\Services\LateArrivalService::class)
+            ->report($startDate, $endDate, [(int) $employeeId])
+            ->first();
+        $lateByDate = collect($lateReport['days'] ?? [])
+            ->keyBy(fn (array $day) => $day['date']->toDateString())
+            ->all();
+
         return view('payroll.attendance-history', [
             'employee' => $employee,
             'history' => $history,
             'summary' => $summary,
+            'lateReport' => $lateReport,
+            'lateByDate' => $lateByDate,
             'selectedMonth' => "$year-$month"
         ]);
     }
@@ -528,14 +673,15 @@ class EmployeeController extends Controller
                 'role' => 'required|string',
                 'email' => 'nullable|email|unique:users,email,' . $userId,
                 'employee_code' => 'nullable|string|max:50|unique:employees,employee_code,' . $employee->id,
-                'rs9n_device_id' => 'nullable|integer|min:0|unique:employees,rs9n_device_id,' . $employee->id,
                 'working_mode' => 'required|in:Office,Work from home',
                 'employment_status' => 'nullable|in:' . implode(',', array_keys(Employee::EMPLOYMENT_STATUSES)),
                 'basic_salary' => 'nullable|numeric|min:0',
                 'gross_salary' => 'nullable|numeric|min:0',
             ] + EmployeeDocument::validationRules(), [], EmployeeDocument::validationAttributes());
 
-            return DB::transaction(function () use ($request, $employee, $user) {
+            $biometricRows = $this->validatedBiometricRows($request, $employee);
+
+            return DB::transaction(function () use ($request, $employee, $user, $biometricRows) {
                 $updateData = [
                     'name' => $request->name,
                     'email' => $request->email,
@@ -547,7 +693,6 @@ class EmployeeController extends Controller
                     'date_of_birth' => $request->date_of_birth,
                     'gender' => $request->gender ?? 'male',
                     'employee_code' => $request->employee_code,
-                    'rs9n_device_id' => $request->filled('rs9n_device_id') ? (int) $request->rs9n_device_id : null,
                     'aadhaar_number' => $request->aadhaar_number,
                     'pan_number' => $request->pan_number,
                     'address' => $request->address,
@@ -597,6 +742,8 @@ class EmployeeController extends Controller
 
                 $employee->update($updateData);
 
+                $recovered = $this->syncBiometricEnrollments($employee, $biometricRows);
+
                 $employee->ledDepartmentRefs()->sync(
                     strtolower(str_replace(' ', '_', (string) $request->role)) === 'team_leader'
                         ? array_values(array_filter((array) $request->additional_led_department_ids))
@@ -645,7 +792,7 @@ class EmployeeController extends Controller
                 }
 
                 return redirect()->route('employees.index')
-                    ->with('success', 'Employee and User account updated successfully! ✓');
+                    ->with('success', 'Employee and User account updated successfully! ✓' . $this->recoveredMessage($recovered));
             });
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()->withErrors($e->validator)->withInput();
@@ -688,16 +835,54 @@ class EmployeeController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    /**
+     * What permanently deleting this employee would remove / keep (confirmation dialog).
+     */
+    public function deletePreview($id, \App\Services\EmployeePurgeService $purge)
     {
+        abort_unless($this->canPermanentlyDelete(), 403);
         $employee = Employee::findOrFail($id);
-        $employee->delete();
 
-        // Document rows cascade with the employee; remove their files too.
-        Storage::disk(EmployeeDocument::DISK)->deleteDirectory("employee-documents/{$employee->id}");
+        return response()->json([
+            'name' => $employee->name,
+            'allowed' => $purge->canPurge($employee),
+            'reason' => $purge->canPurge($employee) ? null : 'Only inactive (left) employees can be deleted. Set their status to "Inactive (Left)" first.',
+        ] + $purge->preview($employee));
+    }
 
-        return redirect()->route('employees.index')
-            ->with('success', 'Employee deleted successfully! ✓');
+    /**
+     * Permanently delete a former employee's data (payroll kept — see EmployeePurgeService).
+     * Super admin only, inactive employees only, and the employee's name must be typed back.
+     */
+    public function destroy(Request $request, $id, \App\Services\EmployeePurgeService $purge)
+    {
+        abort_unless($this->canPermanentlyDelete(), 403, 'Only a super admin can permanently delete an employee.');
+        $employee = Employee::findOrFail($id);
+
+        if (!$purge->canPurge($employee)) {
+            return response()->json(['message' => 'Only inactive (left) employees can be deleted. Set their status to "Inactive (Left)" first.'], 422);
+        }
+
+        if (mb_strtolower(trim((string) $request->input('confirm_name'))) !== mb_strtolower(trim((string) $employee->name))) {
+            return response()->json(['message' => 'Type the employee\'s name exactly to confirm.'], 422);
+        }
+
+        $deleted = $purge->purge($employee, auth()->user());
+
+        \Illuminate\Support\Facades\Log::info('Employee permanently deleted (payroll kept)', [
+            'employee_id' => $employee->id,
+            'employee_code' => $employee->employee_code,
+            'name' => $employee->name,
+            'by_user_id' => auth()->id(),
+            'deleted' => $deleted,
+        ]);
+
+        return response()->json(['message' => "{$employee->name} was deleted. Payroll records were kept."]);
+    }
+
+    private function canPermanentlyDelete(): bool
+    {
+        return in_array(str_replace(' ', '_', strtolower((string) auth()->user()->role)), ['super_admin', 'admin'], true);
     }
 
     /**

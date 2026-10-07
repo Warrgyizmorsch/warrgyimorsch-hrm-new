@@ -1,9 +1,8 @@
 @php
-    $statusLabels = [
-        '' => 'All Status',
-        'active' => 'Active',
-        'inactive' => 'Deactivated',
-    ];
+    // Same choices as the Status box on each list row, plus "All active".
+    $statusLabels = ['' => 'All Status', 'active' => 'All Active']
+        + \App\Models\Employee::EMPLOYMENT_STATUSES
+        + ['inactive' => 'Inactive (Left)'];
     $benefitLabels = [
         '' => 'All',
         'yes' => 'Eligible',
@@ -108,7 +107,7 @@
             </div>
         </div>
         <div class="zoho-filter-field" data-filter-field>
-            <label class="zoho-filter-label">Account Status</label>
+            <label class="zoho-filter-label">Status</label>
             <div class="wghrm-search-dropdown" id="statusFilterDropdown">
                 <div class="wghrm-dropdown-trigger zoho-filter-input">
                     <span class="wghrm-trigger-text">{{ $statusLabels[$statusFilter ?? ''] ?? 'All Status' }}</span>

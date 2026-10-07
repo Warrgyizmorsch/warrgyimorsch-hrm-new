@@ -129,6 +129,42 @@
                 cursor: pointer;
             }
         }
+        .employee-status-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 10px 16px 0;
+            border-bottom: 1px solid #e2e8f0;
+            overflow-x: auto;
+            scrollbar-width: thin;
+        }
+        .employee-status-tab {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            white-space: nowrap;
+        }
+        .employee-status-tab:hover { color: #1e293b; }
+        .employee-status-tab.active { color: #3858f9; border-bottom-color: #3858f9; }
+        .employee-status-tab-count {
+            min-width: 22px;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 11px;
+            text-align: center;
+        }
+        .employee-status-tab.active .employee-status-tab-count { background: rgba(56, 88, 249, .12); color: #3858f9; }
+        .employee-status-tab--inactive.active { color: #b91c1c; border-bottom-color: #b91c1c; }
+        .employee-status-tab--inactive.active .employee-status-tab-count { background: rgba(239, 68, 68, .1); color: #b91c1c; }
     </style>
 
     <div class="zoho-page-shell">
@@ -137,14 +173,18 @@
                 ? '<a href="' . route('employees.create') . '" class="zoho-btn-primary"><i class="feather-plus"></i> Add Employee</a>'
                 : '';
             $employeeExtraActions = '';
+            $canApproveProfiles = in_array(str_replace(' ', '_', strtolower(auth()->user()->role)), ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'], true);
+            $pendingProfileCount = $canApproveProfiles ? \App\Models\EmployeeProfileRequest::pending()->count() : 0;
+            $employeeScopeLinks = [['label' => 'View All Data', 'url' => route('employees.index'), 'active' => true]];
+            if ($canApproveProfiles) {
+                $employeeScopeLinks[] = ['label' => 'Profile Approvals' . ($pendingProfileCount ? " ({$pendingProfileCount})" : ''), 'url' => route('profile-approvals.index'), 'active' => false];
+            }
         @endphp
 
         @include('layouts.partials.zoho-people-list-header', [
             'title' => 'Employees',
             'viewLabel' => 'All Employees',
-            'scopeLinks' => [
-                ['label' => 'View All Data', 'url' => route('employees.index'), 'active' => true],
-            ],
+            'scopeLinks' => $employeeScopeLinks,
             'primaryAction' => $employeePrimaryAction,
             'showFilter' => true,
             'moreMenu' => view('employees.partials.more-options')->render(),
@@ -153,6 +193,21 @@
 
         <div class="main-content zoho-module-content">
         <div class="zoho-people-table-card" id="employeeListPanel">
+
+            {{-- Status tabs — same choices as the Status filter / each row's Status box. --}}
+            @php
+                $statusTabs = ['' => 'All Active'] + \App\Models\Employee::EMPLOYMENT_STATUSES + ['inactive' => 'Inactive (Left)'];
+                $activeTab = $statusFilter === 'active' ? '' : ($statusFilter ?? '');
+            @endphp
+            <div class="employee-status-tabs" role="tablist">
+                @foreach($statusTabs as $tabKey => $tabLabel)
+                    <a href="{{ request()->fullUrlWithQuery(['status' => $tabKey === '' ? null : $tabKey, 'page' => null]) }}"
+                       class="employee-status-tab employee-status-tab--{{ $tabKey ?: 'all' }} {{ (string) $activeTab === (string) $tabKey ? 'active' : '' }}"
+                       role="tab" aria-selected="{{ (string) $activeTab === (string) $tabKey ? 'true' : 'false' }}">
+                        {{ $tabLabel }} <span class="employee-status-tab-count">{{ $statusCounts[$tabKey] ?? 0 }}</span>
+                    </a>
+                @endforeach
+            </div>
 
             <!-- Mobile Search Bar -->
             <div id="mobileSearchSection" class="d-none d-lg-none zoho-list-mobile-search">
@@ -234,11 +289,11 @@
                                         <td>{{ ucfirst(str_replace('_', ' ', $emp->role)) }}</td>
                                         <td>{{ $emp->departmentRef->name ?? '—' }}</td>
                                         <td>
-                                            @if($emp->rs9n_device_id)
-                                                <span class="badge bg-soft-primary text-primary fw-bold">{{ $emp->rs9n_device_id }}</span>
-                                            @else
+                                            @forelse($emp->biometricEnrollments as $enrollment)
+                                                <span class="badge bg-soft-primary text-primary fw-bold" title="{{ $enrollment->machine }} machine user ID">{{ $enrollment->machine }} {{ $enrollment->device_user_id }}</span>
+                                            @empty
                                                 <span class="text-muted">—</span>
-                                            @endif
+                                            @endforelse
                                         </td>
                                         <td class="text-center">
                                             @include('employees.partials.list-benefit-badges', ['employee' => $emp])
@@ -258,6 +313,18 @@
                                         <td class="col-status">
                                             @if($isInactive)
                                                 <span class="employee-inactive-label">Deactivated</span>
+                                            @endif
+                                            @if($emp->isProfileLocked())
+                                                @php
+                                                    $profileBadge = [
+                                                        \App\Models\Employee::PROFILE_PENDING => ['Profile not filled yet', '#64748b'],
+                                                        \App\Models\Employee::PROFILE_SUBMITTED => ['Awaiting your approval', '#b45309'],
+                                                        \App\Models\Employee::PROFILE_RETURNED => ['Sent back to employee', '#b91c1c'],
+                                                    ][$emp->profile_status];
+                                                @endphp
+                                                <a href="{{ $canApproveProfiles ? route('profile-approvals.index') : '#' }}" class="d-block small fw-semibold mb-1 text-decoration-none" style="color: {{ $profileBadge[1] }};">
+                                                    <i class="feather-user-check"></i> {{ $profileBadge[0] }}
+                                                </a>
                                             @endif
                                             {{-- One box: employment status while active, or Inactive (left) --}}
                                             @php $empStatus = $isInactive ? 'inactive' : ($emp->employment_status ?: 'working'); @endphp
@@ -1580,23 +1647,54 @@
                     return;
                 }
 
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: "You won't be able to revert this!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#1070e0',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Yes, delete it!',
-                    cancelButtonText: 'No, cancel',
-                    reverseButtons: true,
-                    customClass: {
-                        confirmButton: 'btn btn-primary px-4',
-                        cancelButton: 'btn btn-light-brand px-4 me-3'
-                    },
-                    buttonsStyling: false
-                }).then((result) => {
-                    if (result.isConfirmed) {
+                const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                const listHtml = obj => Object.entries(obj || {}).map(([label, n]) =>
+                    `<li class="d-flex justify-content-between"><span>${escapeHtml(label)}</span><strong>${n}</strong></li>`).join('');
+
+                // Permanent delete (inactive employees only, payroll kept): show exactly what goes,
+                // then require the employee's name to be typed back.
+                fetch(`{{ url('/employees') }}/${id}/delete-preview`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                    .then(res => res.ok ? res.json() : Promise.reject(res))
+                    .then(preview => {
+                        if (!preview.allowed) {
+                            Swal.fire({ icon: 'info', title: 'Cannot delete yet', text: preview.reason });
+                            return;
+                        }
+
+                        return Swal.fire({
+                            title: `Permanently delete ${escapeHtml(preview.name)}?`,
+                            icon: 'warning',
+                            html: `
+                                <div class="text-start small">
+                                    <p class="mb-1 fw-bold text-danger">This will be deleted for good:</p>
+                                    <ul class="list-unstyled mb-3 px-2" style="max-height:180px;overflow:auto;">${listHtml(preview.delete) || '<li class="text-muted">Nothing else on record.</li>'}</ul>
+                                    <p class="mb-1 fw-bold text-success">This is kept:</p>
+                                    <ul class="list-unstyled mb-2 px-2">${listHtml(preview.keep) || '<li class="text-muted">—</li>'}</ul>
+                                    <p class="text-muted mb-2">Name, code, job, PAN, bank and PF/ESI stay only so old payslips still work. Email, mobile, Aadhaar, address, date of birth, photo and login are erased.</p>
+                                    <label class="form-label fw-bold mb-1">Type <span class="text-danger">${escapeHtml(preview.name)}</span> to confirm</label>
+                                </div>`,
+                            input: 'text',
+                            inputAttributes: { autocomplete: 'off', spellcheck: 'false' },
+                            showCancelButton: true,
+                            confirmButtonText: 'Delete permanently',
+                            cancelButtonText: 'Cancel',
+                            reverseButtons: true,
+                            customClass: {
+                                confirmButton: 'btn btn-danger px-4',
+                                cancelButton: 'btn btn-light-brand px-4 me-3'
+                            },
+                            buttonsStyling: false,
+                            preConfirm: (typed) => {
+                                if ((typed || '').trim().toLowerCase() !== String(preview.name).trim().toLowerCase()) {
+                                    Swal.showValidationMessage('The name doesn\'t match.');
+                                    return false;
+                                }
+                                return typed;
+                            }
+                        });
+                    })
+                    .then((result) => {
+                    if (result && result.isConfirmed) {
                         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
                         fetch(`{{ url('/employees') }}/${id}`, {
@@ -1606,10 +1704,16 @@
                                 'Accept': 'application/json',
                                 'Content-Type': 'application/json'
                             },
-                            credentials: 'same-origin'
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ confirm_name: result.value })
                         })
-                            .then(res => {
-                                if (res.status === 200 || res.status === 204 || res.ok) {
+                            .then(async res => {
+                                if (!res.ok) {
+                                    const body = await res.json().catch(() => ({}));
+                                    Swal.fire({ icon: 'error', title: 'Not deleted', text: body.message || 'Error deleting employee' });
+                                    return;
+                                }
+                                {
                                     // Close modal if open
                                     const modal = bootstrap.Offcanvas.getInstance(document.getElementById('employeeModal'));
                                     if (modal) modal.hide();
@@ -1635,11 +1739,9 @@
                                     if (typeof Toast !== 'undefined') {
                                         Toast.fire({
                                             icon: 'success',
-                                            title: 'Employee deleted'
+                                            title: 'Employee deleted — payroll kept'
                                         });
                                     }
-                                } else {
-                                    alert('Error deleting employee');
                                 }
                             })
                             .catch(err => {
@@ -1647,7 +1749,8 @@
                                 alert('Error deleting employee');
                             });
                     }
-                });
+                })
+                    .catch(() => alert('Could not load what would be deleted. Please try again.'));
             }
 
             // Tab switching function
@@ -1868,70 +1971,18 @@
                     return;
                 }
 
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: `Delete ${employeeIds.length} employee(s)? This action cannot be undone.`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#1070e0',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Yes, delete it!',
-                    cancelButtonText: 'No, cancel',
-                    reverseButtons: true,
-                    customClass: {
-                        confirmButton: 'btn btn-primary px-4',
-                        cancelButton: 'btn btn-light-brand px-4 me-3'
-                    },
-                    buttonsStyling: false
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-                        // Delete each employee
-                        Promise.all(employeeIds.map(id =>
-                            fetch(`/employees/${id}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrfToken,
-                                    'Accept': 'application/json',
-                                    'Content-Type': 'application/json'
-                                },
-                                credentials: 'same-origin'
-                            }).then(res => {
-                                if (res.ok) {
-                                    const row = document.getElementById(`emp-row-${id}`);
-                                    if (row) row.remove();
-                                }
-                                return res;
-                            })
-                        ))
-                            .then(() => {
-                                // Check if table is empty
-                                const visibleRows = document.querySelectorAll("#employeeTable tbody tr:not(#noResultsRow)").length;
-                                if (visibleRows === 0) {
-                                    const tbody = document.querySelector("#employeeTable tbody");
-                                    const noResultsRow = document.createElement('tr');
-                                    noResultsRow.id = 'noResultsRow';
-                                    noResultsRow.innerHTML = '<td colspan="6" class="text-center py-4 text-muted">No employees found. <a href="{{ route('employees.create') }}">Add one</a></td>';
-                                    tbody.appendChild(noResultsRow);
-                                }
-
-                                // Uncheck select all
-                                document.getElementById('selectAll').checked = false;
-
-                                if (typeof Toast !== 'undefined') {
-                                    Toast.fire({
-                                        icon: 'success',
-                                        title: 'Selected employees deleted'
-                                    });
-                                }
-                            })
-                            .catch(err => {
-                                console.error('Delete Error:', err);
-                                alert('Error deleting employees');
-                            });
-                    }
-                });
+                // Permanent delete wipes an employee's data, so it's done one person at a time
+                // with a name confirmation (Delete in the employee's name menu).
+                if (employeeIds.length === 1) {
+                    deleteEmployee(employeeIds[0]);
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Delete one at a time',
+                        text: 'Deleting an employee permanently removes their data, so it is done individually with a name confirmation. Use "Delete" in each inactive employee\'s name menu.',
+                    });
+                }
+                return;
             }
             function initializeSearchDropdown(dropdownId, inputId, defaultLabel) {
                 const dropdown = document.getElementById(dropdownId);

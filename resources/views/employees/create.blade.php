@@ -21,6 +21,24 @@
             id="employeeForm" @if($errors->any()) data-server-errors='@json($errors->getMessages())' @endif>
             @csrf
 
+            {{-- Self-service onboarding: HR fills job details only, the employee fills the rest after login. --}}
+            <div class="hrm-card mb-3" style="border-left: 4px solid #3858f9;">
+                <div class="hrm-card-body d-flex align-items-start gap-3 py-3">
+                    <div class="form-check form-switch mb-0 mt-1">
+                        <input class="form-check-input" type="checkbox" role="switch" name="employee_completes_profile" value="1"
+                            id="employeeCompletesProfile" @checked(old('employee_completes_profile'))>
+                    </div>
+                    <label for="employeeCompletesProfile" class="mb-0" style="cursor: pointer;">
+                        <strong>Let the employee fill personal, ID &amp; bank details</strong>
+                        <span class="d-block text-muted small">
+                            Date of birth, gender, address, Aadhaar, PAN, bank details and their ID copies are hidden here. The employee fills
+                            them after their first login (email is required for that). Their account stays limited to that page until you
+                            approve under Employees → Profile Approvals.
+                        </span>
+                    </label>
+                </div>
+            </div>
+
             {{-- Step 1: Personal (matches reference image) --}}
             <div class="hrm-step-panel active" data-step="1">
                 <div class="hrm-cards-grid">
@@ -40,15 +58,6 @@
                                         <input type="text" name="employee_code" class="form-control" placeholder="Enter employee code"
                                             value="{{ old('employee_code') }}">
                                         <input type="hidden" name="from_job_application_id" value="{{ old('from_job_application_id') }}">
-                                    </div>
-                                </div>
-                                <div class="hrm-field">
-                                    <label>rs9n Device ID</label>
-                                    <div class="hrm-input-wrap">
-                                        <i class="bi bi-fingerprint"></i>
-                                        <input type="number" name="rs9n_device_id" class="form-control" min="0"
-                                            placeholder="Only if enrolled on rs9n device"
-                                            value="{{ old('rs9n_device_id') }}">
                                     </div>
                                 </div>
                                 <div class="hrm-field">
@@ -104,14 +113,14 @@
                                         <input type="date" name="date_of_joining" class="form-control" value="{{ old('date_of_joining') }}">
                                     </div>
                                 </div>
-                                <div class="hrm-field">
+                                <div class="hrm-field" data-self-service>
                                     <label>Date of Birth</label>
                                     <div class="hrm-input-wrap">
                                         <i class="bi bi-calendar"></i>
                                         <input type="date" name="date_of_birth" class="form-control" value="{{ old('date_of_birth') }}">
                                     </div>
                                 </div>
-                                <div class="hrm-field">
+                                <div class="hrm-field" data-self-service>
                                     <label>Gender</label>
                                     <div class="hrm-radio-row">
                                         <div class="form-check">
@@ -178,12 +187,13 @@
                                         </button>
                                     </div>
                                 </div>
+                                @include('employees.partials.biometric-ids')
                             </div>
                         </div>
                     </div>
 
                     {{-- Identity & Contact --}}
-                    <div class="hrm-card">
+                    <div class="hrm-card" data-self-service>
                         <div class="hrm-card-head">
                             <i class="bi bi-person-vcard"></i>
                             <h3>Identity & Contact</h3>
@@ -321,7 +331,7 @@
             {{-- Step 2: Job Details --}}
             <div class="hrm-step-panel" data-step="2">
                 <div class="hrm-cards-grid">
-                    <div class="hrm-card">
+                    <div class="hrm-card" data-self-service>
                         <div class="hrm-card-head">
                             <i class="bi bi-bank"></i>
                             <h3>Bank Details</h3>
@@ -537,6 +547,30 @@ document.querySelectorAll('.salary-input').forEach(i => i.addEventListener('inpu
 window.addEventListener('load', function () {
     document.querySelectorAll('.salary-input').forEach(i => i.dispatchEvent(new Event('input')));
 });
+
+// "Let the employee fill personal, ID & bank details": hide those fields, stop them being
+// required or submitted, and require an email (the employee needs it to log in).
+(function () {
+    const toggle = document.getElementById('employeeCompletesProfile');
+    if (!toggle) return;
+
+    function apply() {
+        const on = toggle.checked;
+        document.querySelectorAll('[data-self-service]').forEach(function (block) {
+            block.style.display = on ? 'none' : '';
+            block.querySelectorAll('input, select, textarea').forEach(function (el) {
+                if (on && el.required) el.dataset.wasRequired = '1';
+                el.required = on ? false : el.dataset.wasRequired === '1';
+                el.disabled = on;
+            });
+        });
+        const email = document.querySelector('#employeeForm input[name="email"]');
+        if (email) email.required = on;
+    }
+
+    toggle.addEventListener('change', apply);
+    apply();
+})();
 </script>
 @include('employees.partials.form-dashboard-scripts')
 

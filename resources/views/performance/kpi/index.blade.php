@@ -25,13 +25,7 @@
     <div class="main-content zoho-module-content">
         <p class="text-muted small mb-3">Department-wise KPI templates. Assign these to employees from <a href="{{ route('kpi-assignments.index') }}">KPI Assignments</a>.</p>
 
-        @if ($message = Session::get('success'))
-            <div class="attendance-alert" role="alert">
-                <i class="feather-check-circle"></i>
-                <span>{{ $message }}</span>
-                <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        @include('performance.partials.alerts')
 
         @include('master.partials.filter-panel', [
             'filterRoute' => route('kpis.index'),

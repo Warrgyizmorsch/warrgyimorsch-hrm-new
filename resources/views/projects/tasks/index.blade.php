@@ -209,6 +209,13 @@
                                             </td>
                                             <td class="text-end">
                                                 <div class="dt-actions">
+                                                    @if(!$isAdmin && $task->start_date && $task->start_date->lt(today()->subDays(\App\Http\Controllers\DailyTaskController::BACKDATE_BUFFER_DAYS)))
+                                                    {{-- Past the report window: progress can't be backfilled (enforced server-side too). --}}
+                                                    <button type="button" class="zoho-btn-primary btn-sm dt-btn-progress" disabled
+                                                        title="Progress can only be added to tasks dated today or yesterday" style="opacity: .5; cursor: not-allowed;">
+                                                        <i class="feather-lock"></i> Progress
+                                                    </button>
+                                                    @else
                                                     <button type="button"
                                                         class="zoho-btn-primary btn-sm dt-btn-progress"
                                                         title="Add Work Progress"
@@ -217,6 +224,7 @@
                                                         onclick="openFollowUpModal({{ $task->id }}, '{{ addslashes($task->project->name ?? 'N/A') }}', 'add', '{{ addslashes($task->task_title) }}', {{ $task->employee_id ?? 'null' }}, '{{ addslashes($task->employee->name ?? auth()->user()->name ?? 'Employee') }}', {{ $task->project_id ?? 'null' }})">
                                                         <i class="feather-plus"></i> Progress
                                                     </button>
+                                                    @endif
                                                     <button type="button"
                                                         class="zoho-icon-btn"
                                                         title="View Details & History"
@@ -472,7 +480,8 @@
                                         <div class="dt-input-wrap">
                                             <i class="feather-calendar"></i>
                                             <input type="date" name="start_date" id="taskStartDate" class="form-control"
-                                                value="{{ now()->format('Y-m-d') }}" required>
+                                                value="{{ now()->format('Y-m-d') }}" required
+                                                @unless($isAdmin) min="{{ today()->subDays(\App\Http\Controllers\DailyTaskController::BACKDATE_BUFFER_DAYS)->format('Y-m-d') }}" data-min-date="{{ today()->subDays(\App\Http\Controllers\DailyTaskController::BACKDATE_BUFFER_DAYS)->format('Y-m-d') }}" @endunless>
                                         </div>
                                     </div>
                                 </div>
@@ -1562,6 +1571,7 @@
                 document.getElementById('taskTitle').value = task.task_title || '';
                 document.getElementById('taskStartDate').value = task.start_date_formatted || (task.start_date ? task.start_date.substring(0, 10) : '');
                 document.getElementById('taskEndDate').value = task.end_date_formatted || (task.end_date ? task.end_date.substring(0, 10) : '');
+                setTaskStartDateMin(document.getElementById('taskStartDate').value);
                 document.getElementById('taskPriority').value = task.priority || 'Medium';
 
                 window.onload = function () {
@@ -1625,8 +1635,36 @@
                 }
             }
 
+            // Employees may only date a task today or yesterday (enforced server-side too). When
+            // editing an older task, its existing date stays selectable so it can be kept as is.
+            function setTaskStartDateMin(existingDate = '') {
+                const input = document.getElementById('taskStartDate');
+                const limit = input.dataset.minDate;
+                if (limit) {
+                    input.min = existingDate && existingDate < limit ? existingDate : limit;
+                }
+                syncTaskEndDateMin();
+            }
+
+            // End date can't be before the start date (which is itself limited for employees).
+            function syncTaskEndDateMin() {
+                const start = document.getElementById('taskStartDate');
+                const end = document.getElementById('taskEndDate');
+                const min = start.value || start.min || '';
+                end.min = min;
+                if (min && end.value && end.value < min) {
+                    end.value = min;
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                document.getElementById('taskStartDate').addEventListener('change', syncTaskEndDateMin);
+                syncTaskEndDateMin();
+            });
+
             function resetTaskForm() {
                 document.getElementById('taskForm').reset();
+                setTaskStartDateMin();
                 document.getElementById('taskForm').action = `{{ url('/daily-tasks') }}`;
                 document.getElementById('taskOffcanvasLabel').innerText = 'Add Main Task';
                 document.getElementById('submitTaskBtn').innerText = 'SUBMIT TASK';

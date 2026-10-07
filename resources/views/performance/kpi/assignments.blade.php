@@ -21,13 +21,7 @@
     <div class="main-content zoho-module-content">
         <p class="text-muted small mb-3">Assign an employee's department KPIs for a target month, and record actual achievement. Manage templates under <a href="{{ route('kpis.index') }}">KPIs</a>.</p>
 
-        @if ($message = Session::get('success'))
-            <div class="attendance-alert" role="alert">
-                <i class="feather-check-circle"></i>
-                <span>{{ $message }}</span>
-                <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        @include('performance.partials.alerts')
 
         <div class="zoho-people-table-card mb-3">
             <div class="card-body">

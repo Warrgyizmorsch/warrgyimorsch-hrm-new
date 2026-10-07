@@ -155,6 +155,7 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/employees/{id}', [EmployeeController::class, 'show'])->name('employees.show');
     Route::get('/employees/{id}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
     Route::put('/employees/{id}', [EmployeeController::class, 'update'])->name('employees.update');
+    Route::get('/employees/{id}/delete-preview', [EmployeeController::class, 'deletePreview'])->name('employees.delete-preview');
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::get('/employees-export', [EmployeeController::class, 'export'])->name('employees.export');
     Route::post('/employee/update-accountStatus', [EmployeeController::class, 'updateAccountStatus'])->name('users.update-accountStatus');
@@ -208,6 +209,12 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::post('/kpi-assignments/{id}/actuals', [KpiController::class, 'updateActuals'])->name('kpi-assignments.actuals');
     Route::post('/kpi-assignments/{id}/recompute', [KpiController::class, 'recompute'])->name('kpi-assignments.recompute');
     Route::delete('/kpi-assignments/{id}', [KpiController::class, 'destroyAssignment'])->name('kpi-assignments.destroy');
+
+    // Employee self-service profile approvals.
+    Route::get('/profile-approvals', [\App\Http\Controllers\ProfileApprovalController::class, 'index'])->name('profile-approvals.index');
+    Route::get('/profile-approvals/{profileRequest}', [\App\Http\Controllers\ProfileApprovalController::class, 'show'])->name('profile-approvals.show');
+    Route::post('/profile-approvals/{profileRequest}/approve', [\App\Http\Controllers\ProfileApprovalController::class, 'approve'])->name('profile-approvals.approve');
+    Route::post('/profile-approvals/{profileRequest}/send-back', [\App\Http\Controllers\ProfileApprovalController::class, 'sendBack'])->name('profile-approvals.send-back');
 
     // SOP — department/role-scoped documents with versioning.
     Route::get('/sops', [SopController::class, 'index'])->name('sops.index');
@@ -360,6 +367,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/kra/{id}/acknowledge', [KraController::class, 'acknowledge'])->name('kra.acknowledge');
     Route::post('/kpi-assignments/{id}/acknowledge', [KpiController::class, 'acknowledge'])->name('kpi-assignments.acknowledge');
     Route::post('/sops/{id}/acknowledge', [SopController::class, 'acknowledge'])->name('sops.acknowledge');
+    // Self-service personal/ID/bank details — first-time profile, or a change request; HR approves.
+    Route::get('/my-details', [\App\Http\Controllers\SelfProfileController::class, 'edit'])->name('profile.complete');
+    Route::post('/my-details', [\App\Http\Controllers\SelfProfileController::class, 'submit'])->name('profile.complete.submit');
+
+    // SOP document — admins any, everyone else only SOPs that apply to them (checked in the controller).
+    Route::get('/sops/{id}/file', [SopController::class, 'file'])->name('sops.file');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

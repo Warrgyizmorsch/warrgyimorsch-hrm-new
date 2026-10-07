@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BiometricEnrollment;
 use App\Services\BiometricSyncService;
 use App\Services\PyAttendanceService;
 use Illuminate\Http\JsonResponse;
@@ -37,43 +38,34 @@ class ZKTController extends Controller
             ]);
         }
 
-        $rs9nMap = \App\Models\Employee::whereNotNull('rs9n_device_id')
-            ->pluck('employee_code', 'rs9n_device_id');
+        $codeMap = BiometricEnrollment::codeMap();
         $affectedCodes = [];
+        $unmapped = 0;
 
         foreach ($records as $att) {
             $rawUserId = trim((string) ($att['user_id'] ?? ''));
+            $machine = (string) ($att['machine'] ?? 'zk');
 
-            if (($att['machine'] ?? null) === 'rs9n') {
-                // The rs9n device assigns its own sequential internal enrollment ID to every
-                // person it enrolls — unrelated to employees.employee_code, and not limited to
-                // the original 28-person group (new enrollees keep getting new device IDs too,
-                // e.g. #29). rs9n_employee_map is therefore the only source of truth; anything
-                // not in it is skipped rather than guessed, since a wrong guess silently
-                // attributes a punch to a different, unrelated employee (config/biometric.php).
-                $deviceId = ctype_digit($rawUserId) ? (int) ltrim($rawUserId, '0') ?: 0 : null;
-                $userId = $deviceId !== null ? ($rs9nMap[$deviceId] ?? null) : null;
+            // Every machine numbers its own users (zk user 17 ≠ rs9n user 17), so punches are
+            // matched only through that machine's enrollment (employee form → Biometric IDs).
+            // Unknown IDs are kept aside, never guessed: a guess silently gives the punch to an
+            // unrelated employee. They're replayed automatically once the ID is mapped.
+            $userId = $rawUserId !== '' ? BiometricEnrollment::resolveCode($codeMap, $machine, $rawUserId) : null;
 
-                if ($userId === null) {
-                    Log::warning('rs9n punch skipped: no employee mapping', [
-                        'rs9n_user_id' => $rawUserId,
-                        'timestamp'    => $att['timestamp'] ?? null,
-                    ]);
-
-                    continue;
+            if ($userId === null) {
+                if ($rawUserId !== '' && !empty($att['timestamp'])) {
+                    BiometricEnrollment::recordUnmapped($machine, $rawUserId, (string) $att['timestamp'], $att['direction'] ?? null, 'sync');
                 }
+                $unmapped++;
 
-                $userId = (string) $userId;
-            } else {
-                // 'zk' machine codes already equal employee_code directly.
-                $userId = $rawUserId;
+                continue;
             }
 
             $affectedCodes[$userId] = true;
 
             // Dedupe on (user_id, timestamp) — that's the true identity of a punch,
-            // stable across both the 'zk' and 'rs9n' machines since employee codes
-            // are unique company-wide. Neither machine gives a stable per-punch ID
+            // stable across every machine since employee codes are unique company-wide.
+            // Neither machine gives a stable per-punch ID
             // (pyzk's old `uid` was just a positional index), so keying on anything
             // device-local risks re-inserting the same real punch as a new row.
             DB::table('attendance_logs')->updateOrInsert(
@@ -101,13 +93,16 @@ class ZKTController extends Controller
         Log::info('Biometric attendance sync completed', [
             'total_records' => count($records),
             'employees_updated' => $affectedCodes->count(),
+            'unmapped_punches' => $unmapped,
         ]);
 
         return response()->json([
             'success' => true,
             'total_records' => count($records),
             'employees_updated' => $affectedCodes->count(),
-            'message' => 'Latest punches imported successfully',
+            'unmapped_punches' => $unmapped,
+            'message' => 'Latest punches imported successfully'
+                . ($unmapped ? " ({$unmapped} punch(es) from device IDs not yet linked to an employee — link them under the employee's Biometric IDs)" : ''),
         ]);
     }
 

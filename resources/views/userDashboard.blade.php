@@ -388,6 +388,8 @@
     <!-- [ page-header ] end -->
     <!-- [ Main Content ] start -->
     <div class="main-content pt-md-4 pt-2 hrm-resp-main-content">
+        @include('partials.today-punch-card')
+
         <div class="row g-3 mb-3">
             <div class="col-lg-6">
                 @include('partials.urgent-announcements-card', ['announcements' => $announcements])

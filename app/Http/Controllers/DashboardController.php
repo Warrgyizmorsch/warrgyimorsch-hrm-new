@@ -523,8 +523,12 @@ class DashboardController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        // Every role with a linked employee sees their own check-in / late status.
+        $myTodayPunch = $this->getMyTodayPunch($employee);
+
         if (!$isAdmin) {
             return view('userDashboard', compact(
+                'myTodayPunch',
                 'totalEmployees',
                 'todayPresent',
                 'todayLeave',
@@ -580,6 +584,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', compact(
+            'myTodayPunch',
             'totalEmployees',
             'todayPresent',
             'todayLeave',
@@ -1016,6 +1021,39 @@ class DashboardController extends Controller
      *
      * @param  array{holidays: array<string, bool>, excused: array<string, string>}  $context  from lateArrivalContext()
      */
+    /**
+     * The logged-in employee's own punch for today, with late status classified by the
+     * same rules as the Late Arrivals widget/report. Null when no employee is linked.
+     */
+    private function getMyTodayPunch(?Employee $employee): ?array
+    {
+        if (!$employee) {
+            return null;
+        }
+
+        $today = Carbon::today();
+        $attendance = Attendance::with('employee')
+            ->where('employee_id', $employee->id)
+            ->whereDate('attendance_date', $today->toDateString())
+            ->first();
+
+        $context = $this->lateArrivalContext($today, $today);
+        $late = $attendance
+            ? LateArrivalService::classify($attendance, $context['holidays'], $context['excused'])
+            : ['minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null];
+        $checkIn = $attendance?->getRawPunchTime('check_in');
+        $checkOut = $attendance?->getRawPunchTime('check_out');
+
+        return $late + [
+            'check_in' => $checkIn ? Carbon::parse($checkIn)->format('h:i A') : null,
+            'check_out' => $checkOut ? Carbon::parse($checkOut)->format('h:i A') : null,
+            'shift_start' => $attendance
+                ? AttendanceStatusService::resolveShiftStart($attendance, $employee)->format('h:i A')
+                : Carbon::parse($employee->time_in ?? '09:00')->format('h:i A'),
+            'duration' => LateArrivalService::formatMinutes((int) $late['minutes']),
+        ];
+    }
+
     private function getAttendanceLateMinutes(Attendance $attendance, array $context): int
     {
         return LateArrivalService::classify($attendance, $context['holidays'], $context['excused'])['counted_minutes'];

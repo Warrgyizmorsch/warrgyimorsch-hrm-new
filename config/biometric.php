@@ -29,18 +29,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | 'rs9n' machine employee ID map
+    | Machine labels / employee ID mapping
     |--------------------------------------------------------------------------
     |
-    | The rs9n device assigns its own internal enrollment ID to every person
-    | it enrolls, unrelated to employees.employee_code. This used to be
-    | hardcoded here; it now lives on employees.rs9n_device_id (set via the
-    | "Biometric Device Mapping" field on the employee Add/Edit form) so it
-    | can be maintained through the UI instead of a code deploy — see
-    | ZKTController::syncAttendance() and App\Imports\AttendanceImport.
+    | Every machine numbers its own users, so the same number can be different
+    | people on different machines. Each employee's ID per machine is stored in
+    | biometric_enrollments (the "Biometric IDs" list on the employee form) and
+    | every punch is matched by (machine, device user ID) — never by
+    | employee_code, which is a pure HR/payroll number.
     |
-    | The 'zk' machine is unaffected — its codes already equal employee_code.
+    | To add a machine: add its key to BIOMETRIC_MACHINES (so it's synced) and
+    | a label here. It then appears in the employee form's machine dropdown.
     |
     */
+
+    'machine_labels' => [
+        'zk' => 'zk (old machine)',
+        'rs9n' => 'rs9n (new machine)',
+    ],
 
 ];

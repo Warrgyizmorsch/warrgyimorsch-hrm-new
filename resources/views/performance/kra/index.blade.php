@@ -21,13 +21,7 @@
     <div class="main-content zoho-module-content">
         <p class="text-muted small mb-3">Assign an employee's department KRA criteria for a target month, and track acknowledgement.</p>
 
-        @if ($message = Session::get('success'))
-            <div class="attendance-alert" role="alert">
-                <i class="feather-check-circle"></i>
-                <span>{{ $message }}</span>
-                <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        @include('performance.partials.alerts')
         <div class="zoho-people-table-card mb-3">
             <div class="card-body">
                 <h6 class="mb-3">Assign KRA</h6>

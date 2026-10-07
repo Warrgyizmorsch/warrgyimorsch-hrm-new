@@ -58,8 +58,19 @@
                                 </span>
                             @endif
                         @endforeach
+                        @if(($lateReport['total_days'] ?? 0) > 0)
+                            <span class="badge px-3 py-2 rounded-pill fw-bold bg-soft-danger text-danger" style="font-size: 11px;">
+                                Late Arrivals <strong>{{ $lateReport['total_days'] }}</strong> · {{ $lateReport['total_duration'] }}
+                                @if(($lateReport['very_late_days'] ?? 0) > 0)
+                                    ({{ $lateReport['very_late_days'] }} very late)
+                                @endif
+                            </span>
+                        @endif
                     </div>
-                    <p class="text-muted small mb-0 mt-2">Full day = 8h 30m+ · Half day = 4h to under 8h 30m (by working hours)</p>
+                    <p class="text-muted small mb-0 mt-2">
+                        Full day = 8h 30m+ · Half day = 4h to under 8h 30m (by working hours)
+                        · Late = check-in more than {{ \App\Services\AttendanceStatusService::LATE_ARRIVAL_ALLOWANCE_MINUTES }} min after shift start
+                    </p>
                 </div>
             </div>
         @endif
@@ -78,6 +89,7 @@
                                         <th class="py-3">Date</th>
                                         <th class="py-3 text-center">Check In</th>
                                         <th class="py-3 text-center">Check Out</th>
+                                        <th class="py-3 text-center">Late By</th>
                                         <th class="py-3 text-center">Working Hours</th>
                                         <th class="pe-4 py-3 text-center">Status</th>
                                     </tr>
@@ -104,6 +116,9 @@
                                             </td>
                                             <td class="text-center text-muted fw-semibold" style="font-size: 13px;">{{ $item['punch_in'] }}</td>
                                             <td class="text-center text-muted fw-semibold" style="font-size: 13px;">{{ $item['punch_out'] }}</td>
+                                            <td class="text-center">
+                                                @include('payroll.partials.attendance-history-late', ['late' => $lateByDate[$item['date_key']] ?? null])
+                                            </td>
                                             <td class="text-center fw-bold text-primary" style="font-size: 14px;">{{ $item['total_hours'] }}</td>
                                             <td class="pe-4 text-center">
                                                 <span class="badge px-3 py-2 rounded-pill fw-bold {{ $badgeClass }}" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;">
@@ -113,7 +128,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="text-center py-5">
+                                            <td colspan="7" class="text-center py-5">
                                                 <div class="py-4">
                                                     <i class="feather-info text-muted mb-3" style="font-size: 40px;"></i>
                                                     <h5 class="fw-bold text-dark">No Records Found</h5>
@@ -177,6 +192,14 @@
                                         <span class="fw-bold text-dark" style="font-size: 14px;">{{ $item['punch_out'] }}</span>
                                     </div>
                                 </div>
+                                @if(!empty($lateByDate[$item['date_key']]['category']) && !in_array($lateByDate[$item['date_key']]['category'], ['holiday', 'sunday'], true))
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <small class="text-muted" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Late By</small>
+                                        <div class="text-end">
+                                            @include('payroll.partials.attendance-history-late', ['late' => $lateByDate[$item['date_key']]])
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     @empty

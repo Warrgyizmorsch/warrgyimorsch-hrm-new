@@ -11,6 +11,8 @@ class SopVersion extends Model
         'version',
         'title',
         'content',
+        'attachment_path',
+        'attachment_name',
         'changed_by',
     ];
 

@@ -117,6 +117,10 @@
                             ->sortByDesc('updated_at')
                             ->take(5);
                     }
+                    // Employee self-service profiles waiting for HR (Employees → Profile Approvals).
+                    $pendingProfileApprovals = in_array(str_replace(' ', '_', strtolower(auth()->user()->role)), ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'], true)
+                        ? \App\Models\EmployeeProfileRequest::pending()->with('employee')->oldest('submitted_at')->get()
+                        : collect();
                     $headerEmployee = auth()->user()->employee_id ? \App\Models\Employee::find(auth()->user()->employee_id) : null;
                     $firstName = explode(' ', auth()->user()->name ?? 'User')[0];
                     $userInitials = collect(explode(' ', trim(auth()->user()->name ?? 'User')))
@@ -133,8 +137,9 @@
                         aria-controls="zohoNotifyOffcanvas"
                         title="Notifications">
                     <i class="feather-bell"></i>
-                    @if(count($notifications) > 0)
-                        <span class="zoho-notify-badge">{{ count($notifications) > 9 ? '9+' : count($notifications) }}</span>
+                    @php $bellCount = count($notifications) + $pendingProfileApprovals->count(); @endphp
+                    @if($bellCount > 0)
+                        <span class="zoho-notify-badge">{{ $bellCount > 9 ? '9+' : $bellCount }}</span>
                     @endif
                 </button>
 
@@ -596,6 +601,17 @@
     class="zoho-header-offcanvas zoho-notify-offcanvas border-0"
     body-class="zoho-notify-offcanvas-body p-0"
     footer-class="zoho-offcanvas-foot">
+    @foreach($pendingProfileApprovals as $pendingProfile)
+        <a href="{{ route('profile-approvals.show', $pendingProfile) }}" class="zoho-notify-item zoho-notify-item--leave">
+            <span class="zoho-notify-item-icon"><i class="feather-user-check"></i></span>
+            <span class="zoho-notify-item-body">
+                <span class="zoho-notify-item-title">{{ $pendingProfile->employee->name ?? 'An employee' }} submitted {{ $pendingProfile->type === 'onboarding' ? 'their profile' : 'a details change' }}</span>
+                <span class="zoho-notify-item-desc">Waiting for your approval</span>
+                <span class="zoho-notify-item-meta">{{ $pendingProfile->submitted_at?->format('d M, h:i A') }}</span>
+            </span>
+            <span class="zoho-notify-item-avatar zoho-notify-item-avatar--initial">{{ strtoupper(substr($pendingProfile->employee->name ?? '?', 0, 1)) }}</span>
+        </a>
+    @endforeach
     @forelse($notifications as $item)
         @php
             $isCelebration = isset($item->type) && $item->type == 'celebration';
@@ -635,13 +651,15 @@
             @endif
         </a>
     @empty
-        <div class="zoho-offcanvas-empty">
-            <div class="zoho-offcanvas-empty-art">
-                <i class="feather-bell"></i>
+        @if($pendingProfileApprovals->isEmpty())
+            <div class="zoho-offcanvas-empty">
+                <div class="zoho-offcanvas-empty-art">
+                    <i class="feather-bell"></i>
+                </div>
+                <p class="zoho-offcanvas-empty-title">No Notification found</p>
+                <p class="zoho-offcanvas-empty-desc">You're all caught up. New alerts will appear here.</p>
             </div>
-            <p class="zoho-offcanvas-empty-title">No Notification found</p>
-            <p class="zoho-offcanvas-empty-desc">You're all caught up. New alerts will appear here.</p>
-        </div>
+        @endif
     @endforelse
 
     @if(count($notifications) > 0)

@@ -6,11 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class Sop extends Model
 {
+    /** Private disk — files are served only through SopController::file(). */
+    public const DISK = 'local';
+
+    public const ATTACHMENT_RULES = 'file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,png,jpg,jpeg,webp|max:10240';
+
     protected $fillable = [
         'department_id',
         'role',
         'title',
         'content',
+        'attachment_path',
+        'attachment_name',
         'version',
         'status',
     ];

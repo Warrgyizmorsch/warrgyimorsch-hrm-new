@@ -174,6 +174,21 @@
 .mst-offcanvas .offcanvas-body {
     background: #f8fafc;
     padding: 18px;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* The drawer form sits below the header, so it must take the *remaining* height (not
+   h-100, which pushed the Save/Cancel footer off-screen on small or zoomed viewports).
+   The body scrolls; the footer always stays visible. */
+.mst-offcanvas > form {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+}
+
+.mst-offcanvas .mst-offcanvas-foot {
+    flex-shrink: 0;
 }
 
 .mst-offcanvas-card {
@@ -346,5 +361,13 @@
 
     .master-page .zoho-list-bar {
         justify-content: flex-start;
+    }
+
+    .mst-offcanvas .offcanvas-body {
+        padding: 12px;
+    }
+
+    .mst-offcanvas .mst-offcanvas-foot {
+        padding: 10px 12px;
     }
 }

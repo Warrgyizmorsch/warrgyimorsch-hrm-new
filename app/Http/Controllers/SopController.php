@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Sop;
 use App\Models\SopVersion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SopController extends Controller
 {
@@ -45,16 +46,23 @@ class SopController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+
+        if ($data['content'] === null && !$request->hasFile('attachment')) {
+            return $this->missingBodyError();
+        }
+
+        if ($request->hasFile('attachment')) {
+            $data += $this->storeAttachment($request);
+        }
+
         $sop = Sop::create($data + ['version' => 1]);
 
         // Record version 1 immediately so history is complete from the start.
         SopVersion::create([
             'sop_id' => $sop->id,
             'version' => $sop->version,
-            'title' => $sop->title,
-            'content' => $sop->content,
             'changed_by' => auth()->id(),
-        ]);
+        ] + $this->snapshot($sop));
 
         return back()->with('success', 'SOP added successfully!');
     }
@@ -64,10 +72,27 @@ class SopController extends Controller
         $data = $this->validated($request);
         $sop = Sop::findOrFail($id);
 
-        // Bump the version whenever the content actually changes, so prior acknowledgements
-        // (tied to a specific version) no longer count and employees are prompted to re-ack.
-        // The full old content is kept in sop_versions — editing never destroys history.
-        if ($sop->content !== $data['content']) {
+        $removeAttachment = $request->boolean('remove_attachment') && !$request->hasFile('attachment');
+        $keepsAttachment = $request->hasFile('attachment') || ($sop->attachment_path && !$removeAttachment);
+
+        if ($data['content'] === null && !$keepsAttachment) {
+            return $this->missingBodyError();
+        }
+
+        $fileChanged = false;
+        if ($request->hasFile('attachment')) {
+            $data += $this->storeAttachment($request);
+            $fileChanged = true;
+        } elseif ($removeAttachment && $sop->attachment_path) {
+            $data += ['attachment_path' => null, 'attachment_name' => null];
+            $fileChanged = true;
+        }
+
+        // Bump the version whenever the content or document actually changes, so prior
+        // acknowledgements (tied to a specific version) no longer count and employees are
+        // prompted to re-ack. Old content and files are kept in sop_versions — editing never
+        // destroys history (which is also why replaced files aren't deleted from disk).
+        if ($sop->content !== $data['content'] || $fileChanged) {
             $data['version'] = $sop->version + 1;
         }
 
@@ -77,7 +102,7 @@ class SopController extends Controller
         // refreshes that version's snapshot rather than colliding on the unique constraint.
         SopVersion::updateOrCreate(
             ['sop_id' => $sop->id, 'version' => $sop->version],
-            ['title' => $sop->title, 'content' => $sop->content, 'changed_by' => auth()->id()]
+            $this->snapshot($sop) + ['changed_by' => auth()->id()]
         );
 
         return back()->with('success', 'SOP updated successfully!');
@@ -85,19 +110,102 @@ class SopController extends Controller
 
     public function destroy($id)
     {
-        Sop::findOrFail($id)->delete();
+        $sop = Sop::with('versions')->findOrFail($id);
+        $paths = $sop->versions->pluck('attachment_path')->push($sop->attachment_path)->filter()->unique();
+
+        $sop->delete();
+        Storage::disk(Sop::DISK)->delete($paths->all());
 
         return back()->with('success', 'SOP deleted successfully!');
     }
 
+    /**
+     * Open an SOP's document — the current one, or (admins only) a past version's from
+     * history. Employees can only open SOPs that apply to them. PDFs/images open in the
+     * browser; Word/Excel/PowerPoint download.
+     */
+    public function file(Request $request, $id)
+    {
+        $sop = Sop::findOrFail($id);
+        $isAdmin = $this->isAdmin();
+
+        if (!$isAdmin) {
+            $employee = auth()->user()->employee;
+            $applies = $employee && $sop->status && Sop::whereKey($sop->id)->applicableTo($employee)->exists();
+            if (!$applies) {
+                abort(403);
+            }
+        }
+
+        $source = $sop;
+        if ($request->filled('version') && (int) $request->version !== $sop->version) {
+            abort_unless($isAdmin, 403);
+            $source = $sop->versions()->where('version', (int) $request->version)->firstOrFail();
+        }
+
+        $disk = Storage::disk(Sop::DISK);
+        if (!$source->attachment_path || !$disk->exists($source->attachment_path)) {
+            abort(404, 'File not found.');
+        }
+
+        $name = $source->attachment_name ?: basename($source->attachment_path);
+        $mime = $disk->mimeType($source->attachment_path);
+        $inline = str_starts_with((string) $mime, 'image/') || $mime === 'application/pdf';
+
+        return $inline ? $disk->response($source->attachment_path, $name) : $disk->download($source->attachment_path, $name);
+    }
+
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'department_id' => 'nullable|exists:departments,id',
             'role' => 'nullable|string|max:100',
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'nullable|string',
+            'attachment' => 'nullable|' . Sop::ATTACHMENT_RULES,
+        ], [
+            'attachment.mimes' => 'The document must be a PDF, Word, Excel, PowerPoint or image file.',
+            'attachment.max' => 'The document may not be larger than 10 MB.',
         ]);
+
+        unset($data['attachment']);
+
+        // The editor submits "<p><br></p>" when left empty — treat that as no content.
+        $text = trim(html_entity_decode(strip_tags((string) ($data['content'] ?? '')), ENT_QUOTES | ENT_HTML5), " \t\n\r\0\x0B\xC2\xA0");
+        if ($text === '' && !preg_match('/<(img|table|iframe)\b/i', (string) ($data['content'] ?? ''))) {
+            $data['content'] = null;
+        }
+
+        return $data;
+    }
+
+    private function storeAttachment(Request $request): array
+    {
+        $file = $request->file('attachment');
+
+        return [
+            'attachment_path' => $file->store('sops', Sop::DISK),
+            'attachment_name' => $file->getClientOriginalName(),
+        ];
+    }
+
+    private function snapshot(Sop $sop): array
+    {
+        return $sop->only('title', 'content', 'attachment_path', 'attachment_name');
+    }
+
+    private function missingBodyError()
+    {
+        return back()
+            ->withErrors(['content' => 'Write the procedure or upload a document — at least one is required.'])
+            ->withInput();
+    }
+
+    private function isAdmin(): bool
+    {
+        $role = str_replace(' ', '_', strtolower(trim((string) (auth()->user()->role ?? 'employee'))));
+
+        return in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'], true);
     }
 
     /**
@@ -149,6 +257,8 @@ class SopController extends Controller
                 'version' => $v->version,
                 'title' => $v->title,
                 'content' => $v->content,
+                'attachment_name' => $v->attachment_name,
+                'attachment_url' => $v->attachment_path ? route('sops.file', ['id' => $sop->id, 'version' => $v->version]) : null,
                 'is_current' => $v->version === $sop->version,
                 'changed_by' => $v->changedBy->name ?? '—',
                 'changed_at' => $v->created_at->format('d M Y, h:i A'),

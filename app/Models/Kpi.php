@@ -8,7 +8,8 @@ class Kpi extends Model
 {
     // Built-in computations available for 'auto_metric'. Add new keys here as more get wired up.
     public const AUTO_METRICS = [
-        'tasks_completed_on_time' => 'Tasks Completed On Time (from Task Management)',
+        'tasks_completed_on_time' => 'Tasks Completed On Time — % (from Task Management)',
+        'daily_reports_submitted' => 'Daily Reports Submitted — days (same as Daily Tasks "Report submitted")',
     ];
 
     protected $fillable = [

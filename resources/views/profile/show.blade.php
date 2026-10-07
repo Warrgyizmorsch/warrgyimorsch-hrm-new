@@ -341,6 +341,23 @@
                 <div class="tab-panels mt-4">
                     <!-- PERSONAL -->
                     <div id="pane-personal" class="tab-pane-fade active">
+                        @if($employee && $user->employee_id === $employee->id)
+                            @php $myOpenRequest = $employee->openProfileRequest(); @endphp
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                <span class="text-muted small">
+                                    @if($myOpenRequest?->status === 'pending')
+                                        <i class="feather-clock"></i> Your change request is waiting for HR approval.
+                                    @elseif($myOpenRequest?->status === 'returned')
+                                        <i class="feather-alert-circle text-danger"></i> HR sent your change request back: “{{ $myOpenRequest->review_note }}”
+                                    @else
+                                        Need to update your address, ID or bank details? Changes go to HR for approval.
+                                    @endif
+                                </span>
+                                <a href="{{ route('profile.complete') }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="feather-edit-2"></i> {{ $myOpenRequest ? 'View / edit request' : 'Update my details' }}
+                                </a>
+                            </div>
+                        @endif
                         <div class="info-grid">
                             <div class="info-item-card">
                                 <div class="card-icon-circle"><i class="feather-user"></i></div>
@@ -613,7 +630,14 @@
                                         </form>
                                     @endif
                                 </div>
-                                <div class="text-muted small mt-2">{!! $sop->content !!}</div>
+                                @if($sop->attachment_path)
+                                    <a href="{{ route('sops.file', $sop->id) }}" target="_blank" class="d-inline-block small text-primary mt-2">
+                                        <i class="feather-paperclip me-1"></i>{{ $sop->attachment_name ?: 'Open document' }}
+                                    </a>
+                                @endif
+                                @if($sop->content)
+                                    <div class="text-muted small mt-2">{!! $sop->content !!}</div>
+                                @endif
                             </div>
                         @empty
                             <p class="text-muted small">No SOPs apply to you yet.</p>

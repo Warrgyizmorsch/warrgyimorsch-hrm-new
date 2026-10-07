@@ -26,13 +26,7 @@
     <div class="main-content zoho-module-content">
         <p class="text-muted small mb-3">Department/role-scoped documents. Editing content bumps the version and requires re-acknowledgement.</p>
 
-        @if ($message = Session::get('success'))
-            <div class="attendance-alert" role="alert">
-                <i class="feather-check-circle"></i>
-                <span>{{ $message }}</span>
-                <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        @include('performance.partials.alerts')
 
         @include('master.partials.filter-panel', [
             'filterRoute' => route('sops.index'),
@@ -91,7 +85,14 @@
                         <tbody>
                             @forelse($sops as $sop)
                                 <tr>
-                                    <td><span class="mst-name-cell">{{ $sop->title }}</span></td>
+                                    <td>
+                                        <span class="mst-name-cell">{{ $sop->title }}</span>
+                                        @if($sop->attachment_path)
+                                            <a href="{{ route('sops.file', $sop->id) }}" target="_blank" class="ms-1 text-primary" title="Open document: {{ $sop->attachment_name }}">
+                                                <i class="feather-paperclip"></i>
+                                            </a>
+                                        @endif
+                                    </td>
                                     <td>{{ $sop->department->name ?? 'All Departments' }}</td>
                                     <td>{{ $sop->role ?: 'All Roles' }}</td>
                                     <td><span class="mst-meta-badge">v{{ $sop->version }}</span></td>
@@ -152,7 +153,7 @@
         <h5 class="offcanvas-title zoho-offcanvas-title">Add SOP</h5>
         <button type="button" class="zoho-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="Close"><i class="feather-x"></i></button>
     </div>
-    <form action="{{ route('sops.store') }}" method="POST" class="d-flex flex-column h-100">
+    <form action="{{ route('sops.store') }}" method="POST" enctype="multipart/form-data" class="d-flex flex-column h-100">
         @csrf
         <div class="offcanvas-body flex-grow-1">
             @include('performance.sop.fields', ['prefix' => 'add'])
@@ -169,11 +170,11 @@
         <h5 class="offcanvas-title zoho-offcanvas-title">Edit SOP</h5>
         <button type="button" class="zoho-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="Close"><i class="feather-x"></i></button>
     </div>
-    <form id="editSopForm" method="POST" class="d-flex flex-column h-100">
+    <form id="editSopForm" method="POST" enctype="multipart/form-data" class="d-flex flex-column h-100">
         @csrf @method('PUT')
         <div class="offcanvas-body flex-grow-1">
             @include('performance.sop.fields', ['prefix' => 'edit'])
-            <p class="text-muted small mt-2">Changing the content bumps the version and clears everyone's acknowledgement for it.</p>
+            <p class="text-muted small mt-2">Changing the content or document bumps the version and clears everyone's acknowledgement for it.</p>
             <div class="mst-edit-switch mb-0">
                 <div>
                     <div class="mst-edit-switch-label">Active status</div>
@@ -265,6 +266,17 @@
         document.getElementById('editTitle').value = data.title || '';
         $('#editContent').summernote('code', data.content || '');
         document.getElementById('editSopStatus').checked = !!data.status;
+
+        document.getElementById('editAttachment').value = '';
+        document.getElementById('editRemoveAttachment').checked = false;
+        const current = document.getElementById('editCurrentAttachment');
+        if (data.attachment_path) {
+            document.getElementById('editCurrentAttachmentLink').href = "{{ url('/sops') }}/" + data.id + '/file';
+            document.querySelector('#editCurrentAttachmentLink span').innerText = data.attachment_name || 'Current document';
+            current.classList.replace('d-none', 'd-flex');
+        } else {
+            current.classList.replace('d-flex', 'd-none');
+        }
         new bootstrap.Offcanvas(document.getElementById('editSopModal')).show();
     }
 
@@ -379,19 +391,25 @@
         const current = sopHistoryData.versions.find(v => v.is_current);
         if (!oldVersion || !current) return;
 
+        const fileLink = v => v.attachment_url
+            ? `<a href="${v.attachment_url}" target="_blank" class="d-inline-block small text-primary mt-2"><i class="feather-paperclip me-1"></i>${v.attachment_name || 'Document'}</a>`
+            : '<span class="d-inline-block small text-muted mt-2">No document</span>';
+
         document.getElementById('sopHistoryBody').innerHTML = `
             <div class="col-6">
                 <h6 class="text-muted">v${oldVersion.version} <span class="small">(${oldVersion.changed_at} by ${oldVersion.changed_by})</span></h6>
                 <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
                     <strong>${oldVersion.title}</strong>
-                    <div class="mt-2">${oldVersion.content}</div>
+                    <div>${fileLink(oldVersion)}</div>
+                    <div class="mt-2">${oldVersion.content || ''}</div>
                 </div>
             </div>
             <div class="col-6">
                 <h6 class="text-success">v${current.version} — Current <span class="small text-muted">(${current.changed_at} by ${current.changed_by})</span></h6>
                 <div class="border border-success rounded p-3" style="max-height: 400px; overflow-y: auto;">
                     <strong>${current.title}</strong>
-                    <div class="mt-2">${current.content}</div>
+                    <div>${fileLink(current)}</div>
+                    <div class="mt-2">${current.content || ''}</div>
                 </div>
             </div>
         `;

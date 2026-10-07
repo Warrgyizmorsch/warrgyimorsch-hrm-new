@@ -792,7 +792,7 @@ class PayrollController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'import_file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
-                'machine' => 'nullable|in:zk,rs9n',
+                'machine' => 'nullable|in:' . implode(',', array_merge([\App\Imports\AttendanceImport::SOURCE_CODES], array_keys(\App\Models\BiometricEnrollment::machines()))),
             ]);
 
             if ($validator->fails()) {
@@ -805,11 +805,15 @@ class PayrollController extends Controller
                 return back()->with('error', 'Uploaded file is empty.');
             }
 
-            $import = new \App\Imports\AttendanceImport($request->input('machine', 'zk'));
+            $source = $request->input('machine', \App\Imports\AttendanceImport::SOURCE_CODES);
+            $import = new \App\Imports\AttendanceImport($source);
             \Maatwebsite\Excel\Facades\Excel::import($import, $file);
 
             if ($import->skippedUnmapped) {
-                return back()->with('success', 'Attendance imported. Skipped ' . $import->skippedUnmapped . ' punch(es) with no employee mapping for the rs9n device (see logs).');
+                return back()->with('success', 'Attendance imported. Skipped ' . $import->skippedUnmapped . ' punch(es) '
+                    . ($source === \App\Imports\AttendanceImport::SOURCE_CODES
+                        ? 'whose employee code matched no employee.'
+                        : 'from device IDs not linked to an employee yet — link them under the employee\'s Biometric IDs and they\'ll be added automatically.'));
             }
 
             return back()->with('success', 'Attendance imported successfully!');

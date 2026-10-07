@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\BiometricEnrollment;
 use App\Models\Employee;
 use App\Services\AttendanceService;
 use Carbon\Carbon;
@@ -12,20 +13,29 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class AttendanceImport implements ToCollection
 {
-    /** Number of rows skipped because their rs9n device ID had no employee mapping. */
+    /** Sheet whose first column already holds employee codes (not a raw machine export). */
+    public const SOURCE_CODES = 'codes';
+
+    /** Number of rows skipped because their device ID / code matched no employee. */
     public int $skippedUnmapped = 0;
 
-    public function __construct(private string $machine = 'zk')
+    /**
+     * @param  string  $machine  a machine key (raw export off that device — first column is
+     *                           the device's own user ID) or SOURCE_CODES (manual sheet)
+     */
+    public function __construct(private string $machine = self::SOURCE_CODES)
     {
     }
 
     public function collection(Collection $rows)
     {
         $records = [];
-        // Same mapping ZKTController applies to live rs9n punches: that device's own
-        // internal enrollment IDs don't match employees.employee_code, so an Excel
-        // export straight off the rs9n device carries device IDs, not real codes.
-        $rs9nMap = Employee::whereNotNull('rs9n_device_id')->pluck('employee_code', 'rs9n_device_id');
+        // Same matching ZKTController applies to live punches: a raw machine export carries
+        // that machine's own user IDs, which only mean something via its enrollments.
+        $codeMap = BiometricEnrollment::codeMap();
+        $knownCodes = $this->machine === self::SOURCE_CODES
+            ? Employee::whereNotNull('employee_code')->pluck('employee_code')->map(fn ($c) => (string) $c)->flip()
+            : collect();
 
         foreach ($rows as $index => $row) {
             if ($index == 0) {
@@ -39,31 +49,6 @@ class AttendanceImport implements ToCollection
                 continue;
             }
 
-            if ($this->machine === 'rs9n') {
-                // rs9n assigns its own sequential internal enrollment ID to every person it
-                // enrolls, unrelated to employee_code — not limited to the original 28-person
-                // group. rs9n_employee_map is the only source of truth; anything not in it is
-                // skipped rather than guessed, since a wrong guess silently attributes a punch
-                // to a different, unrelated employee.
-                $deviceId = ctype_digit($rawEmployeeCode) ? (int) ltrim($rawEmployeeCode, '0') ?: 0 : null;
-                $employeeCode = $deviceId !== null ? ($rs9nMap[$deviceId] ?? null) : null;
-
-                if ($employeeCode === null) {
-                    \Log::warning('rs9n excel import row skipped: no employee mapping', [
-                        'rs9n_user_id' => $rawEmployeeCode,
-                        'timestamp' => $dateTimeRaw,
-                    ]);
-
-                    $this->skippedUnmapped++;
-
-                    continue;
-                }
-
-                $employeeCode = (string) $employeeCode;
-            } else {
-                $employeeCode = $rawEmployeeCode;
-            }
-
             try {
                 if (is_numeric($dateTimeRaw)) {
                     $dateTime = Carbon::instance(Date::excelToDateTimeObject($dateTimeRaw));
@@ -72,6 +57,22 @@ class AttendanceImport implements ToCollection
                 }
             } catch (\Exception $e) {
                 \Log::error('Date parse failed during attendance import', ['value' => $dateTimeRaw]);
+                continue;
+            }
+
+            if ($this->machine === self::SOURCE_CODES) {
+                $employeeCode = isset($knownCodes[$rawEmployeeCode]) ? $rawEmployeeCode : null;
+            } else {
+                // Never guess: an unknown device ID is kept aside and replayed once HR links it.
+                $employeeCode = BiometricEnrollment::resolveCode($codeMap, $this->machine, $rawEmployeeCode);
+                if ($employeeCode === null) {
+                    BiometricEnrollment::recordUnmapped($this->machine, $rawEmployeeCode, $dateTime->toDateTimeString(), null, 'excel-import');
+                }
+            }
+
+            if ($employeeCode === null) {
+                $this->skippedUnmapped++;
+
                 continue;
             }
 

@@ -157,8 +157,15 @@ class KpiController extends Controller
     public function recompute($id)
     {
         $assignment = KpiAssignment::with('items')->findOrFail($id);
+        $templateMetrics = Kpi::whereIn('id', $assignment->items->pluck('kpi_id')->filter())->pluck('auto_metric', 'id');
 
         foreach ($assignment->items as $item) {
+            // Follow the KPI template's current auto-metric, so changing it under KPIs and
+            // clicking Recompute fixes existing assignments too (targets/weightage stay frozen).
+            if ($item->kpi_id && $templateMetrics->has($item->kpi_id) && $templateMetrics[$item->kpi_id] !== $item->auto_metric) {
+                $item->update(['auto_metric' => $templateMetrics[$item->kpi_id]]);
+            }
+
             if (!$item->auto_metric) {
                 continue;
             }

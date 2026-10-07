@@ -52,6 +52,7 @@ class Payroll extends Model
 
     public function employee()
     {
-        return $this->belongsTo(Employee::class);
+        // Deleted former employees are kept as soft-deleted shells so salary history still has a name.
+        return $this->belongsTo(Employee::class)->withTrashed();
     }
 }

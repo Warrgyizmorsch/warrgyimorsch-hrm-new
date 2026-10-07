@@ -18,6 +18,9 @@ use Illuminate\Validation\ValidationException;
 
 class DailyTaskController extends Controller
 {
+    /** How many days back a non-admin may date a task (1 = yesterday). */
+    public const BACKDATE_BUFFER_DAYS = 1;
+
     public function index(Request $request)
     {
         $query = DailyTask::with(['project', 'employee.departmentRef', 'creator', 'followUps'])->orderBy('start_date', 'desc');
@@ -301,6 +304,8 @@ class DailyTaskController extends Controller
         $isAdmin = in_array($role, $adminRoles);
 
         if (!$isAdmin) {
+            $this->ensureNotBackdated($validated['start_date']);
+
             if (!empty($validated['project_id'])) {
                 $project = Project::find($validated['project_id']);
                 $isLeader = $project && is_array($project->leaders) && in_array(auth()->user()->employee_id, $project->leaders);
@@ -330,6 +335,21 @@ class DailyTaskController extends Controller
         DailyTask::create($validated);
 
         return response()->json(['success' => 'Task created successfully!']);
+    }
+
+    /**
+     * Daily reports must be filed regularly: employees may date a task today or at most
+     * BACKDATE_BUFFER_DAYS back (yesterday), never earlier. Admin roles are exempt.
+     */
+    private function ensureNotBackdated(string $startDate): void
+    {
+        $earliest = today()->subDays(self::BACKDATE_BUFFER_DAYS);
+
+        if (\Carbon\Carbon::parse($startDate)->startOfDay()->lt($earliest)) {
+            throw ValidationException::withMessages([
+                'start_date' => ['Back-dated tasks are not allowed. Start date must be on or after ' . $earliest->format('d M Y') . '.'],
+            ]);
+        }
     }
 
     /**
@@ -402,6 +422,11 @@ class DailyTaskController extends Controller
 
         if (!$isAdmin && !$isLead && !$isOwner) {
             return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
+
+        // Editing an older task is fine as long as its date isn't moved further back.
+        if (!$isAdmin && \Carbon\Carbon::parse($validated['start_date'])->toDateString() !== $dailyTask->start_date?->toDateString()) {
+            $this->ensureNotBackdated($validated['start_date']);
         }
 
         if ($request->hasFile('photo')) {
@@ -481,7 +506,33 @@ class DailyTaskController extends Controller
             return false;
         }
 
+        if ($this->isPastReportWindow($task)) {
+            return false;
+        }
+
         return true;
+    }
+
+    /**
+     * Logged hours are counted on the task's start date, so progress on a task dated before
+     * the backdate buffer would backfill an old report. Non-admins can't add, edit or delete
+     * progress there; admin roles are exempt.
+     */
+    private function isPastReportWindow(DailyTask $task): bool
+    {
+        $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+
+        return !in_array($role, $adminRoles)
+            && $task->start_date
+            && $task->start_date->copy()->startOfDay()->lt(today()->subDays(self::BACKDATE_BUFFER_DAYS));
+    }
+
+    private function pastReportWindowMessage(string $action): string
+    {
+        return 'Progress can only be ' . $action . ' on tasks dated '
+            . (self::BACKDATE_BUFFER_DAYS === 1 ? 'today or yesterday' : 'within the last ' . self::BACKDATE_BUFFER_DAYS . ' days')
+            . '. Add a new task for today to log this work.';
     }
 
     private function followUpLockMessage(TaskFollowUp $followUp, string $action): string
@@ -490,6 +541,10 @@ class DailyTaskController extends Controller
 
         if ($task && strcasecmp((string) $task->status, 'Completed') === 0) {
             return 'This task is marked Completed — its progress log is locked. Reopen the task status, or ask an admin, to ' . $action . ' this entry.';
+        }
+
+        if ($task && $this->isPastReportWindow($task)) {
+            return $this->pastReportWindowMessage($action === 'edit' ? 'edited' : 'deleted');
         }
 
         return "Only the task owner, project lead, assigner, or an admin can {$action} this entry.";
@@ -593,6 +648,11 @@ class DailyTaskController extends Controller
         ]);
 
         $task = DailyTask::with('employee')->findOrFail($validated['daily_task_id']);
+
+        if ($this->isPastReportWindow($task)) {
+            return response()->json(['error' => $this->pastReportWindowMessage('added')], 403);
+        }
+
         $referenceName = $task->employee->name ?? auth()->user()->name ?? 'Employee';
 
         $lastProjectId = null;
