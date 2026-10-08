@@ -700,6 +700,22 @@
         if (applyForm) {
             applyForm.addEventListener('submit', function (e) {
                 e.preventDefault();
+
+                // Block double clicks / repeated Enter while a request is in flight
+                if (applyForm.dataset.submitting === '1') {
+                    return;
+                }
+                const submitBtn = applyForm.querySelector('button[type="submit"]');
+                const submitBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+                const setSubmitting = function (busy) {
+                    applyForm.dataset.submitting = busy ? '1' : '';
+                    if (submitBtn) {
+                        submitBtn.disabled = busy;
+                        submitBtn.innerHTML = busy ? 'Submitting...' : submitBtnHtml;
+                    }
+                };
+                setSubmitting(true);
+
                 const formData = new FormData(this);
                 const data = {};
                 formData.forEach((value, key) => data[key] = value);
@@ -745,6 +761,7 @@
                     }
                 })
                 .catch(err => {
+                    setSubmitting(false);
                     console.error(err);
                     showToast(err.message || 'Something went wrong while applying leave.', 'error');
                 });

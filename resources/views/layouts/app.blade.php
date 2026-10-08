@@ -17,6 +17,10 @@
     <meta name="base-url" content="{{ url('/') }}">
     <title>@yield('title', 'Dashboard')</title>
 
+    <!-- Must load before page scripts: blocks duplicate form submissions site-wide -->
+    <script src="{{ asset('assets/js/form-submit-guard.js') }}?v={{ filemtime(public_path('assets/js/form-submit-guard.js')) }}"></script>
+    <style>.is-submitting { cursor: wait !important; opacity: .65; }</style>
+
     <!-- Favicon -->
     <link rel="shortcut icon" href="{{ asset('assets/images/favicon.ico') }}" />
 

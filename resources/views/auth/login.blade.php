@@ -560,6 +560,8 @@
             }
         }
     </style>
+    <script src="{{ asset('assets/js/form-submit-guard.js') }}?v={{ filemtime(public_path('assets/js/form-submit-guard.js')) }}"></script>
+    <style>.is-submitting { cursor: wait !important; opacity: .65; }</style>
 </head>
 
 <body>

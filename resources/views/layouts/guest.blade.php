@@ -8,6 +8,10 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
+    <!-- Must load before page scripts: blocks duplicate form submissions site-wide -->
+    <script src="{{ asset('assets/js/form-submit-guard.js') }}?v={{ filemtime(public_path('assets/js/form-submit-guard.js')) }}"></script>
+    <style>.is-submitting { cursor: wait !important; opacity: .65; }</style>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

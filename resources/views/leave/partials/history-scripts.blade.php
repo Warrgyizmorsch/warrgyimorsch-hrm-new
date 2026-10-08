@@ -488,10 +488,27 @@
         document.getElementById('applyLeaveForm')?.addEventListener('submit', function (e) {
             e.preventDefault();
 
+            // Block double clicks / repeated Enter while a request is in flight
+            if (this.dataset.submitting === '1') {
+                return;
+            }
+
             if (!document.getElementById('leaveCategory')?.value) {
                 showToast('Please select a leave category.', 'error');
                 return;
             }
+
+            const form = this;
+            const submitBtn = document.querySelector('button[type="submit"][form="applyLeaveForm"]');
+            const submitBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+            const setSubmitting = function (busy) {
+                form.dataset.submitting = busy ? '1' : '';
+                if (submitBtn) {
+                    submitBtn.disabled = busy;
+                    submitBtn.innerHTML = busy ? 'Submitting...' : submitBtnHtml;
+                }
+            };
+            setSubmitting(true);
 
             const formData = new FormData(this);
             const data = {};
@@ -521,11 +538,15 @@
                 })
                 .then(data => {
                     if (data.success) {
+                        // Keep the button disabled until the page reloads
                         showToast(data.message || 'Leave applied successfully! Status: Pending', 'success');
                         setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        setSubmitting(false);
                     }
                 })
                 .catch(err => {
+                    setSubmitting(false);
                     console.error('Leave Application Error:', err);
                     let msg = 'Something went wrong! Please check the form and try again.';
                     if (err && err.errors) {

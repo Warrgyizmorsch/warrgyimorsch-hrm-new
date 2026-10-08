@@ -11,6 +11,7 @@ use App\Services\LeaveBalanceService;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 // use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -280,6 +281,49 @@ class LeaveApplicationController extends Controller
 
         $employee = Employee::active()->findOrFail($data['employee_id']);
 
+        // Serialise submissions per employee so a double click / two tabs can't both
+        // pass the duplicate check before either row is written.
+        $lock = Cache::lock('leave-apply:' . $employee->id, 10);
+        if (!$lock->get()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A leave request for this employee is already being submitted. Please wait.',
+            ], 429);
+        }
+
+        try {
+            if ($this->isDuplicateLeaveRequest($data)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This leave request has already been submitted.',
+                ], 422);
+            }
+
+            return $this->createLeaveApplication($request, $data);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Same employee, same start date, same day type (and same time slot for early leave)
+     * that is still live — rejected requests don't block a resubmission.
+     */
+    private function isDuplicateLeaveRequest(array $data): bool
+    {
+        return LeaveApplication::where('employee_id', $data['employee_id'])
+            ->whereDate('start_date', Carbon::parse($data['start_date'])->toDateString())
+            ->where('leave_type', $data['leave_type'] ?? null)
+            ->when(
+                !empty($data['start_time']),
+                fn ($q) => $q->where('start_time', 'like', Carbon::parse($data['start_time'])->format('H:i') . '%')
+            )
+            ->where('status', '!=', 'rejected')
+            ->exists();
+    }
+
+    private function createLeaveApplication(Request $request, array $data)
+    {
         // Only Paid/Sick Leave draw down the shared monthly quota and can overflow.
         // Casual Leave, Gatepass (early leave) and WFH are never restricted.
         $quotaCheckedCategories = ['Paid Leave', 'Sick Leave'];
