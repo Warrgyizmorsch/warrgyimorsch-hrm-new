@@ -888,9 +888,14 @@
         }
 
         function exportPayroll(format = 'csv') {
-            const month = document.getElementById('monthFilter').value;
+            // Filter-panel month wins; otherwise export the month chosen in "Setup Calculation Parameters"
+            // instead of silently dumping every month.
+            const month = document.getElementById('monthFilter').value || document.getElementById('monthSelect').value;
             const empId = document.getElementById('employeeFilter').value;
-            window.location.href = `{{ route('payroll.export') }}?month=${month}&employee_id=${empId}&format=${format}`;
+            const search = document.getElementById('tableSearch').value;
+            const params = new URLSearchParams({ month, employee_id: empId, format });
+            if (search) params.set('search', search);
+            window.location.href = `{{ route('payroll.export') }}?${params}`;
         }
     </script>
 

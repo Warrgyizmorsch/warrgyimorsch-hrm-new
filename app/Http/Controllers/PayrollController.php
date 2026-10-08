@@ -856,7 +856,7 @@ class PayrollController extends Controller
 
             $message = count($import->imported) . ' payroll record(s) saved for ' . $request->month . '.';
             if ($import->skipped) {
-                $message .= ' Skipped (no matching employee): ' . implode(', ', $import->skipped);
+                $message .= ' Skipped: ' . implode('; ', $import->skipped);
             }
 
             return back()->with('success', $message);
@@ -1026,7 +1026,17 @@ class PayrollController extends Controller
             $query->where('id', $request->id);
         }
 
-        $payrolls = $query->get();
+        // Same name search as the list screen, so the export matches what is on screen.
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('employee', fn ($eq) => $eq->where('name', 'like', "%{$search}%"))
+                    ->orWhere('month', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
+            });
+        }
+
+        $payrolls = $query->with('employee.departmentRef')->get();
 
         if ($payrolls->count() == 1) {
             $payroll = $payrolls->first();
@@ -1049,68 +1059,13 @@ class PayrollController extends Controller
         // Excel format
         if ($format === 'excel') {
 
-            $filename = 'payroll_report_' . date('Y-m-d') . '.xlsx';
+            $filename = 'payroll_report_' . ($request->filled('month') ? $request->month : date('Y-m-d')) . '.xlsx';
 
-            return Excel::download(
-                new class ($payrolls) implements
-                \Maatwebsite\Excel\Concerns\FromArray,
-                \Maatwebsite\Excel\Concerns\WithHeadings {
+            $payrolls = $payrolls
+                ->sortBy(fn ($p) => [$p->month, strtolower($p->employee->name ?? '')])
+                ->values();
 
-                private $payrolls;
-
-                public function __construct($payrolls)
-                {
-                    $this->payrolls = $payrolls;
-                }
-
-                public function headings(): array
-                {
-                    return [
-                    'Name',
-                    'ID',
-                    'Department',
-                    'Shift Time',
-                    'Month Day',
-                    'Basic Working Days',
-                    'Leave',
-                    'Net Payable',
-                    'Additional'
-                    ];
-                }
-
-                public function array(): array
-                {
-                    $data = [];
-
-                    foreach ($this->payrolls as $payroll) {
-
-                        $shiftTime = ($payroll->employee->time_in && $payroll->employee->time_out)
-                        ? $payroll->employee->time_in . ' - ' . $payroll->employee->time_out
-                        : '-';
-
-                        $monthDays = Carbon::parse($payroll->month)->daysInMonth;
-
-                        $leave = $monthDays - ($payroll->payable_days ?? 0);
-
-                        $data[] = [
-                            $payroll->employee->name,
-                            $payroll->employee->id,
-                            $payroll->employee->departmentRef?->name ?? '-',
-                        $shiftTime,
-                        $monthDays,
-                            $payroll->payable_days,
-                        $leave,
-                            $payroll->net_payable ?? $payroll->net_salary ?? 0,
-                            $payroll->other_allowance,
-                        ];
-                    }
-
-                    return $data;
-                }
-
-                },
-                $filename
-            );
+            return Excel::download(new \App\Exports\PayrollReportExport($payrolls), $filename);
         }
 
         $headers = [

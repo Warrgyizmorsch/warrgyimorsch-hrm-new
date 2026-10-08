@@ -28,8 +28,13 @@
     window.applyYearlyMetric = function () {
         const metric = document.getElementById('yearlyMetricSelect')?.value || 'available';
         document.querySelectorAll('#yearlyTable .la-year-cell').forEach(function (cell) {
-            cell.textContent = parseFloat(cell.dataset[metric] || '0').toFixed(1);
+            cell.textContent = cell.dataset.future ? '—' : parseFloat(cell.dataset[metric] || '0').toFixed(1);
         });
+        const totalHeader = document.getElementById('yearlyTotalHeader');
+        if (totalHeader) {
+            totalHeader.textContent = metric === 'available' ? 'Balance' : 'Total';
+            totalHeader.title = metric === 'available' ? 'Balance as of the latest month' : 'Sum for the year';
+        }
         document.querySelectorAll('#yearlyTable .la-year-total').forEach(function (cell) {
             const badge = cell.querySelector('.la-badge');
             const value = parseFloat(cell.dataset[metric] || '0').toFixed(1);

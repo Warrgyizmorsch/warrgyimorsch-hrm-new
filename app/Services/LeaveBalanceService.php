@@ -95,7 +95,7 @@ class LeaveBalanceService
      * Year x all-employees matrix: for each employee, Jan-Dec allotted/used/available,
      * computed the same way as the monthly balance (carry-forward, unpaid conversion).
      *
-     * @return array<int, array{employee: Employee, months: array<int, array{allotted: float, used: float, available: float}>, total_allotted: float, total_used: float, total_available: float}>
+     * @return array<int, array{employee: Employee, months: array<int, array{allotted: float, used: float, available: float, future: bool}>, total_allotted: float, total_used: float, total_available: float}>
      */
     public function getBulkYearlyBalanceMatrix(iterable $employees, int $year): array
     {
@@ -133,6 +133,7 @@ class LeaveBalanceService
 
         $holidayLookup = $this->buildHolidayLookup($rangeStart, $yearEnd);
         $lastMonthOfYear = Carbon::createFromDate($year, 12, 1)->startOfMonth();
+        $currentMonth = now()->startOfMonth();
 
         $matrix = [];
         foreach ($employees as $employee) {
@@ -146,6 +147,7 @@ class LeaveBalanceService
             $months = [];
             $totalAllotted = 0.0;
             $totalUsed = 0.0;
+            $closingBalance = 0.0;
 
             while ($cursor->lte($lastMonthOfYear)) {
                 $monthKey = $cursor->format('Y') . '-' . ((int) $cursor->format('m'));
@@ -154,13 +156,20 @@ class LeaveBalanceService
                 $result = $this->closeMonthBalance($balance, $allotted, $used);
 
                 if ((int) $cursor->format('Y') === $year) {
+                    // Months after the current one have no allotment yet; flag them so the
+                    // view doesn't present the carried-forward balance as real data.
+                    $isFuture = $cursor->gt($currentMonth);
                     $months[(int) $cursor->format('n')] = [
                         'allotted' => $allotted,
                         'used' => $used,
                         'available' => $result['closing'],
+                        'future' => $isFuture,
                     ];
                     $totalAllotted += $allotted;
                     $totalUsed += $used;
+                    if (!$isFuture) {
+                        $closingBalance = $result['closing'];
+                    }
                 }
 
                 $balance = $result['carry_forward'];
@@ -169,7 +178,12 @@ class LeaveBalanceService
 
             for ($m = 1; $m <= 12; $m++) {
                 if (!isset($months[$m])) {
-                    $months[$m] = ['allotted' => 0.0, 'used' => 0.0, 'available' => 0.0];
+                    $months[$m] = [
+                        'allotted' => 0.0,
+                        'used' => 0.0,
+                        'available' => 0.0,
+                        'future' => Carbon::createFromDate($year, $m, 1)->startOfMonth()->gt($currentMonth),
+                    ];
                 }
             }
             ksort($months);
@@ -179,7 +193,8 @@ class LeaveBalanceService
                 'months' => $months,
                 'total_allotted' => $totalAllotted,
                 'total_used' => $totalUsed,
-                'total_available' => $months[12]['available'] ?? 0.0,
+                // Balance as of the latest elapsed month (Dec for past years, current month otherwise)
+                'total_available' => $closingBalance,
             ];
         }
 

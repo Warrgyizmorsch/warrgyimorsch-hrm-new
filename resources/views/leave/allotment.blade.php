@@ -503,7 +503,7 @@
                                                 @foreach(range(1, 12) as $m)
                                                     <th class="text-center">{{ date('M', mktime(0, 0, 0, $m, 1)) }}</th>
                                                 @endforeach
-                                                <th class="text-center">Total</th>
+                                                <th class="text-center" id="yearlyTotalHeader" title="Balance as of the latest month">Balance</th>
                                             </tr>
                                         </thead>
                                         <tbody id="yearlyTableBody">
@@ -517,11 +517,12 @@
                                                     </td>
                                                     @foreach(range(1, 12) as $m)
                                                         @php $cell = $row['months'][$m]; @endphp
-                                                        <td class="text-center la-year-cell"
+                                                        <td class="text-center la-year-cell{{ $cell['future'] ? ' text-muted' : '' }}"
+                                                            @if($cell['future']) data-future="1" title="Not allotted yet" @endif
                                                             data-allotted="{{ number_format($cell['allotted'], 1, '.', '') }}"
                                                             data-used="{{ number_format($cell['used'], 1, '.', '') }}"
                                                             data-available="{{ number_format($cell['available'], 1, '.', '') }}">
-                                                            {{ number_format($cell['available'], 1) }}
+                                                            {{ $cell['future'] ? '—' : number_format($cell['available'], 1) }}
                                                         </td>
                                                     @endforeach
                                                     <td class="text-center la-year-total"
