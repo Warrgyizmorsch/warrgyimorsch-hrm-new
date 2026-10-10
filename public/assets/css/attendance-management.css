@@ -799,6 +799,61 @@
     max-width: 280px;
 }
 
+.att-mark-group-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 16px;
+    border-bottom: 1px solid #eef1f5;
+    background: #fff;
+}
+
+.att-mark-group-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px 10px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--zoho-muted, #616e88);
+    cursor: pointer;
+}
+
+.att-mark-group-tab:hover {
+    color: var(--zoho-text-secondary, #434a5a);
+}
+
+.att-mark-group-tab.is-active {
+    color: #1a73e8;
+    border-bottom-color: #1a73e8;
+}
+
+.att-mark-group-count {
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: #eef1f5;
+    font-size: 11px;
+    color: inherit;
+}
+
+.att-mark-group-tab.is-active .att-mark-group-count {
+    background: #e8f0fe;
+}
+
+.att-mark-dept-filter[hidden] {
+    display: none;
+}
+
+.att-mark-dept-filter {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 200px;
+    max-width: 260px;
+    margin-right: auto;
+}
+
 .att-mark-selected {
     font-size: 12px;
     font-weight: 600;
@@ -1146,7 +1201,8 @@
         align-items: stretch;
     }
 
-    .att-mark-search {
+    .att-mark-search,
+    .att-mark-dept-filter {
         max-width: none;
     }
 

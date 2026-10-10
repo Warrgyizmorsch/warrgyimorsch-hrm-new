@@ -321,7 +321,7 @@ class PayrollController extends Controller
      */
     public function addAttendance()
     {
-        $employees = Employee::active()->get();
+        $employees = Employee::active()->with('departmentRef')->get();
         return view('payroll.add-attendance', compact('employees'));
     }
 
@@ -1185,7 +1185,7 @@ class PayrollController extends Controller
 
     public function editByDate($attendance_date)
     {
-        $attendances = Attendance::with('employee')
+        $attendances = Attendance::with('employee.departmentRef')
             ->visible()
             ->whereDate('attendance_date', $attendance_date)
             ->get();
@@ -1550,7 +1550,7 @@ class PayrollController extends Controller
      */
     public function editMissingPunchesByDate($attendance_date)
     {
-        $attendances = Attendance::with('employee')
+        $attendances = Attendance::with('employee.departmentRef')
             ->visible()
             ->whereDate('attendance_date', $attendance_date)
             ->where('status', 'missing_punch')

@@ -13,6 +13,20 @@
         ? \Carbon\Carbon::parse($edit_date)->format('M d, Y')
         : \Carbon\Carbon::today()->format('M d, Y');
     $employeeTotal = count($employees);
+    // Business Development runs a different shift/payroll, so it gets its own tab
+    $bdDepartmentId = \App\Models\Department::businessDevelopmentId();
+    $isBdEmployee = fn ($emp) => $bdDepartmentId && (int) $emp->department_id === (int) $bdDepartmentId;
+    $bdCount = collect($employees)->filter($isBdEmployee)->count();
+    $regularCount = $employeeTotal - $bdCount;
+    $showGroupTabs = $bdCount > 0 && $regularCount > 0;
+    $departmentOptions = collect($employees)
+        ->reject($isBdEmployee)
+        ->map(fn ($emp) => $emp->departmentRef)
+        ->filter()
+        ->unique('id')
+        ->sortBy(fn ($dept) => strtolower($dept->name))
+        ->values();
+    $hasNoDepartment = collect($employees)->contains(fn ($emp) => !$emp->departmentRef);
     $backUrl = $missingOnly ? route('payroll.attendance.missing') : route('payroll.attendance');
     $headerActions = '
         <a href="' . $backUrl . '" class="zoho-btn-outline">
@@ -114,12 +128,34 @@
                         </a>
                     </div>
                 @else
+                    @if($showGroupTabs)
+                        <div class="att-mark-group-tabs" role="tablist">
+                            <button type="button" class="att-mark-group-tab is-active" data-group="regular" role="tab" onclick="switchEmployeeGroup('regular')">
+                                Regular staff <span class="att-mark-group-count">{{ $regularCount }}</span>
+                            </button>
+                            <button type="button" class="att-mark-group-tab" data-group="bd" role="tab" onclick="switchEmployeeGroup('bd')">
+                                Business Development <span class="att-mark-group-count">{{ $bdCount }}</span>
+                            </button>
+                        </div>
+                    @endif
+
                     {{-- Table toolbar --}}
                     <div class="att-mark-table-toolbar">
                         <div class="zoho-people-table-search att-mark-search">
                             <i class="feather-search"></i>
-                            <input type="text" id="employeeSearch" placeholder="Search employee…" oninput="filterEmployees(this.value)" autocomplete="off">
+                            <input type="text" id="employeeSearch" placeholder="Search employee…" oninput="filterEmployees()" autocomplete="off">
                         </div>
+                        @if($departmentOptions->isNotEmpty())
+                            <select id="departmentFilter" class="att-mark-select att-mark-dept-filter" onchange="filterEmployees()" aria-label="Filter by department">
+                                <option value="">All departments</option>
+                                @foreach($departmentOptions as $dept)
+                                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                                @endforeach
+                                @if($hasNoDepartment)
+                                    <option value="none">No department</option>
+                                @endif
+                            </select>
+                        @endif
                         <span class="att-mark-selected" id="selectedCount">0 selected</span>
                     </div>
 
@@ -147,7 +183,7 @@
                                             ->join('');
                                         $statusVal = $emp->old_status ?? '';
                                     @endphp
-                                    <tr class="att-mark-row" data-emp-name="{{ strtolower($emp->name) }}" data-index="{{ $index }}">
+                                    <tr class="att-mark-row" data-emp-name="{{ strtolower($emp->name) }}" data-dept="{{ $emp->departmentRef->id ?? 'none' }}" data-group="{{ $isBdEmployee($emp) ? 'bd' : 'regular' }}" data-index="{{ $index }}" @if($showGroupTabs && $isBdEmployee($emp)) hidden @endif>
                                         <td class="att-mark-col-check">
                                             <input type="checkbox" class="att-mark-checkbox row_checkbox" data-index="{{ $index }}" onchange="updateSelectedCount()" aria-label="Select {{ $emp->name }}">
                                         </td>
@@ -284,7 +320,9 @@
             if (status || checkIn) marked++;
             updateRowState(index);
         });
-        const total = document.querySelectorAll('#attendanceMarkTable tbody tr.att-mark-row').length;
+        const total = rows.length;
+        const totalEl = document.getElementById('statTotal');
+        if (totalEl) totalEl.textContent = total;
         const markedEl = document.getElementById('statMarked');
         const pendingEl = document.getElementById('statPending');
         if (markedEl) markedEl.textContent = marked;
@@ -297,16 +335,41 @@
         if (el) el.textContent = count + ' selected';
     }
 
-    function filterEmployees(query) {
-        const q = query.trim().toLowerCase();
+    function switchEmployeeGroup(group) {
+        document.querySelectorAll('.att-mark-group-tab').forEach(tab => {
+            tab.classList.toggle('is-active', tab.dataset.group === group);
+        });
+        // Department filter only applies to regular staff
+        const deptFilter = document.getElementById('departmentFilter');
+        if (deptFilter) {
+            deptFilter.value = '';
+            deptFilter.hidden = group === 'bd';
+        }
+        filterEmployees();
+    }
+
+    function filterEmployees() {
+        const q = (document.getElementById('employeeSearch')?.value || '').trim().toLowerCase();
+        const dept = document.getElementById('departmentFilter')?.value || '';
+        const group = document.querySelector('.att-mark-group-tab.is-active')?.dataset.group || '';
         let visible = 0;
         document.querySelectorAll('#attendanceMarkTable tbody tr.att-mark-row').forEach(row => {
-            const match = !q || (row.dataset.empName || '').includes(q);
+            const match = (!group || row.dataset.group === group)
+                && (!q || (row.dataset.empName || '').includes(q))
+                && (!dept || row.dataset.dept === dept);
             row.hidden = !match;
             if (match) visible++;
+            // Untick rows that get filtered out so bulk actions only touch what's on screen
+            if (!match) {
+                const cb = row.querySelector('.row_checkbox');
+                if (cb) cb.checked = false;
+            }
         });
         const noResults = document.getElementById('attMarkNoResults');
-        if (noResults) noResults.hidden = visible > 0 || !q;
+        if (noResults) noResults.hidden = visible > 0 || (!q && !dept);
+        const selectAll = document.getElementById('select_all');
+        if (selectAll) selectAll.checked = false;
+        updateSelectedCount();
         updateFormStats();
     }
 
