@@ -77,7 +77,7 @@ class LeaveNotificationService
                 'greeting' => "Hello {$name},",
                 'intro' => "{$employee->name} has applied for leave and it is waiting for your approval ({$level}). "
                     . 'Please review the details below and approve or reject it with your remarks.',
-                'cta' => ['label' => 'Review & take action', 'url' => route('leave.history', ['awaiting' => 1])],
+                'cta' => ['label' => 'Review & take action', 'url' => route('leave.history', ['leave' => $leave->id])],
                 'show_balance' => true,
             ]));
         }
@@ -96,7 +96,7 @@ class LeaveNotificationService
                 'greeting' => "Hello {$employee->name},",
                 'intro' => ($appliedBySomeoneElse ? "{$actor->name} has submitted a leave request on your behalf. " : 'Your leave request has been received. ')
                     . $next,
-                'cta' => ['label' => 'View my leave requests', 'url' => route('profile.leave-history')],
+                'cta' => ['label' => 'View this leave request', 'url' => route('profile.leave-history', ['leave' => $leave->id])],
                 'show_balance' => true,
             ]));
         }
@@ -121,7 +121,7 @@ class LeaveNotificationService
                     'greeting' => "Hello {$name},",
                     'intro' => "{$tlName} (Team Leader) has approved {$employee->name}'s leave request at Level 1. "
                         . 'It now needs your final approval (Level 2).',
-                    'cta' => ['label' => 'Review & take action', 'url' => route('leave.history', ['awaiting' => 1])],
+                    'cta' => ['label' => 'Review & take action', 'url' => route('leave.history', ['leave' => $leave->id])],
                     'show_balance' => true,
                 ]));
             }
@@ -133,7 +133,7 @@ class LeaveNotificationService
                     'badge' => 'Approved by TL · Awaiting manager',
                     'greeting' => "Hello {$employee->name},",
                     'intro' => "Good news — {$tlName} has approved your leave request. It has now been sent to the manager for final approval.",
-                    'cta' => ['label' => 'View my leave requests', 'url' => route('profile.leave-history')],
+                    'cta' => ['label' => 'View this leave request', 'url' => route('profile.leave-history', ['leave' => $leave->id])],
                 ]));
             }
 
@@ -149,7 +149,7 @@ class LeaveNotificationService
                 'greeting' => "Hello {$employee->name},",
                 'intro' => "Your leave request has been rejected by {$tlName} (Team Leader). Their remarks are below. "
                     . 'Please speak to your Team Leader if you have any questions.',
-                'cta' => ['label' => 'View my leave requests', 'url' => route('profile.leave-history')],
+                'cta' => ['label' => 'View this leave request', 'url' => route('profile.leave-history', ['leave' => $leave->id])],
             ]));
         }
     }
@@ -184,7 +184,7 @@ class LeaveNotificationService
                 'greeting' => "Hello {$employee->name},",
                 'intro' => ($isChange ? "{$managerName} has updated your leave request. " : "{$managerName} has reviewed your leave request. ")
                     . $outcomeLine,
-                'cta' => ['label' => 'View my leave requests', 'url' => route('profile.leave-history')],
+                'cta' => ['label' => 'View this leave request', 'url' => route('profile.leave-history', ['leave' => $leave->id])],
             ]));
         }
 
@@ -208,7 +208,7 @@ class LeaveNotificationService
                 'badge' => $statusText,
                 'greeting' => "Hello {$name},",
                 'intro' => "For your information: {$managerName} has made the final decision on {$employee->name}'s leave request — {$statusText}.",
-                'cta' => ['label' => 'Open leave applications', 'url' => route('leave.history')],
+                'cta' => ['label' => 'Open leave applications', 'url' => route('leave.history', ['leave' => $leave->id])],
             ]));
         }
     }
@@ -298,7 +298,7 @@ class LeaveNotificationService
         }
 
         // Full timeline with timestamps: applied → TL → manager (every change) → still waiting.
-        $leave->unsetRelation('logs');
+        $leave->unsetRelation('logs'); // re-read so the step just recorded is included
         $trail = collect($this->approval->timeline($leave))->map(fn ($ev) => [
             'level' => $ev['title'],
             'status' => $ev['gap'] ?? (!empty($ev['pending']) ? 'Waiting' : ($ev['state'] === 'applied' ? 'Start' : '')),
@@ -373,6 +373,20 @@ class LeaveNotificationService
 
     private function send(string $email, array $mail): void
     {
+        // Browser push to the same person (if they turned on desktop alerts) — independent of e-mail.
+        try {
+            $sentence = preg_split('/(?<=[.!?])\s+/', trim($mail['intro']))[0] ?? '';
+            app(\App\Services\WebPush\WebPushService::class)->notifyEmail(
+                $email,
+                preg_replace('/\s+–\s+.*$/u', '', $mail['subject']),   // drop the date part, keep it short
+                trim(($mail['details']['Dates'] ?? '') . ' · ' . $sentence, ' ·'),
+                $mail['cta']['url'] ?? null,
+                'leave-' . ($mail['details']['Application ID'] ?? 'x')       // later updates replace earlier ones
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Leave push failed', ['to' => $email, 'error' => $e->getMessage()]);
+        }
+
         if (!config('leave.mail_enabled', true)) {
             return;
         }

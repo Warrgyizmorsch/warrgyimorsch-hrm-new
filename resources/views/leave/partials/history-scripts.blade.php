@@ -295,6 +295,30 @@
             });
     }
 
+    /**
+     * Open one leave the way the current user needs it: TL → approve/reject panel,
+     * manager/HR while it is open → Update Status panel, everyone else → details.
+     * Used by notification links (?leave=ID) and bell clicks on this page.
+     */
+    function openLeaveFromLink(id) {
+        const row = document.querySelector('[data-leave-row="' + CSS.escape(String(id)) + '"]');
+        if (row) {
+            row.classList.add('is-linked');
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => row.classList.remove('is-linked'), 6000);
+        }
+        loadLeaveDetails(id).then(data => {
+            const status = String(data.status || '').toLowerCase();
+            if (data.can_tl_act) {
+                openTlReview(id);
+            } else if (data.can_manager_act && (status === 'pending' || status === 'on_hold')) {
+                openActionModal(id);
+            } else {
+                openViewModal(id);
+            }
+        }).catch(() => {});
+    }
+
     function openActionModal(id) {
         loadLeaveDetails(id)
             .then(data => {
@@ -622,6 +646,30 @@
         });
 
         document.getElementById('applyLeaveModal')?.addEventListener('hidden.bs.offcanvas', resetApplyLeaveDrawer);
+
+        // Arrived from a notification or e-mail: open that leave straight away.
+        const linkedLeave = new URLSearchParams(window.location.search).get('leave');
+        if (linkedLeave) {
+            setTimeout(() => openLeaveFromLink(linkedLeave), 300);
+            const clean = new URL(window.location.href);
+            clean.searchParams.delete('leave');
+            window.history.replaceState({}, '', clean.toString()); // a refresh shows the list, not the panel again
+        }
+
+        // Clicking a leave in the bell while already on this page: open it here, no reload.
+        document.addEventListener('click', function (e) {
+            const link = e.target.closest && e.target.closest('a[data-leave-id]');
+            if (!link || link.dataset.leaveScope === 'mine' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            const notifyDrawer = document.getElementById('zohoNotifyOffcanvas');
+            const instance = notifyDrawer && bootstrap.Offcanvas.getInstance(notifyDrawer);
+            if (instance && notifyDrawer.classList.contains('show')) {
+                notifyDrawer.addEventListener('hidden.bs.offcanvas', () => openLeaveFromLink(link.dataset.leaveId), { once: true });
+                instance.hide();
+            } else {
+                openLeaveFromLink(link.dataset.leaveId);
+            }
+        });
 
         document.getElementById('applyLeaveForm')?.addEventListener('submit', function (e) {
             e.preventDefault();

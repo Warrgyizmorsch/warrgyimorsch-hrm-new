@@ -123,6 +123,8 @@
     .status-rejected { background: #fff1f2; color: #e11d48; }
     .status-on_hold { background: #fff7ed; color: #ea580c; }
     .leave-approval-stage { margin-top: 6px; font-size: 11px; font-weight: 600; color: #a16207; text-align: right; }
+    @keyframes leaveFocusPulse { 0% { box-shadow: 0 0 0 0 rgba(16,112,224,.55); } 100% { box-shadow: 0 0 0 14px rgba(16,112,224,0); } }
+    .minimal-row.is-linked { outline: 2px solid #1070e0; outline-offset: 2px; animation: leaveFocusPulse 1.2s ease-out 3; }
     .leave-approval-times { margin-top: 4px; max-width: 280px; font-size: 10.5px; color: #94a3b8; text-align: right; }
     .leave-approval-remark { margin-top: 4px; max-width: 260px; font-size: 11px; color: #64748b; text-align: right; overflow-wrap: anywhere; }
 
@@ -466,7 +468,7 @@
 
             @forelse($leaves->take(4) as $item)
 
-                <div class="minimal-row shadow-sm border-0 mb-3">
+                <div class="minimal-row shadow-sm border-0 mb-3" data-leave-item="{{ $item->id }}">
                     <div class="d-flex align-items-center flex-grow-1">
 
                         <div class="date-column">
@@ -528,7 +530,7 @@
         <!-- FULL LIST -->
         <div id="tab-archive" class="content-pane d-none">
             @forelse($leaves as $item)
-                <div class="minimal-row shadow-sm border-0 mb-3">
+                <div class="minimal-row shadow-sm border-0 mb-3" data-leave-item="{{ $item->id }}">
                     <div class="d-flex align-items-center flex-grow-1">
                         <div class="date-column">
                             <span class="day-num">{{ $item->start_date->format('d') }}</span>
@@ -588,6 +590,22 @@
 
         return count;
     }
+
+    // Opened from a notification / e-mail (?leave=ID): show and highlight that leave.
+    document.addEventListener('DOMContentLoaded', function () {
+        const id = new URLSearchParams(window.location.search).get('leave');
+        if (!id) return;
+        let row = document.querySelector('#tab-recent [data-leave-item="' + CSS.escape(id) + '"]');
+        if (!row) {
+            row = document.querySelector('#tab-archive [data-leave-item="' + CSS.escape(id) + '"]');
+            const archiveBtn = document.querySelector('.toggle-opt[onclick*="archive"]');
+            if (row && archiveBtn) switchTab('archive', archiveBtn);
+        }
+        if (!row) return;
+        row.classList.add('is-linked');
+        setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+        setTimeout(() => row.classList.remove('is-linked'), 6000);
+    });
 
     function switchTab(tabId, el) {
         document.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));

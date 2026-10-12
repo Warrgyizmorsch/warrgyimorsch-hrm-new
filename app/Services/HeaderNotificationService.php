@@ -87,7 +87,7 @@ class HeaderNotificationService
     /**
      * Stable key + short title per item, so the browser can tell which ones are new.
      *
-     * @return array<int, array{key: string, title: string}>
+     * @return array<int, array{key: string, title: string, body: string, url: string}>
      */
     public function keys(array $bell): array
     {
@@ -97,21 +97,28 @@ class HeaderNotificationService
             $items[] = [
                 'key' => "await-{$leave->id}-{$leave->approval_stage}",
                 'title' => ($leave->employee->name ?? 'An employee') . ' — leave awaiting your approval',
+                'body' => trim(($leave->leave_category ?? '') . ' · ' . optional($leave->start_date)->format('d M')
+                    . ($leave->end_date && $leave->end_date->gt($leave->start_date) ? ' – ' . $leave->end_date->format('d M') : '')),
+                'url' => route('leave.history', ['leave' => $leave->id]),
             ];
         }
         foreach ($bell['pendingProfileApprovals'] as $req) {
             $items[] = [
                 'key' => "profile-{$req->id}",
                 'title' => ($req->employee->name ?? 'An employee') . ' submitted profile details for approval',
+                'body' => 'Waiting for your approval',
+                'url' => route('profile-approvals.show', $req),
             ];
         }
         foreach ($bell['notifications'] as $item) {
             if (isset($item->type) && $item->type === 'celebration') {
-                $items[] = ['key' => (string) $item->id, 'title' => $item->message];
+                $items[] = ['key' => (string) $item->id, 'title' => $item->message, 'body' => 'Happening today', 'url' => route('employees.employeeDays')];
             } elseif (isset($item->remarks)) {
                 $items[] = [
                     'key' => 'payroll-' . $item->id . '-' . optional($item->updated_at)->timestamp,
                     'title' => ($item->employee->name ?? 'Someone') . ' commented on payroll',
+                    'body' => \Illuminate\Support\Str::limit((string) $item->remarks, 120),
+                    'url' => route('payroll.index'),
                 ];
             } else {
                 $isAdmin = in_array($bell['roleUpper'], ['ADMIN', 'SUPER_ADMIN', 'SUPER ADMIN'], true);
@@ -120,6 +127,8 @@ class HeaderNotificationService
                     'title' => $isAdmin
                         ? (($item->employee->name ?? 'Someone') . ' applied for leave')
                         : ('Your leave was ' . strtolower((string) $item->status)),
+                    'body' => trim(($item->leave_category ?? $item->leave_type ?? '') . ' · ' . optional($item->start_date)->format('d M Y')),
+                    'url' => $isAdmin ? route('leave.history', ['leave' => $item->id]) : route('profile.leave-history', ['leave' => $item->id]),
                 ];
             }
         }

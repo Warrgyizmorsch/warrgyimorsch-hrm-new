@@ -241,7 +241,7 @@
                                     $statusKey = str_replace(' ', '_', strtolower($leave->status));
                                     $leaveTypeDisplay = $leave->leave_type == 'Gatepass Leave' ? 'Early Leave' : $leave->leave_type;
                                 @endphp
-                                <tr class="leave-history-row">
+                                <tr class="leave-history-row" data-leave-row="{{ $leave->id }}">
                                     <td class="lh-col-sr text-muted fw-semibold">{{ $leaves->firstItem() + $key }}</td>
                                     <td class="lh-col-employee">
                                         <a href="javascript:void(0)" class="lh-emp-link" onclick="openViewModal({{ $leave->id }})">

@@ -252,9 +252,13 @@ class LeaveApprovalService
      */
     public function timeline(LeaveApplication $leave): array
     {
-        $leave->loadMissing(['logs', 'employee', 'tlActionUser:id,name', 'managerActionUser:id,name']);
+        $leave->loadMissing(['employee', 'tlActionUser:id,name', 'managerActionUser:id,name']);
+        if (LeaveApplicationLog::available()) {
+            $leave->loadMissing('logs');
+        }
         $employeeName = $leave->employee?->name ?? 'Employee';
-        $logs = $leave->logs;
+        // Without the log table (migration not run yet) the timeline is rebuilt from the columns.
+        $logs = LeaveApplicationLog::available() ? $leave->logs : collect();
 
         $events = [];
         $hasApplied = $logs->contains('action', 'applied');

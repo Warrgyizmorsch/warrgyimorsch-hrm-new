@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class LeaveApplicationLog extends Model
 {
@@ -28,9 +29,21 @@ class LeaveApplicationLog extends Model
         return $this->belongsTo(LeaveApplication::class);
     }
 
-    /** Append one step to an application's timeline. */
-    public static function record(LeaveApplication $leave, string $action, string $level, ?string $from, ?string $to, ?string $remarks = null, ?User $actor = null): self
+    /** False until `php artisan migrate` has created the table — leave screens keep working meanwhile. */
+    public static function available(): bool
     {
+        static $available = null;
+
+        return $available ??= Schema::hasTable('leave_application_logs');
+    }
+
+    /** Append one step to an application's timeline. */
+    public static function record(LeaveApplication $leave, string $action, string $level, ?string $from, ?string $to, ?string $remarks = null, ?User $actor = null): ?self
+    {
+        if (!self::available()) {
+            return null;
+        }
+
         $actor ??= auth()->user();
 
         return self::create([

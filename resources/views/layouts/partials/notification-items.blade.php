@@ -1,6 +1,6 @@
 {{-- Bell drawer items. Rendered with the page and re-rendered by NotificationController@feed. --}}
     @foreach($awaitingLeaves as $awaitingLeave)
-        <a href="{{ route('leave.history', ['awaiting' => 1]) }}" class="zoho-notify-item zoho-notify-item--leave">
+        <a href="{{ route('leave.history', ['leave' => $awaitingLeave->id]) }}" data-leave-id="{{ $awaitingLeave->id }}" class="zoho-notify-item zoho-notify-item--leave">
             <span class="zoho-notify-item-icon"><i class="feather-check-square"></i></span>
             <span class="zoho-notify-item-body">
                 <span class="zoho-notify-item-title">{{ $awaitingLeave->employee->name ?? 'An employee' }} — leave awaiting your approval</span>
@@ -32,9 +32,14 @@
             $photo = ($emp && $emp->photo) ? asset('storage/' . $emp->photo) : null;
             $notifyType = $isCelebration ? 'celebration' : ($isPayroll ? 'payroll' : 'leave');
             $notifyIcon = $isCelebration ? 'gift' : ($isPayroll ? 'message-circle' : 'calendar');
-            $notifyUrl = $isCelebration ? route('employees.employeeDays') : ($isPayroll ? route('payroll.index') : route('leave.history'));
+            $isAdminFeed = in_array($roleUpper, ['ADMIN', 'SUPER_ADMIN', 'SUPER ADMIN']);
+            $leaveLinkId = (!$isCelebration && !$isPayroll) ? $item->id : null;
+            // Leave items open that exact leave: admins in Leave Applications, employees in My Leave History.
+            $notifyUrl = $isCelebration ? route('employees.employeeDays')
+                : ($isPayroll ? route('payroll.index')
+                : ($isAdminFeed ? route('leave.history', ['leave' => $item->id]) : route('profile.leave-history', ['leave' => $item->id])));
         @endphp
-        <a href="{{ $notifyUrl }}" class="zoho-notify-item zoho-notify-item--{{ $notifyType }}">
+        <a href="{{ $notifyUrl }}" @if($leaveLinkId) data-leave-id="{{ $leaveLinkId }}" data-leave-scope="{{ $isAdminFeed ? 'manage' : 'mine' }}" @endif class="zoho-notify-item zoho-notify-item--{{ $notifyType }}">
             <span class="zoho-notify-item-icon"><i class="feather-{{ $notifyIcon }}"></i></span>
             <span class="zoho-notify-item-body">
                 @if($isCelebration)

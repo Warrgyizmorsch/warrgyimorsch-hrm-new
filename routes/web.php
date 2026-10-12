@@ -123,6 +123,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
 
+    // Browser push notifications (service worker: public/sw.js)
+    Route::get('/push/key', [\App\Http\Controllers\PushController::class, 'key'])->name('push.key');
+    Route::post('/push/subscribe', [\App\Http\Controllers\PushController::class, 'subscribe'])->name('push.subscribe');
+    Route::post('/push/unsubscribe', [\App\Http\Controllers\PushController::class, 'unsubscribe'])->name('push.unsubscribe');
+    Route::get('/push/pending', [\App\Http\Controllers\PushController::class, 'pending'])->name('push.pending');
+
     Route::post('/tickets/store', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::post('/tickets/update-status/{id}', [TicketController::class, 'updateStatus'])->name('tickets.updateStatus');

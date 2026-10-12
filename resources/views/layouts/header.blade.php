@@ -539,6 +539,13 @@
     class="zoho-header-offcanvas zoho-notify-offcanvas border-0"
     body-class="zoho-notify-offcanvas-body p-0"
     footer-class="zoho-offcanvas-foot">
+    <div class="zoho-notify-prefs">
+        <span>Alerts</span>
+        <span class="zoho-notify-prefs__btns">
+            <button type="button" class="zoho-notify-pref" id="zohoPrefSound" data-allow-repeat><i class="feather-volume-2"></i> Sound on</button>
+            <button type="button" class="zoho-notify-pref" id="zohoPrefDesktop" data-allow-repeat><i class="feather-monitor"></i> Desktop off</button>
+        </span>
+    </div>
     <div id="zohoNotifyList">
         @include('layouts.partials.notification-items')
     </div>
@@ -550,7 +557,8 @@
     @endif
 </x-ui.drawer>
 
-{{-- Live bell: refreshes the count and list without reloading the page. --}}
+{{-- Live bell: refreshes the count and list without reloading the page, with optional
+     sound and desktop (Windows/macOS) notifications. --}}
 <style>
     @keyframes zohoBellRing {
         0%, 100% { transform: rotate(0); }
@@ -562,42 +570,206 @@
     }
     #zohoNotifyBell.is-ringing .feather-bell { display: inline-block; animation: zohoBellRing .9s ease-in-out 2; transform-origin: 50% 0; }
     #zohoNotifyBell.is-ringing .zoho-notify-badge { animation: zohoBellRing .9s ease-in-out 1; }
+    .zoho-notify-prefs { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid #eef1f5; background: #fafbfc; font-size: 12px; color: #475569; }
+    .zoho-notify-prefs__btns { display: flex; gap: 6px; }
+    .zoho-notify-pref { border: 1px solid #e2e8f0; background: #fff; border-radius: 999px; padding: 3px 10px; font-size: 12px; color: #475569; display: inline-flex; align-items: center; gap: 5px; }
+    .zoho-notify-pref.is-on { border-color: #1070e0; color: #1070e0; background: #eff6ff; }
+    .zoho-notify-pref:disabled { opacity: .55; cursor: not-allowed; }
 </style>
 <script>
 (function () {
     var FEED_URL = @json(route('notifications.feed'));
-    var POLL_MS = 20000;
+    var ICON_URL = @json(asset('favicon.ico'));
+    var PUSH = {
+        key: @json(route('push.key')),
+        subscribe: @json(route('push.subscribe')),
+        unsubscribe: @json(route('push.unsubscribe')),
+        worker: @json(asset('sw.js')),
+        csrf: @json(csrf_token()),
+        user: @json(auth()->id()),
+    };
+    var pushActive = false; // true once this browser is subscribed to real push
+    var POLL_VISIBLE_MS = 20000;  // tab in front
+    var POLL_HIDDEN_MS = 60000;   // tab in background — still checks, so desktop alerts arrive
+    var PREF_SOUND = 'hrmNotifySound';
+    var PREF_DESKTOP = 'hrmNotifyDesktop';
     var knownKeys = null;
     var lastHtml = null;
     var timer = null;
     var inFlight = false;
 
+    // ---- preferences (per browser) ----
+    function pref(name, fallback) {
+        try { var v = localStorage.getItem(name); return v === null ? fallback : v === '1'; } catch (e) { return fallback; }
+    }
+    function setPref(name, on) {
+        try { localStorage.setItem(name, on ? '1' : '0'); } catch (e) { /* private mode */ }
+    }
+    function soundOn() { return pref(PREF_SOUND, true); }
+    function desktopSupported() { return 'Notification' in window; }
+    function desktopOn() { return desktopSupported() && Notification.permission === 'granted' && pref(PREF_DESKTOP, true); }
+
+    // ---- sound: a short two-tone chime made in the browser (no audio file needed) ----
+    var audioCtx = null;
+    function unlockAudio() {
+        // Browsers only allow sound after the user has clicked/typed on the page once.
+        try {
+            if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        } catch (e) { audioCtx = null; }
+    }
+    ['click', 'keydown', 'touchstart'].forEach(function (ev) {
+        document.addEventListener(ev, unlockAudio, { once: true, capture: true });
+    });
+    function chime() {
+        if (!soundOn() || !audioCtx || audioCtx.state !== 'running') return;
+        // Several open tabs: only one of them plays the sound.
+        try {
+            var last = parseInt(localStorage.getItem('hrmNotifyLastChime') || '0', 10);
+            if (Date.now() - last < 4000) return;
+            localStorage.setItem('hrmNotifyLastChime', String(Date.now()));
+        } catch (e) { /* ignore */ }
+        var now = audioCtx.currentTime;
+        [[880, 0], [1318.5, 0.16]].forEach(function (n) {
+            var osc = audioCtx.createOscillator();
+            var gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = n[0];
+            gain.gain.setValueAtTime(0.0001, now + n[1]);
+            gain.gain.exponentialRampToValueAtTime(0.25, now + n[1] + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + n[1] + 0.45);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(now + n[1]);
+            osc.stop(now + n[1] + 0.5);
+        });
+    }
+
+    // ---- desktop notifications ----
+    function desktopNotify(items) {
+        // With real push on, the service worker shows system notifications (even with the tab closed).
+        if (!desktopOn() || pushActive) return;
+        items.slice(0, 3).forEach(function (item) {
+            try {
+                var n = new Notification(item.title, {
+                    body: item.body || '',
+                    icon: ICON_URL,
+                    tag: 'hrm-' + item.key, // same item in several tabs → shown once
+                });
+                n.onclick = function () {
+                    window.focus();
+                    if (item.url) { window.location.href = item.url; }
+                    n.close();
+                };
+            } catch (e) { /* some browsers only allow this from a service worker */ }
+        });
+        if (items.length > 3) {
+            try { new Notification(items.length + ' new notifications', { icon: ICON_URL, tag: 'hrm-many' }); } catch (e) {}
+        }
+    }
+
+    // ---- real push (service worker) ----
+    function pushSupported() {
+        return 'serviceWorker' in navigator && 'PushManager' in window && window.isSecureContext;
+    }
+
+    function urlBase64ToUint8Array(base64) {
+        var padding = '='.repeat((4 - base64.length % 4) % 4);
+        var raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+        var out = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+        return out;
+    }
+
+    function postJson(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': PUSH.csrf },
+            body: JSON.stringify(body),
+        });
+    }
+
+    // Subscribe this browser (or refresh its subscription — also re-links a shared PC to whoever is logged in).
+    function enablePush() {
+        if (!pushSupported()) return Promise.resolve(false);
+        return fetch(PUSH.key, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (cfg) {
+                if (!cfg || !cfg.enabled || !cfg.publicKey) return false;
+                return navigator.serviceWorker.register(PUSH.worker)
+                    .then(function () { return navigator.serviceWorker.ready; })
+                    .then(function (reg) {
+                        return reg.pushManager.getSubscription().then(function (existing) {
+                            return existing || reg.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: urlBase64ToUint8Array(cfg.publicKey),
+                            });
+                        });
+                    })
+                    .then(function (sub) {
+                        // Tell the server once per tab session (and again if the user or device changes).
+                        var mark = PUSH.user + '|' + sub.endpoint;
+                        try { if (sessionStorage.getItem('hrmPushSynced') === mark) { return { ok: true }; } } catch (e) {}
+                        return postJson(PUSH.subscribe, sub.toJSON()).then(function (res) {
+                            if (res.ok) { try { sessionStorage.setItem('hrmPushSynced', mark); } catch (e) {} }
+                            return res;
+                        });
+                    })
+                    .then(function (res) { pushActive = !!res.ok; return pushActive; });
+            })
+            .catch(function (e) { console.warn('Push not enabled:', e); pushActive = false; return false; });
+    }
+
+    function disablePush() {
+        pushActive = false;
+        if (!pushSupported()) return Promise.resolve();
+        return navigator.serviceWorker.getRegistration(PUSH.worker)
+            .then(function (reg) { return reg ? reg.pushManager.getSubscription() : null; })
+            .then(function (sub) {
+                if (!sub) return;
+                try { sessionStorage.removeItem('hrmPushSynced'); } catch (e) {}
+                return postJson(PUSH.unsubscribe, { endpoint: sub.endpoint }).then(function () { return sub.unsubscribe(); });
+            })
+            .catch(function () {});
+    }
+
+    if ('serviceWorker' in navigator) {
+        // A push arrived: refresh the bell straight away instead of waiting for the next check.
+        navigator.serviceWorker.addEventListener('message', function (e) {
+            if (e.data && e.data.type === 'hrm-push') refresh();
+        });
+    }
+
+    // ---- bell UI ----
     function setBadge(count) {
         var badge = document.getElementById('zohoNotifyBadge');
         if (!badge) return;
         badge.textContent = count > 9 ? '9+' : String(count);
         badge.classList.toggle('d-none', !count);
+        var base = document.title.replace(/^\(\d+\+?\)\s*/, '');
+        document.title = count ? '(' + (count > 9 ? '9+' : count) + ') ' + base : base;
     }
 
     function ring() {
         var bell = document.getElementById('zohoNotifyBell');
         if (!bell) return;
         bell.classList.remove('is-ringing');
-        void bell.offsetWidth; // restart the animation
+        void bell.offsetWidth;
         bell.classList.add('is-ringing');
     }
 
     function announce(items) {
         if (!items.length) return;
         ring();
-        var title = items.length === 1 ? items[0].title : items.length + ' new notifications';
-        if (typeof Toast !== 'undefined') {
-            Toast.fire({ icon: 'info', title: title, timer: 5000 });
+        chime();
+        if (document.visibilityState === 'hidden') {
+            desktopNotify(items);
+        } else if (typeof Toast !== 'undefined') {
+            Toast.fire({ icon: 'info', title: items.length === 1 ? items[0].title : items.length + ' new notifications', timer: 5000 });
         }
     }
 
     function refresh() {
-        if (inFlight || document.visibilityState === 'hidden') return;
+        if (inFlight) return;
         inFlight = true;
         fetch(FEED_URL, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
             .then(function (res) {
@@ -607,13 +779,11 @@
             .then(function (data) {
                 if (!data) return;
                 setBadge(data.count);
-
                 if (data.html !== lastHtml) {
                     var list = document.getElementById('zohoNotifyList');
                     if (list) list.innerHTML = data.html;
                     lastHtml = data.html;
                 }
-
                 var items = data.items || [];
                 if (knownKeys) {
                     announce(items.filter(function (i) { return knownKeys.indexOf(i.key) === -1; }));
@@ -624,20 +794,83 @@
             .then(function () { inFlight = false; });
     }
 
-    function start() {
+    function schedule() {
         clearInterval(timer);
-        timer = setInterval(refresh, POLL_MS);
+        timer = setInterval(refresh, document.visibilityState === 'hidden' ? POLL_HIDDEN_MS : POLL_VISIBLE_MS);
     }
 
     document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') {
-            refresh(); // catch up straight away when the tab comes back
-            start();
+        if (document.visibilityState === 'visible') { refresh(); }
+        schedule();
+    });
+
+    // ---- alert preferences bar in the bell drawer ----
+    function renderPrefs() {
+        var soundBtn = document.getElementById('zohoPrefSound');
+        var deskBtn = document.getElementById('zohoPrefDesktop');
+        if (soundBtn) {
+            soundBtn.classList.toggle('is-on', soundOn());
+            soundBtn.innerHTML = '<i class="feather-' + (soundOn() ? 'volume-2' : 'volume-x') + '"></i> Sound ' + (soundOn() ? 'on' : 'off');
+        }
+        if (deskBtn) {
+            if (!desktopSupported()) {
+                deskBtn.disabled = true;
+                deskBtn.textContent = 'Desktop alerts not supported';
+            } else if (Notification.permission === 'denied') {
+                deskBtn.disabled = true;
+                deskBtn.classList.remove('is-on');
+                deskBtn.innerHTML = '<i class="feather-monitor"></i> Blocked in browser settings';
+                deskBtn.title = 'Allow notifications for this site in the browser (padlock icon next to the address).';
+            } else {
+                deskBtn.disabled = false;
+                deskBtn.classList.toggle('is-on', desktopOn());
+                deskBtn.innerHTML = '<i class="feather-monitor"></i> Desktop ' + (desktopOn() ? 'on' : 'off');
+            }
+        }
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('#zohoPrefSound')) {
+            setPref(PREF_SOUND, !soundOn());
+            unlockAudio();
+            renderPrefs();
+            chime(); // preview
+        } else if (e.target.closest('#zohoPrefDesktop')) {
+            if (!desktopSupported()) return;
+            if (Notification.permission === 'granted') {
+                var turnOn = !desktopOn();
+                setPref(PREF_DESKTOP, turnOn);
+                renderPrefs();
+                if (turnOn) { enablePush(); } else { disablePush(); }
+            } else {
+                Notification.requestPermission().then(function (p) {
+                    setPref(PREF_DESKTOP, p === 'granted');
+                    renderPrefs();
+                    if (p === 'granted') {
+                        enablePush().then(function (viaPush) {
+                            try {
+                                new Notification('Desktop alerts are on', {
+                                    body: viaPush
+                                        ? 'You will be notified even when the HRM is closed.'
+                                        : 'You will be notified while the HRM is open in a tab.',
+                                    icon: ICON_URL, tag: 'hrm-welcome',
+                                });
+                            } catch (err) {}
+                        });
+                    }
+                });
+            }
         }
     });
 
-    // The first call only records what is already shown (no toast for existing items).
-    setTimeout(function () { refresh(); start(); }, 3000);
+    document.addEventListener('DOMContentLoaded', renderPrefs);
+    renderPrefs();
+    if (desktopOn()) {
+        enablePush(); // keep this device's subscription linked to the logged-in user
+    }
+
+    // The first call only records what is already shown (no alert for existing items).
+    setTimeout(function () { refresh(); schedule(); }, 3000);
 })();
 </script>
 

@@ -34,6 +34,7 @@ class PreventDuplicateSubmissions
         'login-activity/heartbeat',
         'notifications/*/read',
         'broadcasting/*',
+        'push/*',
     ];
 
     public function handle(Request $request, Closure $next): Response

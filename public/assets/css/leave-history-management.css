@@ -1192,3 +1192,7 @@
 .lh-tl-meta i { font-size: 10px; }
 
 #applyEmployeeDropdown .wghrm-dropdown-trigger.is-invalid { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220, 38, 38, .12); }
+
+@keyframes lhRowFocus { 0% { background: #dbeafe; } 100% { background: transparent; } }
+.leave-history-row.is-linked > td { animation: lhRowFocus 3s ease-out 1; }
+.leave-history-row.is-linked > td:first-child { box-shadow: inset 4px 0 0 #1070e0; }
