@@ -244,7 +244,7 @@ class ProjectController extends Controller
         ]);
 
         $tasks = DailyTask::where('project_id', $project->id)
-            ->with(['employee', 'creator', 'followUps'])
+            ->with(['employee', 'creator', 'followUps', 'phase:id,name'])
             ->latest()
             ->get();
 

@@ -66,6 +66,39 @@ class ProjectChecklistController extends Controller
         abort(403, 'Only the assignee or a team leader can update this item.');
     }
 
+    /**
+     * Editing or deleting a template changes it for every week, so only leaders/admins
+     * or the person who created the item may do it.
+     */
+    private function canEditTemplate(ProjectChecklistTemplate $template): bool
+    {
+        if ($this->canAssign($template->project)) {
+            return true;
+        }
+
+        $employeeId = auth()->user()->employee_id;
+
+        return $employeeId && (int) $template->created_by === (int) $employeeId;
+    }
+
+    private function canToggleTemplate(ProjectChecklistTemplate $template, bool $canAssign): bool
+    {
+        if (!$template->assigned_to || $canAssign) {
+            return true;
+        }
+
+        return (int) $template->assigned_to === (int) auth()->user()->employee_id;
+    }
+
+    private function assertCanEdit(ProjectChecklistTemplate $template): void
+    {
+        $this->assertProjectMember($template->project);
+
+        if (!$this->canEditTemplate($template)) {
+            abort(403, 'Only the creator of this item or a project leader can change it.');
+        }
+    }
+
     private function currentWeekStart(): string
     {
         return Carbon::now()->startOfWeek()->toDateString();
@@ -98,8 +131,10 @@ class ProjectChecklistController extends Controller
         $employeeNames = Employee::whereIn('id', $employeeIds)->pluck('name', 'id');
 
         $today = Carbon::now();
+        $canAssign = $this->canAssign($project);
 
-        $items = $templates->map(function ($template) use ($employeeNames, $isCurrentWeek, $weekStartCarbon, $today) {
+        $items = $templates->map(function ($template) use ($employeeNames, $isCurrentWeek, $weekStartCarbon, $today, $canAssign, $project) {
+            $template->setRelation('project', $project);
             $completion = $template->completions->first();
             $isDone = (bool) ($completion->is_done ?? false);
 
@@ -123,10 +158,11 @@ class ProjectChecklistController extends Controller
                 'due_weekday' => $template->due_weekday,
                 'due_weekday_label' => $template->due_weekday ? (self::WEEKDAY_LABELS[$template->due_weekday] ?? null) : null,
                 'is_overdue' => $isOverdue,
+                'can_edit' => $isCurrentWeek && $this->canEditTemplate($template),
+                'can_toggle' => $isCurrentWeek && $this->canToggleTemplate($template, $canAssign),
             ];
         });
 
-        $canAssign = $this->canAssign($project);
         $assignableEmployees = [];
         if ($canAssign) {
             $memberIds = collect((array) $project->members)->merge((array) $project->leaders)->filter()->unique();
@@ -171,7 +207,7 @@ class ProjectChecklistController extends Controller
     public function updateTemplate(Request $request, ProjectChecklistTemplate $template)
     {
         $project = $template->project;
-        $this->assertProjectMember($project);
+        $this->assertCanEdit($template);
 
         $validated = $request->validate([
             'label' => 'required|string|max:255',
@@ -182,9 +218,14 @@ class ProjectChecklistController extends Controller
         $canAssign = $this->canAssign($project);
 
         $update = ['label' => $validated['label']];
+        // Only touch assignment fields that were actually sent, so a partial edit never clears them.
         if ($canAssign) {
-            $update['assigned_to'] = $validated['assigned_to'] ?? null;
-            $update['due_weekday'] = $validated['due_weekday'] ?? null;
+            if ($request->exists('assigned_to')) {
+                $update['assigned_to'] = $validated['assigned_to'] ?? null;
+            }
+            if ($request->exists('due_weekday')) {
+                $update['due_weekday'] = $validated['due_weekday'] ?? null;
+            }
         }
 
         $template->update($update);
@@ -194,7 +235,7 @@ class ProjectChecklistController extends Controller
 
     public function destroyTemplate(ProjectChecklistTemplate $template)
     {
-        $this->assertProjectMember($template->project);
+        $this->assertCanEdit($template);
 
         $template->delete();
 

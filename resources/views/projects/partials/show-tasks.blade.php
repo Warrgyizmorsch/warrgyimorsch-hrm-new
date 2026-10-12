@@ -14,6 +14,7 @@
                 <thead>
                     <tr>
                         <th>Task</th>
+                        <th>Milestone</th>
                         <th>Assignee</th>
                         <th>Status</th>
                         <th>Priority</th>
@@ -38,6 +39,13 @@
                                 <strong class="pd-task-title">{{ $task->task_title }}</strong>
                                 @if($task->description)
                                     <div class="pd-task-desc">{{ Str::limit(strip_tags($task->description), 80) }}</div>
+                                @endif
+                            </td>
+                            <td>
+                                @if($task->phase)
+                                    <span class="pm-tag pm-tag--dept">{{ $task->phase->name }}</span>
+                                @else
+                                    <span class="text-muted small">Backlog</span>
                                 @endif
                             </td>
                             <td>
@@ -66,7 +74,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7">
+                            <td colspan="8">
                                 <div class="pd-empty-state">
                                     <i class="feather-check-square"></i>
                                     <p>No tasks yet for this project.</p>

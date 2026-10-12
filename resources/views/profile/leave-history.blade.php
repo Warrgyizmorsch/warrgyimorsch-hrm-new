@@ -122,6 +122,9 @@
     .status-pending { background: #fef9c3; color: #a16207; }
     .status-rejected { background: #fff1f2; color: #e11d48; }
     .status-on_hold { background: #fff7ed; color: #ea580c; }
+    .leave-approval-stage { margin-top: 6px; font-size: 11px; font-weight: 600; color: #a16207; text-align: right; }
+    .leave-approval-times { margin-top: 4px; max-width: 280px; font-size: 10.5px; color: #94a3b8; text-align: right; }
+    .leave-approval-remark { margin-top: 4px; max-width: 260px; font-size: 11px; color: #64748b; text-align: right; overflow-wrap: anywhere; }
 
     .spotlight-card {
         background: #fff;
@@ -501,6 +504,7 @@
                         <div class="status-dot-label shadow-sm {{ 'status-'.strtolower($item->status) }}">
                             {{ strtoupper(str_replace('_',' ',$item->status)) }}
                         </div>
+                        @include('profile.partials.leave-approval-note', ['item' => $item])
                     </div>
                 </div>
 
@@ -543,6 +547,7 @@
                         <div class="status-dot-label shadow-sm {{ 'status-'.strtolower($item->status) }}">
                             {{ strtoupper(str_replace('_', ' ', $item->status)) }}
                         </div>
+                        @include('profile.partials.leave-approval-note', ['item' => $item])
                     </div>
                 </div>
             @empty
@@ -740,8 +745,13 @@
                 .then(async res => {
                     const contentType = res.headers.get('content-type') || '';
                     const payload = contentType.includes('application/json')
-                        ? await res.json()
-                        : { success: false, message: await res.text() };
+                        ? await res.json().catch(() => ({ success: false }))
+                        : {
+                            success: false,
+                            message: res.status === 419
+                                ? 'Your session has expired. Please refresh the page and try again.'
+                                : 'Server error — please try again. If it keeps happening, contact HR.',
+                        };
 
                     if (!res.ok || !payload.success) {
                         if (payload.errors) {

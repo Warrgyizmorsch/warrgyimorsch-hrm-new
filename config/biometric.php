@@ -21,7 +21,11 @@ return [
     // Comma-separated list of machine keys to sync, e.g. "zk,rs9n".
     'machines' => array_filter(array_map('trim', explode(',', env('BIOMETRIC_MACHINES', 'zk,rs9n')))),
 
+    // Days fetched when "Sync Punches" is run with no range selected (and by the scheduled sync).
     'sync_days' => (int) env('BIOMETRIC_SYNC_DAYS', 2),
+
+    // Upper limit for a manual range sync from the attendance page / attendance:sync --from.
+    'max_sync_days' => (int) env('BIOMETRIC_MAX_SYNC_DAYS', 90),
 
     'timeout' => (int) env('BIOMETRIC_TIMEOUT', 60),
 

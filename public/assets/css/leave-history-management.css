@@ -1144,3 +1144,51 @@
         max-width: none;
     }
 }
+
+
+/* ---------- Two-level approval ---------- */
+.lh-stage { margin-top: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: #a16207; white-space: nowrap; }
+.lh-stage--manager { color: #1d4ed8; }
+.lh-stat-chip--awaiting { text-decoration: none; color: inherit; border: 1px dashed #f59e0b; }
+.lh-stat-chip--awaiting .lh-stat-chip__icon { background: #fffbeb; color: #d97706; }
+.lh-stat-chip--awaiting.is-active { border-style: solid; background: #fffbeb; }
+.lh-review-btn { color: #16a34a; }
+.lh-review-btn:hover { background: #f0fdf4; color: #15803d; }
+.lh-btn-reject { color: #dc2626; border-color: #fecaca; }
+.lh-btn-reject:hover { background: #fef2f2; color: #b91c1c; }
+.lh-approval-warning { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; margin-bottom: 12px; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 12.5px; }
+.lh-approval-trail { display: flex; flex-direction: column; gap: 10px; }
+.lh-trail-step { display: flex; gap: 10px; }
+.lh-trail-dot { flex: 0 0 24px; height: 24px; border-radius: 50%; background: #e2e8f0; color: #475569; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.lh-trail-step--approved .lh-trail-dot { background: #dcfce7; color: #15803d; }
+.lh-trail-step--rejected .lh-trail-dot, .lh-trail-step--unauthorised .lh-trail-dot, .lh-trail-step--unpaid .lh-trail-dot { background: #fee2e2; color: #b91c1c; }
+.lh-trail-step--pending .lh-trail-dot, .lh-trail-step--on_hold .lh-trail-dot { background: #fef3c7; color: #b45309; }
+.lh-trail-body { flex: 1; min-width: 0; }
+.lh-trail-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.lh-trail-status { font-size: 10.5px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #475569; white-space: nowrap; }
+.lh-trail-status--approved { background: #dcfce7; color: #15803d; }
+.lh-trail-status--rejected, .lh-trail-status--unauthorised, .lh-trail-status--unpaid { background: #fee2e2; color: #b91c1c; }
+.lh-trail-status--pending, .lh-trail-status--on_hold { background: #fef3c7; color: #b45309; }
+.lh-trail-meta { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+.lh-trail-remarks { margin-top: 4px; padding: 6px 10px; border-left: 3px solid #cbd5e1; background: #f8fafc; font-size: 12.5px; color: #334155; white-space: pre-line; overflow-wrap: anywhere; }
+
+/* ---------- Leave timeline ---------- */
+.lh-applied-at { margin-top: 2px; font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.lh-applied-at i { font-size: 10px; }
+.lh-timeline { position: relative; padding-left: 4px; }
+.lh-tl-item { position: relative; display: flex; gap: 12px; padding-bottom: 14px; }
+.lh-tl-item:not(:last-child)::before { content: ''; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: #e2e8f0; }
+.lh-tl-dot { flex: 0 0 12px; height: 12px; margin-top: 4px; border-radius: 50%; background: #94a3b8; box-shadow: 0 0 0 3px #f1f5f9; z-index: 1; }
+.lh-tl-item--applied .lh-tl-dot { background: #3b82f6; box-shadow: 0 0 0 3px #dbeafe; }
+.lh-tl-item--approved .lh-tl-dot { background: #16a34a; box-shadow: 0 0 0 3px #dcfce7; }
+.lh-tl-item--rejected .lh-tl-dot, .lh-tl-item--unauthorised .lh-tl-dot, .lh-tl-item--unpaid .lh-tl-dot { background: #dc2626; box-shadow: 0 0 0 3px #fee2e2; }
+.lh-tl-item--on_hold .lh-tl-dot, .lh-tl-item--pending .lh-tl-dot { background: #f59e0b; box-shadow: 0 0 0 3px #fef3c7; }
+.lh-tl-item.is-pending .lh-tl-dot { background: #fff; border: 2px dashed #f59e0b; }
+.lh-tl-item.is-pending strong { color: #b45309; }
+.lh-tl-body { flex: 1; min-width: 0; }
+.lh-tl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; }
+.lh-tl-gap { font-size: 11px; color: #64748b; background: #f1f5f9; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.lh-tl-meta { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+.lh-tl-meta i { font-size: 10px; }
+
+#applyEmployeeDropdown .wghrm-dropdown-trigger.is-invalid { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220, 38, 38, .12); }

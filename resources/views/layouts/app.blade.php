@@ -622,7 +622,19 @@
                 url = base + url;
             }
 
-            return originalFetch(url, options);
+            return originalFetch(url, options).then(function (res) {
+                // Site-wide: an expired session (CSRF 419) gets one clear message instead of a silent failure.
+                if (res.status === 419 && !window.__sessionExpiredShown && typeof Swal !== 'undefined') {
+                    window.__sessionExpiredShown = true;
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Session expired',
+                        text: 'Your session has expired. Please refresh the page and try again.',
+                        confirmButtonText: 'Refresh now',
+                    }).then(function (r) { if (r.isConfirmed) { window.location.reload(); } });
+                }
+                return res;
+            });
         };
 
 
@@ -652,6 +664,15 @@
             Toast.fire({
                 icon: 'error',
                 title: "{{ Session::get('error') }}"
+            });
+        @endif
+
+        // Validation errors from any normal (non-AJAX) form, site-wide
+        @if($errors->any())
+            Toast.fire({
+                icon: 'error',
+                title: @json($errors->count() > 1 ? $errors->first() . ' (+' . ($errors->count() - 1) . ' more)' : $errors->first()),
+                timer: 6000,
             });
         @endif
 

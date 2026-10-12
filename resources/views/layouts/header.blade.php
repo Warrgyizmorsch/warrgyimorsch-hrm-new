@@ -55,72 +55,12 @@
                 </button>
 
                 @php
-                    $notifications = collect();
-                    $roleUpper = strtoupper(auth()->user()->role);
-
-                    $todayDate = now();
-                    $today = $todayDate->format('m-d');
-                    $celebrations = \App\Models\Employee::where(function ($q) use ($todayDate) {
-                            $q->where(function ($q2) use ($todayDate) {
-                                $q2->whereMonth('date_of_birth', $todayDate->month)
-                                    ->whereDay('date_of_birth', $todayDate->day);
-                            })->orWhere(function ($q2) use ($todayDate) {
-                                $q2->whereMonth('date_of_joining', $todayDate->month)
-                                    ->whereDay('date_of_joining', $todayDate->day);
-                            });
-                        })
-                        ->get()
-                        ->map(function ($emp) use ($today) {
-                            $isBirthday = \Carbon\Carbon::parse($emp->date_of_birth)->format('m-d') == $today;
-                            $type = $isBirthday ? 'Birthday' : 'Work Anniversary';
-                            $years = (int) \Carbon\Carbon::parse($emp->date_of_joining)->diffInYears(now());
-
-                            return (object) [
-                                'id' => 'celebration-' . $emp->id,
-                                'type' => 'celebration',
-                                'event_type' => $type,
-                                'employee' => $emp,
-                                'years' => $years,
-                                'message' => $isBirthday
-                                    ? "Today is {$emp->name}'s Birthday! 🎂"
-                                    : "Today is {$emp->name}'s {$years}" . ($years == 1 ? 'st' : ($years == 2 ? 'nd' : ($years == 3 ? 'rd' : 'th'))) . " Work Anniversary! 🏆",
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ];
-                        });
-
-                    if ($roleUpper == 'ADMIN' || $roleUpper == 'SUPER_ADMIN' || $roleUpper == 'SUPER ADMIN') {
-                        $leaveNotifications = \App\Models\LeaveApplication::with('employee')->latest()->get();
-                        $payrollNotifications = \App\Models\Payroll::with('employee')
-                            ->whereNotNull('remarks')
-                            ->where('remarks', '!=', '')
-                            ->latest()
-                            ->get();
-
-                        $notifications = $celebrations
-                            ->concat($leaveNotifications)
-                            ->concat($payrollNotifications)
-                            ->sortByDesc(function ($item) {
-                                return isset($item->type) && $item->type == 'celebration'
-                                    ? now()
-                                    : (isset($item->remarks) ? $item->updated_at : $item->created_at);
-                            })->take(5);
-                    } else {
-                        $myLeaves = \App\Models\LeaveApplication::where('employee_id', auth()->user()->employee_id)
-                            ->whereIn('status', ['approved', 'rejected', 'Approved', 'Rejected'])
-                            ->where('updated_at', '>=', now()->subDays(3))
-                            ->latest()
-                            ->get();
-
-                        $notifications = $celebrations
-                            ->concat($myLeaves)
-                            ->sortByDesc('updated_at')
-                            ->take(5);
-                    }
-                    // Employee self-service profiles waiting for HR (Employees → Profile Approvals).
-                    $pendingProfileApprovals = in_array(str_replace(' ', '_', strtolower(auth()->user()->role)), ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'], true)
-                        ? \App\Models\EmployeeProfileRequest::pending()->with('employee')->oldest('submitted_at')->get()
-                        : collect();
+                    // Bell contents (also served live by /notifications/feed — see the script at the end).
+                    $bell = app(\App\Services\HeaderNotificationService::class)->build(auth()->user());
+                    $notifications = $bell['notifications'];
+                    $pendingProfileApprovals = $bell['pendingProfileApprovals'];
+                    $awaitingLeaves = $bell['awaitingLeaves'];
+                    $roleUpper = $bell['roleUpper'];
                     $headerEmployee = auth()->user()->employee_id ? \App\Models\Employee::find(auth()->user()->employee_id) : null;
                     $firstName = explode(' ', auth()->user()->name ?? 'User')[0];
                     $userInitials = collect(explode(' ', trim(auth()->user()->name ?? 'User')))
@@ -130,17 +70,15 @@
                         ->join('');
                 @endphp
 
-                <button type="button"
+                <button type="button" id="zohoNotifyBell"
                         class="zoho-topbar-icon zoho-topbar-notify"
                         data-bs-toggle="offcanvas"
                         data-bs-target="#zohoNotifyOffcanvas"
                         aria-controls="zohoNotifyOffcanvas"
                         title="Notifications">
                     <i class="feather-bell"></i>
-                    @php $bellCount = count($notifications) + $pendingProfileApprovals->count(); @endphp
-                    @if($bellCount > 0)
-                        <span class="zoho-notify-badge">{{ $bellCount > 9 ? '9+' : $bellCount }}</span>
-                    @endif
+                    @php $bellCount = $bell['count']; @endphp
+                    <span class="zoho-notify-badge {{ $bellCount > 0 ? '' : 'd-none' }}" id="zohoNotifyBadge">{{ $bellCount > 9 ? '9+' : $bellCount }}</span>
                 </button>
 
                 <button type="button"
@@ -601,66 +539,9 @@
     class="zoho-header-offcanvas zoho-notify-offcanvas border-0"
     body-class="zoho-notify-offcanvas-body p-0"
     footer-class="zoho-offcanvas-foot">
-    @foreach($pendingProfileApprovals as $pendingProfile)
-        <a href="{{ route('profile-approvals.show', $pendingProfile) }}" class="zoho-notify-item zoho-notify-item--leave">
-            <span class="zoho-notify-item-icon"><i class="feather-user-check"></i></span>
-            <span class="zoho-notify-item-body">
-                <span class="zoho-notify-item-title">{{ $pendingProfile->employee->name ?? 'An employee' }} submitted {{ $pendingProfile->type === 'onboarding' ? 'their profile' : 'a details change' }}</span>
-                <span class="zoho-notify-item-desc">Waiting for your approval</span>
-                <span class="zoho-notify-item-meta">{{ $pendingProfile->submitted_at?->format('d M, h:i A') }}</span>
-            </span>
-            <span class="zoho-notify-item-avatar zoho-notify-item-avatar--initial">{{ strtoupper(substr($pendingProfile->employee->name ?? '?', 0, 1)) }}</span>
-        </a>
-    @endforeach
-    @forelse($notifications as $item)
-        @php
-            $isCelebration = isset($item->type) && $item->type == 'celebration';
-            $isPayroll = !$isCelebration && isset($item->remarks);
-            $emp = (in_array($roleUpper, ['ADMIN', 'SUPER_ADMIN', 'SUPER ADMIN']) || $isCelebration) ? $item->employee : auth()->user()->employee;
-            $photo = ($emp && $emp->photo) ? asset('storage/' . $emp->photo) : null;
-            $notifyType = $isCelebration ? 'celebration' : ($isPayroll ? 'payroll' : 'leave');
-            $notifyIcon = $isCelebration ? 'gift' : ($isPayroll ? 'message-circle' : 'calendar');
-            $notifyUrl = $isCelebration ? route('employees.employeeDays') : ($isPayroll ? route('payroll.index') : route('leave.history'));
-        @endphp
-        <a href="{{ $notifyUrl }}" class="zoho-notify-item zoho-notify-item--{{ $notifyType }}">
-            <span class="zoho-notify-item-icon"><i class="feather-{{ $notifyIcon }}"></i></span>
-            <span class="zoho-notify-item-body">
-                @if($isCelebration)
-                    <span class="zoho-notify-item-title">{{ $item->message }}</span>
-                    <span class="zoho-notify-item-meta">Happening today</span>
-                @elseif(in_array($roleUpper, ['ADMIN', 'SUPER_ADMIN', 'SUPER ADMIN']))
-                    @if($isPayroll)
-                        <span class="zoho-notify-item-title">{{ $item->employee->name ?? 'Someone' }} commented on payroll</span>
-                        <span class="zoho-notify-item-desc">"{{ Str::limit($item->remarks, 120) }}"</span>
-                        <span class="zoho-notify-item-meta">{{ $item->updated_at->format('d M, h:i A') }}</span>
-                    @else
-                        <span class="zoho-notify-item-title">{{ $emp->name ?? 'Someone' }} applied for leave</span>
-                        <span class="zoho-notify-item-desc">{{ $item->leave_type }} leave request</span>
-                        <span class="zoho-notify-item-meta">{{ $item->created_at->format('d M, h:i A') }}</span>
-                    @endif
-                @else
-                    <span class="zoho-notify-item-title">Leave {{ strtoupper($item->status) }}</span>
-                    <span class="zoho-notify-item-desc">Your {{ $item->leave_type }} application was {{ $item->status }}.</span>
-                    <span class="zoho-notify-item-meta">{{ $item->updated_at->format('d M, h:i A') }}</span>
-                @endif
-            </span>
-            @if($photo)
-                <img src="{{ $photo }}" alt="" class="zoho-notify-item-avatar">
-            @else
-                <span class="zoho-notify-item-avatar zoho-notify-item-avatar--initial">{{ strtoupper(substr($emp->name ?? '?', 0, 1)) }}</span>
-            @endif
-        </a>
-    @empty
-        @if($pendingProfileApprovals->isEmpty())
-            <div class="zoho-offcanvas-empty">
-                <div class="zoho-offcanvas-empty-art">
-                    <i class="feather-bell"></i>
-                </div>
-                <p class="zoho-offcanvas-empty-title">No Notification found</p>
-                <p class="zoho-offcanvas-empty-desc">You're all caught up. New alerts will appear here.</p>
-            </div>
-        @endif
-    @endforelse
+    <div id="zohoNotifyList">
+        @include('layouts.partials.notification-items')
+    </div>
 
     @if(count($notifications) > 0)
         <x-slot name="footer">
@@ -668,6 +549,98 @@
         </x-slot>
     @endif
 </x-ui.drawer>
+
+{{-- Live bell: refreshes the count and list without reloading the page. --}}
+<style>
+    @keyframes zohoBellRing {
+        0%, 100% { transform: rotate(0); }
+        15% { transform: rotate(14deg); }
+        30% { transform: rotate(-12deg); }
+        45% { transform: rotate(9deg); }
+        60% { transform: rotate(-6deg); }
+        75% { transform: rotate(3deg); }
+    }
+    #zohoNotifyBell.is-ringing .feather-bell { display: inline-block; animation: zohoBellRing .9s ease-in-out 2; transform-origin: 50% 0; }
+    #zohoNotifyBell.is-ringing .zoho-notify-badge { animation: zohoBellRing .9s ease-in-out 1; }
+</style>
+<script>
+(function () {
+    var FEED_URL = @json(route('notifications.feed'));
+    var POLL_MS = 20000;
+    var knownKeys = null;
+    var lastHtml = null;
+    var timer = null;
+    var inFlight = false;
+
+    function setBadge(count) {
+        var badge = document.getElementById('zohoNotifyBadge');
+        if (!badge) return;
+        badge.textContent = count > 9 ? '9+' : String(count);
+        badge.classList.toggle('d-none', !count);
+    }
+
+    function ring() {
+        var bell = document.getElementById('zohoNotifyBell');
+        if (!bell) return;
+        bell.classList.remove('is-ringing');
+        void bell.offsetWidth; // restart the animation
+        bell.classList.add('is-ringing');
+    }
+
+    function announce(items) {
+        if (!items.length) return;
+        ring();
+        var title = items.length === 1 ? items[0].title : items.length + ' new notifications';
+        if (typeof Toast !== 'undefined') {
+            Toast.fire({ icon: 'info', title: title, timer: 5000 });
+        }
+    }
+
+    function refresh() {
+        if (inFlight || document.visibilityState === 'hidden') return;
+        inFlight = true;
+        fetch(FEED_URL, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+            .then(function (res) {
+                var type = res.headers.get('content-type') || '';
+                return res.ok && type.indexOf('application/json') !== -1 ? res.json() : null;
+            })
+            .then(function (data) {
+                if (!data) return;
+                setBadge(data.count);
+
+                if (data.html !== lastHtml) {
+                    var list = document.getElementById('zohoNotifyList');
+                    if (list) list.innerHTML = data.html;
+                    lastHtml = data.html;
+                }
+
+                var items = data.items || [];
+                if (knownKeys) {
+                    announce(items.filter(function (i) { return knownKeys.indexOf(i.key) === -1; }));
+                }
+                knownKeys = items.map(function (i) { return i.key; });
+            })
+            .catch(function () { /* offline — try again on the next tick */ })
+            .then(function () { inFlight = false; });
+    }
+
+    function start() {
+        clearInterval(timer);
+        timer = setInterval(refresh, POLL_MS);
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+            refresh(); // catch up straight away when the tab comes back
+            start();
+        }
+    });
+
+    // The first call only records what is already shown (no toast for existing items).
+    setTimeout(function () { refresh(); start(); }, 3000);
+})();
+</script>
+
 
 {{-- Profile drawer (Zoho People style) --}}
 <x-ui.drawer

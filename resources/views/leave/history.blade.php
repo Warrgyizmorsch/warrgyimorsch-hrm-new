@@ -58,6 +58,12 @@
                     </div>
                 </div>
 
+                <div id="actionTlWarning" class="lh-approval-warning d-none">
+                    <i class="feather-alert-triangle"></i>
+                    <span>The Team Leader hasn't acted yet (Level 1). Deciding now will skip their approval.</span>
+                </div>
+                <div id="actionTrail" class="lh-approval-trail mb-3"></div>
+
                 <form id="actionForm">
                     @csrf
                     <input type="hidden" name="leave_id" id="actionLeaveId">
@@ -72,12 +78,61 @@
                             <option value="unauthorised">Unauthorised</option>
                         </select>
                     </div>
+                    <div class="lh-form-field mt-3">
+                        <label>Remarks / reason <span class="text-danger">*</span></label>
+                        <textarea name="remarks" id="actionRemarks" class="form-control" rows="4" maxlength="2000"
+                            placeholder="Why are you approving / rejecting? This is shown to the employee." required></textarea>
+                    </div>
 
                     <button type="submit" class="zoho-btn-primary w-100 mt-3">
                         <i class="feather-check"></i> Update Application
                     </button>
                 </form>
             </div>
+        </div>
+    </div>
+
+    {{-- Level 1: Team Leader review --}}
+    <div class="offcanvas offcanvas-end zoho-ui-drawer lh-side-drawer lh-action-drawer" tabindex="-1" id="leaveTlModal" aria-labelledby="leaveTlModalLabel">
+        <div class="offcanvas-header zoho-offcanvas-head border-bottom">
+            <h5 class="offcanvas-title zoho-offcanvas-title" id="leaveTlModalLabel">Team Leader approval (Level 1)</h5>
+            <button type="button" class="zoho-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="Close">
+                <i class="feather-x"></i>
+            </button>
+        </div>
+        <div class="offcanvas-body lh-action-drawer-body">
+            <div class="lh-action-meta">
+                <div class="lh-action-meta-item">
+                    <span class="lh-action-meta-label">Employee</span>
+                    <span id="tlEmployee" class="lh-action-meta-value">—</span>
+                </div>
+                <div class="lh-action-meta-item text-end">
+                    <span class="lh-action-meta-label">Leave Balance</span>
+                    <span id="tlBalance" class="lh-balance-badge lh-balance-badge--ok">—</span>
+                </div>
+            </div>
+            <div class="lh-detail-card mb-3">
+                <label>Request</label>
+                <div id="tlSummary" class="lh-detail-value">—</div>
+                <div id="tlReason" class="lh-detail-message mt-2">—</div>
+            </div>
+            <form id="tlForm" novalidate>
+                <input type="hidden" name="leave_id" id="tlLeaveId">
+                <div class="lh-form-field">
+                    <label>Remarks / reason <span class="text-danger">*</span></label>
+                    <textarea name="remarks" id="tlRemarks" class="form-control" rows="4" maxlength="2000"
+                        placeholder="e.g. Work handed over to Ravi; no release this week." required></textarea>
+                </div>
+                <p class="small text-muted mt-2 mb-0">Approving sends it to the manager for final approval. Rejecting closes the request.</p>
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="zoho-btn-outline lh-btn-reject flex-fill" data-tl-decision="rejected">
+                        <i class="feather-x"></i> Reject
+                    </button>
+                    <button type="button" class="zoho-btn-primary flex-fill" data-tl-decision="approved">
+                        <i class="feather-check"></i> Approve
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -158,6 +213,12 @@
                             <div class="lh-detail-card lh-detail-card--message">
                                 <label>Employee Message</label>
                                 <div id="viewMessage" class="lh-detail-message">—</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="lh-detail-card">
+                                <label>Timeline</label>
+                                <div id="viewApprovalTrail" class="lh-approval-trail">—</div>
                             </div>
                         </div>
                     </div>

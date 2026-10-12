@@ -14,9 +14,13 @@ class BiometricSyncService
      * into a single record set. A machine that fails does not block the
      * others — only surfaces as a warning in the aggregated message.
      *
+     * @param  int|null  $days  How many days back to fetch (null = BIOMETRIC_SYNC_DAYS).
+     * @param  array<string,string>|null  $machineUserIds  Only these machines, each filtered to one
+     *         device user ID — e.g. ['zk' => '17', 'rs9n' => '00000017'] for one employee.
+     *         Null = every configured machine, all users.
      * @return array{success: bool, records?: array, message?: string}
      */
-    public function fetchAttendance(): array
+    public function fetchAttendance(?int $days = null, ?array $machineUserIds = null): array
     {
         $url = trim((string) config('biometric.webhook_url'));
 
@@ -27,7 +31,10 @@ class BiometricSyncService
             ];
         }
 
-        $machines = config('biometric.machines', []);
+        $machines = $machineUserIds !== null
+            ? array_keys($machineUserIds)
+            : config('biometric.machines', []);
+        $days = max(1, $days ?? (int) config('biometric.sync_days', 2));
 
         if ($machines === []) {
             return [
@@ -40,7 +47,7 @@ class BiometricSyncService
         $failures = [];
 
         foreach ($machines as $machine) {
-            $result = $this->fetchFromMachine($url, $machine);
+            $result = $this->fetchFromMachine($url, $machine, $days, $machineUserIds[$machine] ?? null);
 
             if ($result['success']) {
                 $records = array_merge($records, $result['records']);
@@ -66,7 +73,7 @@ class BiometricSyncService
     /**
      * @return array{success: bool, records: array, message?: string}
      */
-    private function fetchFromMachine(string $url, string $machine): array
+    private function fetchFromMachine(string $url, string $machine, int $days, ?string $deviceUserId = null): array
     {
         $token = trim((string) config('biometric.api_secret_token'));
 
@@ -78,10 +85,16 @@ class BiometricSyncService
                 $request = $request->withToken($token);
             }
 
-            $response = $request->post($url, [
+            $body = [
                 'machine' => $machine,
-                'days'    => (int) config('biometric.sync_days'),
-            ]);
+                'days'    => $days,
+            ];
+            // Optional per-employee filter; the API ignores zero-padding ('1' == '00000001').
+            if ($deviceUserId !== null && $deviceUserId !== '') {
+                $body['user_id'] = $deviceUserId;
+            }
+
+            $response = $request->post($url, $body);
         } catch (ConnectionException $e) {
             Log::error('Biometric API connection failed', ['machine' => $machine, 'error' => $e->getMessage()]);
 

@@ -478,7 +478,16 @@ class DashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $leaveSummary = $this->leaveBalanceService->getEmployeeBalanceSummary($employeeId);
+        // Users without a linked employee record (e.g. super admin) have no leave balance
+        $leaveSummary = $employeeId
+            ? $this->leaveBalanceService->getEmployeeBalanceSummary((int) $employeeId)
+            : [
+                'total_allotted' => 0,
+                'total_taken' => 0,
+                'balance' => 0,
+                'unpaid_leave_days' => 0,
+                'monthly_allotment' => 0,
+            ];
         $totalAllottedLeave = $leaveSummary['total_allotted'];
         $totalUtilizedLeave = $leaveSummary['total_taken'];
         $availableLeaveBalance = $leaveSummary['balance'];
