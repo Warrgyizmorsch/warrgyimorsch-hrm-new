@@ -299,10 +299,12 @@
                                                     <i class="feather-check-square"></i>
                                                 </button>
                                             @endif
-                                            @if($isAdmin)
+                                            @if(in_array($leave->id, $managerActionableIds ?? [], true))
                                                 <button type="button" class="zoho-icon-btn" onclick="openActionModal({{ $leave->id }})" title="Update Status">
                                                     <i class="feather-edit-3"></i>
                                                 </button>
+                                            @endif
+                                            @if($isAdmin)
                                                 <button type="button" class="zoho-icon-btn zoho-icon-btn--danger" onclick="deleteApplication({{ $leave->id }})" title="Delete">
                                                     <i class="feather-trash-2"></i>
                                                 </button>

@@ -19,7 +19,8 @@ use Illuminate\Support\Str;
  *                    → employee: request received
  *   TL approved      → managers: action required;  employee: progress update
  *   TL rejected      → employee: rejected (with TL remarks)
- *   Manager decision → employee: final outcome (with remarks); TL + HR copy: FYI
+ *   Manager decision → employee: final outcome (with remarks); TL copy: FYI
+ *   HR (config leave.hr_cc) is in CC on every one of these e-mails.
  *
  * Mails are sent after the HTTP response so the user never waits on SMTP, and a mail
  * failure is logged instead of breaking the leave action.
@@ -63,8 +64,8 @@ class LeaveNotificationService
 
         $actor = auth()->user();
         $toTl = $leave->approval_stage === 'tl';
-        $approvers = $toTl ? $this->teamLeaderRecipients($employee) : $this->managerRecipients();
-        $level = $toTl ? 'Level 1 — Team Leader' : 'Level 2 — Manager';
+        $approvers = $toTl ? $this->teamLeaderRecipients($employee) : $this->managerRecipients($employee);
+        $level = $toTl ? 'Level 1 — Team Leader' : ($this->approval->applicantRole($employee) === 'manager' ? 'Level 2 — HR / Super Admin' : 'Level 2 — Manager');
 
         foreach ($approvers as $email => $name) {
             if ($this->isActor($email, $actor)) {
@@ -113,7 +114,7 @@ class LeaveNotificationService
         $employeeEmail = $this->employeeEmail($employee);
 
         if ($leave->tl_status === 'approved') {
-            foreach ($this->managerRecipients() as $email => $name) {
+            foreach ($this->managerRecipients($employee) as $email => $name) {
                 $this->send($email, $this->build($leave, [
                     'subject' => "[Action required] Leave request from {$employee->name} approved by TL – " . $this->dateRange($leave),
                     'tone' => 'action',
@@ -188,13 +189,10 @@ class LeaveNotificationService
             ]));
         }
 
-        // FYI copies: the Team Leader who handled Level 1, and the optional HR inbox.
+        // FYI copy for the Team Leader who handled Level 1. HR is already in CC on every leave e-mail (see send()).
         $fyi = [];
         if ($leave->tlActionUser && $leave->tlActionUser->email) {
             $fyi[strtolower($leave->tlActionUser->email)] = $leave->tlActionUser->name;
-        }
-        if ($hr = config('leave.hr_cc')) {
-            $fyi[strtolower($hr)] = 'HR Team';
         }
         unset($fyi[strtolower((string) $employeeEmail)]);
 
@@ -225,8 +223,18 @@ class LeaveNotificationService
     }
 
     /** @return array<string,string> email => name */
-    private function managerRecipients(): array
+    private function managerRecipients(?Employee $applicant = null): array
     {
+        // A manager's own leave goes to HR / Super Admin, never back to managers.
+        if ($applicant && $this->approval->applicantRole($applicant) === 'manager') {
+            $selfEmail = strtolower((string) ($applicant->email ?: $applicant->user?->email));
+
+            return $this->activeUsersWithRoles(LeaveApprovalService::SENIOR_APPROVER_ROLES)
+                ->filter(fn (User $u) => filter_var($u->email, FILTER_VALIDATE_EMAIL) && strtolower($u->email) !== $selfEmail)
+                ->mapWithKeys(fn (User $u) => [strtolower($u->email) => $u->name])
+                ->all();
+        }
+
         $configured = config('leave.manager_emails', []);
         if ($configured) {
             $names = User::whereIn('email', $configured)->pluck('name', 'email');
@@ -237,7 +245,7 @@ class LeaveNotificationService
                 ->all();
         }
 
-        $roles = config('leave.manager_roles', ['manager', 'hr_executive']);
+        $roles = config('leave.manager_roles', ['manager']);
         $users = $this->activeUsersWithRoles($roles);
         if ($users->isEmpty()) {
             $users = $this->activeUsersWithRoles(['super_admin']);
@@ -394,7 +402,13 @@ class LeaveNotificationService
         // After the response is sent: no waiting on SMTP, no queue worker needed.
         app()->terminating(function () use ($email, $mail) {
             try {
-                Mail::to($email)->send(new LeaveWorkflowMail($mail));
+                $message = Mail::to($email);
+                // HR in CC on every leave / WFH e-mail (not when HR is already the recipient).
+                $hrCc = trim((string) config('leave.hr_cc'));
+                if ($hrCc !== '' && filter_var($hrCc, FILTER_VALIDATE_EMAIL) && strcasecmp($hrCc, $email) !== 0) {
+                    $message->cc($hrCc);
+                }
+                $message->send(new LeaveWorkflowMail($mail));
             } catch (\Throwable $e) {
                 Log::warning('Leave e-mail failed', ['to' => $email, 'subject' => $mail['subject'], 'error' => $e->getMessage()]);
             }

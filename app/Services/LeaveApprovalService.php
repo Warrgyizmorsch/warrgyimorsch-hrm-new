@@ -21,10 +21,22 @@ use Illuminate\Support\Facades\DB;
  * Only plain "employee" role applicants go through Level 1 (the same people a TL can see
  * today). Anyone else — or an employee whose department has no TL — goes straight to Level 2.
  * A TL rejection closes the application; a manager can still override it later.
+ *
+ * Who decides Level 2 (APPROVER_ROLES only — HR intern / business operation head do not approve):
+ *   Employee  -> TL -> Manager
+ *   TL        -> Manager
+ *   Manager   -> HR (hr_executive) / Super Admin   (a manager never approves their own leave)
+ * Super Admin and HR can also step in on any Level 2 leave; nobody but Super Admin acts on their own.
  */
 class LeaveApprovalService
 {
     public const MANAGER_ROLES = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'];
+
+    /** Roles that may take the Level 2 decision. */
+    public const APPROVER_ROLES = ['super_admin', 'manager', 'hr_executive'];
+
+    /** Roles that approve a manager's own leave. */
+    public const SENIOR_APPROVER_ROLES = ['super_admin', 'hr_executive'];
 
     public static function role(?string $role): string
     {
@@ -34,6 +46,56 @@ class LeaveApprovalService
     public function isManager(?User $user): bool
     {
         return $user && in_array(self::role($user->role), self::MANAGER_ROLES, true);
+    }
+
+    public function isApprover(?User $user): bool
+    {
+        return $user && in_array(self::role($user->role), self::APPROVER_ROLES, true);
+    }
+
+    /** Role of the person the leave is for (login role first, employee record as fallback). */
+    public function applicantRole(?Employee $employee): string
+    {
+        if (!$employee) {
+            return '';
+        }
+        $employee->loadMissing('user');
+
+        return self::role($employee->user?->role ?: $employee->role);
+    }
+
+    /** Can this user take the Level 2 (final) decision on this leave? */
+    public function canManagerAct(?User $user, LeaveApplication $leave): bool
+    {
+        if (!$this->isApprover($user)) {
+            return false;
+        }
+        $actorRole = self::role($user->role);
+        if ($actorRole === 'super_admin') {
+            return true;
+        }
+        if ($user->employee_id && (int) $leave->employee_id === (int) $user->employee_id) {
+            return false; // no self-approval
+        }
+        if ($this->applicantRole($leave->employee) === 'manager') {
+            return in_array($actorRole, self::SENIOR_APPROVER_ROLES, true);
+        }
+
+        return true;
+    }
+
+    /** Restrict a LeaveApplication query by whether the applicant is a manager. */
+    private function whereApplicantIsManager(Builder $query, bool $isManager): Builder
+    {
+        $managerRole = "LOWER(REPLACE(role, ' ', '_')) = 'manager'";
+        $check = function ($e) use ($managerRole) {
+            $e->where(function ($w) use ($managerRole) {
+                $w->whereHas('user', fn ($u) => $u->whereRaw($managerRole))
+                    ->orWhere(fn ($x) => $x->whereDoesntHave('user')->whereRaw($managerRole));
+            });
+        };
+
+        return $isManager ? $query->whereHas('employee', $check) : $query->whereDoesntHave('employee', $check);
     }
 
     public function isTeamLeader(?User $user): bool
@@ -116,10 +178,23 @@ class LeaveApprovalService
     /** Applications waiting for this user's decision right now. */
     public function awaitingQuery(User $user): ?Builder
     {
-        if ($this->isManager($user)) {
-            return LeaveApplication::query()
+        if ($this->isApprover($user)) {
+            $query = LeaveApplication::query()
                 ->where('status', 'pending')
                 ->where('approval_stage', 'manager');
+
+            switch (self::role($user->role)) {
+                case 'super_admin':
+                    return $query; // everything at Level 2
+                case 'hr_executive':
+                    // HR's queue: managers' own leave.
+                    return $this->whereApplicantIsManager($query, true)
+                        ->where('employee_id', '!=', (int) $user->employee_id);
+                default:
+                    // Manager's queue: employees' and TLs' leave, never their own or another manager's.
+                    return $this->whereApplicantIsManager($query, false)
+                        ->where('employee_id', '!=', (int) $user->employee_id);
+            }
         }
 
         if ($this->isTeamLeader($user)) {

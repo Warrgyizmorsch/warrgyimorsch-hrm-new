@@ -242,11 +242,15 @@ class LeaveApplicationController extends Controller
         $tlActionableIds = $isTeamLeader
             ? $leaves->getCollection()->filter(fn ($l) => $this->approval->canTeamLeaderAct($user, $l))->pluck('id')->all()
             : [];
+        // Rows this user can take the Level 2 decision on.
+        $managerActionableIds = $leaves->getCollection()
+            ->filter(fn ($l) => $this->approval->canManagerAct($user, $l))
+            ->pluck('id')->all();
         $holidays = Holiday::pluck('date')
             ->map(fn ($date) => Carbon::parse($date)->format('Y-m-d'))
             ->values();
 
-        return view('leave.history', compact('leaves', 'employees', 'holidays', 'perPage', 'leaveStats', 'isAdmin', 'isTeamLeader', 'awaitingCount', 'tlActionableIds'));
+        return view('leave.history', compact('leaves', 'employees', 'holidays', 'perPage', 'leaveStats', 'isAdmin', 'isTeamLeader', 'awaitingCount', 'tlActionableIds', 'managerActionableIds'));
     }
 
     public function store(Request $request)
@@ -672,6 +676,15 @@ class LeaveApplicationController extends Controller
         ]);
 
         $leave = LeaveApplication::with('employee')->findOrFail($request->leave_id);
+
+        // Level 2: Manager for employees / TLs; HR or Super Admin for a manager's own leave.
+        if (!$this->approval->canManagerAct(auth()->user(), $leave)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot take the final decision on this leave. A manager\'s leave is approved by HR or Super Admin, and nobody can approve their own leave.',
+            ], 403);
+        }
+
         $oldStatus = $leave->status;
         $newStatus = $request->status;
 
@@ -774,7 +787,7 @@ class LeaveApplicationController extends Controller
             [
                 'approval' => $this->approval->trail($leave),
                 'can_tl_act' => $this->approval->canTeamLeaderAct($user, $leave),
-                'can_manager_act' => $isAdmin,
+                'can_manager_act' => $this->approval->canManagerAct($user, $leave),
             ]
         ));
     }
