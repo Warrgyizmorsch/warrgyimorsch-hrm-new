@@ -12,6 +12,10 @@
  *   page-level handler runs.
  * - Native GET forms (filters, search, exports) are not locked.
  * - Opt out per form with <form data-allow-resubmit>.
+ * - Buttons outside forms (approve / delete / status buttons that call fetch or $.ajax in
+ *   their click handler): when a click starts a write request, that button is locked until
+ *   the request finishes (+ a short hold on success). Opt out with data-allow-repeat.
+ * - The server refuses identical repeats as well (PreventDuplicateSubmissions middleware).
  */
 (function () {
     'use strict';
@@ -68,7 +72,12 @@
         });
     }
 
-    function track(promise) {
+    var activeClick = null; // {el, requests[]} while a click's handlers start requests
+
+    function track(promise, write) {
+        if (activeClick && !activeForm) {
+            activeClick.requests.push({ promise: promise, write: write });
+        }
         if (!activeForm) {
             return;
         }
@@ -76,6 +85,65 @@
         list.push(promise);
         pending.set(activeForm, list);
     }
+
+    // --- Buttons outside forms ---
+
+    var CLICK_SELECTOR = 'button, a.btn, a.zoho-btn-primary, a.zoho-btn-outline, [role="button"], .zoho-icon-btn';
+
+    function lockClick(el) {
+        el.dataset.clickLocked = '1';
+        el.classList.add('is-submitting');
+        el.setAttribute('aria-busy', 'true');
+        if ('disabled' in el && !el.disabled) {
+            el.disabled = true;
+            el.dataset.clickGuardDisabled = '1';
+        }
+    }
+
+    function unlockClick(el) {
+        delete el.dataset.clickLocked;
+        el.classList.remove('is-submitting');
+        el.removeAttribute('aria-busy');
+        if (el.dataset.clickGuardDisabled === '1') {
+            el.disabled = false;
+            delete el.dataset.clickGuardDisabled;
+        }
+    }
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest(CLICK_SELECTOR) : null;
+        if (!el || el.hasAttribute('data-allow-repeat')) {
+            return;
+        }
+        // Submit buttons of a form are handled by the form guard.
+        var type = (el.getAttribute('type') || (el.nodeName === 'BUTTON' ? 'submit' : '')).toLowerCase();
+        if (el.nodeName === 'BUTTON' && type === 'submit' && el.form) {
+            return;
+        }
+        if (el.dataset.clickLocked === '1') {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+        }
+        var ctx = { el: el, requests: [] };
+        activeClick = ctx;
+        // Requests started by this click's handlers (incl. promise callbacks) are collected
+        // until the next task; then decide whether to lock the button.
+        setTimeout(function () {
+            if (activeClick === ctx) {
+                activeClick = null;
+            }
+            var writes = ctx.requests.filter(function (r) { return r.write; });
+            if (!writes.length) {
+                return;
+            }
+            lockClick(el);
+            Promise.all(writes.map(function (r) { return r.promise; })).then(function (results) {
+                var allOk = results.every(function (r) { return r.ok; });
+                setTimeout(function () { unlockClick(el); }, allOk ? AJAX_SUCCESS_HOLD_MS : 0);
+            });
+        }, 0);
+    }, true);
 
     // --- Capture requests started synchronously inside a submit handler ---
 
@@ -89,7 +157,7 @@
             track(result.then(
                 function (res) { return { ok: res.ok, write: write }; },
                 function () { return { ok: false, write: write }; }
-            ));
+            ), write);
             return result;
         };
     }
@@ -102,14 +170,14 @@
 
     var originalSend = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.send = function () {
-        if (activeForm) {
+        if (activeForm || activeClick) {
             var xhr = this;
             var write = isWrite(xhr._submitGuardMethod);
             track(new Promise(function (resolve) {
                 xhr.addEventListener('loadend', function () {
                     resolve({ ok: xhr.status >= 200 && xhr.status < 400, write: write });
                 });
-            }));
+            }), write);
         }
         return originalSend.apply(this, arguments);
     };
@@ -172,5 +240,6 @@
             return;
         }
         Array.prototype.forEach.call(document.querySelectorAll('form[data-submit-locked]'), unlock);
+        Array.prototype.forEach.call(document.querySelectorAll('[data-click-locked]'), unlockClick);
     });
 })();

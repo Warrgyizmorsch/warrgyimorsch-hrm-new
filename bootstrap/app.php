@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // New employees with an unapproved self-service profile only see "Complete your profile".
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsureProfileApproved::class);
 
+        // Project-wide: refuse an identical repeat of a form/AJAX submission (double click, two tabs).
+        $middleware->appendToGroup('web', \App\Http\Middleware\PreventDuplicateSubmissions::class);
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

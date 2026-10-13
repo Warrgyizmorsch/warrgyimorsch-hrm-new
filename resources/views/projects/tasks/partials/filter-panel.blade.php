@@ -113,6 +113,15 @@
                 </div>
 
                 <div class="attendance-filter-field">
+                    <label>Task type</label>
+                    <select name="type" class="form-control">
+                        <option value="">All tasks</option>
+                        <option value="quick" {{ request('type') == 'quick' ? 'selected' : '' }}>⚡ Quick tasks (from Quick Notes)</option>
+                        <option value="planned" {{ request('type') == 'planned' ? 'selected' : '' }}>Project / planned tasks</option>
+                    </select>
+                </div>
+
+                <div class="attendance-filter-field">
                     <label>Status</label>
                     <select name="status" class="form-control">
                         <option value="">All Status</option>

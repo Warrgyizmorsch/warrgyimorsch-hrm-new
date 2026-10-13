@@ -27,6 +27,21 @@
                     <span class="lh-stat-chip__label">Rejected</span>
                 </span>
             </div>
+            @if(($isAdmin ?? false) || ($isTeamLeader ?? false))
+                @php $awaitingActive = request()->boolean('awaiting'); @endphp
+                <a href="{{ $awaitingActive ? request()->fullUrlWithQuery(['awaiting' => null, 'page' => 1]) : request()->fullUrlWithQuery(['awaiting' => 1, 'page' => 1]) }}"
+                   class="lh-stat-chip lh-stat-chip--awaiting {{ $awaitingActive ? 'is-active' : '' }}"
+                   title="{{ $awaitingActive ? 'Show all applications' : 'Show only requests waiting for your decision' }}">
+                    <span class="lh-stat-chip__icon"><i class="feather-inbox"></i></span>
+                    <span class="lh-stat-chip__content">
+                        <strong class="lh-stat-chip__value">{{ number_format($awaitingCount ?? 0) }}</strong>
+                        <span class="lh-stat-chip__label">
+                            {{ ($isTeamLeader ?? false) ? 'Awaiting my approval (Level 1)' : 'Awaiting my approval (Level 2)' }}
+                            @if($awaitingActive) · <u>show all</u> @endif
+                        </span>
+                    </span>
+                </a>
+            @endif
         </div>
 
         <div class="lh-filter-card">
@@ -226,17 +241,25 @@
                                     $statusKey = str_replace(' ', '_', strtolower($leave->status));
                                     $leaveTypeDisplay = $leave->leave_type == 'Gatepass Leave' ? 'Early Leave' : $leave->leave_type;
                                 @endphp
-                                <tr class="leave-history-row">
+                                <tr class="leave-history-row" data-leave-row="{{ $leave->id }}">
                                     <td class="lh-col-sr text-muted fw-semibold">{{ $leaves->firstItem() + $key }}</td>
                                     <td class="lh-col-employee">
                                         <a href="javascript:void(0)" class="lh-emp-link" onclick="openViewModal({{ $leave->id }})">
                                             {{ $leave->employee->name }}
                                         </a>
+                                        <div class="lh-applied-at" title="Applied on {{ $leave->created_at?->format('d M Y, h:i:s A') }}">
+                                            <i class="feather-clock"></i> Applied {{ $leave->created_at?->format('d M Y, h:i A') }}
+                                        </div>
                                     </td>
                                     <td class="lh-col-center">
                                         <span class="lh-status lh-status--{{ $statusKey }}">
                                             {{ str_replace('_', ' ', $leave->status) }}
                                         </span>
+                                        @if($leave->stage_label)
+                                            <div class="lh-stage lh-stage--{{ $leave->approval_stage }}">{{ $leave->stage_label }}</div>
+                                        @elseif($leave->tl_status === 'rejected' && $statusKey === 'rejected')
+                                            <div class="lh-stage lh-stage--tl">Rejected by TL</div>
+                                        @endif
                                     </td>
                                     <td class="lh-col-type">{{ $leaveTypeDisplay }}</td>
                                     <td class="lh-col-center">
@@ -271,10 +294,17 @@
                                             <button type="button" class="zoho-icon-btn" onclick="openViewModal({{ $leave->id }})" title="View">
                                                 <i class="feather-eye"></i>
                                             </button>
-                                            @if($isAdmin)
+                                            @if(in_array($leave->id, $tlActionableIds ?? [], true))
+                                                <button type="button" class="zoho-icon-btn lh-review-btn" onclick="openTlReview({{ $leave->id }})" title="Approve / reject (Level 1)">
+                                                    <i class="feather-check-square"></i>
+                                                </button>
+                                            @endif
+                                            @if(in_array($leave->id, $managerActionableIds ?? [], true))
                                                 <button type="button" class="zoho-icon-btn" onclick="openActionModal({{ $leave->id }})" title="Update Status">
                                                     <i class="feather-edit-3"></i>
                                                 </button>
+                                            @endif
+                                            @if($isAdmin)
                                                 <button type="button" class="zoho-icon-btn zoho-icon-btn--danger" onclick="deleteApplication({{ $leave->id }})" title="Delete">
                                                     <i class="feather-trash-2"></i>
                                                 </button>

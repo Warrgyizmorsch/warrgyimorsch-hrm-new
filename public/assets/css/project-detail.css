@@ -930,3 +930,304 @@
         margin-left: 0;
     }
 }
+
+/* ---------- Milestones tab ---------- */
+.pms-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.pms-summary > div {
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: #fafbfc;
+    min-width: 0;
+}
+.pms-summary strong {
+    display: block;
+    font-size: 16px;
+    color: var(--zoho-text, #1a1a2e);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pms-summary span {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+}
+.pms-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: #475569;
+}
+.pms-empty > i {
+    font-size: 28px;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 8px;
+}
+.pms-phase {
+    border: 1px solid #e5e9f0;
+    border-left: 4px solid #1070e0;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: #fff;
+}
+.pms-phase--overdue { border-left-color: #dc2626; }
+.pms-phase-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+}
+.pms-toggle {
+    border: none;
+    background: transparent;
+    padding: 2px;
+    color: #64748b;
+    line-height: 1;
+}
+.pms-phase-num {
+    flex: 0 0 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.pms-phase-info { flex: 1 1 auto; min-width: 0; }
+.pms-phase-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.pms-phase-name { font-size: 14px; color: var(--zoho-text, #1a1a2e); }
+.project-detail-page .pms-phase .pm-status { min-height: 22px; padding: 0 9px; font-size: 10px; }
+.pms-badge-overdue {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #fef2f2;
+    color: #dc2626;
+}
+.pms-phase-meta,
+.pms-task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #64748b;
+}
+.pms-phase-meta i,
+.pms-task-meta i { font-size: 11px; margin-right: 2px; }
+.pms-phase-desc {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #334155;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+.pms-phase-desc p { margin: 0 0 6px; }
+.pms-phase-desc ul, .pms-phase-desc ol { margin: 0 0 6px; padding-left: 20px; }
+.pms-phase-desc h1, .pms-phase-desc h2, .pms-phase-desc h3,
+.pms-phase-desc h4, .pms-phase-desc h5, .pms-phase-desc h6 { font-size: 14px; font-weight: 700; margin: 8px 0 4px; }
+.pms-phase-desc table { border-collapse: collapse; margin: 6px 0; font-size: 12px; }
+.pms-phase-desc td, .pms-phase-desc th { border: 1px solid #e2e8f0; padding: 4px 8px; }
+.pms-phase-desc img { max-width: 100%; height: auto; }
+.pms-phase-desc--clamped {
+    max-height: 4.8em;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(#000 60%, transparent);
+    mask-image: linear-gradient(#000 60%, transparent);
+}
+.pms-more {
+    border: none;
+    background: none;
+    padding: 0;
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1070e0;
+}
+.pms-docs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.pms-doc {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 240px;
+    padding: 4px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+    font-size: 12px;
+    color: #334155;
+    text-decoration: none;
+}
+.pms-doc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pms-doc:hover { border-color: #1070e0; color: #1070e0; }
+.pms-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 14px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    background: #fafbfc;
+    color: #475569;
+    cursor: pointer;
+    text-align: center;
+    margin: 0;
+}
+.pms-dropzone:hover { border-color: #1070e0; color: #1070e0; }
+.pms-dropzone i { font-size: 20px; }
+.pms-dropzone small { color: #94a3b8; font-size: 11px; }
+.pms-doc-edit-list:not(:empty) { margin: 6px 0; }
+.pms-doc-edit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+.pms-doc-edit:hover { background: #f8fafc; }
+.pms-doc-edit > a, .pms-doc-edit > span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pms-doc-edit small { color: #94a3b8; white-space: nowrap; }
+.pms-doc-edit--removed > a { text-decoration: line-through; color: #94a3b8; }
+.pms-doc-edit--new { background: #f0f9ff; }
+#pmsPhaseModal .note-editor, #pmsTaskModal .note-editor { border-radius: 6px; }
+.pms-phase-progress {
+    flex: 0 0 140px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 4px;
+}
+.pms-phase-progress small { font-weight: 700; color: #334155; min-width: 34px; }
+.pms-bar {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: #eef1f5;
+    overflow: hidden;
+}
+.pms-bar span {
+    display: block;
+    height: 100%;
+    background: #1070e0;
+    border-radius: inherit;
+    transition: width .3s;
+}
+.pms-phase-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.pms-icon-btn {
+    border: 1px solid transparent;
+    background: transparent;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.pms-icon-btn:hover:not(:disabled) { background: #f1f5f9; color: #1070e0; }
+.pms-icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+.pms-icon-btn--danger:hover:not(:disabled) { background: #fef2f2; color: #dc2626; }
+.pms-phase-body {
+    border-top: 1px solid #eef1f5;
+    padding: 6px 16px 10px 54px;
+}
+.pms-phase-empty { margin: 8px 0; font-size: 12px; color: #94a3b8; }
+.pms-task {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px dashed #eef1f5;
+}
+.pms-task:last-child { border-bottom: none; }
+.pms-task-main { min-width: 0; }
+.pms-task-title { font-size: 13px; font-weight: 600; color: #1e293b; }
+.pms-task--done .pms-task-title { text-decoration: line-through; color: #94a3b8; }
+.pms-task-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.pms-task-actions .form-select { width: auto; min-width: 120px; font-size: 12px; }
+.pms-status--completed { color: #16a34a; }
+.pms-status--process { color: #2563eb; }
+.pms-status--hold { color: #d97706; }
+.pms-status--review { color: #0891b2; }
+.pms-status--rework { color: #dc2626; }
+.pms-prio {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+}
+.pms-prio--hard { background: #fef2f2; color: #dc2626; }
+.pms-prio--medium { background: #fffbeb; color: #d97706; }
+.pms-prio--low { background: #f0fdf4; color: #16a34a; }
+.pms-overdue { color: #dc2626; font-weight: 600; }
+.pms-backlog {
+    margin-top: 20px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 12px 16px;
+    background: #fcfdfe;
+}
+.pms-backlog-head h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.pms-backlog-head p { font-size: 12px; }
+.pms-count {
+    font-size: 11px;
+    background: #e2e8f0;
+    color: #475569;
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+@media (max-width: 768px) {
+    .pms-summary { grid-template-columns: 1fr; }
+    .pms-phase-head { flex-wrap: wrap; }
+    .pms-phase-progress { flex: 1 1 100%; order: 3; }
+    .pms-phase-actions { flex: 1 1 100%; order: 4; justify-content: flex-start; }
+    .pms-phase-body { padding-left: 16px; }
+    .pms-task { flex-direction: column; align-items: flex-start; }
+}

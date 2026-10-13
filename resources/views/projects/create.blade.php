@@ -24,6 +24,16 @@
                 <div class="card border-top-0">
                     <div class="card-body p-0">
                         <div id="project-create-form" class="p-5">
+                            @if ($errors->any())
+                                <div class="alert alert-danger mb-4" role="alert">
+                                    <strong>Please fix the following:</strong>
+                                    <ul class="mb-0 mt-1">
+                                        @foreach ($errors->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
                                 <div class="mb-5 d-flex align-items-center" style="background-color:#3858f9; height: 50px">
                                     <h2 class="fs-16 fw-bold text-white ps-3 pt-2">Project details</h2>
                                 </div>
@@ -106,9 +116,10 @@
                                             id="projectEndDate" onclick="this.showPicker()">
                                     </div>
                                     <div class="col-md-4 mb-4">
-                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">Status</label>
+                                        <label class="form-label fw-bold fs-12 text-muted text-uppercase">Status <span
+                                                class="text-danger">*</span></label>
                                         <select class="form-select premium-select" id="projectStatus"
-                                            data-placeholder="Select Status">
+                                            data-placeholder="Select Status" required>
                                             <option value=""></option>
                                             <option value="Pending">Pending</option>
                                             <option value="In Process">In Process</option>
@@ -465,6 +476,11 @@
                 });
             }
 
+            $('#projectStatus').on('change', function () {
+                $(this).removeClass('is-invalid');
+                $(this).parent().find('.invalid-feedback').remove();
+            });
+
             // Submit button click
             $('#submitProject').on('click', function (e) {
                 e.preventDefault();
@@ -498,6 +514,28 @@
                     hasError = true;
                 }
 
+                if (!$('#projectStatus').val()) {
+                    $('#projectStatus').addClass('is-invalid');
+                    $('#projectStatus').parent()
+                        .append('<div class="invalid-feedback d-block">Please select the project status.</div>');
+                    hasError = true;
+                }
+
+                const endDate = $('#projectEndDate').val();
+                if (startDate && endDate && endDate < startDate) {
+                    $('#projectEndDate')
+                        .addClass('is-invalid')
+                        .after('<div class="invalid-feedback">End date cannot be before the start date.</div>');
+                    hasError = true;
+                }
+
+                const descText = $('<div>').html($('#summernote-main').summernote('code')).text().trim();
+                if (!descText) {
+                    $('#summernote-main').parent()
+                        .append('<div class="invalid-feedback d-block">Project description is required.</div>');
+                    hasError = true;
+                }
+
                 if (!dept) {
                     $('#projectDepartment').addClass('is-invalid');
                     $('#projectDepartment').parent()
@@ -512,6 +550,10 @@
                 }
 
                 if (hasError) {
+                    const $first = $('.is-invalid, .invalid-feedback').first();
+                    if ($first.length) {
+                        $('html, body').animate({ scrollTop: $first.offset().top - 140 }, 250);
+                    }
                     return false;
                 }
 

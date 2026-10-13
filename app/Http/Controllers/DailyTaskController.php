@@ -77,8 +77,21 @@ class DailyTaskController extends Controller
             $employees = Employee::active()->orderBy('name')->get();
         }
 
+        // Opened from a link (Quick Notes, notification): show just that task — still limited by the
+        // role scope above, so nobody sees a task outside their team — and open its details.
+        $focusTaskId = $request->filled('task') ? (int) $request->input('task') : null;
+        if ($focusTaskId) {
+            $query->whereKey($focusTaskId);
+        }
+
         if ($request->project_id) {
             $query->where('project_id', $request->project_id);
+        }
+        // Quick tasks = assigned from the dashboard's Quick Notes (they have no project).
+        if ($request->input('type') === 'quick') {
+            $query->whereNull('project_id');
+        } elseif ($request->input('type') === 'planned') {
+            $query->whereNotNull('project_id');
         }
         if ($request->employee_id) {
             $query->where('employee_id', $request->employee_id);
@@ -106,7 +119,7 @@ class DailyTaskController extends Controller
         $monthStart = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
         $monthEnd = $monthStart->copy()->endOfMonth();
 
-        if (!$request->filled('from_date') && !$request->filled('upto_date')) {
+        if (!$focusTaskId && !$request->filled('from_date') && !$request->filled('upto_date')) {
             $query->where('start_date', '>=', $monthStart->toDateString())
                 ->where('start_date', '<=', $monthEnd->toDateString());
         }
@@ -279,7 +292,8 @@ class DailyTaskController extends Controller
             'pendingCount',
             'loggedHoursDisplay',
             'selectedMonth',
-            'employeeMonthlyStats'
+            'employeeMonthlyStats',
+            'focusTaskId'
         ));
     }
 

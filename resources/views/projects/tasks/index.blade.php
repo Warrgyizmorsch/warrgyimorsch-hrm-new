@@ -7,6 +7,16 @@
 
 @section('content')
     <style>
+        .dt-main-task--quick .dt-main-task-icon { background: #fef3c7; color: #b45309; }
+        .dt-main-task--quick .dt-main-task-label { color: #b45309; }
+        .dt-meta-chip--quick { background: #fffbeb !important; color: #92400e !important; border-color: #fde68a !important; }
+        .dt-meta-chip--overdue { background: #fef2f2 !important; color: #b91c1c !important; border-color: #fecaca !important; }
+        .dt-focus-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; font-size: 13px; }
+        .dt-focus-banner a { font-weight: 600; color: #1d4ed8; text-decoration: none; }
+        .dt-focus-banner--missing { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+        @keyframes dtRowFocus { 0% { background: #dbeafe; } 100% { background: transparent; } }
+        .task-row.is-linked > td { animation: dtRowFocus 3s ease-out 1; }
+        .task-row.is-linked > td:first-child { box-shadow: inset 4px 0 0 #1070e0; }
         /* Custom Dropdown Arrow Color to match Field Text */
         .form-select {
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23334155' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
@@ -19,6 +29,18 @@
 
         <div class="main-content zoho-module-content">
             @include('projects.tasks.partials.filter-panel')
+
+            @if(!empty($focusTaskId))
+                <div class="dt-focus-banner {{ $tasks->total() ? '' : 'dt-focus-banner--missing' }}" role="status">
+                    <i class="feather-{{ $tasks->total() ? 'link' : 'alert-circle' }}"></i>
+                    <span>
+                        {{ $tasks->total()
+                            ? 'Showing the task you opened from a link.'
+                            : 'This task is not available — it may have been deleted, or it is not assigned to you or your team.' }}
+                    </span>
+                    <a href="{{ route('daily-tasks.index') }}" class="ms-auto">Show all tasks</a>
+                </div>
+            @endif
 
             @if ($message = Session::get('success'))
                 <div class="attendance-alert" role="alert">
@@ -72,7 +94,7 @@
                                 </thead>
                                 <tbody>
                                     @forelse($tasks as $index => $task)
-                                        <tr class="task-row">
+                                        <tr class="task-row" data-task-row="{{ $task->id }}">
                                             <td><input type="checkbox"
                                                     class="form-check-input task-checkbox shadow-none" value="{{ $task->id }}">
                                             </td>
@@ -85,12 +107,19 @@
                                                         ($p == 'low' ? 'low' : 'normal'))
                                                     );
                                                 @endphp
-                                                <div class="dt-main-task">
+                                                @php
+                                                    $isQuickTask = !$task->project_id;
+                                                    $isDoneTask = in_array(strtolower($task->status ?? ''), ['completed', 'done'], true);
+                                                    $dueDate = $task->end_date;
+                                                    $showDue = $isQuickTask && $dueDate && !$dueDate->isSameDay($task->start_date);
+                                                    $isOverdue = $isQuickTask && $dueDate && !$isDoneTask && $dueDate->copy()->endOfDay()->isPast();
+                                                @endphp
+                                                <div class="dt-main-task {{ $isQuickTask ? 'dt-main-task--quick' : '' }}">
                                                     <div class="dt-main-task-icon">
-                                                        <i class="feather-sunrise"></i>
+                                                        <i class="feather-{{ $isQuickTask ? 'zap' : 'sunrise' }}"></i>
                                                     </div>
                                                     <div class="dt-main-task-body">
-                                                        <div class="dt-main-task-label">Morning Plan</div>
+                                                        <div class="dt-main-task-label">{{ $isQuickTask ? 'Quick task' : 'Morning Plan' }}</div>
                                                         <div class="dt-main-task-title">{{ $task->task_title }}</div>
                                                         <div class="dt-main-task-meta">
                                                             <span class="dt-meta-chip">
@@ -101,6 +130,15 @@
                                                                 <span class="dt-meta-chip">
                                                                     <i class="feather-briefcase"></i>
                                                                     {{ Str::limit($task->project->name, 18) }}
+                                                                </span>
+                                                            @else
+                                                                <span class="dt-meta-chip dt-meta-chip--quick" title="Assigned from Quick Notes on the dashboard">
+                                                                    <i class="feather-zap"></i> Quick task{{ $task->creator ? ' · by ' . Str::limit($task->creator->name, 18) : '' }}
+                                                                </span>
+                                                            @endif
+                                                            @if($showDue || $isOverdue)
+                                                                <span class="dt-meta-chip {{ $isOverdue ? 'dt-meta-chip--overdue' : '' }}" title="Due date">
+                                                                    <i class="feather-flag"></i> {{ $isOverdue ? 'Overdue · ' : 'Due ' }}{{ $dueDate->format('d M') }}
                                                                 </span>
                                                             @endif
                                                             <span class="dt-priority-chip {{ $priorityClass }}">{{ $task->priority }}</span>
@@ -2574,6 +2612,19 @@
                         }
                     }
                 });
+            });
+
+            // Opened from a link (?task=ID): highlight the row and open its details.
+            document.addEventListener('DOMContentLoaded', function () {
+                const focusId = @json($focusTaskId ?? null);
+                if (!focusId || !document.getElementById('task_desc_' + focusId)) return;
+                const row = document.querySelector('[data-task-row="' + focusId + '"]');
+                if (row) {
+                    row.classList.add('is-linked');
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => row.classList.remove('is-linked'), 6000);
+                }
+                setTimeout(() => showTaskDesc(focusId), 300);
             });
 
             function showTaskDesc(id) {

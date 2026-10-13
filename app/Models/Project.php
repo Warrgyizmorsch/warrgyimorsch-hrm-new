@@ -48,6 +48,11 @@ class Project extends Model
         return $this->belongsToMany(Department::class, 'department_project');
     }
 
+    public function phases()
+    {
+        return $this->hasMany(ProjectPhase::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function checklistTemplates()
     {
         return $this->hasMany(ProjectChecklistTemplate::class)->orderBy('sort_order');

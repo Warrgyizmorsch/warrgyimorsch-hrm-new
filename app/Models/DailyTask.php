@@ -11,6 +11,7 @@ class DailyTask extends Model
 
     protected $fillable = [
         'project_id',
+        'phase_id',
         'task_title',
         'start_date',
         'end_date',
@@ -32,6 +33,11 @@ class DailyTask extends Model
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function phase()
+    {
+        return $this->belongsTo(ProjectPhase::class, 'phase_id');
     }
 
     public function employee()

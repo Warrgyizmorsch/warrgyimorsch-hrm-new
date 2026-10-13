@@ -43,6 +43,9 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pdMilestonesTabBtn" data-bs-toggle="tab" data-bs-target="#pdMilestones" type="button">Milestones</button>
+                </li>
+                <li class="nav-item" role="presentation">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pdActivity" type="button">Activity</button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -57,6 +60,9 @@
             </div>
             <div class="tab-pane fade" id="pdTasks">
                 @include('projects.partials.show-tasks')
+            </div>
+            <div class="tab-pane fade" id="pdMilestones">
+                @include('projects.partials.show-milestones')
             </div>
             <div class="tab-pane fade" id="pdActivity">
                 @include('projects.partials.show-activity')

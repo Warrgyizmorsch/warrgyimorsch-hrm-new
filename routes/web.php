@@ -21,6 +21,7 @@ use App\Http\Controllers\NoteController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectChecklistController;
+use App\Http\Controllers\ProjectPhaseController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SuggestionController;
@@ -120,6 +121,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/celebrations', [EmployeeController::class, 'employeeDays'])->name('employees.employeeDays');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
+
+    // Browser push notifications (service worker: public/sw.js)
+    Route::get('/push/key', [\App\Http\Controllers\PushController::class, 'key'])->name('push.key');
+    Route::post('/push/subscribe', [\App\Http\Controllers\PushController::class, 'subscribe'])->name('push.subscribe');
+    Route::post('/push/unsubscribe', [\App\Http\Controllers\PushController::class, 'unsubscribe'])->name('push.unsubscribe');
+    Route::get('/push/pending', [\App\Http\Controllers\PushController::class, 'pending'])->name('push.pending');
 
     Route::post('/tickets/store', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
@@ -285,6 +293,9 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     // View-only for team leaders (scoped to their own department in the controller);
     // approve/reject/delete/export stay admin-only.
     Route::get('/leave/history', [LeaveApplicationController::class, 'index'])->name('leave.history');
+    // Level 1 of the two-level leave approval: the employee's Team Leader approves/rejects with remarks
+    // (the controller checks the leave belongs to someone this TL leads). Level 2 is leave.updateAction.
+    Route::post('/leave/tl-action', [LeaveApplicationController::class, 'teamLeaderAction'])->name('leave.tlAction');
 
     // Same: view-only attendance history, scoped to the team leader's own department;
     // add/edit/import/export/delete stay admin-only.
@@ -324,6 +335,16 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     Route::patch('/projects/checklist/templates/{template}', [ProjectChecklistController::class, 'updateTemplate'])->name('projects.checklist.templates.update');
     Route::delete('/projects/checklist/templates/{template}', [ProjectChecklistController::class, 'destroyTemplate'])->name('projects.checklist.templates.destroy');
     Route::patch('/projects/checklist/templates/{template}/toggle', [ProjectChecklistController::class, 'toggleCompletion'])->name('projects.checklist.toggle');
+
+    // Project milestones / phases (Jira-style epics grouping daily tasks)
+    Route::get('/projects/{project}/phases', [ProjectPhaseController::class, 'index'])->name('projects.phases.index');
+    Route::post('/projects/{project}/phases', [ProjectPhaseController::class, 'store'])->name('projects.phases.store');
+    Route::post('/projects/{project}/phases/reorder', [ProjectPhaseController::class, 'reorder'])->name('projects.phases.reorder');
+    Route::put('/project-phases/{phase}', [ProjectPhaseController::class, 'update'])->name('projects.phases.update');
+    Route::delete('/project-phases/{phase}', [ProjectPhaseController::class, 'destroy'])->name('projects.phases.destroy');
+    Route::post('/project-phases/{phase}/tasks', [ProjectPhaseController::class, 'storeTask'])->name('projects.phases.tasks.store');
+    Route::patch('/project-phases/tasks/{task}/move', [ProjectPhaseController::class, 'moveTask'])->name('projects.phases.tasks.move');
+
     Route::get('/payroll/attendance/details', [PayrollController::class, 'getAttendanceDetails'])->name('payroll.attendance.details');
 
     // Team leaders only get the requirement board (scoped to what they've placed in the

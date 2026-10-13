@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeaveApplication;
+use App\Services\HeaderNotificationService;
 use Illuminate\Http\Request;
 use App\Models\Payroll;
 use Illuminate\Support\Facades\DB;
@@ -56,5 +57,20 @@ class NotificationController extends Controller
         }
 
         return view('notifications.index', compact('notifications', 'isAdmin'));
+    }
+
+    /**
+     * Live bell feed — polled by the header every ~20 s so the count and list update
+     * without reloading the page.
+     */
+    public function feed(HeaderNotificationService $service)
+    {
+        $bell = $service->build(auth()->user());
+
+        return response()->json([
+            'count' => $bell['count'],
+            'items' => $service->keys($bell),
+            'html' => view('layouts.partials.notification-items', $bell)->render(),
+        ])->header('Cache-Control', 'no-store');
     }
 }

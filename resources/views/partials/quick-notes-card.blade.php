@@ -10,6 +10,30 @@
         <div id="qnAssignFeedback" class="qn-assign-feedback d-none"></div>
 
         <div id="qnList" class="qn-list">
+            {{-- Personal notes first, so a note you just added is always in view. --}}
+            <div class="qn-section-label {{ $myNotes->isEmpty() ? 'd-none' : '' }}" id="qnNotesLabel">Your notes</div>
+
+            @forelse($myNotes as $note)
+                <div class="qn-item {{ $note->is_completed ? 'qn-item--done' : '' }}" data-note-id="{{ $note->id }}" data-type="{{ $note->type }}" @if($note->remind_at) data-remind-iso="{{ $note->remind_at->toIso8601String() }}" @endif>
+                    <input type="checkbox" class="qn-check" {{ $note->is_completed ? 'checked' : '' }} onchange="qnToggle({{ $note->id }}, this)">
+                    <span class="qn-badge qn-badge--{{ $note->type }}">{{ ucfirst($note->type) }}</span>
+                    <div class="qn-item-body">
+                        <div class="qn-item-title">{{ $note->title }}</div>
+                        @if($note->remind_at)
+                            <div class="qn-item-meta"><i class="feather-clock"></i> {{ $note->remind_at->format('d M, h:i A') }}</div>
+                        @endif
+                    </div>
+                    <button type="button" class="qn-delete" onclick="qnDelete({{ $note->id }}, this)" title="Delete"><i class="feather-x"></i></button>
+                </div>
+            @empty
+                @if($myAdhocTasks->isEmpty() && $tasksIAssigned->isEmpty())
+                    <div class="qn-empty" id="qnEmptyState">
+                        <i class="feather-file-text"></i>
+                        <p>No notes yet. Click + to add a quick reminder or assign a task.</p>
+                    </div>
+                @endif
+            @endforelse
+
             @if($myAdhocTasks->isNotEmpty())
                 <div class="qn-section-label">Assigned to you</div>
                 @foreach($myAdhocTasks as $task)
@@ -23,7 +47,7 @@
                             </div>
                         </div>
                         <button type="button" class="qn-status-btn" data-task-id="{{ $task->id }}" title="Update status" onclick="qnOpenStatusModal({{ $task->id }}, '{{ $task->status }}')"><i class="feather-check-square"></i></button>
-                        <a href="{{ route('daily-tasks.index') }}" class="qn-item-link" title="Open in Daily Tasks"><i class="feather-arrow-up-right"></i></a>
+                        <a href="{{ route('daily-tasks.index', ['task' => $task->id]) }}" class="qn-item-link" title="Open this task in Daily Tasks"><i class="feather-arrow-up-right"></i></a>
                     </div>
                 @endforeach
             @endif
@@ -46,35 +70,11 @@
                             @endif
                         </div>
                         <button type="button" class="qn-status-btn" data-task-id="{{ $task->id }}" title="Update status" onclick="qnOpenStatusModal({{ $task->id }}, '{{ $task->status }}')"><i class="feather-check-square"></i></button>
-                        <a href="{{ route('daily-tasks.index') }}" class="qn-item-link" title="Open in Daily Tasks"><i class="feather-arrow-up-right"></i></a>
+                        <a href="{{ route('daily-tasks.index', ['task' => $task->id]) }}" class="qn-item-link" title="Open this task in Daily Tasks"><i class="feather-arrow-up-right"></i></a>
                     </div>
                 @endforeach
             @endif
 
-            @if($myAdhocTasks->isNotEmpty() || $tasksIAssigned->isNotEmpty())
-                <div class="qn-section-label">Your notes</div>
-            @endif
-
-            @forelse($myNotes as $note)
-                <div class="qn-item {{ $note->is_completed ? 'qn-item--done' : '' }}" data-note-id="{{ $note->id }}" data-type="{{ $note->type }}" @if($note->remind_at) data-remind-iso="{{ $note->remind_at->toIso8601String() }}" @endif>
-                    <input type="checkbox" class="qn-check" {{ $note->is_completed ? 'checked' : '' }} onchange="qnToggle({{ $note->id }}, this)">
-                    <span class="qn-badge qn-badge--{{ $note->type }}">{{ ucfirst($note->type) }}</span>
-                    <div class="qn-item-body">
-                        <div class="qn-item-title">{{ $note->title }}</div>
-                        @if($note->remind_at)
-                            <div class="qn-item-meta"><i class="feather-clock"></i> {{ $note->remind_at->format('d M, h:i A') }}</div>
-                        @endif
-                    </div>
-                    <button type="button" class="qn-delete" onclick="qnDelete({{ $note->id }}, this)" title="Delete"><i class="feather-x"></i></button>
-                </div>
-            @empty
-                @if($myAdhocTasks->isEmpty() && $tasksIAssigned->isEmpty())
-                    <div class="qn-empty" id="qnEmptyState">
-                        <i class="feather-file-text"></i>
-                        <p>No notes yet. Click + to add a quick reminder or assign a task.</p>
-                    </div>
-                @endif
-            @endforelse
         </div>
     </div>
 </div>
@@ -115,6 +115,20 @@
                                 </optgroup>
                             @endforeach
                         </select>
+                    </div>
+                    <div id="qnTaskOptions" class="qn-task-options d-none">
+                        <div class="qn-task-opt">
+                            <span class="qn-form-label mb-1">Priority</span>
+                            <div class="qn-prio-group" role="radiogroup" aria-label="Task priority">
+                                <label class="qn-prio qn-prio--hard"><input type="radio" name="qn_priority" value="Hard"> <i class="feather-chevrons-up"></i> High</label>
+                                <label class="qn-prio qn-prio--medium"><input type="radio" name="qn_priority" value="Medium" checked> <i class="feather-minus"></i> Medium</label>
+                                <label class="qn-prio qn-prio--low"><input type="radio" name="qn_priority" value="Low"> <i class="feather-chevrons-down"></i> Low</label>
+                            </div>
+                        </div>
+                        <div class="qn-task-opt">
+                            <span class="qn-form-label mb-1">Due date</span>
+                            <input type="date" id="qnDueDate" class="qn-input qn-due-input" min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}">
+                        </div>
                     </div>
                     <div id="qnAssignHint" class="qn-assign-hint d-none"></div>
                 </div>
@@ -226,6 +240,16 @@
         flex: 1 1 180px;
     }
 
+    .qn-task-options { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+    .qn-task-opt { display: flex; flex-direction: column; }
+    .qn-prio-group { display: inline-flex; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+    .qn-prio { margin: 0; padding: 7px 12px; font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; border-right: 1px solid #e2e8f0; background: #fff; }
+    .qn-prio:last-child { border-right: none; }
+    .qn-prio input { position: absolute; opacity: 0; pointer-events: none; }
+    .qn-prio--hard:has(input:checked) { background: #fef2f2; color: #dc2626; }
+    .qn-prio--medium:has(input:checked) { background: #fffbeb; color: #d97706; }
+    .qn-prio--low:has(input:checked) { background: #f0fdf4; color: #16a34a; }
+    .qn-due-input { height: 36px; min-width: 150px; }
     .qn-assign-row {
         display: flex;
         align-items: center;
@@ -285,6 +309,8 @@
     }
 
     .qn-list { max-height: 320px; overflow-y: auto; }
+    @keyframes qnNewFlash { 0% { background: rgba(16, 112, 224, 0.16); } 100% { background: transparent; } }
+    .qn-item--new { animation: qnNewFlash 2.5s ease-out 1; border-radius: 8px; }
     .qn-section-label {
         font-size: 11px;
         font-weight: 700;
@@ -526,10 +552,11 @@
                 const isAssigned = !!select.value;
 
                 row.classList.toggle('qn-assign-row--active', isAssigned);
+                document.getElementById('qnTaskOptions').classList.toggle('d-none', !isAssigned);
 
                 if (isAssigned) {
                     hint.classList.remove('d-none');
-                    hint.textContent = 'This will be added as a task, visible only to ' + selectedOption.dataset.name + '.';
+                    hint.textContent = 'This becomes a Quick task in ' + selectedOption.dataset.name + "'s Daily Tasks (marked ⚡ Quick task, with you as the assigner).";
                 } else {
                     hint.classList.add('d-none');
                 }
@@ -555,6 +582,7 @@
                 document.getElementById('qnRemindAt').classList.add('d-none');
                 document.getElementById('qnAssignRow').classList.remove('qn-assign-row--active');
                 document.getElementById('qnAssignHint').classList.add('d-none');
+                document.getElementById('qnTaskOptions').classList.add('d-none');
                 document.getElementById('qnSubmitBtn').textContent = 'Add Note';
             }
 
@@ -615,8 +643,10 @@
                             body: JSON.stringify({
                                 task_title: title,
                                 employee_id: assignTo,
-                                priority: type === 'priority' ? 'Hard' : 'Medium',
-                                remind_at: remindAt || null,
+                                // Chosen explicitly now (it used to be Hard for "Priority", Medium for "Meeting").
+                                priority: (document.querySelector('input[name="qn_priority"]:checked') || {}).value || 'Medium',
+                                // Due date drives the task's end date; a meeting time still works as before.
+                                remind_at: (type === 'meeting' && remindAt) ? remindAt : (document.getElementById('qnDueDate').value || null),
                             }),
                         })
                             .then(function (res) { return res.json(); })
@@ -640,13 +670,17 @@
                         },
                         body: JSON.stringify({ title: title, type: type, remind_at: remindAt || null }),
                     })
-                        .then(function (res) { return res.json(); })
+                        .then(function (res) { return res.json().catch(function () { return { success: false, message: 'Server error (' + res.status + ').' }; }); })
                         .then(function (data) {
                             if (data.success) {
                                 if (modalInstance) modalInstance.hide();
                                 qnPrependNote(data.note);
+                            } else {
+                                const msg = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Could not save the note.');
+                                qnShowAssignFeedback(msg, true);
                             }
-                        });
+                        })
+                        .catch(function () { qnShowAssignFeedback('Could not save the note — check your connection.', true); });
                 });
             });
 
@@ -708,12 +742,18 @@
                 div.appendChild(body);
                 div.appendChild(del);
 
-                const firstPersonalItem = list.querySelector('.qn-item:not(.qn-item--task)');
-                if (firstPersonalItem) {
-                    list.insertBefore(div, firstPersonalItem);
+                // Notes live at the top of the list: insert right under the "Your notes" label.
+                const notesLabel = document.getElementById('qnNotesLabel');
+                if (notesLabel) {
+                    notesLabel.classList.remove('d-none');
+                    notesLabel.insertAdjacentElement('afterend', div);
                 } else {
-                    list.appendChild(div);
+                    list.insertBefore(div, list.firstChild);
                 }
+                list.scrollTo({ top: 0, behavior: 'smooth' });
+                div.classList.add('qn-item--new');
+                setTimeout(function () { div.classList.remove('qn-item--new'); }, 2500);
+                qnShowAssignFeedback('Note added.');
 
                 if (window.feather) { feather.replace(); }
 

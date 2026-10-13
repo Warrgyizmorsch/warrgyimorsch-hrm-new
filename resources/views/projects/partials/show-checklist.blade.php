@@ -46,6 +46,69 @@
     </div>
 </div>
 
+{{-- Edit item --}}
+<div class="modal fade" id="pcEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" id="pcEditForm" novalidate>
+            <div class="modal-header">
+                <h5 class="modal-title">Edit checklist item</h5>
+                <button type="button" class="btn-close" data-pc-close aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Label <span class="text-danger">*</span></label>
+                    <input type="text" name="label" class="form-control" maxlength="255" required>
+                </div>
+                <div class="row g-2" id="pcEditAssignRow">
+                    <div class="col-7">
+                        <label class="form-label">Assigned to</label>
+                        <select name="assigned_to" class="form-select"></select>
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label">Due day</label>
+                        <select name="due_weekday" class="form-select">
+                            <option value="">No due day</option>
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5">Friday</option>
+                            <option value="6">Saturday</option>
+                            <option value="7">Sunday</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pc-form-error text-danger small mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="zoho-btn-outline btn-sm" data-pc-close>Cancel</button>
+                <button type="submit" class="zoho-btn-primary btn-sm">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Note for this week --}}
+<div class="modal fade" id="pcNoteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" id="pcNoteForm" novalidate>
+            <div class="modal-header">
+                <h5 class="modal-title">Note for this week</h5>
+                <button type="button" class="btn-close" data-pc-close aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-2" id="pcNoteItemLabel"></p>
+                <textarea name="note" class="form-control" rows="4" maxlength="2000" placeholder="e.g. Waiting on client credentials"></textarea>
+                <div class="pc-form-error text-danger small mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="zoho-btn-outline btn-sm" data-pc-close>Cancel</button>
+                <button type="submit" class="zoho-btn-primary btn-sm">Save note</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 (function () {
     const indexUrl = {{ Js::from(route('projects.checklist.index', $project)) }};
@@ -85,7 +148,8 @@
         row.className = 'pd-checklist-item' + (isCurrentWeek ? '' : ' pd-checklist-item--readonly') + (compact ? ' pd-checklist-item--compact' : '');
         row.dataset.templateId = item.id;
 
-        const canToggleThis = isCurrentWeek; // server enforces the assignee/admin/TL rule; UI just disables for past weeks
+        const canToggleThis = isCurrentWeek && item.can_toggle !== false; // server enforces the same rule
+        const canEditThis = isCurrentWeek && item.can_edit;
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -144,11 +208,7 @@
         noteBtn.title = 'Add/edit note';
         noteBtn.innerHTML = '<i class="feather-message-square"></i>';
         noteBtn.disabled = !canToggleThis;
-        noteBtn.addEventListener('click', () => {
-            const newNote = prompt('Note for this item (this week)', noteEl.textContent);
-            if (newNote === null) return;
-            toggleItem(item.id, checkbox, newNote.trim());
-        });
+        noteBtn.addEventListener('click', () => openNoteModal(item, checkbox, noteEl.textContent));
 
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
@@ -164,7 +224,10 @@
         removeBtn.innerHTML = '<i class="feather-x"></i>';
         removeBtn.addEventListener('click', () => deleteItem(item.id));
 
-        row.append(checkbox, mainCol, noteBtn, editBtn, removeBtn);
+        row.append(checkbox, mainCol, noteBtn);
+        if (canEditThis) {
+            row.append(editBtn, removeBtn);
+        }
         return row;
     }
 
@@ -291,11 +354,11 @@
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
             body: JSON.stringify({ is_done: checkbox.checked, note: note || null })
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
+        .then(async r => {
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok || data.error) {
                 checkbox.checked = !checkbox.checked;
-                alert(data.error);
+                toast(data.error || data.message || 'Could not update this item.', 'error');
                 return;
             }
             loadChecklist(weekPicker.value);
@@ -303,41 +366,136 @@
         .catch(() => loadChecklist(weekPicker.value));
     }
 
-    function editItem(item, labelEl) {
-        const newLabel = prompt('Edit checklist item label', item.label);
-        if (newLabel === null || !newLabel.trim()) return;
+    // ---- modals (replace the old browser prompt()/confirm() dialogs) ----
+    // Modals live inside a tab pane; move them to <body> so the pane can't hide or clip them.
+    ['pcEditModal', 'pcNoteModal'].forEach(id => { const n = document.getElementById(id); if (n && n.parentNode !== document.body) document.body.appendChild(n); });
 
-        const body = { label: newLabel.trim() };
-
-        if (canAssign) {
-            const names = lastAssignableEmployees.map(e => `${e.id} = ${e.name}`).join('\n');
-            const assigneeInput = prompt(`Assign to employee ID (leave blank for unassigned):\n${names}`, item.assigned_to || '');
-            if (assigneeInput !== null) {
-                body.assigned_to = assigneeInput.trim() || null;
+    // Resolved when the dialog opens (not at parse time): Bootstrap/jQuery load at the end of the page.
+    function modal(node) {
+        function impl() {
+            if (window.bootstrap && bootstrap.Modal) {
+                const inst = bootstrap.Modal.getOrCreateInstance(node);
+                return { show: () => inst.show(), hide: () => inst.hide() };
             }
-            const dueInput = prompt('Due weekday 1=Mon .. 7=Sun (leave blank for none)', item.due_weekday || '');
-            if (dueInput !== null) {
-                body.due_weekday = dueInput.trim() || null;
+            if (window.jQuery && jQuery.fn.modal) {
+                return { show: () => jQuery(node).modal('show'), hide: () => jQuery(node).modal('hide') };
             }
+            return {
+                show: () => { node.classList.add('show'); node.style.display = 'block'; },
+                hide: () => { node.classList.remove('show'); node.style.display = 'none'; },
+            };
         }
+        return { show: () => impl().show(), hide: () => impl().hide() };
+    }
+    const editModalEl = document.getElementById('pcEditModal');
+    const noteModalEl = document.getElementById('pcNoteModal');
+    const editModal = modal(editModalEl);
+    const noteModal = modal(noteModalEl);
+    const editForm = document.getElementById('pcEditForm');
+    const noteForm = document.getElementById('pcNoteForm');
+    editModalEl.querySelectorAll('[data-pc-close]').forEach(b => b.addEventListener('click', () => editModal.hide()));
+    noteModalEl.querySelectorAll('[data-pc-close]').forEach(b => b.addEventListener('click', () => noteModal.hide()));
+    let editingItem = null;
+    let notingItem = null;
 
-        fetch(templateUrl(item.id), {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: JSON.stringify(body)
-        })
-        .then(r => r.json())
-        .then(() => loadChecklist(weekPicker.value));
+    function formError(form, message) {
+        const box = form.querySelector('.pc-form-error');
+        box.textContent = message || '';
+        box.classList.toggle('d-none', !message);
     }
 
-    function deleteItem(id) {
-        if (!confirm('Delete this checklist item? This removes its history too.')) return;
+    function toast(message, icon) {
+        if (window.Swal) {
+            Swal.fire({ toast: true, position: 'top-end', icon: icon || 'success', title: message, showConfirmButton: false, timer: 2500 });
+        }
+    }
 
-        fetch(templateUrl(id), {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
-        })
-        .then(() => loadChecklist(weekPicker.value));
+    function sendJson(url, method, body) {
+        return fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: body ? JSON.stringify(body) : undefined,
+        }).then(async r => {
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                const first = data.errors ? Object.values(data.errors)[0][0] : null;
+                throw new Error(first || data.error || data.message || 'Something went wrong.');
+            }
+            return data;
+        });
+    }
+
+    function editItem(item) {
+        editingItem = item;
+        formError(editForm, '');
+        editForm.label.value = item.label;
+        document.getElementById('pcEditAssignRow').classList.toggle('d-none', !canAssign);
+        if (canAssign) {
+            editForm.assigned_to.innerHTML = '<option value="">Unassigned</option>';
+            lastAssignableEmployees.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp.id;
+                opt.textContent = emp.name;
+                editForm.assigned_to.appendChild(opt);
+            });
+            editForm.assigned_to.value = item.assigned_to || '';
+            editForm.due_weekday.value = item.due_weekday || '';
+        }
+        editModal.show();
+        setTimeout(() => editForm.label.focus(), 300);
+    }
+
+    editForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const label = editForm.label.value.trim();
+        if (!label) return formError(editForm, 'Label is required.');
+
+        const body = { label };
+        if (canAssign) {
+            body.assigned_to = editForm.assigned_to.value || null;
+            body.due_weekday = editForm.due_weekday.value || null;
+        }
+
+        sendJson(templateUrl(editingItem.id), 'PATCH', body)
+            .then(res => { editModal.hide(); toast(res.success); loadChecklist(weekPicker.value); })
+            .catch(err => formError(editForm, err.message));
+    });
+
+    function openNoteModal(item, checkbox, currentNote) {
+        notingItem = { item, checkbox };
+        formError(noteForm, '');
+        document.getElementById('pcNoteItemLabel').textContent = item.label;
+        noteForm.note.value = currentNote || '';
+        noteModal.show();
+        setTimeout(() => noteForm.note.focus(), 300);
+    }
+
+    noteForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const { item, checkbox } = notingItem;
+        sendJson(templateUrl(item.id, '/toggle'), 'PATCH', { is_done: checkbox.checked, note: noteForm.note.value.trim() || null })
+            .then(res => { noteModal.hide(); toast('Note saved.'); loadChecklist(weekPicker.value); })
+            .catch(err => formError(noteForm, err.message));
+    });
+
+    function deleteItem(id) {
+        const ask = window.Swal
+            ? Swal.fire({
+                title: 'Delete this checklist item?',
+                text: 'This also removes its history for past weeks.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Delete',
+                confirmButtonColor: '#dc2626',
+            }).then(r => r.isConfirmed)
+            : Promise.resolve(window.confirm('Delete this checklist item? This removes its history too.'));
+
+        ask.then(ok => {
+            if (!ok) return;
+            sendJson(templateUrl(id), 'DELETE')
+                .then(res => { toast(res.success); loadChecklist(weekPicker.value); })
+                .catch(err => toast(err.message, 'error'));
+        });
     }
 
     addBtn.addEventListener('click', () => {

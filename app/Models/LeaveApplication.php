@@ -21,6 +21,14 @@ class LeaveApplication extends Model
         'total_days',
         'start_time',
         'end_time',
+        'approval_stage',
+        'tl_status',
+        'tl_action_by',
+        'tl_action_at',
+        'tl_remarks',
+        'manager_action_by',
+        'manager_action_at',
+        'manager_remarks',
     ];
 
     protected $casts = [
@@ -28,11 +36,42 @@ class LeaveApplication extends Model
         'end_date' => 'date',
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',
+        'tl_action_at' => 'datetime',
+        'manager_action_at' => 'datetime',
     ];
 
     public function employee()
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function logs()
+    {
+        return $this->hasMany(LeaveApplicationLog::class)->orderBy('created_at')->orderBy('id');
+    }
+
+    public function tlActionUser()
+    {
+        return $this->belongsTo(User::class, 'tl_action_by');
+    }
+
+    public function managerActionUser()
+    {
+        return $this->belongsTo(User::class, 'manager_action_by');
+    }
+
+    /** Short label for where a pending application currently sits. */
+    public function getStageLabelAttribute(): ?string
+    {
+        if (strtolower($this->status ?? '') !== 'pending') {
+            return null;
+        }
+
+        return match ($this->approval_stage) {
+            'tl' => 'Awaiting TL',
+            'manager' => 'Awaiting Manager',
+            default => null,
+        };
     }
 
     public function isWfh(): bool

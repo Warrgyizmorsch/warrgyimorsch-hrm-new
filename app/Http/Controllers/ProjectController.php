@@ -11,6 +11,21 @@ use Illuminate\Support\Str;
 
 class ProjectController extends Controller
 {
+    /** Statuses selectable on the project form (and allowed for inline status changes). */
+    public const STATUSES = ['Pending', 'In Process', 'Completed', 'On Hold', 'Review', 'Rework'];
+
+    private const VALIDATION_MESSAGES = [
+        'name.required' => 'Project name is required.',
+        'start_date.required' => 'Start date is required.',
+        'end_date.after_or_equal' => 'End date cannot be before the start date.',
+        'department_ids.required' => 'Select at least one department.',
+        'description.required' => 'Project description is required.',
+        'status.required' => 'Please select the project status.',
+        'status.in' => 'Please select a valid project status.',
+        'documents.*.mimes' => 'Documents must be PDF, image, Word or Excel files.',
+        'documents.*.max' => 'Each document must be 5 MB or smaller.',
+    ];
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -189,10 +204,11 @@ class ProjectController extends Controller
             'department_ids' => 'required|array|min:1',
             'department_ids.*' => 'exists:departments,id',
             'description' => 'required',
+            'status' => 'required|in:' . implode(',', self::STATUSES),
             'documents.*' => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
             // 'type' => 'required',
             // 'manage' => 'required',
-        ]);
+        ], self::VALIDATION_MESSAGES);
 
         $documents = [];
 
@@ -244,7 +260,7 @@ class ProjectController extends Controller
         ]);
 
         $tasks = DailyTask::where('project_id', $project->id)
-            ->with(['employee', 'creator', 'followUps'])
+            ->with(['employee', 'creator', 'followUps', 'phase:id,name'])
             ->latest()
             ->get();
 
@@ -352,10 +368,11 @@ class ProjectController extends Controller
             'department_ids' => 'required|array|min:1',
             'department_ids.*' => 'exists:departments,id',
             'description' => 'required',
+            'status' => 'required|in:' . implode(',', self::STATUSES),
             'documents.*' => 'nullable|mimes:pdf,jpg,jpeg,png,doc,docx,xlsx|max:5120',
             // 'type' => 'required',
             // 'manage' => 'required',
-        ]);
+        ], self::VALIDATION_MESSAGES);
 
         $documents = is_array($project->documents) ? $project->documents : [];
 
@@ -431,6 +448,10 @@ class ProjectController extends Controller
 
             if ($field === 'status' && !$isAdmin && !$isLead && !$isDepartmentTeamLeader) {
                 continue;
+            }
+
+            if ($field === 'status' && !in_array($request->status, self::STATUSES, true)) {
+                return response()->json(['success' => false, 'message' => 'Please select a valid project status.'], 422);
             }
 
             $project->$field = $request->$field;
