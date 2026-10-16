@@ -40,13 +40,12 @@ class LeaveController extends Controller
         $isAdmin = in_array($role, [
             'super_admin',
             'manager',
-            'hr_executive',
-            'hr_intern',
-            'business_operation_head'
+            'hr_executive'
         ]);
 
         $isTeamLeader = in_array($role, [
-            'team_leader'
+            'team_leader',
+            'business_operation_head'
         ]);
 
         $selectedMonthStart = Carbon::createFromDate($year, $month, 1)->startOfDay();
@@ -179,7 +178,7 @@ class LeaveController extends Controller
             ->where('slug', auth()->user()->role)
             ->value('id');
 
-        return in_array($roleId, [1, 2, 3, 4]);
+        return in_array($roleId, [1, 2, 3]);
     }
 
     public function updateEmploymentStatus(Request $request, Employee $employee)
@@ -225,7 +224,7 @@ class LeaveController extends Controller
             ->where('slug', $roleSlug)
             ->value('id');
 
-        $isAdmin = in_array($roleId, [1, 2, 3, 4]);
+        $isAdmin = in_array($roleId, [1, 2, 3]);
         if (!$isAdmin) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }

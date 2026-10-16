@@ -13,8 +13,8 @@ class AssetController extends Controller
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isTeamLeader = $role === 'team_leader';
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head'], true);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
 
         $assetsQuery = Asset::with('activeAllocation.user');
         $requestsQuery = AssetRequest::with(['user', 'asset'])->latest();
@@ -120,7 +120,7 @@ class AssetController extends Controller
 
         $authUser = auth()->user();
         $role = str_replace(' ', '_', strtolower($authUser->role ?? 'employee'));
-        $isTeamLeader = $role === 'team_leader';
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head'], true);
 
         $teamUserIds = collect();
         if ($isTeamLeader) {
@@ -295,7 +295,7 @@ class AssetController extends Controller
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
 
-        if ($role === 'team_leader') {
+        if (in_array($role, ['team_leader', 'business_operation_head'], true)) {
             $department = $user->employee->department_id ?? null;
             if ($department) {
                 $teamUserIds = \App\Models\User::whereHas('employee', function ($q) use ($department) {

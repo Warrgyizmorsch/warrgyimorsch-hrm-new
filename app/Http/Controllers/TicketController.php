@@ -28,7 +28,7 @@ class TicketController extends Controller
     { 
         $user = auth()->user();
 
-        if (in_array($user->role, ['super_admin', 'hr_executive'])) {
+        if (in_array(\App\Support\AccessControl::role($user), ['super_admin', 'hr_executive'], true)) {
             $tickets = Ticket::with('user.employee.departmentRef')->latest()->get();
 
         // } elseif ($user->role == 'team_leader') {
@@ -56,6 +56,12 @@ class TicketController extends Controller
         ]);
 
         $ticket = Ticket::findOrFail($id);
+
+        // IDOR guard: only ticket admins or the person who raised the ticket may change it.
+        if (!$this->canAccessTicket($ticket)) {
+            abort(404);
+        }
+
         $oldStatus = $ticket->status;
 
         $ticket->update([
@@ -82,11 +88,26 @@ class TicketController extends Controller
 
     public function history($id)
     {
+        // IDOR guard: history is visible only to ticket admins or the ticket's owner.
+        $ticket = Ticket::findOrFail($id);
+        if (!$this->canAccessTicket($ticket)) {
+            abort(404);
+        }
+
         $history = \App\Models\TicketStatusHistory::where('ticket_id', $id)
             ->with('user')
             ->latest()
             ->get();
 
         return response()->json($history);
+    }
+
+    private function canAccessTicket(Ticket $ticket): bool
+    {
+        $user = auth()->user();
+        $role = \App\Support\AccessControl::role($user);
+
+        return in_array($role, ['super_admin', 'hr_executive'], true)
+            || (int) $ticket->user_id === (int) $user->id;
     }
 }

@@ -11,6 +11,36 @@ class Employee extends Model
     // (see EmployeePurgeService) — hidden from every normal Employee query.
     use SoftDeletes;
 
+    /**
+     * Sensitive personal / financial fields. Hidden from every toArray()/JSON response
+     * (AJAX endpoints, @json() in Blade, eager-loaded relations) so they can never leak to
+     * someone who only needed an employee's name. Server-side code still reads them normally
+     * ($employee->basic_salary). Admin-only endpoints that must return them call makeVisible().
+     */
+    public const SENSITIVE_FIELDS = [
+        'password',
+        'aadhaar_number',
+        'pan_number',
+        'address',
+        'mobile_number',
+        'date_of_birth',
+        'bank_name',
+        'account_number',
+        'ifsc_code',
+        'basic_salary',
+        'dearness_allowance',
+        'hra',
+        'conveyance_allowance',
+        'medical_allowance',
+        'other_allowance',
+        'pf_number',
+        'esi_number',
+        'insurance_provider',
+        'insurance_policy_number',
+    ];
+
+    protected $hidden = self::SENSITIVE_FIELDS;
+
     protected $fillable = [
         'name',
         'employee_code',

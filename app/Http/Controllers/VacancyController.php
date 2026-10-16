@@ -260,7 +260,7 @@ class VacancyController extends Controller
         // Team leaders only see the requirements they placed themselves.
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        if ($role === 'team_leader') {
+        if (in_array($role, ['team_leader', 'business_operation_head'], true)) {
             $requirementsQuery->where('created_by', $user->employee_id);
         }
 
@@ -314,7 +314,7 @@ class VacancyController extends Controller
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        if ($role === 'team_leader' && $requirement->created_by != $user->employee_id) {
+        if (in_array($role, ['team_leader', 'business_operation_head'], true) && $requirement->created_by != $user->employee_id) {
             abort(403, 'Unauthorized access to this requirement.');
         }
     }

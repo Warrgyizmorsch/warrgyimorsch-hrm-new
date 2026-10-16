@@ -232,7 +232,7 @@
                                                     ->where('slug', $roleSlug)
                                                     ->value('id');
 
-                                                $isAdmin = in_array($roleId, [1, 2, 3, 4]);
+                                                $isAdmin = in_array($roleId, [1, 2, 3]);
                                             @endphp
                                             <a href="javascript:void(0);"
                                                 class="avatar-text avatar-md bg-soft-secondary text-secondary comment-btn {{ (!$payroll->is_read && $isAdmin) ? 'blink' : '' }}"
@@ -503,8 +503,11 @@
 
             modal.show();
 
-            fetch(`/payroll/${id}`)
-                .then(res => res.text())
+            fetch(`/payroll/${id}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.text();
+                })
                 .then(html => {
                     document.getElementById('payrollModalBody').innerHTML = html;
                 })

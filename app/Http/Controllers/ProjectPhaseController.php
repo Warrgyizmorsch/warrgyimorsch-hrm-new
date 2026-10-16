@@ -23,9 +23,7 @@ class ProjectPhaseController extends Controller
     private const ADMIN_ROLES = [
         'super_admin',
         'manager',
-        'hr_executive',
-        'hr_intern',
-        'business_operation_head',
+        'hr_executive'
     ];
 
     private function roleFlags(Project $project): array
@@ -37,7 +35,7 @@ class ProjectPhaseController extends Controller
         $isAdmin = in_array($role, self::ADMIN_ROLES, true);
         $isLeader = $employeeId && in_array((int) $employeeId, array_map('intval', (array) $project->leaders), true);
         $isMember = $employeeId && in_array((int) $employeeId, array_map('intval', (array) $project->members), true);
-        $isTeamLeaderRole = $role === 'team_leader';
+        $isTeamLeaderRole = in_array($role, ['team_leader', 'business_operation_head'], true);
 
         return compact('isAdmin', 'isLeader', 'isMember', 'isTeamLeaderRole');
     }

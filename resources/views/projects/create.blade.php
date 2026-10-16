@@ -139,7 +139,7 @@
                                             <option value=""></option>
                                             @foreach($departments as $dept)
                                                 <option value="{{ $dept->id }}"
-                                                    {{ auth()->user()->role == 'team_leader' && $dept->id == auth()->user()->employee->department_id ? 'selected' : '' }}>
+                                                    {{ in_array(str_replace(' ', '_', strtolower((string) auth()->user()->role)), ['team_leader', 'business_operation_head'], true) && $dept->id == auth()->user()->employee->department_id ? 'selected' : '' }}>
                                                     {{ $dept->name }}
                                                 </option>
                                             @endforeach

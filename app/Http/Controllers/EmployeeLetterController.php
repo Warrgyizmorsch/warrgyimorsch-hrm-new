@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class EmployeeLetterController extends Controller
 {
-    private const ADMIN_ROLES = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'];
+    private const ADMIN_ROLES = ['super_admin', 'manager', 'hr_executive'];
 
     public function store(Request $request, $employeeId)
     {

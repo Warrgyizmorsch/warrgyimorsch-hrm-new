@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\DB;
  */
 class LeaveApprovalService
 {
-    public const MANAGER_ROLES = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'];
+    public const MANAGER_ROLES = ['super_admin', 'manager', 'hr_executive'];
 
     /** Roles that may take the Level 2 decision. */
     public const APPROVER_ROLES = ['super_admin', 'manager', 'hr_executive'];
@@ -100,7 +100,7 @@ class LeaveApprovalService
 
     public function isTeamLeader(?User $user): bool
     {
-        return $user && self::role($user->role) === 'team_leader' && $user->employee_id;
+        return $user && in_array(self::role($user->role), ['team_leader', 'business_operation_head'], true) && $user->employee_id;
     }
 
     /** Active team-leader users responsible for this employee (never the employee themself). */
@@ -112,7 +112,7 @@ class LeaveApprovalService
         }
 
         return User::query()
-            ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'team_leader'")
+            ->whereRaw("LOWER(REPLACE(role, ' ', '_')) IN ('team_leader', 'business_operation_head')")
             ->where('account_status', 'active')
             ->whereNotNull('employee_id')
             ->where('employee_id', '!=', $employee->id)

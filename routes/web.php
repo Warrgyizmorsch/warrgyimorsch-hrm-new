@@ -32,8 +32,10 @@ use App\Http\Controllers\ZKTController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\LoginActivityController;
 
-$adminRoles = 'super_admin,manager,hr_executive,hr_intern,business_operation_head';
-$TeamLeaderRoles = 'super_admin,manager,hr_executive,hr_intern,business_operation_head,team_leader';
+// Authority: Employee -> Team Leader (incl. Business Operation Head) -> Manager / HR Executive -> Super Admin.
+// hr_intern and hr_marketing are employee-level (own data only).
+$adminRoles = 'super_admin,manager,hr_executive';
+$TeamLeaderRoles = 'super_admin,manager,hr_executive,business_operation_head,team_leader';
 
 Route::get('/', function () {
     return view('auth.login');
@@ -48,7 +50,7 @@ Route::post('/sync-attendance/rebuild', [ZKTController::class, 'rebuildFromLogs'
     ->name('sync.attendance.rebuild');
 
 Route::get('/payroll/attendance', [PayrollController::class, 'attendance'])
-            ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,hr_intern,business_operation_head,team_leader'])
+            ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,business_operation_head,team_leader'])
             ->name('payroll.attendance');
 
 Route::get('/suggestions', [SuggestionController::class, 'index'])

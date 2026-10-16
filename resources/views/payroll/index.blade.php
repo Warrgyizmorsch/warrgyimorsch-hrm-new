@@ -7,7 +7,7 @@
 @section('content')
     @php
         $payrollRoleSlug = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $payrollIsAdmin = in_array($payrollRoleSlug, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $payrollIsAdmin = in_array($payrollRoleSlug, ['super_admin', 'manager', 'hr_executive']);
         $payrollImportDropdown = $payrollIsAdmin ? '
             <div class="dropdown">
                 <button type="button" class="zoho-icon-btn dropdown-toggle" data-bs-toggle="dropdown" title="Import">
@@ -423,7 +423,7 @@
                                         };
                                         $roleSlug = auth()->user()->role;
                                         $roleId = DB::table('roles_master')->where('slug', $roleSlug)->value('id');
-                                        $isAdmin = in_array($roleId, [1, 2, 3, 4]);
+                                        $isAdmin = in_array($roleId, [1, 2, 3]);
                                     @endphp
                                     <tr>
                                         <td class="text-muted fw-semibold">{{ ($payrolls->currentPage() - 1) * $payrolls->perPage() + $loop->iteration }}</td>
@@ -756,8 +756,11 @@
 
             modal.show();
 
-            fetch(`/payroll/${id}`)
-                .then(res => res.text())
+            fetch(`/payroll/${id}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.text();
+                })
                 .then(html => {
                     document.getElementById('payrollModalBody').innerHTML = html;
                 })

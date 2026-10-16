@@ -807,7 +807,7 @@
                 <!-- [Today Leave Records] end -->
 
                 @php
-                    $isTeamLeaderView = strtolower(str_replace(' ', '_', trim(auth()->user()->role ?? ''))) === 'team_leader';
+                    $isTeamLeaderView = in_array(strtolower(str_replace(' ', '_', trim(auth()->user()->role ?? ''))), ['team_leader', 'business_operation_head'], true);
                     $teamAbsentCardTitle = $isTeamLeaderView ? 'My Team — Absent Today' : 'My Department — Absent Today';
                     $teamAbsentCardSubtitle = $isTeamLeaderView ? 'from your team away' : 'from your department away';
                 @endphp

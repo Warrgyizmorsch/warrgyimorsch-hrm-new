@@ -172,13 +172,12 @@ class LeaveApplicationController extends Controller
         $isAdmin = in_array($role, [
             'super_admin',
             'manager',
-            'hr_executive',
-            'hr_intern',
-            'business_operation_head'
+            'hr_executive'
         ]);
 
         $isTeamLeader = in_array($role, [
-            'team_leader'
+            'team_leader',
+            'business_operation_head'
         ]);
 
         $query = LeaveApplication::with('employee');
@@ -264,7 +263,7 @@ class LeaveApplicationController extends Controller
 
         if ($isAdminRole) {
             $employeeId = $postedEmployeeId;
-        } elseif ($role === 'team_leader' && $postedEmployeeId && (int) $postedEmployeeId !== (int) $user->employee_id) {
+        } elseif (in_array($role, ['team_leader', 'business_operation_head'], true) && $postedEmployeeId && (int) $postedEmployeeId !== (int) $user->employee_id) {
             if (!$this->approval->isTeamLeaderOf($user, Employee::find($postedEmployeeId))) {
                 return response()->json(['success' => false, 'message' => 'You can only apply leave for yourself or your own team members.'], 403);
             }
@@ -531,7 +530,7 @@ class LeaveApplicationController extends Controller
     {
         $query = LeaveApplication::with('employee');
 
-        if (auth()->user()->role == 'team_leader') {
+        if (in_array(str_replace(' ', '_', strtolower((string) auth()->user()->role)), ['team_leader', 'business_operation_head'], true)) {
             $query->whereHas('employee', function ($q) {
                 $q->where('department_id', auth()->user()->employee->department_id);
             });
@@ -770,8 +769,8 @@ class LeaveApplicationController extends Controller
 
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
         if ($isTeamLeader) {
             if (!$this->teamLeaderCanView($user, $leave->employee)) {
@@ -796,8 +795,8 @@ class LeaveApplicationController extends Controller
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
         if ($isTeamLeader) {
             if (!$this->teamLeaderCanView($user, Employee::find($employeeId))) {
@@ -822,8 +821,8 @@ class LeaveApplicationController extends Controller
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
         if ($isTeamLeader) {
             if (!$this->teamLeaderCanView($user, Employee::find($employeeId))) {

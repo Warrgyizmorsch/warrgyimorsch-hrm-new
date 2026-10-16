@@ -27,7 +27,7 @@ class DailyTaskController extends Controller
 
         $ownEmployeeId = null;
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'business_operation_head', 'team_leader'];
         $isAdmin = in_array($role, $adminRoles);
 
         $otherProject = Project::where('name', 'OTHER')->first();
@@ -42,7 +42,7 @@ class DailyTaskController extends Controller
 
         $otherProject->update(['members' => Employee::active()->pluck('id')->toArray()]);
 
-        if ($role == 'team_leader') {
+        if (in_array($role, ['team_leader', 'business_operation_head'], true)) {
             $teamLeaderDepartmentIds = auth()->user()->employee?->ledDepartmentIds() ?? [];
 
             $departmentEmployeeIds = Employee::active()->whereIn('department_id', $teamLeaderDepartmentIds)
@@ -174,6 +174,10 @@ class DailyTaskController extends Controller
 
         $employeeMonthlyStats = null;
         $statsEmployeeId = $ownEmployeeId ?? $request->employee_id;
+        // IDOR guard: a team leader may only pull attendance/leave stats for their own team.
+        if ($statsEmployeeId && !\App\Support\AccessControl::canViewEmployee((int) $statsEmployeeId)) {
+            $statsEmployeeId = null;
+        }
         if ($statsEmployeeId) {
             $history = app(AttendanceHistoryService::class)
                 ->buildMonthlyHistory((int) $statsEmployeeId, $statsRangeStart, $statsRangeEnd);
@@ -314,7 +318,7 @@ class DailyTaskController extends Controller
         $validated['assigned_by'] = Auth::id();
 
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'business_operation_head', 'team_leader'];
         $isAdmin = in_array($role, $adminRoles);
 
         if (!$isAdmin) {
@@ -427,7 +431,7 @@ class DailyTaskController extends Controller
         ]);
 
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'business_operation_head', 'team_leader'];
         $isAdmin = in_array($role, $adminRoles);
 
         $project = $dailyTask->project;
@@ -476,7 +480,7 @@ class DailyTaskController extends Controller
     private function canDeleteDailyTask(DailyTask $dailyTask): bool
     {
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'business_operation_head', 'team_leader'];
         $isAdmin = in_array($role, $adminRoles);
 
         $project = $dailyTask->project;
@@ -493,6 +497,31 @@ class DailyTaskController extends Controller
      * employee_id of its own (only a free-text reference_name), so ownership is derived from
      * the parent task it was logged against — same admin/lead/owner/assigner rule as the task.
      */
+    /**
+     * Read access to a task: admins, the assignee, whoever assigned it, its project leaders,
+     * and team leaders for tasks of employees in the departments they lead.
+     */
+    private function canViewDailyTask(DailyTask $task): bool
+    {
+        $user = auth()->user();
+
+        if (\App\Support\AccessControl::isAdmin($user)) {
+            return true;
+        }
+
+        if ((int) $user->employee_id === (int) $task->employee_id || (int) $user->id === (int) $task->assigned_by) {
+            return true;
+        }
+
+        $project = $task->project;
+        if ($project && is_array($project->leaders) && in_array($user->employee_id, $project->leaders)) {
+            return true;
+        }
+
+        return \App\Support\AccessControl::isTeamLeader($user)
+            && \App\Support\AccessControl::canViewEmployee((int) $task->employee_id, $user);
+    }
+
     private function canManageFollowUp(TaskFollowUp $followUp): bool
     {
         $task = $followUp->dailyTask;
@@ -501,7 +530,7 @@ class DailyTaskController extends Controller
         }
 
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'business_operation_head', 'team_leader'];
         $isAdmin = in_array($role, $adminRoles);
 
         $project = $task->project;
@@ -535,7 +564,7 @@ class DailyTaskController extends Controller
     private function isPastReportWindow(DailyTask $task): bool
     {
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'business_operation_head', 'team_leader'];
 
         return !in_array($role, $adminRoles)
             && $task->start_date
@@ -662,6 +691,11 @@ class DailyTaskController extends Controller
         ]);
 
         $task = DailyTask::with('employee')->findOrFail($validated['daily_task_id']);
+
+        // IDOR guard: only people involved with this task may post progress on it.
+        if (!$this->canViewDailyTask($task)) {
+            return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
 
         if ($this->isPastReportWindow($task)) {
             return response()->json(['error' => $this->pastReportWindowMessage('added')], 403);
@@ -798,6 +832,12 @@ class DailyTaskController extends Controller
 
     public function getFollowUps($taskId)
     {
+        // IDOR guard: task id comes from the URL.
+        $task = DailyTask::findOrFail($taskId);
+        if (!$this->canViewDailyTask($task)) {
+            return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
+
         $followUps = TaskFollowUp::where('daily_task_id', $taskId)
             ->with('project', 'dailyTask')
             ->latest()
@@ -837,7 +877,7 @@ class DailyTaskController extends Controller
         ]);
 
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'business_operation_head', 'team_leader'];
         $isAdmin = in_array($role, $adminRoles);
 
         $project = $dailyTask->project;
@@ -876,6 +916,10 @@ class DailyTaskController extends Controller
 
     public function statusHistory(DailyTask $task)
     {
+        if (!$this->canViewDailyTask($task)) {
+            return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
+
         return response()->json(
             $task->statusHistory()
                 ->with('user')
@@ -891,7 +935,7 @@ class DailyTaskController extends Controller
         ]);
 
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head', 'team_leader'];
+        $adminRoles = ['super_admin', 'manager', 'hr_executive', 'business_operation_head', 'team_leader'];
         $isAdmin = in_array($role, $adminRoles);
 
         $project = $dailyTask->project;
