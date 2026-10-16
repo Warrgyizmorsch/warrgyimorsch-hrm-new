@@ -32,7 +32,7 @@
             <div class="dt-hero-stat-icon"><i class="feather-check-circle"></i></div>
             <div>
                 <span class="dt-hero-stat-value">{{ rtrim(rtrim(number_format($employeeMonthlyStats['present_days'], 1), '0'), '.') ?: '0' }}<small class="dt-hero-stat-value-of">/{{ $employeeMonthlyStats['working_days'] }}</small></span>
-                <span class="dt-hero-stat-label">Days present</span>
+                <span class="dt-hero-stat-label">Days present{{ !empty($employeeMonthlyStats['is_partial']) ? ' (so far)' : '' }}</span>
             </div>
         </div>
         <div class="dt-hero-stat dt-hero-stat--submitted">
@@ -42,11 +42,14 @@
                 <span class="dt-hero-stat-label">Report submitted</span>
             </div>
         </div>
-        <div class="dt-hero-stat dt-hero-stat--missed">
+        <div class="dt-hero-stat dt-hero-stat--missed" @if(!empty($employeeMonthlyStats['missed_dates'])) title="No work log on: {{ implode(', ', $employeeMonthlyStats['missed_dates']) }}" @endif>
             <div class="dt-hero-stat-icon"><i class="feather-x-circle"></i></div>
             <div>
                 <span class="dt-hero-stat-value">{{ $employeeMonthlyStats['missed_days'] }}</span>
                 <span class="dt-hero-stat-label">Missed (no report)</span>
+                @if(!empty($employeeMonthlyStats['missed_dates']))
+                    <span class="d-block text-muted" style="font-size: 11px; line-height: 1.3;">{{ implode(', ', $employeeMonthlyStats['missed_dates']) }}</span>
+                @endif
             </div>
         </div>
         <div class="dt-hero-stat dt-hero-stat--under-target">
@@ -65,9 +68,13 @@
         <strong>{{ $employeeMonthlyStats['total_days'] }}</strong> days ·
         <strong>{{ $employeeMonthlyStats['sunday_count'] }}</strong> Sunday{{ $employeeMonthlyStats['sunday_count'] == 1 ? '' : 's' }} ·
         <strong>{{ $employeeMonthlyStats['holiday_count'] }}</strong> holiday{{ $employeeMonthlyStats['holiday_count'] == 1 ? '' : 's' }} ·
-        <strong>{{ $employeeMonthlyStats['working_days'] }}</strong> working days ·
+        <strong>{{ $employeeMonthlyStats['working_days'] }}</strong> working days
+        @if(!empty($employeeMonthlyStats['is_partial']))
+            (of {{ $employeeMonthlyStats['month_working_days'] }} this month)
+        @endif ·
         <strong>{{ rtrim(rtrim(number_format($employeeMonthlyStats['leave_count'], 1), '0'), '.') ?: '0' }}</strong> leave{{ $employeeMonthlyStats['leave_count'] == 1 ? '' : 's' }} ·
-        <strong>{{ $employeeMonthlyStats['absent_count'] }}</strong> absent
+        <strong>{{ $employeeMonthlyStats['wfh_count'] ?? 0 }}</strong> WFH ·
+        <span @if(!empty($employeeMonthlyStats['absent_dates'])) title="{{ implode(', ', $employeeMonthlyStats['absent_dates']) }}" @endif><strong>{{ $employeeMonthlyStats['absent_count'] }}</strong> absent</span>
     </div>
 @endif
 
