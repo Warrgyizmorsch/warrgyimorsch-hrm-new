@@ -4,36 +4,39 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\AssetRequest;
+use App\Models\User;
+use App\Services\AssetService;
+use App\Support\AccessControl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AssetController extends Controller
 {
+    /** Optional asset photo: JPG/PNG/WebP up to 2 MB. */
+    private const IMAGE_RULE = 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048';
+
+    public function __construct(private AssetService $assets)
+    {
+    }
+
     public function index()
     {
         $user = auth()->user();
-        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head'], true);
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = AccessControl::isTeamLeader($user);
+        $isAdmin = AccessControl::isAdmin($user);
 
         $assetsQuery = Asset::with('activeAllocation.user');
-        $requestsQuery = AssetRequest::with(['user', 'asset'])->latest();
+        $requestsQuery = AssetRequest::with(['user.employee.departmentRef', 'asset', 'creator', 'verifier'])->latest();
         $teamUserIds = collect();
 
         if ($isTeamLeader) {
-            // Scoped to their own department's plain "employee" role members. They can view
-            // (and, since they get the update route too) edit/reassign only these assets.
-            $department = $user->employee->department_id ?? null;
-            $teamUserIds = $department
-                ? \App\Models\User::whereHas('employee', function ($q) use ($department) {
-                    $q->where('department_id', $department)
-                        ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
-                })->pluck('id')
-                : collect();
+            // Team leaders: only assets held by employee-level staff in the departments they lead.
+            $teamUserIds = AccessControl::assetTeamUserIds($user);
 
-            $assetsQuery->whereHas('activeAllocation', function ($q) use ($teamUserIds) {
-                $q->whereIn('user_id', $teamUserIds);
-            });
+            $assetsQuery->whereHas('activeAllocation', fn ($q) => $q->whereIn('user_id', $teamUserIds));
             $requestsQuery->whereIn('user_id', $teamUserIds);
         }
 
@@ -46,38 +49,36 @@ class AssetController extends Controller
             ->values();
         $requests = $requestsQuery->get();
         $availableAssets = $isTeamLeader ? collect() : Asset::where('status', 'Available')->get();
-        $users = ($isTeamLeader
-            ? \App\Models\User::whereIn('id', $teamUserIds)
-            : \App\Models\User::query())
-            ->where(function ($q) {
-                $q->whereNull('account_status')->orWhere('account_status', 'active');
-            })
+        $users = ($isTeamLeader ? User::whereIn('id', $teamUserIds) : User::query())
+            ->where(fn ($q) => $q->whereNull('account_status')->orWhere('account_status', 'active'))
             ->orderBy('name')->get();
 
         // Devices still allocated to employees whose account has since been deactivated.
-        // Kept out of the main tabs (and out of the assignment dropdowns above) so admins
-        // can find and reclaim/reassign them separately.
         $deactivatedAllocations = $isAdmin
             ? AssetRequest::where('status', 'Allocated')
-                ->whereHas('user', function ($q) {
-                    $q->where('account_status', 'inactive');
-                })
+                ->whereHas('user', fn ($q) => $q->where('account_status', 'inactive'))
                 ->with(['user', 'asset'])
                 ->get()
             : collect();
 
-        return view('assets.index', compact('assets', 'requests', 'availableAssets', 'users', 'deactivatedAllocations'));
+        // Declarations this viewer may verify/reject (never their own, never ones they entered).
+        $verifiableIds = $requests
+            ->filter(fn ($r) => AccessControl::canVerifyDeclaration($r, $user, $teamUserIds))
+            ->pluck('id');
+
+        return view('assets.index', compact('assets', 'requests', 'availableAssets', 'users', 'deactivatedAllocations', 'verifiableIds'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'assets' => 'required|array',
-            'assets.*.name' => 'required|string',
-            'assets.*.type' => 'required|string',
-            'assets.*.serial_number' => 'nullable|string|distinct|unique:assets,serial_number',
+            'assets' => 'required|array|min:1',
+            'assets.*.name' => 'required|string|max:150',
+            'assets.*.type' => 'required|string|max:100',
+            'assets.*.serial_number' => 'nullable|string|max:150|distinct|unique:assets,serial_number',
             'assets.*.system_configuration' => 'nullable|string',
-            'assets.*.status' => 'required|in:Available,Allocated,Maintenance,Faulty',
+            'assets.*.status' => ['required', Rule::in(AssetService::STATUSES)],
+            'assets.*.image' => self::IMAGE_RULE,
             'assign_user_id' => 'nullable|exists:users,id',
         ]);
 
@@ -85,159 +86,147 @@ class AssetController extends Controller
             !$request->filled('assign_user_id') &&
             collect($request->assets)->contains(fn ($asset) => ($asset['status'] ?? null) === 'Allocated')
         ) {
-            return back()
-                ->withInput()
+            return back()->withInput()
                 ->with('error', 'Please select one employee at the top before adding assets as Allocated.');
         }
 
-        DB::transaction(function () use ($request) {
-            foreach ($request->assets as $assetData) {
-                if ($request->filled('assign_user_id')) {
-                    $assetData['status'] = 'Allocated';
-                }
+        $uploaded = [];
 
-                $asset = Asset::create($assetData);
+        $response = $this->attempt(function () use ($request, &$uploaded) {
+            DB::transaction(function () use ($request, &$uploaded) {
+                foreach ($request->assets as $index => $row) {
+                    $data = collect($row)->only(['name', 'type', 'serial_number', 'system_configuration', 'status'])->all();
 
-                if ($request->filled('assign_user_id')) {
-                    AssetRequest::create([
-                        'user_id' => $request->assign_user_id,
-                        'asset_id' => $asset->id,
-                        'asset_type' => $asset->type,
-                        'reason' => 'Allocated while adding inventory',
-                        'status' => 'Allocated',
-                        'allocated_at' => now(),
-                    ]);
+                    if ($file = $request->file("assets.$index.image")) {
+                        $data['image_path'] = $uploaded[] = $file->store('assets', Asset::IMAGE_DISK);
+                    }
+
+                    if ($request->filled('assign_user_id')) {
+                        // Create in stock, then allocate through the service (checks the user is active).
+                        $data['status'] = 'Available';
+                        $asset = Asset::create($data);
+                        $this->assets->allocate($asset, (int) $request->assign_user_id, 'Allocated while adding inventory');
+                    } else {
+                        Asset::create($data);
+                    }
                 }
-            }
+            });
+
+            $uploaded = []; // saved: keep the files
+
+            return back()->with('success', 'Assets added successfully.');
         });
 
-        return back()->with('success', 'Assets added successfully.');
+        // The save failed and was rolled back, so drop any photos stored for it.
+        foreach ($uploaded as $path) {
+            Storage::disk(Asset::IMAGE_DISK)->delete($path);
+        }
+
+        return $response;
     }
 
     public function update(Request $request, $id)
     {
         $asset = Asset::findOrFail($id);
-
         $authUser = auth()->user();
-        $role = str_replace(' ', '_', strtolower($authUser->role ?? 'employee'));
-        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head'], true);
+        $isTeamLeader = AccessControl::isTeamLeader($authUser);
 
-        $teamUserIds = collect();
         if ($isTeamLeader) {
-            $department = $authUser->employee->department_id ?? null;
-            $teamUserIds = $department
-                ? \App\Models\User::whereHas('employee', function ($q) use ($department) {
-                    $q->where('department_id', $department)
-                        ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
-                })->pluck('id')
-                : collect();
-
+            $teamUserIds = AccessControl::assetTeamUserIds($authUser);
             $currentAllocation = $asset->activeAllocation;
+
             if (!$currentAllocation || !$teamUserIds->contains($currentAllocation->user_id)) {
                 abort(403, 'Unauthorized access');
             }
         }
 
         $request->validate([
-            'name' => 'required|string',
-            'type' => 'required|string',
-            'serial_number' => 'nullable|string|unique:assets,serial_number,' . $id,
+            'name' => 'required|string|max:150',
+            'type' => 'required|string|max:100',
+            'serial_number' => ['nullable', 'string', 'max:150', Rule::unique('assets', 'serial_number')->ignore($asset->id)],
             'system_configuration' => 'nullable|string',
-            'status' => 'required|in:Available,Allocated,Maintenance,Faulty',
+            // Team leaders can't change status (the field is disabled for them); it stays Allocated.
+            'status' => $isTeamLeader ? 'nullable' : ['required', Rule::in(AssetService::STATUSES)],
             'assign_user_id' => $isTeamLeader ? 'required|exists:users,id' : 'nullable|exists:users,id',
+            'image' => self::IMAGE_RULE,
+            'remove_image' => 'nullable|boolean',
         ]);
 
         if ($isTeamLeader && !$teamUserIds->contains((int) $request->assign_user_id)) {
             abort(403, 'Unauthorized access');
         }
 
-        $asset->update($request->only(['name', 'type', 'serial_number', 'system_configuration', 'status']));
+        $status = $isTeamLeader ? 'Allocated' : $request->status;
+        $holder = $request->filled('assign_user_id') ? (int) $request->assign_user_id : null;
 
-        $this->applyAssignment($asset, $request->input('assign_user_id'));
+        $oldImage = $asset->image_path;
+        $newImage = $request->hasFile('image') ? $request->file('image')->store('assets', Asset::IMAGE_DISK) : null;
+        $removeImage = $request->boolean('remove_image');
 
-        return back()->with('success', 'Asset updated successfully.');
-    }
-
-    protected function applyAssignment(Asset $asset, $assignUserId)
-    {
-        $currentAllocation = $asset->activeAllocation()->first();
-
-        if ($assignUserId) {
-            if (!$currentAllocation || (int) $currentAllocation->user_id !== (int) $assignUserId) {
-                if ($currentAllocation) {
-                    $currentAllocation->update(['status' => 'Returned', 'returned_at' => now()]);
+        $response = $this->attempt(function () use ($asset, $request, $holder, $status, $newImage, $removeImage) {
+            DB::transaction(function () use ($asset, $request, $holder, $status, $newImage, $removeImage) {
+                $data = $request->only(['name', 'type', 'serial_number', 'system_configuration']);
+                if ($newImage) {
+                    $data['image_path'] = $newImage;
+                } elseif ($removeImage) {
+                    $data['image_path'] = null;
                 }
 
-                AssetRequest::create([
-                    'user_id' => $assignUserId,
-                    'asset_id' => $asset->id,
-                    'asset_type' => $asset->type,
-                    'reason' => 'Reassigned via Edit',
-                    'status' => 'Allocated',
-                    'allocated_at' => now(),
-                ]);
+                $asset->update($data);
+                $this->assets->applyHolderAndStatus($asset, $holder, $status);
+            });
 
-                $asset->update(['status' => 'Allocated']);
-            }
+            return back()->with('success', 'Asset updated successfully.');
+        });
 
-            return;
+        // Clean up whichever file is no longer referenced.
+        $asset->refresh();
+        if ($asset->image_path !== $oldImage && $oldImage) {
+            Storage::disk(Asset::IMAGE_DISK)->delete($oldImage);
+        }
+        if ($newImage && $asset->image_path !== $newImage) {
+            Storage::disk(Asset::IMAGE_DISK)->delete($newImage); // update was rejected
         }
 
-        // Empty selection: the dropdown always defaults to the current holder when one exists,
-        // so a blank submission here is a deliberate unassign, not an untouched field.
-        if ($currentAllocation) {
-            $currentAllocation->update(['status' => 'Returned', 'returned_at' => now()]);
-
-            if ($asset->status === 'Allocated') {
-                $asset->update(['status' => 'Available']);
-            }
-        }
+        return $response;
     }
 
     public function destroy($id)
     {
         $asset = Asset::findOrFail($id);
-        $asset->delete();
 
-        return back()->with('success', 'Asset deleted successfully.');
+        return $this->attempt(function () use ($asset) {
+            $this->assets->delete($asset);
+
+            return back()->with('success', 'Asset deleted successfully.');
+        });
     }
 
     public function allocate(Request $request, $id)
     {
         $assetRequest = AssetRequest::findOrFail($id);
-
-        $request->validate([
-            'asset_id' => 'required|exists:assets,id',
-        ]);
-
+        if ($assetRequest->isDeclaration()) {
+            return back()->with('error', 'Declarations are verified, not allocated. Use Verify instead.');
+        }
+        $request->validate(['asset_id' => 'required|exists:assets,id']);
         $asset = Asset::findOrFail($request->asset_id);
 
-        if ($asset->status !== 'Available') {
-            return back()->with('error', 'Selected asset is not available.');
-        }
+        return $this->attempt(function () use ($asset, $assetRequest) {
+            $this->assets->allocate($asset, (int) $assetRequest->user_id, $assetRequest->reason ?? 'Requested', $assetRequest);
 
-        $assetRequest->update([
-            'asset_id' => $asset->id,
-            'status' => 'Allocated',
-            'allocated_at' => now(),
-        ]);
-
-        $asset->update([
-            'status' => 'Allocated',
-        ]);
-
-        return back()->with('success', 'Asset allocated successfully.');
+            return back()->with('success', 'Asset allocated successfully.');
+        });
     }
 
     public function reject($id)
     {
         $assetRequest = AssetRequest::findOrFail($id);
 
-        $assetRequest->update([
-            'status' => 'Rejected',
-        ]);
+        return $this->attempt(function () use ($assetRequest) {
+            $this->assets->reject($assetRequest);
 
-        return back()->with('success', 'Asset request rejected.');
+            return back()->with('success', 'Asset request rejected.');
+        });
     }
 
     public function markReturned(Request $request, $id)
@@ -248,39 +237,29 @@ class AssetController extends Controller
             return back()->with('error', 'Request is not in allocated state.');
         }
 
-        $asset = Asset::findOrFail($assetRequest->asset_id);
+        $request->validate(['condition' => 'nullable|in:Good,Maintenance,Faulty']);
         $condition = $request->input('condition', 'Good');
+        $newStatus = $condition === 'Good' ? 'Available' : $condition;
+        $asset = Asset::withTrashed()->findOrFail($assetRequest->asset_id);
 
-        $assetRequest->update([
-            'status' => 'Returned',
-            'returned_at' => now(),
-        ]);
+        return $this->attempt(function () use ($asset, $newStatus) {
+            $this->assets->release($asset, $newStatus);
 
-        if ($condition === 'Maintenance') {
-            $asset->update([
-                'status' => 'Maintenance',
-            ]);
-            $msg = 'Asset marked as returned and sent to Maintenance.';
-        } elseif ($condition === 'Faulty') {
-            $asset->update([
-                'status' => 'Faulty',
-            ]);
-            $msg = 'Asset marked as returned and set to Faulty (permanent damage).';
-        } else {
-            $asset->update([
-                'status' => 'Available',
-            ]);
-            $msg = 'Asset returned successfully and is now Available.';
-        }
+            $msg = match ($newStatus) {
+                'Maintenance' => 'Asset marked as returned and sent to Maintenance.',
+                'Faulty' => 'Asset marked as returned and set to Faulty (permanent damage).',
+                default => 'Asset returned successfully and is now Available.',
+            };
 
-        return back()->with('success', $msg);
+            return back()->with('success', $msg);
+        });
     }
 
     // Employee Views & Actions
     public function employeeView()
     {
         $userRequests = AssetRequest::where('user_id', auth()->id())
-            ->with('asset')
+            ->with(['asset', 'creator'])
             ->latest()
             ->get();
 
@@ -289,26 +268,14 @@ class AssetController extends Controller
             ->with('asset')
             ->get();
 
-        // Team leaders also see (read-only) devices allocated to their own department's
-        // plain "employee" role members — no admin actions, just visibility.
-        $teamAllocatedAssets = collect();
-        $user = auth()->user();
-        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-
-        if (in_array($role, ['team_leader', 'business_operation_head'], true)) {
-            $department = $user->employee->department_id ?? null;
-            if ($department) {
-                $teamUserIds = \App\Models\User::whereHas('employee', function ($q) use ($department) {
-                    $q->where('department_id', $department)
-                        ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
-                })->pluck('id');
-
-                $teamAllocatedAssets = AssetRequest::whereIn('user_id', $teamUserIds)
-                    ->where('status', 'Allocated')
-                    ->with(['asset', 'user'])
-                    ->get();
-            }
-        }
+        // Team leaders also see (read-only) devices allocated to the team members they lead.
+        $teamUserIds = AccessControl::assetTeamUserIds();
+        $teamAllocatedAssets = $teamUserIds->isEmpty()
+            ? collect()
+            : AssetRequest::whereIn('user_id', $teamUserIds)
+                ->where('status', 'Allocated')
+                ->with(['asset', 'user'])
+                ->get();
 
         return view('assets.employee', compact('userRequests', 'allocatedAssets', 'teamAllocatedAssets'));
     }
@@ -316,8 +283,8 @@ class AssetController extends Controller
     public function requestAsset(Request $request)
     {
         $request->validate([
-            'asset_type' => 'required|string',
-            'reason' => 'required|string',
+            'asset_type' => 'required|string|max:100',
+            'reason' => 'required|string|max:1000',
         ]);
 
         AssetRequest::create([
@@ -333,28 +300,109 @@ class AssetController extends Controller
     public function allocateManual(Request $request, $id)
     {
         $asset = Asset::findOrFail($id);
+        $request->validate(['user_id' => 'required|exists:users,id']);
 
-        if ($asset->status !== 'Available') {
-            return back()->with('error', 'Selected asset is not available.');
+        return $this->attempt(function () use ($asset, $request) {
+            $this->assets->allocate($asset, (int) $request->user_id, 'Manually allocated by Admin');
+
+            return back()->with('success', 'Asset allocated manually successfully.');
+        });
+    }
+
+    /**
+     * Declare a company device someone already holds. Employees declare for themselves;
+     * team leaders may also declare for a member of their team, HR/Admin for anyone.
+     * Always lands as Pending until a different person verifies it.
+     */
+    public function declare(Request $request)
+    {
+        $authUser = auth()->user();
+
+        $data = $request->validate([
+            'user_id' => 'nullable|exists:users,id',
+            'asset_type' => 'required|string|max:100',
+            'declared_name' => 'required|string|max:150',
+            'declared_serial_number' => 'nullable|string|max:150',
+            'declared_configuration' => 'nullable|string|max:2000',
+            'reason' => 'nullable|string|max:1000',
+            'image' => self::IMAGE_RULE,
+        ]);
+
+        $ownerId = (int) ($data['user_id'] ?? $authUser->id);
+
+        if ($ownerId !== (int) $authUser->id) {
+            $allowed = AccessControl::isAdmin($authUser)
+                || AccessControl::assetTeamUserIds($authUser)->contains($ownerId);
+            abort_unless($allowed, 403, 'You can only add assets for members of your own team.');
         }
 
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-        ]);
+        $serial = trim((string) ($data['declared_serial_number'] ?? ''));
+        if ($serial !== '') {
+            $duplicate = AssetRequest::where('source', AssetRequest::SOURCE_DECLARATION)
+                ->where('status', 'Pending')
+                ->where('declared_serial_number', $serial)
+                ->exists();
+            if ($duplicate) {
+                return back()->withInput()->with('error', "A declaration for serial {$serial} is already waiting for verification.");
+            }
+
+            $holder = AssetRequest::where('status', 'Allocated')
+                ->whereHas('asset', fn ($q) => $q->where('serial_number', $serial))
+                ->with('user')->first();
+            if ($holder) {
+                return back()->withInput()->with('error', "Serial {$serial} is already allocated to " . ($holder->user->name ?? 'someone') . '.');
+            }
+        }
 
         AssetRequest::create([
-            'user_id' => $request->user_id,
-            'asset_id' => $asset->id,
-            'asset_type' => $asset->type,
-            'reason' => 'Manually allocated by Admin',
-            'status' => 'Allocated',
-            'allocated_at' => now(),
+            'user_id' => $ownerId,
+            'source' => AssetRequest::SOURCE_DECLARATION,
+            'asset_type' => $data['asset_type'],
+            'reason' => $data['reason'] ?: ($ownerId === (int) $authUser->id ? 'Declared by employee' : 'Added by team leader / HR'),
+            'status' => 'Pending',
+            'declared_name' => $data['declared_name'],
+            'declared_serial_number' => $serial !== '' ? $serial : null,
+            'declared_configuration' => $data['declared_configuration'] ?? null,
+            'declared_image_path' => $request->hasFile('image') ? $request->file('image')->store('assets', Asset::IMAGE_DISK) : null,
+            'created_by' => $authUser->id,
         ]);
 
-        $asset->update([
-            'status' => 'Allocated',
-        ]);
+        return back()->with('success', 'Asset declared. It will appear as allocated once it is verified.');
+    }
 
-        return back()->with('success', 'Asset allocated manually successfully.');
+    public function verifyDeclaration($id)
+    {
+        $declaration = AssetRequest::findOrFail($id);
+        abort_unless(AccessControl::canVerifyDeclaration($declaration), 403, 'You cannot verify this declaration.');
+
+        return $this->attempt(function () use ($declaration) {
+            $this->assets->verifyDeclaration($declaration, auth()->user());
+
+            return back()->with('success', 'Declaration verified. The asset is now recorded as allocated.');
+        });
+    }
+
+    public function rejectDeclaration(Request $request, $id)
+    {
+        $declaration = AssetRequest::findOrFail($id);
+        abort_unless(AccessControl::canVerifyDeclaration($declaration), 403, 'You cannot reject this declaration.');
+
+        $data = $request->validate(['rejection_reason' => 'required|string|max:255']);
+
+        return $this->attempt(function () use ($declaration, $data) {
+            $this->assets->rejectDeclaration($declaration, auth()->user(), $data['rejection_reason']);
+
+            return back()->with('success', 'Declaration rejected.');
+        });
+    }
+
+    /** Turn AssetService rule failures into the same flash "error" message the views already show. */
+    private function attempt(callable $action)
+    {
+        try {
+            return $action();
+        } catch (ValidationException $e) {
+            return back()->withInput()->with('error', collect($e->errors())->flatten()->first());
+        }
     }
 }

@@ -28,6 +28,18 @@
                 </div>
             </div>
         </div>
+        @elseif($isTeamLeader)
+        <div class="page-header-right ms-auto">
+            <div class="page-header-right-items">
+                <div class="d-flex align-items-center gap-2">
+                    <a href="javascript:void(0);" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm"
+                        style="border-radius: 10px; background: #3858f9; border: none; height: 44px;"
+                        data-bs-toggle="modal" data-bs-target="#declareAssetModal">
+                        <i class="feather-plus"></i> ADD FOR TEAM MEMBER
+                    </a>
+                </div>
+            </div>
+        </div>
         @endif
     </div>
 
@@ -132,6 +144,7 @@
                                                 'serial_number' => $item->serial_number ?? 'N/A',
                                                 'allocated_at' => $item->activeAllocation->allocated_at ? $item->activeAllocation->allocated_at->format('d M, Y') : $item->activeAllocation->updated_at->format('d M, Y'),
                                                 'system_configuration' => $item->system_configuration ?? '-',
+                                                'image_url' => $item->image_url,
                                             ];
                                         })->values()->all();
                                     @endphp
@@ -148,9 +161,15 @@
                                                 elseif ($typeLower === 'charger') $iconClass = 'feather-zap';
                                             @endphp
                                             <div class="d-flex align-items-center">
+                                                @if(!$isAssignedGroup && $asset->image_url)
+                                                <a href="{{ $asset->image_url }}" target="_blank" rel="noopener" class="me-2 flex-shrink-0" title="View photo">
+                                                    <img src="{{ $asset->image_url }}" alt="{{ $asset->name }}" loading="lazy" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                                </a>
+                                                @else
                                                 <div style="width: 32px; height: 32px; background: rgba(56, 88, 249, 0.08); color: #3858f9; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" class="me-2">
                                                     <i class="{{ $iconClass }}" style="font-size: 15px;"></i>
                                                 </div>
+                                                @endif
                                                 <div class="d-flex flex-column">
                                                     <span class="fw-bold text-dark fs-6">
                                                         {{ $isAssignedGroup ? ($assignedUser->name ?? 'Assigned Employee') : $asset->name }}
@@ -325,9 +344,34 @@
                                                 <i class="{{ $iconClass }}" style="font-size: 11px;"></i>
                                                 {{ $req->asset_type }}
                                             </span>
+                                            @if($req->isDeclaration())
+                                                <span class="badge bg-soft-warning text-warning d-block mt-1 align-self-start" style="font-size: 10px; font-weight: 700; text-transform: uppercase; width: fit-content;" title="Device the employee already has, waiting to be confirmed">Declaration</span>
+                                            @endif
                                         </td>
                                         <td style="max-width: 250px; white-space: normal; word-break: break-word;">
-                                            <div class="text-muted small">{{ $req->reason }}</div>
+                                            @if($req->isDeclaration())
+                                                <div class="d-flex align-items-start gap-2">
+                                                    @if($req->declared_image_url)
+                                                        <a href="{{ $req->declared_image_url }}" target="_blank" rel="noopener" class="flex-shrink-0">
+                                                            <img src="{{ $req->declared_image_url }}" alt="" loading="lazy" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                                        </a>
+                                                    @endif
+                                                    <div>
+                                                        <div class="fw-semibold text-dark small">{{ $req->declared_name }}</div>
+                                                        <div class="text-muted" style="font-size: 11px;">SN: {{ $req->declared_serial_number ?: 'Not given' }}</div>
+                                                        @if($req->declared_configuration)
+                                                            <div class="text-muted" style="font-size: 11px;">{{ \Illuminate\Support\Str::limit($req->declared_configuration, 80) }}</div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endif
+                                            <div class="text-muted small {{ $req->isDeclaration() ? 'mt-1' : '' }}">{{ $req->reason }}</div>
+                                            @if($req->created_by && (int) $req->created_by !== (int) $req->user_id)
+                                                <div class="text-muted" style="font-size: 11px;">Added by {{ $req->creator->name ?? 'someone' }}</div>
+                                            @endif
+                                            @if($req->status === 'Rejected' && $req->rejection_reason)
+                                                <div class="text-danger" style="font-size: 11px;">Rejected{{ $req->verifier ? ' by ' . $req->verifier->name : '' }}: {{ $req->rejection_reason }}</div>
+                                            @endif
                                         </td>
                                         <td class="text-muted small">{{ $req->created_at->format('d M, Y') }}</td>
                                         <td>
@@ -336,7 +380,23 @@
                                             </span>
                                         </td>
                                         <td class="pe-4 text-center">
-                                            @if($req->status == 'Pending' && $isAdmin)
+                                            @if($req->isDeclaration() && $verifiableIds->contains($req->id))
+                                                <div class="d-flex justify-content-center gap-2">
+                                                    <form action="{{ route('assets.declarations.verify', $req->id) }}" method="POST">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-soft-success fw-bold d-flex align-items-center gap-1" style="border-radius: 8px;">
+                                                            <i class="feather-check"></i> Verify
+                                                        </button>
+                                                    </form>
+                                                    <button type="button" class="btn btn-sm btn-soft-danger fw-bold d-flex align-items-center gap-1" style="border-radius: 8px;"
+                                                        data-url="{{ route('assets.declarations.reject', $req->id) }}" data-name="{{ $req->declared_name }} ({{ $req->user->name ?? '' }})"
+                                                        onclick="openRejectDeclarationModal(this.dataset.url, this.dataset.name)">
+                                                        <i class="feather-x"></i> Reject
+                                                    </button>
+                                                </div>
+                                            @elseif($req->isDeclaration() && $req->status === 'Pending')
+                                                <span class="text-muted small">Waiting for {{ (int) $req->created_by === (int) auth()->id() ? 'HR' : 'verification' }}</span>
+                                            @elseif($req->status == 'Pending' && $isAdmin)
                                                 <div class="d-flex justify-content-center gap-2">
                                                     <button class="btn btn-sm btn-soft-success fw-bold d-flex align-items-center gap-1" style="border-radius: 8px;" onclick="openAllocateModal({{ $req->id }}, '{{ $req->asset_type }}')">
                                                         <i class="feather-check"></i> Allocate
@@ -703,7 +763,7 @@
                     <h5 class="modal-title" id="addAssetModalLabel">Add New Inventory Asset(s)</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('assets.store') }}" method="POST">
+                <form action="{{ route('assets.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="modal-body p-4" style="max-height: 60vh; overflow-y: auto;">
                         <div class="p-3 mb-3 border rounded-3" style="background: #eef4ff; border-color: #dbeafe !important;">
@@ -759,6 +819,10 @@
                                         <label class="fw-semibold small mb-1">System Configuration</label>
                                         <textarea class="form-control" name="assets[0][system_configuration]" rows="2" placeholder="Processor, RAM, Storage details..." style="border-radius: 8px;"></textarea>
                                     </div>
+                                    <div class="col-12">
+                                        <label class="fw-semibold small mb-1">Asset Photo <span class="text-muted fw-normal">(optional, JPG/PNG/WebP, max 2 MB)</span></label>
+                                        <input type="file" class="form-control" name="assets[0][image]" accept="image/jpeg,image/png,image/webp" style="border-radius: 8px;">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -784,7 +848,7 @@
                     <h5 class="modal-title" id="editAssetModalLabel">Edit Asset Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form id="editAssetForm" method="POST">
+                <form id="editAssetForm" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
                     <div class="modal-body p-4">
@@ -813,13 +877,30 @@
                             <textarea class="form-control" name="system_configuration" id="edit-system_configuration" rows="4"></textarea>
                         </div>
                         <div class="mb-3">
+                            <label class="fw-semibold mb-2">Asset Photo</label>
+                            <div id="edit-image-preview-wrap" class="d-none mb-2 d-flex align-items-center gap-3">
+                                <a id="edit-image-link" href="#" target="_blank" rel="noopener">
+                                    <img id="edit-image-preview" src="" alt="Asset photo" style="width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                </a>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="remove_image" value="1" id="edit-remove-image">
+                                    <label class="form-check-label small" for="edit-remove-image">Remove photo</label>
+                                </div>
+                            </div>
+                            <input type="file" class="form-control" name="image" id="edit-image" accept="image/jpeg,image/png,image/webp">
+                            <div class="text-muted small mt-1" style="font-size: 11px;">Optional. Uploading a new photo replaces the current one (JPG/PNG/WebP, max 2 MB).</div>
+                        </div>
+                        <div class="mb-3">
                             <label class="fw-semibold mb-2">Status <span class="text-danger">*</span></label>
-                            <select class="form-select" name="status" id="edit-status" required>
+                            <select class="form-select" name="status" id="edit-status" @if($isTeamLeader) disabled @else required @endif>
                                 <option value="Available">Available</option>
                                 <option value="Allocated">Allocated</option>
                                 <option value="Maintenance">Maintenance</option>
                                 <option value="Faulty">Faulty</option>
                             </select>
+                            @if($isTeamLeader)
+                                <div class="text-muted small mt-2" style="font-size: 11px;">Only HR / Admin can change an asset's status.</div>
+                            @endif
                         </div>
                         @if($isAdmin || $isTeamLeader)
                         <div class="mb-3">
@@ -907,6 +988,10 @@
             </div>
         </div>
     </div>
+    @if($isTeamLeader)
+        @include('assets.partials.declare-modal', ['declareFor' => $users])
+    @endif
+    @include('assets.partials.reject-declaration-modal')
 @push('modals')
     <!-- Allocated Assets Offcanvas -->
     <div class="offcanvas offcanvas-end premium-offcanvas" tabindex="-1" id="allocatedAssetsOffcanvas" aria-labelledby="allocatedAssetsOffcanvasLabel" style="width: 460px; border-left: 1px solid #e2e8f0; background: #f8fafc; z-index: 1055;">
@@ -1065,6 +1150,10 @@
             <label class="fw-semibold small mb-1">System Configuration</label>
             <textarea class="form-control" name="assets[${nextIndex}][system_configuration]" rows="2" placeholder="Processor, RAM, Storage details..." style="border-radius: 8px;">${escapeHtml(configVal)}</textarea>
         </div>
+        <div class="col-12">
+            <label class="fw-semibold small mb-1">Asset Photo <span class="text-muted fw-normal">(optional, JPG/PNG/WebP, max 2 MB)</span></label>
+            <input type="file" class="form-control" name="assets[${nextIndex}][image]" accept="image/jpeg,image/png,image/webp" style="border-radius: 8px;">
+        </div>
     </div>
 </div>`;
                     container.insertAdjacentHTML('beforeend', rowTemplate);
@@ -1201,9 +1290,13 @@
                                     <span class="text-muted small" style="font-size: 11px;">Assigned: ${asset.allocated_at}</span>
                                 </div>
                                 <div class="d-flex align-items-center mb-2">
+                                    ${asset.image_url ? `
+                                    <a href="${escapeHtml(asset.image_url)}" target="_blank" rel="noopener" class="me-2 flex-shrink-0">
+                                        <img src="${escapeHtml(asset.image_url)}" alt="" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                    </a>` : `
                                     <div style="width: 32px; height: 32px; background: rgba(56, 88, 249, 0.08); color: #3858f9; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" class="me-2">
                                         <i class="${iconClass}" style="font-size: 15px;"></i>
-                                    </div>
+                                    </div>`}
                                     <h6 class="fw-bold text-dark mb-0 fs-6">${asset.name}</h6>
                                 </div>
                                 <p class="text-muted small mb-2" style="font-size: 11px;">SN: <b class="text-dark d-inline-block" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">${asset.serial_number}</b></p>                                
@@ -1243,6 +1336,17 @@
             document.getElementById('edit-serial_number').value = asset.serial_number || '';
             document.getElementById('edit-system_configuration').value = asset.system_configuration || '';
             document.getElementById('edit-status').value = asset.status;
+
+            const previewWrap = document.getElementById('edit-image-preview-wrap');
+            document.getElementById('edit-image').value = '';
+            document.getElementById('edit-remove-image').checked = false;
+            if (asset.image_url) {
+                document.getElementById('edit-image-preview').src = asset.image_url;
+                document.getElementById('edit-image-link').href = asset.image_url;
+                previewWrap.classList.remove('d-none');
+            } else {
+                previewWrap.classList.add('d-none');
+            }
 
             const assignSelect = document.getElementById('edit-assign-user');
             if (assignSelect) {

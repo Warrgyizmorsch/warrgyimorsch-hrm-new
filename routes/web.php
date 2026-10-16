@@ -140,6 +140,8 @@ Route::middleware(['auth'])->group(function () {
     // Asset Management - Employee/Team Leader Routes (self + team-scoped, view-only, no admin actions)
     Route::get('/my-assets', [AssetController::class, 'employeeView'])->name('assets.employee');
     Route::post('/my-assets/request', [AssetController::class, 'requestAsset'])->name('assets.request');
+    // Declare a device you already hold (TL/HR may declare for their team; checked in the controller).
+    Route::post('/asset-declarations', [AssetController::class, 'declare'])->name('assets.declare');
 
     Route::get('/help', fn () => view('pages.help'))->name('help');
     Route::get('/terms', fn () => view('pages.terms'))->name('terms');
@@ -314,6 +316,9 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     // (scoped in the controller); store/destroy/allocate/reject/return stay admin-only.
     Route::get('/asset-management', [AssetController::class, 'index'])->name('assets.index');
     Route::put('/asset-management/{id}', [AssetController::class, 'update'])->name('assets.update');
+    // Verify / reject asset declarations (TL: own team only; never own or self-entered — see AccessControl).
+    Route::post('/asset-declarations/{id}/verify', [AssetController::class, 'verifyDeclaration'])->name('assets.declarations.verify');
+    Route::post('/asset-declarations/{id}/reject', [AssetController::class, 'rejectDeclaration'])->name('assets.declarations.reject');
 
     // Broadcast: team leaders can view (own department only, in the controller) and create
     // (forced to their own department server-side) — editing existing broadcasts stays admin-only.
