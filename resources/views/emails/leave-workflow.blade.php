@@ -31,7 +31,7 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="font-size:16px; font-weight:700; color:#ffffff; letter-spacing:.2px;">{{ $m['brand'] }}</td>
-                                    <td align="right" style="font-size:12px; color:#ffffff; opacity:.9;">Leave Management</td>
+                                    <td align="right" style="font-size:12px; color:#ffffff; opacity:.9;">{{ !empty($m['is_wfh']) ? 'Work From Home' : 'Leave Management' }}</td>
                                 </tr>
                             </table>
                         </td>
@@ -49,7 +49,7 @@
                     {{-- Leave details --}}
                     <tr>
                         <td style="padding:20px 28px 4px 28px;">
-                            <p style="margin:0 0 8px 0; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b;">Leave details</p>
+                            <p style="margin:0 0 8px 0; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b;">{{ !empty($m['is_wfh']) ? 'WFH request details' : 'Leave details' }}</p>
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0; border-radius:8px; border-collapse:separate;">
                                 @foreach($m['details'] as $label => $value)
                                     <tr>

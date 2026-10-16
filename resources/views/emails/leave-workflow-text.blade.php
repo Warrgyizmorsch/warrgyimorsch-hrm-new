@@ -1,11 +1,11 @@
-{!! $m['brand'] !!} — Leave Management
+{!! $m['brand'] !!} — {!! !empty($m['is_wfh']) ? 'Work From Home' : 'Leave Management' !!}
 [{!! $m['badge'] !!}]
 
 {!! $m['greeting'] !!}
 
 {!! $m['intro'] !!}
 
-LEAVE DETAILS
+{!! !empty($m['is_wfh']) ? 'WFH REQUEST DETAILS' : 'LEAVE DETAILS' !!}
 @foreach($m['details'] as $label => $value)
 - {!! $label !!}: {!! $value !!}
 @endforeach
