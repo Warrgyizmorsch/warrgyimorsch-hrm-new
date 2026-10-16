@@ -596,7 +596,9 @@
         if (!toast || !toastMsg || !toastIcon) return;
 
         toastMsg.textContent = message;
-        toast.className = 'custom-toast';
+        // Only swap the state classes: the toast's styling (position, z-index, visibility)
+        // lives on .lh-custom-toast, so resetting className made every message invisible.
+        toast.classList.remove('toast-success', 'toast-error', 'toast-show');
         toast.classList.add(type === 'success' ? 'toast-success' : 'toast-error');
         toastIcon.innerHTML = type === 'success' ? '✓' : '✗';
         toast.classList.add('toast-show');
@@ -681,6 +683,14 @@
 
             // Check the form before sending, with one clear message.
             const employeeField = document.getElementById('applyEmployeeId');
+            // The picker can show a name while its hidden field is empty (e.g. after the drawer
+            // was reset) — recover the id from the highlighted item instead of refusing.
+            if (employeeField && !employeeField.value) {
+                const picked = document.querySelector('#applyEmployeeDropdown .wghrm-item.selected');
+                if (picked && picked.dataset.value) {
+                    employeeField.value = picked.dataset.value;
+                }
+            }
             const category = document.getElementById('leaveCategory')?.value || '';
             const startDate = document.getElementById('startDate')?.value || '';
             const endDate = document.getElementById('endDate')?.value || '';
