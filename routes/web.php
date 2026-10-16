@@ -100,6 +100,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/employee-review/{id}/note', [ReviewController::class, 'updateNote'])->name('employee.review.note.update');
 
     Route::get('/daily-tasks', [DailyTaskController::class, 'index'])->name('daily-tasks.index');
+    // Every task the current user has assigned to others, grouped by person (mobile-first).
+    Route::get('/my-tasks', [\App\Http\Controllers\AssignedTaskController::class, 'index'])->name('tasks.assigned');
+    Route::redirect('/tasks/assigned-by-me', '/my-tasks?view=by');
     Route::post('/daily-tasks', [DailyTaskController::class, 'store'])->name('daily-tasks.store');
     Route::post('/daily-tasks/quick-assign', [DailyTaskController::class, 'quickAssign'])->name('daily-tasks.quick-assign');
     Route::put('/daily-tasks/{dailyTask}', [DailyTaskController::class, 'update'])->name('daily-tasks.update');

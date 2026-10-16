@@ -1,4 +1,6 @@
 {{-- Quick Notes: personal reminders (Priority / Meeting) + ad-hoc tasks assigned to you outside any project --}}
+{{-- Pass ['qnModalOnly' => true] to reuse just the add / status popups and scripts on another page (My Tasks). --}}
+@unless($qnModalOnly ?? false)
 <div class="card stretch stretch-full qn-card">
     <div class="card-header hrm-resp-card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title">Quick Notes</h5>
@@ -35,7 +37,10 @@
             @endforelse
 
             @if($myAdhocTasks->isNotEmpty())
-                <div class="qn-section-label">Assigned to you</div>
+                <div class="qn-section-label d-flex justify-content-between align-items-center">
+                    <span>Assigned to you</span>
+                    <a href="{{ route('tasks.assigned', ['view' => 'to']) }}" class="qn-view-all" style="font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; color: #3858f9;">View all &rarr;</a>
+                </div>
                 @foreach($myAdhocTasks as $task)
                     <div class="qn-item qn-item--task">
                         <span class="qn-badge qn-badge--task">Task</span>
@@ -53,7 +58,10 @@
             @endif
 
             @if($tasksIAssigned->isNotEmpty())
-                <div class="qn-section-label">Assigned by you</div>
+                <div class="qn-section-label d-flex justify-content-between align-items-center">
+                    <span>Assigned by you</span>
+                    <a href="{{ route('tasks.assigned', ['view' => 'by']) }}" class="qn-view-all" style="font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; color: #3858f9;">View all &rarr;</a>
+                </div>
                 @foreach($tasksIAssigned as $task)
                     <div class="qn-item qn-item--task">
                         <span class="qn-badge qn-badge--task">Task</span>
@@ -78,6 +86,7 @@
         </div>
     </div>
 </div>
+@endunless
 
 <div class="modal fade" id="qnAddModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -653,6 +662,7 @@
                             .then(function (data) {
                                 if (data.success) {
                                     if (modalInstance) modalInstance.hide();
+                                    if (typeof window.qnOnSaved === 'function') { window.qnOnSaved('task', data); return; }
                                     qnShowAssignFeedback(data.message);
                                 } else if (data.error) {
                                     qnShowAssignFeedback(data.error, true);
@@ -674,6 +684,7 @@
                         .then(function (data) {
                             if (data.success) {
                                 if (modalInstance) modalInstance.hide();
+                                if (typeof window.qnOnSaved === 'function') { window.qnOnSaved('note', data); return; }
                                 qnPrependNote(data.note);
                             } else {
                                 const msg = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Could not save the note.');
@@ -686,6 +697,7 @@
 
             function qnShowAssignFeedback(message, isError) {
                 const el = document.getElementById('qnAssignFeedback');
+                if (!el) { if (isError) alert(message); return; }
                 el.textContent = message;
                 el.style.color = isError ? '#ef4444' : '#16a34a';
                 el.style.background = isError ? 'rgba(239, 68, 68, 0.08)' : 'rgba(22, 163, 74, 0.08)';

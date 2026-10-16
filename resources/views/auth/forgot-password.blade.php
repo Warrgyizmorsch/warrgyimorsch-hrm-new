@@ -13,7 +13,10 @@
     <title>Warrgyizmorsch || Reset Minimal</title>
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/favicon.ico') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/images/favicon.ico') }}?v=2">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('assets/images/icon-192.png') }}?v=2">
+    <link rel="apple-touch-icon" href="{{ asset('assets/images/apple-touch-icon.png') }}?v=2">
+    <meta name="theme-color" content="#1d2a5b">
     <!--! END: Favicon-->
     <!--! BEGIN: Bootstrap CSS-->
     <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/bootstrap.min.css') }}">
