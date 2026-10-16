@@ -44,6 +44,12 @@
                         <span class="nxl-mtext">Dashboard</span>
                     </a>
                 </li>
+                <li class="nxl-item {{ $navItemActive('tasks.assigned') }}">
+                    <a href="{{ route('tasks.assigned') }}" class="nxl-link {{ $navLinkActive('tasks.assigned') }}">
+                        <span class="nxl-micon"><i class="feather-check-square"></i></span>
+                        <span class="nxl-mtext">My Tasks</span>
+                    </a>
+                </li>
 
 
                 @if($isAdmin)
