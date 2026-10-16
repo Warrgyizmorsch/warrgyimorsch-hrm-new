@@ -677,6 +677,7 @@ class EmployeeController extends Controller
                 'email' => 'nullable|email|unique:users,email,' . $userId,
                 'employee_code' => 'nullable|string|max:50|unique:employees,employee_code,' . $employee->id,
                 'working_mode' => 'required|in:Office,Work from home',
+                'attendance_exempt' => 'nullable|boolean',
                 'employment_status' => 'nullable|in:' . implode(',', array_keys(Employee::EMPLOYMENT_STATUSES)),
                 'basic_salary' => 'nullable|numeric|min:0',
                 'gross_salary' => 'nullable|numeric|min:0',
@@ -719,6 +720,7 @@ class EmployeeController extends Controller
                     'medical_allowance' => $request->medical_allowance ?? 0,
                     'other_allowance' => $request->other_allowance ?? 0,
                     'working_mode' => $request->working_mode,
+                    'attendance_exempt' => $request->boolean('attendance_exempt'),
                     'employment_status' => $request->employment_status ?: ($employee->employment_status ?: 'working'),
                 ];
 

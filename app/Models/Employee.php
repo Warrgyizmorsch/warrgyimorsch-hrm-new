@@ -79,6 +79,7 @@ class Employee extends Model
         'medical_allowance',
         'other_allowance',
         'working_mode',
+        'attendance_exempt',
         'employment_status',
         'profile_status',
     ];
