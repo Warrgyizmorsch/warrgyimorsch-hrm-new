@@ -949,7 +949,8 @@ class DashboardController extends Controller
 
         $employees = Employee::active()
             ->when($employeeIds !== null, fn ($q) => $q->whereIn('id', $employeeIds))
-            ->get(['id', 'name']);
+            ->where(fn ($q) => $q->whereNull('attendance_exempt')->orWhere('attendance_exempt', false)) // CEO / HR etc. don't punch
+            ->get(['id', 'name', 'working_mode']);
 
         $requests = LeaveApplication::whereIn('employee_id', $employees->pluck('id'))
             ->whereDate('start_date', '<=', $today)
@@ -982,6 +983,8 @@ class DashboardController extends Controller
                     $label = 'Left early (' . rtrim(rtrim(number_format((float) $att->total_hours, 1), '0'), '.') . 'h)';
                 }
                 // else: in the office (or a full/half day) — not absent
+            } elseif (strcasecmp((string) $emp->working_mode, 'Work from home') === 0) {
+                $label = 'Working from Home (remote employee)';
             } elseif ($pending = $pendingById->get($emp->id)) {
                 $cat = strtolower((string) $pending->leave_category);
                 $label = (str_contains($cat, 'wfh') || str_contains($cat, 'work from home') ? 'Working from Home' : $pending->leave_category)

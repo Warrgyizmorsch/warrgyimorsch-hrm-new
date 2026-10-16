@@ -136,6 +136,15 @@
                                     </div>
                                 </div>
                                 <div class="hrm-field">
+                                    <label>Attendance Tracking</label>
+                                    <div class="hrm-input-wrap"><i class="bi bi-fingerprint"></i>
+                                        <select name="attendance_exempt" class="form-select">
+                                            <option value="0" {{ !old('attendance_exempt', $employee->attendance_exempt) ? 'selected' : '' }}>Punch machine</option>
+                                            <option value="1" {{ old('attendance_exempt', $employee->attendance_exempt) ? 'selected' : '' }}>Not tracked (doesn't punch, e.g. management)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="hrm-field">
                                     <label>Employment Status</label>
                                     <div class="hrm-input-wrap"><i class="bi bi-person-badge"></i>
                                         <select name="employment_status" class="form-select">
