@@ -33,13 +33,12 @@ class ProjectController extends Controller
         $isAdmin = in_array($role, [
             'super_admin',
             'manager',
-            'hr_executive',
-            'hr_intern',
-            'business_operation_head'
+            'hr_executive'
         ]);
 
         $isTeamLeader = in_array($role, [
-            'team_leader'
+            'team_leader',
+            'business_operation_head'
         ]);
 
         $perPage = (int) $request->query('per_page', 20);
@@ -159,13 +158,12 @@ class ProjectController extends Controller
         $isAdmin = in_array($role, [
             'super_admin',
             'manager',
-            'hr_executive',
-            'hr_intern',
-            'business_operation_head'
+            'hr_executive'
         ]);
 
         $isTeamLeader = in_array($role, [
-            'team_leader'
+            'team_leader',
+            'business_operation_head'
         ]);
 
         $employees = \App\Models\Employee::active()->get();
@@ -427,15 +425,13 @@ class ProjectController extends Controller
         $isAdmin = in_array($role, [
             'super_admin',
             'manager',
-            'hr_executive',
-            'hr_intern',
-            'business_operation_head',
+            'hr_executive'
         ]);
         $isLead = is_array($project->leaders)
             && in_array(auth()->user()->employee_id, $project->leaders, true);
 
         $isDepartmentTeamLeader = false;
-        if ($role === 'team_leader') {
+        if (in_array($role, ['team_leader', 'business_operation_head'], true)) {
             $ledDepartmentIds = auth()->user()->employee?->ledDepartmentIds() ?? [];
             $projectDepartmentIds = $project->departments()->pluck('departments.id')->all();
             $isDepartmentTeamLeader = !empty(array_intersect($ledDepartmentIds, $projectDepartmentIds));

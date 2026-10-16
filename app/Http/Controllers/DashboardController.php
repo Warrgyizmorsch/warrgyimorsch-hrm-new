@@ -177,8 +177,8 @@ class DashboardController extends Controller
             ->where('slug', $roleSlug)
             ->value('id');
 
-        $isAdmin = in_array($roleId, [1, 2, 3, 4]);
-        $isTeamLeader = in_array($roleSlug, ['team_leader']);
+        $isAdmin = in_array($roleId, [1, 2, 3]);
+        $isTeamLeader = in_array($roleSlug, ['team_leader', 'business_operation_head']);
         $employee = Employee::active()->where('id', auth()->user()->employee_id)->first();
         $celebration = $this->getTodayCelebration($employee);
         $employeeId = auth()->user()->employee_id;
@@ -637,9 +637,7 @@ class DashboardController extends Controller
         $allowedRoles = [
             'super_admin',
             'manager',
-            'hr_executive',
-            'hr_intern',
-            'business_operation_head',
+            'hr_executive'
         ];
 
         $role = str_replace(' ', '_', strtolower(trim((string) (auth()->user()->role ?? ''))));
@@ -670,8 +668,8 @@ class DashboardController extends Controller
             ->where('slug', $roleSlug)
             ->value('id');
 
-        $isAdmin = in_array($roleId, [1, 2, 3, 4]);
-        $isTeamLeader = ($roleId == 5);
+        $isAdmin = in_array($roleId, [1, 2, 3]);
+        $isTeamLeader = in_array((int) $roleId, [5, 7], true);
         $employeeId = auth()->user()->employee_id;
 
         // Logged-in employee department
@@ -945,8 +943,8 @@ class DashboardController extends Controller
             ->where('slug', $roleSlug)
             ->value('id');
 
-        $isAdmin = in_array($roleId, [1, 2, 3, 4]);
-        $isTeamLeader = ($roleId == 5);
+        $isAdmin = in_array($roleId, [1, 2, 3]);
+        $isTeamLeader = in_array((int) $roleId, [5, 7], true);
         $employeeId = auth()->user()->employee_id;
 
         // Logged-in employee department

@@ -74,15 +74,6 @@ class User extends Authenticatable
         ->exists();
     }
 
-    // Emergency Role Fix
-    public function getRoleAttribute($value)
-    {
-        if (empty($value) && str_contains(strtolower($this->name), 'ranjit')) {
-            return 'Super Admin';
-        }
-        return $value;
-    }
-
     // Fetch broadcasts this employee has read
     public function readBroadcasts()
     {

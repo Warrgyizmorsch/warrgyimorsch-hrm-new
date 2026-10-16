@@ -205,7 +205,7 @@ class SopController extends Controller
     {
         $role = str_replace(' ', '_', strtolower(trim((string) (auth()->user()->role ?? 'employee'))));
 
-        return in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'], true);
+        return in_array($role, ['super_admin', 'manager', 'hr_executive'], true);
     }
 
     /**
@@ -214,6 +214,14 @@ class SopController extends Controller
     public function acknowledge($id)
     {
         $sop = Sop::findOrFail($id);
+
+        if (!$this->isAdmin()) {
+            $employee = auth()->user()->employee;
+            $applies = $employee && $sop->status && Sop::whereKey($sop->id)->applicableTo($employee)->exists();
+            if (!$applies) {
+                abort(404);
+            }
+        }
 
         $sop->acknowledgements()->updateOrCreate(
             ['user_id' => auth()->id(), 'version' => $sop->version],

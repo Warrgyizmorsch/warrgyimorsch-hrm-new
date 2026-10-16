@@ -173,7 +173,7 @@
                 ? '<a href="' . route('employees.create') . '" class="zoho-btn-primary"><i class="feather-plus"></i> Add Employee</a>'
                 : '';
             $employeeExtraActions = '';
-            $canApproveProfiles = in_array(str_replace(' ', '_', strtolower(auth()->user()->role)), ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'], true);
+            $canApproveProfiles = in_array(str_replace(' ', '_', strtolower(auth()->user()->role)), ['super_admin', 'manager', 'hr_executive'], true);
             $pendingProfileCount = $canApproveProfiles ? \App\Models\EmployeeProfileRequest::pending()->count() : 0;
             $employeeScopeLinks = [['label' => 'View All Data', 'url' => route('employees.index'), 'active' => true]];
             if ($canApproveProfiles) {

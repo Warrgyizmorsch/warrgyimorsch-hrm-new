@@ -7,8 +7,8 @@
 @section('content')
     @php
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
         $importDropdown = $isAdmin ? '
             <div class="dropdown">
                 <button type="button" class="zoho-icon-btn dropdown-toggle" data-bs-toggle="dropdown" title="Import">

@@ -30,9 +30,20 @@ return new class extends Migration
             });
         }
 
-        // Foreign keys need InnoDB on both tables; older servers created daily_tasks as MyISAM.
-        if ($this->engine('daily_tasks') !== 'innodb') {
-            DB::statement('ALTER TABLE `daily_tasks` ENGINE=InnoDB');
+        // Foreign keys need InnoDB on every table involved. Servers whose default engine is
+        // MyISAM created these tables as MyISAM (and silently skipped their foreign keys).
+        foreach (['projects', 'project_phases', 'daily_tasks'] as $t) {
+            if ($this->engine($t) !== 'innodb') {
+                DB::statement("ALTER TABLE `{$t}` ENGINE=InnoDB");
+            }
+        }
+
+        // project_phases.project_id -> projects.id may have been skipped while the table was MyISAM.
+        if (!$this->hasForeignKey('project_phases', 'project_phases_project_id_foreign')) {
+            DB::statement('DELETE FROM `project_phases` WHERE `project_id` NOT IN (SELECT `id` FROM `projects`)');
+            Schema::table('project_phases', function (Blueprint $table) {
+                $table->foreign('project_id')->references('id')->on('projects')->cascadeOnDelete();
+            });
         }
 
         if (!Schema::hasColumn('daily_tasks', 'phase_id')) {

@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
  */
 class HeaderNotificationService
 {
-    private const ADMIN_ROLES = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'];
+    private const ADMIN_ROLES = ['super_admin', 'manager', 'hr_executive'];
 
     public function __construct(private LeaveApprovalService $approval)
     {

@@ -1,6 +1,6 @@
 @php
     $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-    $isAdminNav = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+    $isAdminNav = in_array($role, ['super_admin', 'manager', 'hr_executive']);
     $pageTitle = trim($__env->yieldContent('page_title')) ?: match (true) {
         request()->routeIs('dashboard') => 'Home',
         request()->routeIs('employees.*') => 'Employees',

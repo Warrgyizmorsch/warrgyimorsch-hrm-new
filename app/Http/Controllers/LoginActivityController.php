@@ -18,7 +18,7 @@ class LoginActivityController extends Controller
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
         $isFullAccess = in_array($role, self::FULL_ACCESS_ROLES, true);
-        $isTeamLeader = $role === 'team_leader';
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head'], true);
 
         $query = LoginActivity::with(['employee', 'user'])
             ->orderByDesc('login_at');

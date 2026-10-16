@@ -24,7 +24,7 @@ class BroadcastController extends Controller
         // Team leaders see only broadcasts sent to their own department (or company-wide).
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        if ($role === 'team_leader') {
+        if (in_array($role, ['team_leader', 'business_operation_head'], true)) {
             $departmentId = $user->employee->department_id ?? null;
             $query->where(function ($q) use ($departmentId) {
                 $q->whereNull('department_id');
@@ -69,7 +69,7 @@ class BroadcastController extends Controller
         // ignore whatever department was submitted and force it server-side.
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        if ($role === 'team_leader') {
+        if (in_array($role, ['team_leader', 'business_operation_head'], true)) {
             $departmentId = $user->employee->department_id ?? null;
             abort_if(!$departmentId, 403, 'No department found for this account.');
             $validated['department_id'] = $departmentId;

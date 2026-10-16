@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class EmployeeDocumentController extends Controller
 {
-    private const ADMIN_ROLES = ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'];
+    private const ADMIN_ROLES = ['super_admin', 'manager', 'hr_executive'];
 
     /**
      * View/download a document. Admin roles can open any employee's documents;

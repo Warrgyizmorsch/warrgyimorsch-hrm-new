@@ -17,13 +17,11 @@ class ProjectChecklistController extends Controller
         $isAdmin = in_array($role, [
             'super_admin',
             'manager',
-            'hr_executive',
-            'hr_intern',
-            'business_operation_head',
+            'hr_executive'
         ]);
         $isLeader = is_array($project->leaders) && in_array($user->employee_id, $project->leaders, true);
         $isMember = is_array($project->members) && in_array($user->employee_id, $project->members, true);
-        $isTeamLeaderRole = $role === 'team_leader';
+        $isTeamLeaderRole = in_array($role, ['team_leader', 'business_operation_head'], true);
 
         return compact('isAdmin', 'isLeader', 'isMember', 'isTeamLeaderRole');
     }

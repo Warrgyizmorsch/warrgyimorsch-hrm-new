@@ -35,8 +35,8 @@ class PayrollController extends Controller
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
         $query = Attendance::query()->visible();
 
@@ -47,7 +47,13 @@ class PayrollController extends Controller
             $department = $user->employee->department_id ?? null;
             if ($department) {
                 $query->where('employees.department_id', $department);
+            } else {
+                // No department linked: own records only, never "everyone".
+                $query->where('attendances.employee_id', $user->employee_id ?? 0);
             }
+        } elseif (!$isAdmin) {
+            // Defence in depth: the route already blocks other roles, but never return other people's rows.
+            $query->where('attendances.employee_id', $user->employee_id ?? 0);
         }
 
         // ✅ Apply date filters
@@ -224,8 +230,8 @@ class PayrollController extends Controller
         try {
             $user = auth()->user();
             $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-            $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-            $isTeamLeader = in_array($role, ['team_leader']);
+            $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+            $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
             $date = $request->date;
             $query = Attendance::with('employee')->visible()->where('attendance_date', $date);
@@ -236,6 +242,8 @@ class PayrollController extends Controller
                     $query->whereHas('employee', function ($q) use ($department) {
                         $q->where('department_id', $department);
                     });
+                } else {
+                    $query->where('employee_id', $user->employee_id ?? 0);
                 }
             } elseif (!$isAdmin) {
                 $query->where('employee_id', $user->employee_id);
@@ -283,8 +291,8 @@ class PayrollController extends Controller
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
         $query = Attendance::with('employee')->visible()->join('employees', 'attendances.employee_id', '=', 'employees.id');
 
@@ -292,6 +300,9 @@ class PayrollController extends Controller
             $department = $user->employee->department_id ?? null;
             if ($department) {
                 $query->where('employees.department_id', $department);
+            } else {
+                // No department linked: own records only, never "everyone".
+                $query->where('attendances.employee_id', $user->employee_id ?? 0);
             }
         } elseif (!$isAdmin) {
             $query->where('attendances.employee_id', $user->employee_id);
@@ -881,7 +892,7 @@ class PayrollController extends Controller
             ->where('slug', $roleSlug)
             ->value('id');
 
-        $isAdmin = in_array($roleId, [1, 2, 3, 4]);
+        $isAdmin = in_array($roleId, [1, 2, 3]);
 
         $query = Payroll::with('employee');
 
@@ -992,10 +1003,48 @@ class PayrollController extends Controller
     /**
      * Show payroll record
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        // This returns an HTML fragment for the "View" modal on the payroll list pages.
+        // It must never open as a standalone page when someone types /payroll/{id} in the browser.
+        if (!$request->ajax()) {
+            abort(404);
+        }
+
         $payroll = Payroll::with('employee')->findOrFail($id);
+
+        // IDOR guard: this route is open to every logged-in user, so non-admins may only
+        // open their own payslip. 404 (not 403) so payroll ids can't be enumerated.
+        $this->authorizePayrollAccess($payroll);
+
         return view('payroll.show', compact('payroll'));
+    }
+
+    /**
+     * Roles that may view/manage every employee's payroll.
+     */
+    private function isPayrollAdmin(): bool
+    {
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower(trim((string) ($user->role ?? 'employee'))));
+
+        return in_array($role, ['super_admin', 'manager', 'hr_executive'], true);
+    }
+
+    /**
+     * Abort unless the current user is a payroll admin or owns this payroll record.
+     */
+    private function authorizePayrollAccess(Payroll $payroll): void
+    {
+        if ($this->isPayrollAdmin()) {
+            return;
+        }
+
+        $employeeId = auth()->user()->employee_id;
+
+        if (empty($employeeId) || (int) $employeeId !== (int) $payroll->employee_id) {
+            abort(404);
+        }
     }
 
     /**
@@ -1007,7 +1056,7 @@ class PayrollController extends Controller
 
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
 
         if (!$isAdmin) {
             // Employees can only export their own payslips, whatever id/employee_id was requested.
@@ -1353,7 +1402,7 @@ class PayrollController extends Controller
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
         $query = Attendance::query()->visible();
         $query->join('employees', 'attendances.employee_id', '=', 'employees.id');
@@ -1363,6 +1412,9 @@ class PayrollController extends Controller
             $department = $user->employee->department_id ?? null;
             if ($department) {
                 $query->where('employees.department_id', $department);
+            } else {
+                // No department linked: own records only, never "everyone".
+                $query->where('attendances.employee_id', $user->employee_id ?? 0);
             }
         }
 
@@ -1724,8 +1776,8 @@ class PayrollController extends Controller
     {
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
         $empQuery = Employee::active()->orderBy('name', 'asc');
         if ($isTeamLeader) {
@@ -1735,6 +1787,8 @@ class PayrollController extends Controller
                 // not other team leaders, managers, HR, etc. who happen to share the department.
                 $empQuery->where('department_id', $department)
                     ->whereRaw("LOWER(REPLACE(role, ' ', '_')) = 'employee'");
+            } else {
+                $empQuery->whereRaw('1 = 0');
             }
         }
         $employees = $empQuery->get();
@@ -1755,6 +1809,8 @@ class PayrollController extends Controller
             if ($department) {
                 $query->where('employees.department_id', $department)
                     ->whereRaw("LOWER(REPLACE(employees.role, ' ', '_')) = 'employee'");
+            } else {
+                $query->whereRaw('1 = 0');
             }
         }
 
@@ -1842,8 +1898,8 @@ class PayrollController extends Controller
         try {
             $user = auth()->user();
             $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-            $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-            $isTeamLeader = in_array($role, ['team_leader']);
+            $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+            $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
 
             // Security check for Team Leader — same department AND plain "employee" role only.
             if ($isTeamLeader) {
@@ -1975,7 +2031,7 @@ class PayrollController extends Controller
 
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
         if (!$isAdmin && (int) $user->employee_id !== (int) $payroll->employee_id) {
             abort(403);
         }
@@ -2002,7 +2058,7 @@ class PayrollController extends Controller
 
         $user = auth()->user();
         $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
         if (!$isAdmin) {
             $query->where('employee_id', $user->employee_id);
         }
@@ -2045,13 +2101,16 @@ class PayrollController extends Controller
 
         $isAdmin = DB::table('roles_master')
             ->where('slug', auth()->user()->role)
-            ->whereIn('id', [1, 2, 3, 4])
+            ->whereIn('id', [1, 2, 3])
             ->exists();
 
         // backend protection
         if ($isAdmin) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
+
+        // IDOR guard: an employee may only add remarks to their own payslip.
+        $this->authorizePayrollAccess($payroll);
 
         $payroll->remarks = $request->remarks;
         $payroll->is_read = false;
@@ -2068,7 +2127,7 @@ class PayrollController extends Controller
 
         $isAdmin = DB::table('roles_master')
             ->where('slug', auth()->user()->role)
-            ->whereIn('id', [1, 2, 3, 4])
+            ->whereIn('id', [1, 2, 3])
             ->exists();
 
         if ($isAdmin) {

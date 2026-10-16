@@ -3,8 +3,8 @@
 @section('content')
     @php
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
-        $isTeamLeader = in_array($role, ['team_leader']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
         $broadcastPrimaryAction = ($isAdmin || $isTeamLeader)
             ? '<a href="javascript:void(0)" class="zoho-btn-primary" onclick="openBroadcastOffcanvas()"><i class="feather-plus"></i> New Broadcast</a>'
             : '';

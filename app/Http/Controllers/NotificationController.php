@@ -21,7 +21,7 @@ class NotificationController extends Controller
             ->where('slug', $roleSlug)
             ->value('id');
 
-        $isAdmin = in_array($roleId, [1, 2, 3, 4]);
+        $isAdmin = in_array($roleId, [1, 2, 3]);
 
         // if ($role == 'ADMIN' || $role == 'SUPER ADMIN') {
         if ($isAdmin) {

@@ -7,7 +7,7 @@
 @section('content')
     @php
         $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
-        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head']);
+        $isAdmin = in_array($role, ['super_admin', 'manager', 'hr_executive']);
         $canSyncBiometric = in_array($role, ['super_admin', 'manager']);
         $importDropdown = $isAdmin ? '
             <div class="dropdown">

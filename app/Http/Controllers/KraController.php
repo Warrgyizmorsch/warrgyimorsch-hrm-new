@@ -93,6 +93,6 @@ class KraController extends Controller
     private function isAdmin(): bool
     {
         $role = str_replace(' ', '_', strtolower(trim((string) (auth()->user()->role ?? 'employee'))));
-        return in_array($role, ['super_admin', 'manager', 'hr_executive', 'hr_intern', 'business_operation_head'], true);
+        return in_array($role, ['super_admin', 'manager', 'hr_executive'], true);
     }
 }

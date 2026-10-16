@@ -33,7 +33,7 @@ class EmployeeController extends Controller
                 ->where('slug', $roleSlug)
                 ->value('id');
 
-            $isAdmin = in_array($roleId, [1, 2, 3, 4]);
+            $isAdmin = in_array($roleId, [1, 2, 3]);
             $perPage = (int) $request->query('per_page', 20);
             $allowedPerPage = [20, 50, 100];
 
@@ -397,6 +397,9 @@ class EmployeeController extends Controller
     public function getJson($id)
     {
         $employee = Employee::with(['departmentRef', 'documents'])->findOrFail($id);
+        // Admin-only endpoint (route is in the $adminRoles group): the employee drawer needs the
+        // personal/bank/salary fields that are hidden from JSON everywhere else. Password stays hidden.
+        $employee->makeVisible(array_diff(Employee::SENSITIVE_FIELDS, ['password']));
         $employee->department = $employee->departmentRef?->name;
         $employee->is_business_development = $employee->department_id === Department::businessDevelopmentId();
 
@@ -427,7 +430,7 @@ class EmployeeController extends Controller
     //         ->where('slug', $roleSlug)
     //         ->value('id');
 
-    //     $isAdmin = in_array($roleId, [1, 2, 3, 4]);
+    //     $isAdmin = in_array($roleId, [1, 2, 3]);
     //     if ($isAdmin) {
     //         return response()->json(['success' => false, 'message' => 'Unauthorized Access'], 403);
     //     }
@@ -559,7 +562,7 @@ class EmployeeController extends Controller
             ->where('slug', $roleSlug)
             ->value('id');
 
-        $isAdmin = in_array($roleId, [1, 2, 3, 4 ,5]);
+        $isAdmin = in_array($roleId, [1, 2, 3, 5, 7]);
 
         if (!$isAdmin && $user->employee_id != $employeeId) {
             abort(403, 'Unauthorized Access');

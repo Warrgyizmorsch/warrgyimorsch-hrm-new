@@ -31,7 +31,7 @@ class ReviewController extends Controller
         return [
             'isAdmin' => in_array($role, ['super_admin', 'manager'], true)
                 || in_array((int) $roleId, [1, 2], true),
-            'isTeamLeader' => $role === 'team_leader' || (int) $roleId === 5,
+            'isTeamLeader' => in_array($role, ['team_leader', 'business_operation_head'], true) || in_array((int) $roleId, [5, 7], true),
         ];
     }
 
@@ -596,6 +596,14 @@ class ReviewController extends Controller
             return back()->withErrors('A review form has already been submitted for this time period.');
         }
 
+        // Employees can only fill their own self-review column; TL/admin scores they post are ignored.
+        if (!$isTeamLeader && !$isAdmin) {
+            $validated['author_review'] = [];
+        }
+        if (!$isAdmin) {
+            $validated['admin_review'] = [];
+        }
+
         $selfTotal = array_sum(array_map('floatval', $validated['self_review'] ?? []));
 
         $authorTotal = array_sum(array_map('floatval', $validated['author_review'] ?? []));
@@ -775,14 +783,17 @@ class ReviewController extends Controller
             $query->where('employee_id', $employeeRecord->id)
                 ->latest();
         }
-        $employees = $isTeamLeader && !$isAdmin && $employeeRecord
-            ? Employee::active()
+        if ($isAdmin) {
+            $employees = Employee::active()->orderBy('name')->get();
+        } elseif ($isTeamLeader && $employeeRecord) {
+            $employees = Employee::active()
                 ->where('department_id', $employeeRecord->department_id)
                 ->orderBy('name')
-                ->get()
-            : Employee::active()
-                ->orderBy('name')
                 ->get();
+        } else {
+            // Plain employees only ever review themselves — don't hand them the full staff list.
+            $employees = Employee::active()->where('id', $employeeRecord->id ?? 0)->get();
+        }
 
         $departments = Department::all();
         $evaluations = TechnicalReviewEvaluation::where(['status' => 1, 'department_id' => $employeeRecord->department_id ?? null])
@@ -832,6 +843,14 @@ class ReviewController extends Controller
 
         if (!$this->canAccessReviewEmployee($user, $employeeRecord)) {
             return back()->withErrors('You are not authorized to submit technical review for this employee.');
+        }
+
+        // Employees can only fill their own self-review column; TL/admin scores they post are ignored.
+        if (!$isTeamLeader && !$isAdmin) {
+            $request->merge(['author_review' => []]);
+        }
+        if (!$isAdmin) {
+            $request->merge(['admin_review' => []]);
         }
 
         $exists = TechnicalReview::where('employee_id', $employeeRecord->id)
@@ -979,6 +998,17 @@ class ReviewController extends Controller
     // Add Review Criteria
     public function storeTechnicalEvaluation(Request $request)
     {
+        // Only admins (any department) and team leaders (their own departments) may replace
+        // a department's review criteria — this route is open to every logged-in user.
+        $user = auth()->user();
+        ['isAdmin' => $isAdmin, 'isTeamLeader' => $isTeamLeader] = $this->resolveRoleFlags($user);
+        if (!$isAdmin) {
+            $ledDepartments = array_map('intval', \App\Support\AccessControl::ledDepartmentIds($user));
+            if (!$isTeamLeader || !in_array((int) $request->input('department_id'), $ledDepartments, true)) {
+                abort(403, 'You are not authorized to manage evaluation criteria for this department.');
+            }
+        }
+
         $validated = $request->validate([
             'department_id' => 'required|exists:departments,id',
             'criterianame' => 'nullable|array',
