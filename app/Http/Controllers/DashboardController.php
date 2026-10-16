@@ -445,8 +445,8 @@ class DashboardController extends Controller
 
         $todayLeaveEmployees = $attendanceLeave
             ->union($approvedLeave)
-            ->union($absentEmployees)
-            ->get();
+            ->get()
+            ->concat($this->todayAbsenceRows($today));
 
         // Late arrival on today
         $todayLateEmployees = $this->getLateEmployeesData();
@@ -926,8 +926,76 @@ class DashboardController extends Controller
 
         return $attendanceLeave
             ->union($approvedLeave)
-            ->union($absentEmployees)
-            ->get();
+            ->get()
+            ->concat($this->todayAbsenceRows($today, $employeeIds));
+    }
+
+    /**
+     * "Absent" for TODAY, built from punches + leave records instead of the attendance status
+     * (which stays 'absent' until the punch-out is processed, so everyone still in the office
+     * looked absent during the day).
+     *   - Punched in, not yet out      → in office, not listed
+     *   - Punched in and out, < half day → "Left early (Xh)"
+     *   - No punch, leave/WFH pending  → "<category> (pending approval)" (shown under Leave / WFH)
+     *   - No punch, nothing applied    → "Absent" (also for employees with no attendance row yet)
+     * Approved leave / WFH and leave-type attendance rows are listed by the other queries.
+     */
+    private function todayAbsenceRows(string $today, $employeeIds = null)
+    {
+        $date = Carbon::parse($today);
+        if ($date->isSunday() || Holiday::whereDate('date', $today)->exists()) {
+            return collect();
+        }
+
+        $employees = Employee::active()
+            ->when($employeeIds !== null, fn ($q) => $q->whereIn('id', $employeeIds))
+            ->get(['id', 'name']);
+
+        $requests = LeaveApplication::whereIn('employee_id', $employees->pluck('id'))
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->whereIn('status', ['approved', 'unauthorised', 'unpaid', 'pending', 'on_hold'])
+            ->get(['employee_id', 'status', 'leave_category']);
+        $approvedIds = $requests->whereIn('status', ['approved', 'unauthorised', 'unpaid'])->pluck('employee_id')->flip();
+        $pendingById = $requests->whereIn('status', ['pending', 'on_hold'])->keyBy('employee_id');
+
+        $attendance = Attendance::whereDate('attendance_date', $today)
+            ->whereIn('employee_id', $employees->pluck('id'))
+            ->get(['employee_id', 'status', 'check_in', 'check_out', 'total_hours'])
+            ->keyBy('employee_id');
+
+        $listedElsewhere = ['leave', 'half_day', 'early_leave', 'wfh', 'half_day_leave', 'unpaid_leave', 'unauthorised'];
+        $rows = collect();
+
+        foreach ($employees as $emp) {
+            if ($approvedIds->has($emp->id)) {
+                continue;
+            }
+            $att = $attendance->get($emp->id);
+            if ($att && in_array(strtolower((string) $att->status), $listedElsewhere, true)) {
+                continue;
+            }
+
+            $label = null;
+            if ($att && $att->check_in) {
+                if ($att->check_out && strtolower((string) $att->status) === 'absent') {
+                    $label = 'Left early (' . rtrim(rtrim(number_format((float) $att->total_hours, 1), '0'), '.') . 'h)';
+                }
+                // else: in the office (or a full/half day) — not absent
+            } elseif ($pending = $pendingById->get($emp->id)) {
+                $cat = strtolower((string) $pending->leave_category);
+                $label = (str_contains($cat, 'wfh') || str_contains($cat, 'work from home') ? 'Working from Home' : $pending->leave_category)
+                    . ' (pending approval)';
+            } else {
+                $label = 'Absent';
+            }
+
+            if ($label) {
+                $rows->push((object) ['employee_id' => $emp->id, 'employee_name' => $emp->name, 'leave_type' => $label]);
+            }
+        }
+
+        return $rows;
     }
 
     private function getLateEmployeesData()
