@@ -70,18 +70,31 @@ class LeaveApprovalService
         if (!$this->isApprover($user)) {
             return false;
         }
+        // No self-approval for anyone — Super Admin included. Checked two ways, so it still holds
+        // when the login isn't linked through users.employee_id but the employee is linked to it.
+        if ($this->isOwnLeave($user, $leave)) {
+            return false;
+        }
         $actorRole = self::role($user->role);
         if ($actorRole === 'super_admin') {
             return true;
-        }
-        if ($user->employee_id && (int) $leave->employee_id === (int) $user->employee_id) {
-            return false; // no self-approval
         }
         if ($this->applicantRole($leave->employee) === 'manager') {
             return in_array($actorRole, self::SENIOR_APPROVER_ROLES, true);
         }
 
         return true;
+    }
+
+    /** Is this leave the user's own (via the login's employee_id, or the employee's linked login)? */
+    public function isOwnLeave(User $user, LeaveApplication $leave): bool
+    {
+        if ($user->employee_id && (int) $leave->employee_id === (int) $user->employee_id) {
+            return true;
+        }
+        $leave->loadMissing('employee.user');
+
+        return (int) ($leave->employee?->user?->id ?? 0) === (int) $user->id;
     }
 
     /** Restrict a LeaveApplication query by whether the applicant is a manager. */
