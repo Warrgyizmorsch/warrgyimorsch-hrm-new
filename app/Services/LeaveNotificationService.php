@@ -316,7 +316,22 @@ class LeaveNotificationService
             'remarks' => $ev['remarks'],
         ])->all();
 
+        // WFH is not leave: say "WFH request" everywhere the employee / approver reads it.
+        $isWfh = $this->isWfh($leave);
+        if ($isWfh) {
+            foreach (['subject', 'badge', 'intro'] as $key) {
+                $opts[$key] = $this->wfhWording($opts[$key] ?? '');
+            }
+            if (!empty($opts['cta']['label'])) {
+                $opts['cta']['label'] = $this->wfhWording($opts['cta']['label']);
+            }
+            $details = collect($details)->mapWithKeys(fn ($v, $k) => [
+                match ($k) { 'Leave category' => 'Request type', 'Leave type' => 'Day type', default => $k } => $v,
+            ])->all();
+        }
+
         return [
+            'is_wfh' => $isWfh,
             'subject' => Str::limit($opts['subject'], 150, '…'),
             'brand' => config('leave.mail_brand', config('app.name')),
             'accent' => self::ACCENT[$opts['tone']] ?? self::ACCENT['info'],
@@ -329,6 +344,27 @@ class LeaveNotificationService
             'trail' => $trail,
             'cta' => $opts['cta'] ?? null,
         ];
+    }
+
+    public function isWfh(LeaveApplication $leave): bool
+    {
+        return str_contains(strtolower((string) $leave->leave_category), 'wfh')
+            || str_contains(strtolower((string) $leave->leave_category), 'work from home');
+    }
+
+    /** Rewrite leave wording for a Work From Home request (subject, intro, buttons). */
+    private function wfhWording(string $text): string
+    {
+        return strtr($text, [
+            'has applied for leave' => 'has requested Work From Home',
+            'applied for leave' => 'requested Work From Home',
+            'Leave request' => 'WFH request',
+            'leave request' => 'WFH request',
+            'Your leave has been approved. Please make sure your work is handed over before you go.' => 'Your WFH request has been approved. Please stay reachable during working hours.',
+            'Your leave has been' => 'Your WFH request has been',
+            "'s leave " => "'s WFH request ",
+            'Open leave applications' => 'Open WFH request',
+        ]);
     }
 
     private function categoryLabel(LeaveApplication $leave): string

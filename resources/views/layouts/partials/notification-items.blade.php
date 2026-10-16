@@ -3,7 +3,7 @@
         <a href="{{ route('leave.history', ['leave' => $awaitingLeave->id]) }}" data-leave-id="{{ $awaitingLeave->id }}" class="zoho-notify-item zoho-notify-item--leave">
             <span class="zoho-notify-item-icon"><i class="feather-check-square"></i></span>
             <span class="zoho-notify-item-body">
-                <span class="zoho-notify-item-title">{{ $awaitingLeave->employee->name ?? 'An employee' }} — leave awaiting your approval</span>
+                <span class="zoho-notify-item-title">{{ $awaitingLeave->employee->name ?? 'An employee' }} — {{ \Illuminate\Support\Str::contains(strtolower((string) $awaitingLeave->leave_category), ['wfh', 'work from home']) ? 'WFH request' : 'leave' }} awaiting your approval</span>
                 <span class="zoho-notify-item-desc">
                     {{ $awaitingLeave->leave_category }} · {{ $awaitingLeave->start_date?->format('d M') }}{{ $awaitingLeave->end_date && $awaitingLeave->end_date->gt($awaitingLeave->start_date) ? ' – ' . $awaitingLeave->end_date->format('d M') : '' }}
                     · {{ $awaitingLeave->approval_stage === 'tl' ? 'Level 1 (TL)' : 'Level 2 (Manager)' }}

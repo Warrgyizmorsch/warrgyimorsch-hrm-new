@@ -96,7 +96,8 @@ class HeaderNotificationService
         foreach ($bell['awaitingLeaves'] as $leave) {
             $items[] = [
                 'key' => "await-{$leave->id}-{$leave->approval_stage}",
-                'title' => ($leave->employee->name ?? 'An employee') . ' — leave awaiting your approval',
+                'title' => ($leave->employee->name ?? 'An employee')
+                    . (self::isWfh($leave) ? ' — WFH request awaiting your approval' : ' — leave awaiting your approval'),
                 'body' => trim(($leave->leave_category ?? '') . ' · ' . optional($leave->start_date)->format('d M')
                     . ($leave->end_date && $leave->end_date->gt($leave->start_date) ? ' – ' . $leave->end_date->format('d M') : '')),
                 'url' => route('leave.history', ['leave' => $leave->id]),
@@ -125,8 +126,8 @@ class HeaderNotificationService
                 $items[] = [
                     'key' => 'leave-' . $item->id . '-' . strtolower((string) $item->status),
                     'title' => $isAdmin
-                        ? (($item->employee->name ?? 'Someone') . ' applied for leave')
-                        : ('Your leave was ' . strtolower((string) $item->status)),
+                        ? (($item->employee->name ?? 'Someone') . (self::isWfh($item) ? ' requested Work From Home' : ' applied for leave'))
+                        : ((self::isWfh($item) ? 'Your WFH request was ' : 'Your leave was ') . strtolower((string) $item->status)),
                     'body' => trim(($item->leave_category ?? $item->leave_type ?? '') . ' · ' . optional($item->start_date)->format('d M Y')),
                     'url' => $isAdmin ? route('leave.history', ['leave' => $item->id]) : route('profile.leave-history', ['leave' => $item->id]),
                 ];
@@ -169,5 +170,13 @@ class HeaderNotificationService
                     'updated_at' => now(),
                 ];
             });
+    }
+
+    /** WFH requests are worded as requests, not leave. */
+    private static function isWfh($leave): bool
+    {
+        $cat = strtolower((string) ($leave->leave_category ?? ''));
+
+        return str_contains($cat, 'wfh') || str_contains($cat, 'work from home');
     }
 }
