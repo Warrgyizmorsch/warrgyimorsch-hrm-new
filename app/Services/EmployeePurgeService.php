@@ -91,6 +91,15 @@ class EmployeePurgeService
     public function purge(Employee $employee, User $admin): array
     {
         $user = $this->login($employee);
+
+        // Purging deletes asset_requests (the allocation history). If this person still holds a
+        // device, that would leave the asset stuck as "Allocated" to nobody — recover it first.
+        if ($user && DB::table('asset_requests')->where('user_id', $user->id)->where('status', 'Allocated')->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'employee' => 'This employee still has company assets allocated. Mark them returned in Asset Management before deleting.',
+            ]);
+        }
+
         $filesToDelete = $this->files($employee);
         $deleted = $this->preview($employee)['delete'];
 

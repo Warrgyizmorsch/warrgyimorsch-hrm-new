@@ -52,6 +52,60 @@ class AccessControl
         return $employee ? $employee->ledDepartmentIds() : [];
     }
 
+    /** Roles that only ever see their own data (the "team members" a team leader manages). */
+    public const EMPLOYEE_LEVEL_ROLES = ['employee', 'hr_intern', 'hr_marketing'];
+
+    /**
+     * User ids whose assets a team leader may see and reassign: active-or-inactive logins of
+     * employee-level staff in every department the TL leads (own + extra led departments),
+     * excluding the TL themselves. Empty for anyone who isn't a team leader.
+     */
+    public static function assetTeamUserIds(?User $user = null): \Illuminate\Support\Collection
+    {
+        $user ??= auth()->user();
+
+        if (!$user || !self::isTeamLeader($user)) {
+            return collect();
+        }
+
+        $departmentIds = self::ledDepartmentIds($user);
+        if (empty($departmentIds)) {
+            return collect();
+        }
+
+        return User::query()
+            ->where('id', '!=', $user->id)
+            ->whereRaw("LOWER(REPLACE(TRIM(role), ' ', '_')) IN ('" . implode("','", self::EMPLOYEE_LEVEL_ROLES) . "')")
+            ->whereHas('employee', fn ($q) => $q->whereIn('department_id', $departmentIds))
+            ->pluck('id');
+    }
+
+    /**
+     * Who may verify/reject an asset declaration: HR/Admin for anyone, a team leader for their
+     * own team — but never the person who entered it, and never the employee it belongs to.
+     * Pass $teamUserIds when checking many rows to avoid re-querying.
+     */
+    public static function canVerifyDeclaration(\App\Models\AssetRequest $declaration, ?User $user = null, ?\Illuminate\Support\Collection $teamUserIds = null): bool
+    {
+        $user ??= auth()->user();
+
+        if (!$user || !$declaration->isDeclaration() || $declaration->status !== 'Pending') {
+            return false;
+        }
+
+        if ((int) $declaration->user_id === (int) $user->id || (int) $declaration->created_by === (int) $user->id) {
+            return false;
+        }
+
+        if (self::isAdmin($user)) {
+            return true;
+        }
+
+        $teamUserIds ??= self::assetTeamUserIds($user);
+
+        return self::isTeamLeader($user) && $teamUserIds->contains((int) $declaration->user_id);
+    }
+
     /**
      * Admins: anyone. Team leaders: themselves + employees in departments they lead.
      * Everyone else: only themselves.

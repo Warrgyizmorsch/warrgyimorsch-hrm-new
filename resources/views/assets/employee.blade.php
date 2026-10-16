@@ -19,6 +19,11 @@
                         data-bs-toggle="modal" data-bs-target="#requestAssetModal">
                         <i class="feather-plus-circle"></i> REQUEST DEVICE
                     </button>
+                    <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2"
+                        style="border-radius: 10px; height: 44px;"
+                        data-bs-toggle="modal" data-bs-target="#declareAssetModal">
+                        <i class="feather-clipboard"></i> DECLARE AN ASSET I HAVE
+                    </button>
                 </div>
             </div>
         </div>
@@ -44,6 +49,12 @@
                                 </span>
                                 <span class="text-muted small">Assigned: {{ $alloc->allocated_at ? $alloc->allocated_at->format('d M, Y') : $alloc->updated_at->format('d M, Y') }}</span>
                             </div>
+
+                            @if($alloc->asset->image_url)
+                            <a href="{{ $alloc->asset->image_url }}" target="_blank" rel="noopener" class="d-block mb-3">
+                                <img src="{{ $alloc->asset->image_url }}" alt="{{ $alloc->asset->name }}" loading="lazy" style="width: 100%; height: 160px; object-fit: cover; border-radius: 10px; border: 1px solid #e2e8f0;">
+                            </a>
+                            @endif
 
                             <!-- Name -->
                             <h4 class="fw-bold text-dark mb-1 fs-5">{{ $alloc->asset->name }}</h4>
@@ -134,9 +145,21 @@
                                         <span class="badge bg-soft-primary text-primary" style="font-weight: 700; text-transform: uppercase;">
                                             {{ $req->asset_type }}
                                         </span>
+                                        @if($req->isDeclaration())
+                                            <span class="badge bg-soft-warning text-warning d-block mt-1" style="font-size: 10px; font-weight: 700; text-transform: uppercase; width: fit-content;">Declaration</span>
+                                        @endif
                                     </td>
                                     <td style="max-width: 300px; white-space: normal; word-break: break-word;">
+                                        @if($req->isDeclaration())
+                                            <div class="fw-semibold text-dark small">{{ $req->declared_name }}{{ $req->declared_serial_number ? ' · SN: ' . $req->declared_serial_number : '' }}</div>
+                                        @endif
                                         <span class="text-muted small">{{ $req->reason }}</span>
+                                        @if($req->created_by && (int) $req->created_by !== (int) $req->user_id)
+                                            <div class="text-muted" style="font-size: 11px;">Added by {{ $req->creator->name ?? 'your Team Leader' }}</div>
+                                        @endif
+                                        @if($req->status === 'Rejected' && $req->rejection_reason)
+                                            <div class="text-danger" style="font-size: 11px;">Reason: {{ $req->rejection_reason }}</div>
+                                        @endif
                                     </td>
                                     <td class="text-muted small">{{ $req->created_at->format('d M, Y') }}</td>
                                     <td class="fw-semibold text-dark small">
@@ -147,7 +170,7 @@
                                     </td>
                                     <td class="pe-4 text-center">
                                         <span class="badge {{ $reqStatusClass }}" style="font-size: 11px; padding: 6px 12px; border-radius: 30px; font-weight: 600; text-transform: uppercase;">
-                                            {{ $req->status }}
+                                            {{ $req->isDeclaration() && $req->status === 'Pending' ? 'Pending verification' : $req->status }}
                                         </span>
                                     </td>
                                 </tr>
@@ -204,6 +227,8 @@
             </div>
         </div>
     </div>
+
+    @include('assets.partials.declare-modal')
 
     <style>
         .premium-modal {
