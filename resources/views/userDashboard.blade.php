@@ -806,6 +806,10 @@
                 </div>
                 <!-- [Today Leave Records] end -->
 
+                <!-- [Who's Out Today] start — company-wide, visible to every employee -->
+                @include('partials.whos-out-today-card')
+                <!-- [Who's Out Today] end -->
+
                 @php
                     $isTeamLeaderView = in_array(strtolower(str_replace(' ', '_', trim(auth()->user()->role ?? ''))), ['team_leader', 'business_operation_head'], true);
                     $teamAbsentCardTitle = $isTeamLeaderView ? 'My Team — Absent Today' : 'My Department — Absent Today';
