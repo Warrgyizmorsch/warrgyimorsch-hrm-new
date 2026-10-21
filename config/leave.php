@@ -14,7 +14,7 @@ return [
     | Level 2 approvers who receive "action required" e-mails.
     | LEAVE_MANAGER_EMAILS="manager@company.com,hr@company.com" sends to exactly these addresses.
     | Left empty, it e-mails every active user whose role is in manager_roles.
-    | (A manager's own leave always goes to HR / Super Admin instead. HR is CC'd on everything.)
+    | (A manager's own leave always goes to HR / Super Admin instead. HR gets only the final outcome — see hr_cc_mode.)
     */
     'manager_emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('LEAVE_MANAGER_EMAILS', ''))))),
     'manager_roles' => array_values(array_filter(array_map('trim', explode(',', (string) env('LEAVE_MANAGER_ROLES', 'manager'))))),
@@ -24,11 +24,11 @@ return [
 
     /*
     | How often HR is copied:
-    |   once – one copy per workflow step (applied / TL decision / final decision), skipped when HR
-    |          is already a direct recipient of that step  (default)
-    |   all  – CC on every single e-mail (previous behaviour)
-    |   off  – never
+    |   final – one copy per request: the final outcome (approved / rejected / on hold / unpaid /
+    |           unauthorised, or a TL rejection)  (default)
+    |   all   – CC on every single e-mail (old behaviour — very noisy)
+    |   off   – never
     | All e-mails for one request share a subject + threading headers, so they stack as one conversation.
     */
-    'hr_cc_mode' => env('LEAVE_MAIL_HR_CC_MODE', 'once'),
+    'hr_cc_mode' => env('LEAVE_MAIL_HR_CC_MODE', 'final'),
 ];

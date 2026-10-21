@@ -20,7 +20,11 @@ use Illuminate\Support\Str;
  *   TL approved      → managers: action required;  employee: progress update
  *   TL rejected      → employee: rejected (with TL remarks)
  *   Manager decision → employee: final outcome (with remarks); TL copy: FYI
- *   HR (config leave.hr_cc) is in CC on every one of these e-mails.
+ *   HR (config leave.hr_cc) gets ONE copy per request — the final outcome (approved / rejected /
+ *   on hold / unpaid / unauthorised, or a TL rejection). See config leave.hr_cc_mode.
+ *
+ * Every e-mail for one request uses the same subject + threading headers, so each inbox shows
+ * the whole request as a single conversation.
  *
  * Mails are sent after the HTTP response so the user never waits on SMTP, and a mail
  * failure is logged instead of breaking the leave action.
@@ -141,18 +145,16 @@ class LeaveNotificationService
             return;
         }
 
-        // Rejected at Level 1 — the request is closed.
-        if ($employeeEmail) {
-            $this->send($employeeEmail, $this->build($leave, [
-                'subject' => 'Leave request rejected – ' . $this->dateRange($leave),
-                'tone' => 'rejected',
-                'badge' => 'Rejected by Team Leader',
-                'greeting' => "Hello {$employee->name},",
-                'intro' => "Your leave request has been rejected by {$tlName} (Team Leader). Their remarks are below. "
-                    . 'Please speak to your Team Leader if you have any questions.',
-                'cta' => ['label' => 'View this leave request', 'url' => route('profile.leave-history', ['leave' => $leave->id])],
-            ]));
-        }
+        // Rejected at Level 1 — the request is closed, so this is the final outcome HR gets.
+        $this->sendFinal($employeeEmail, $leave, [
+            'subject' => 'Leave request rejected – ' . $this->dateRange($leave),
+            'tone' => 'rejected',
+            'badge' => 'Rejected by Team Leader',
+            'greeting' => "Hello {$employee->name},",
+            'intro' => "Your leave request has been rejected by {$tlName} (Team Leader). Their remarks are below. "
+                . 'Please speak to your Team Leader if you have any questions.',
+            'cta' => ['label' => 'View this leave request', 'url' => route('profile.leave-history', ['leave' => $leave->id])],
+        ], "{$employee->name}'s leave request has been rejected by {$tlName} (Team Leader) at Level 1. The request is closed.");
     }
 
     public function managerDecided(LeaveApplication $leave, string $oldStatus): void
@@ -177,19 +179,17 @@ class LeaveNotificationService
         };
 
         $employeeEmail = $this->employeeEmail($employee);
-        if ($employeeEmail) {
-            $this->send($employeeEmail, $this->build($leave, [
-                'subject' => "Leave request {$statusText} – " . $this->dateRange($leave),
-                'tone' => $status,
-                'badge' => $statusText,
-                'greeting' => "Hello {$employee->name},",
-                'intro' => ($isChange ? "{$managerName} has updated your leave request. " : "{$managerName} has reviewed your leave request. ")
-                    . $outcomeLine,
-                'cta' => ['label' => 'View this leave request', 'url' => route('profile.leave-history', ['leave' => $leave->id])],
-            ]));
-        }
+        $this->sendFinal($employeeEmail, $leave, [
+            'subject' => "Leave request {$statusText} – " . $this->dateRange($leave),
+            'tone' => $status,
+            'badge' => $statusText,
+            'greeting' => "Hello {$employee->name},",
+            'intro' => ($isChange ? "{$managerName} has updated your leave request. " : "{$managerName} has reviewed your leave request. ")
+                . $outcomeLine,
+            'cta' => ['label' => 'View this leave request', 'url' => route('profile.leave-history', ['leave' => $leave->id])],
+        ], "{$managerName} has made the final decision on {$employee->name}'s leave request — {$statusText}.");
 
-        // FYI copy for the Team Leader who handled Level 1. HR is already in CC on every leave e-mail (see send()).
+        // FYI copy for the Team Leader who handled Level 1 (no HR copy — HR got the final outcome above).
         $fyi = [];
         if ($leave->tlActionUser && $leave->tlActionUser->email) {
             $fyi[strtolower($leave->tlActionUser->email)] = $leave->tlActionUser->name;
@@ -209,6 +209,39 @@ class LeaveNotificationService
                 'cta' => ['label' => 'Open leave applications', 'url' => route('leave.history', ['leave' => $leave->id])],
             ]));
         }
+    }
+
+    /**
+     * Final outcome: to the employee with HR in CC. Without an employee e-mail, HR gets it directly
+     * so the outcome still reaches HR exactly once.
+     */
+    private function sendFinal(?string $employeeEmail, LeaveApplication $leave, array $opts, string $hrIntro): void
+    {
+        if ($employeeEmail) {
+            $this->send($employeeEmail, $this->build($leave, $opts), ccHr: true);
+
+            return;
+        }
+
+        $hr = $this->hrEmail();
+        if ($hr) {
+            $this->send($hr, $this->build($leave, array_merge($opts, [
+                'greeting' => 'Hello HR,',
+                'intro' => $hrIntro,
+                'cta' => ['label' => 'Open leave applications', 'url' => route('leave.history', ['leave' => $leave->id])],
+            ])));
+        }
+    }
+
+    /** HR inbox for final-outcome copies, or null when switched off (config leave.hr_cc_mode). */
+    private function hrEmail(): ?string
+    {
+        $hr = trim((string) config('leave.hr_cc'));
+        if (config('leave.hr_cc_mode', 'final') === 'off' || !filter_var($hr, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        return $hr;
     }
 
     // --------------------------------------------------------------- recipients
@@ -330,9 +363,19 @@ class LeaveNotificationService
             ])->all();
         }
 
+        // One subject for the whole request (Gmail only threads mails whose subjects match); the
+        // step-specific line goes in the badge / intro / push title instead.
+        $threadSubject = 'Leave request ' . $details['Application ID'] . ' – ' . $employee->name . ' – ' . $this->dateRange($leave);
+        if ($isWfh) {
+            $threadSubject = $this->wfhWording($threadSubject);
+        }
+        $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'hrm.local';
+
         return [
             'is_wfh' => $isWfh,
-            'subject' => Str::limit($opts['subject'], 150, '…'),
+            'subject' => Str::limit($threadSubject, 150, '…'),
+            'headline' => $opts['subject'],
+            'thread_root' => "leave-{$leave->id}@{$host}",
             'brand' => config('leave.mail_brand', config('app.name')),
             'accent' => self::ACCENT[$opts['tone']] ?? self::ACCENT['info'],
             'badge' => $opts['badge'],
@@ -415,14 +458,14 @@ class LeaveNotificationService
 
     // ------------------------------------------------------------------ sending
 
-    private function send(string $email, array $mail): void
+    private function send(string $email, array $mail, bool $ccHr = false): void
     {
         // Browser push to the same person (if they turned on desktop alerts) — independent of e-mail.
         try {
             $sentence = preg_split('/(?<=[.!?])\s+/', trim($mail['intro']))[0] ?? '';
             app(\App\Services\WebPush\WebPushService::class)->notifyEmail(
                 $email,
-                preg_replace('/\s+–\s+.*$/u', '', $mail['subject']),   // drop the date part, keep it short
+                preg_replace('/\s+–\s+.*$/u', '', $mail['headline']),  // drop the date part, keep it short
                 trim(($mail['details']['Dates'] ?? '') . ' · ' . $sentence, ' ·'),
                 $mail['cta']['url'] ?? null,
                 'leave-' . ($mail['details']['Application ID'] ?? 'x')       // later updates replace earlier ones
@@ -436,12 +479,13 @@ class LeaveNotificationService
         }
 
         // After the response is sent: no waiting on SMTP, no queue worker needed.
-        app()->terminating(function () use ($email, $mail) {
+        // HR is copied only on the final outcome (or on everything in the old 'all' mode).
+        $hrCc = ($ccHr || config('leave.hr_cc_mode', 'final') === 'all') ? $this->hrEmail() : null;
+
+        app()->terminating(function () use ($email, $mail, $hrCc) {
             try {
                 $message = Mail::to($email);
-                // HR in CC on every leave / WFH e-mail (not when HR is already the recipient).
-                $hrCc = trim((string) config('leave.hr_cc'));
-                if ($hrCc !== '' && filter_var($hrCc, FILTER_VALIDATE_EMAIL) && strcasecmp($hrCc, $email) !== 0) {
+                if ($hrCc && strcasecmp($hrCc, $email) !== 0) {
                     $message->cc($hrCc);
                 }
                 $message->send(new LeaveWorkflowMail($mail));
