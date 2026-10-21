@@ -16,3 +16,7 @@ Schedule::command('attendance:sync')
 Schedule::command('login-activity:close-stale')
     ->everyFiveMinutes()
     ->withoutOverlapping();
+
+Schedule::command('increments:apply-due')
+    ->dailyAt('00:10')
+    ->withoutOverlapping();

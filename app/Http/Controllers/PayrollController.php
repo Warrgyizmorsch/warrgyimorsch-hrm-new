@@ -11,6 +11,7 @@ use App\Models\Employee;
 use App\Models\Holiday;
 use App\Services\AttendanceHistoryService;
 use App\Services\AttendanceStatusService;
+use App\Services\IncrementService;
 use App\Services\LateArrivalService;
 use App\Services\LeaveBalanceService;
 use Illuminate\Http\Request;
@@ -537,6 +538,9 @@ class PayrollController extends Controller
             $unpaidDays = $totalDays - $payableDays;
 
             $isBusinessDevelopment = $employee->department_id === Department::businessDevelopmentId();
+
+            // Salary valid for this month (an increment effective after it must not change it). In-memory only.
+            $employee->forceFill(app(IncrementService::class)->salaryAsOf($employee, $monthEnd));
 
             // 💰 STEP 2: Monthly Salary (Annual → Monthly)
             $monthlySalary = (

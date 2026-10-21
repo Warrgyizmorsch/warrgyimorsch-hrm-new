@@ -6,6 +6,7 @@ use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DailyTaskController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeIncrementController;
 use App\Http\Controllers\EmployeeDocumentController;
 use App\Http\Controllers\EmployeeLetterController;
 use App\Http\Controllers\HolidayController;
@@ -173,6 +174,9 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/employees/{id}/delete-preview', [EmployeeController::class, 'deletePreview'])->name('employees.delete-preview');
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::get('/employees-export', [EmployeeController::class, 'export'])->name('employees.export');
+    Route::get('/employees/{id}/increments', [EmployeeIncrementController::class, 'index'])->name('employees.increments.index');
+    Route::post('/employees/{id}/increments', [EmployeeIncrementController::class, 'store'])->name('employees.increments.store');
+    Route::delete('/employee-increments/{id}', [EmployeeIncrementController::class, 'destroy'])->name('employees.increments.destroy');
     Route::post('/employee/update-accountStatus', [EmployeeController::class, 'updateAccountStatus'])->name('users.update-accountStatus');
     Route::delete('/employee-documents/{id}', [EmployeeDocumentController::class, 'destroy'])->name('employee-documents.destroy');
 

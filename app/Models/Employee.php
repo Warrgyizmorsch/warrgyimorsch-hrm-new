@@ -135,6 +135,39 @@ class Employee extends Model
         return self::EMPLOYMENT_STATUSES[$this->employment_status ?: 'working'] ?? 'Working';
     }
 
+    /** Time served since date_of_joining, e.g. "2 years 3 months 5 days"; null when the date is missing. */
+    public function serviceDuration(): ?string
+    {
+        if (!$this->date_of_joining) {
+            return null;
+        }
+
+        $joined = \Carbon\Carbon::parse($this->date_of_joining)->startOfDay();
+        if ($joined->isFuture()) {
+            return 'Not joined yet';
+        }
+
+        $diff = $joined->diff(today());
+        $parts = array_filter([
+            $diff->y ? $diff->y . ' year' . ($diff->y > 1 ? 's' : '') : null,
+            $diff->m ? $diff->m . ' month' . ($diff->m > 1 ? 's' : '') : null,
+            $diff->d ? $diff->d . ' day' . ($diff->d > 1 ? 's' : '') : null,
+        ]);
+
+        return $parts ? implode(' ', $parts) : 'Joined today';
+    }
+
+    /** Salary increments, newest first (see IncrementService). */
+    public function increments()
+    {
+        return $this->hasMany(EmployeeIncrement::class)->orderByDesc('effective_date')->orderByDesc('id');
+    }
+
+    public function latestIncrement()
+    {
+        return $this->hasOne(EmployeeIncrement::class)->ofMany(['effective_date' => 'max', 'id' => 'max']);
+    }
+
     /** This employee's user ID on each biometric machine (see BiometricEnrollment). */
     public function biometricEnrollments()
     {

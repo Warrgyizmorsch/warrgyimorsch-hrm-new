@@ -49,6 +49,8 @@ class EmployeeController extends Controller
         $pfFilter = trim((string) $request->query('pf', ''));
         $esiFilter = trim((string) $request->query('esi', ''));
         $insuranceFilter = trim((string) $request->query('insurance', ''));
+        // Date of Joining column sort (server-side, so it works across pages): doj_asc = oldest first.
+        $sort = in_array($request->query('sort'), ['doj_asc', 'doj_desc'], true) ? $request->query('sort') : '';
 
         $baseQuery = Employee::query();
 
@@ -61,7 +63,7 @@ class EmployeeController extends Controller
             ->get();
 
         $employees = $baseQuery
-            ->with(['user', 'departmentRef', 'biometricEnrollments'])
+            ->with(['user', 'departmentRef', 'biometricEnrollments', 'latestIncrement'])
             ->leftJoin('users', 'users.employee_id', '=', 'employees.id')
             ->select('employees.*')
             ->when($search !== '', function ($query) use ($search) {
@@ -129,6 +131,10 @@ class EmployeeController extends Controller
                 });
             })
             ->orderByRaw("CASE WHEN COALESCE(users.account_status, 'active') = 'inactive' THEN 1 ELSE 0 END")
+            ->when($sort !== '', function ($query) use ($sort) {
+                $query->orderByRaw('employees.date_of_joining IS NULL') // no date → last
+                    ->orderBy('employees.date_of_joining', $sort === 'doj_asc' ? 'asc' : 'desc');
+            })
             ->orderBy('employees.name')
             ->paginate($perPage)
             ->appends($request->query());

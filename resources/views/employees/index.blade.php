@@ -251,6 +251,20 @@
                                     <th>Name <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
                                     <th>Role <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
                                     <th>Department <span class="zoho-sort-icon"><i class="feather-chevron-up"></i><i class="feather-chevron-down"></i></span></th>
+                                    @php
+                                        $dojSort = request('sort');
+                                        $dojNext = $dojSort === 'doj_asc' ? 'doj_desc' : 'doj_asc';
+                                    @endphp
+                                    <th class="text-nowrap">
+                                        <a href="{{ request()->fullUrlWithQuery(['sort' => $dojNext, 'page' => 1]) }}" class="text-reset text-decoration-none"
+                                            title="{{ $dojNext === 'doj_asc' ? 'Sort oldest joiners first' : 'Sort newest joiners first' }}">
+                                            Date of Joining
+                                            <span class="zoho-sort-icon">
+                                                <i class="feather-chevron-up {{ $dojSort === 'doj_asc' ? 'text-primary' : '' }}"></i><i class="feather-chevron-down {{ $dojSort === 'doj_desc' ? 'text-primary' : '' }}"></i>
+                                            </span>
+                                        </a>
+                                    </th>
+                                    <th title="Last increment and when the next one is due ({{ config('increment.cycle_months') }}-month cycle)">Increment</th>
                                     <th>Device ID</th>
                                     <th class="text-center">PF / ESI / INS</th>
                                     <th class="col-attendance">Attendance</th>
@@ -279,6 +293,7 @@
                                                 </a>
                                                 <ul class="dropdown-menu shadow-lg border-0 p-2 employee-name-dropdown-menu" style="border-radius:12px;">
                                                     <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="viewEmployee({{ $emp->id }})"><i class="feather-eye"></i> View Details</a></li>
+                                                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="openIncrementModal({{ $emp->id }})"><i class="feather-trending-up"></i> Increments</a></li>
                                                     @if(in_array(strtolower(auth()->user()->role), ['admin', 'super_admin', 'super admin']))
                                                         <li><a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('employees.edit', $emp->id) }}"><i class="feather-edit-3"></i> Edit Profile</a></li>
                                                         <li><a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="javascript:void(0)" onclick="deleteEmployee({{ $emp->id }})"><i class="feather-trash-2"></i> Delete</a></li>
@@ -288,6 +303,20 @@
                                         </td>
                                         <td>{{ ucfirst(str_replace('_', ' ', $emp->role)) }}</td>
                                         <td>{{ $emp->departmentRef->name ?? '—' }}</td>
+                                        <td class="text-nowrap">
+                                            @if($emp->date_of_joining)
+                                                <div>{{ \Carbon\Carbon::parse($emp->date_of_joining)->format('d M Y') }}</div>
+                                                {{-- No leaving date is stored, so tenure is only counted for active employees. --}}
+                                                @unless($isInactive)
+                                                    <div class="small text-muted">{{ $emp->serviceDuration() }}</div>
+                                                @endunless
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-nowrap">
+                                            @include('employees.partials.increment-cell', ['emp' => $emp, 'isInactive' => $isInactive])
+                                        </td>
                                         <td>
                                             @forelse($emp->biometricEnrollments as $enrollment)
                                                 <span class="badge bg-soft-primary text-primary fw-bold" title="{{ $enrollment->machine }} machine user ID">{{ $enrollment->machine }} {{ $enrollment->device_user_id }}</span>
@@ -340,7 +369,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="10" class="text-center py-5 text-muted">No employees found.</td></tr>
+                                    <tr><td colspan="12" class="text-center py-5 text-muted">No employees found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -383,6 +412,25 @@
                                     <div class="detail-item">
                                         <span class="detail-label">Department</span>
                                         <span class="detail-value text-truncate">{{ $emp->departmentRef->name ?? '—' }}</span>
+                                    </div>
+                                    <div class="detail-item detail-item--full">
+                                        <span class="detail-label">Date of Joining</span>
+                                        <span class="detail-value">
+                                            @if($emp->date_of_joining)
+                                                {{ \Carbon\Carbon::parse($emp->date_of_joining)->format('d M Y') }}
+                                                @unless(($emp->user->account_status ?? 'active') === 'inactive')
+                                                    <span class="text-muted">· {{ $emp->serviceDuration() }}</span>
+                                                @endunless
+                                            @else
+                                                —
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="detail-item detail-item--full">
+                                        <span class="detail-label">Increment</span>
+                                        <span class="detail-value">
+                                            @include('employees.partials.increment-cell', ['emp' => $emp, 'isInactive' => ($emp->user->account_status ?? 'active') === 'inactive'])
+                                        </span>
                                     </div>
                                     <div class="detail-item detail-item--full">
                                         <span class="detail-label">Benefits</span>
@@ -500,6 +548,8 @@
                 </div>
             </div>
         </div>
+
+        @include('employees.partials.increment-modal')
 
         <!-- ATTENDANCE HISTORY MODAL (SEPARATE) -->
         <div class="modal fade" id="attendanceHistoryModal" tabindex="-1" aria-labelledby="attendanceHistoryLabel"
