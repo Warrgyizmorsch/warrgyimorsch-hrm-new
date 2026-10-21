@@ -60,7 +60,15 @@
                                 </div>
                                 <div>
                                     <div class="fw-bold fs-13">{{ $todayLeave->employee_name ?? 'N/A' }}</div>
-                                    <div class="fs-11 text-muted">{{ $todayLeave->leave_type }} Today</div>
+                                    <div class="fs-11 text-muted">{{ $todayLeave->leave_type }}</div>
+                                    <div class="fs-11 {{ !empty($todayLeave->check_in) ? 'text-success' : 'text-muted' }}">
+                                        @if(!empty($todayLeave->check_in))
+                                            <i class="feather-log-in"></i> In {{ $todayLeave->check_in }}
+                                            · Out {{ $todayLeave->check_out ?? '—' }}
+                                        @else
+                                            No punch today
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>

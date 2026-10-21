@@ -118,7 +118,7 @@
                 Period: <strong>{{ $from->format('d M Y') }} – {{ $to->format('d M Y') }}</strong>.
                 <strong>Payable days</strong> are the same figures payroll uses (attendance payable days + paid leave, capped at the days in the period).
                 <strong>Late rule:</strong> check-in up to {{ $allowance }} min after shift start is not late; after that it counts as late by the full minutes from shift start;
-                more than {{ $veryLate }} min = very late. Sundays (without a Sunday shift), holidays, and days with an approved Gatepass / Early Leave or first-half leave are not counted as late.
+                more than {{ $veryLate }} min = very late. Sundays (without a Sunday shift) and holidays are not counted as late. An approved morning Gatepass / Early Leave moves the expected arrival 1 hr later, and an approved first-half leave 4 hrs later; lateness counts from there.
                 <strong>Stayed after shift</strong> is shown only to help balance late time manually — it doesn't reduce counted late minutes.
             </div>
 
@@ -195,6 +195,9 @@
                                                     <span class="text-muted">—</span>
                                                 @elseif($day['category'])
                                                     <span class="att-stat-chip {{ $badgeClass[$day['category']] ?? '' }}">{{ $day['label'] }}</span>
+                                                    @if(!empty($day['adjustment']) && empty($day['excuse']))
+                                                        <small class="d-block text-muted mt-1">{{ $day['adjustment'] }}</small>
+                                                    @endif
                                                 @else
                                                     <span class="att-stat-chip att-stat-chip--present">On time</span>
                                                 @endif

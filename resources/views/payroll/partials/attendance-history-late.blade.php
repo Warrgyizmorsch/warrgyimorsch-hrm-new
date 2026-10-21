@@ -9,6 +9,9 @@
         <span class="badge px-3 py-2 rounded-pill fw-bold bg-soft-danger text-danger" style="font-size: 11px;">{{ $duration }}</span>
         <small class="d-block text-muted mt-1" style="font-size: 10px;">
             {{ $category === \App\Services\LateArrivalService::CATEGORY_VERY_LATE ? 'Very late' : 'Late' }} · shift {{ $late['shift_start'] }}
+            @if(!empty($late['adjustment']))
+                <br>{{ $late['adjustment'] }}
+            @endif
         </small>
         @break
     @case(\App\Services\LateArrivalService::CATEGORY_ALLOWANCE)

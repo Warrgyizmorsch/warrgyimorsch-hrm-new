@@ -16,11 +16,16 @@ use Illuminate\Support\Facades\DB;
  * Rule: a check-in up to LATE_ARRIVAL_ALLOWANCE_MINUTES after shift start is not late.
  * Past that, the day counts as late by the full minutes since shift start (9:45 on a
  * 9:30 shift = 15 min). More than VERY_LATE_ARRIVAL_MINUTES is flagged "very late".
- * Holidays, Sundays for employees without a Sunday shift, and days covered by an approved
- * Gatepass / Early Leave or first-half leave are never late.
+ * Holidays and Sundays for employees without a Sunday shift are never late. An approved
+ * Gatepass / Early Leave moves the expected arrival back by GATEPASS_OFFSET_MINUTES, and an
+ * approved first-half leave by FIRST_HALF_OFFSET_MINUTES; lateness is counted from there
+ * (9:30 shift + gatepass, in at 10:40 → 10 min late).
  */
 class LateArrivalService
 {
+    public const GATEPASS_OFFSET_MINUTES = 60;
+    public const FIRST_HALF_OFFSET_MINUTES = 240;
+
     public const CATEGORY_LATE = 'late';
     public const CATEGORY_VERY_LATE = 'very_late';
     public const CATEGORY_ALLOWANCE = 'allowance';
@@ -40,10 +45,10 @@ class LateArrivalService
     }
 
     /**
-     * Days on which a late arrival is excused by an approved leave application: any
-     * Gatepass / Early Leave that day, or a first-half leave (the morning was off anyway).
+     * Days on which the expected arrival is moved back by an approved leave application:
+     * Gatepass / Early Leave (+1 hr) or a first-half leave (+4 hrs). Both on one day → the larger.
      *
-     * @return array<string, string> "employeeId|Y-m-d" => reason shown in the report
+     * @return array<string, array{reason: string, offset: int, from: string|null}> "employeeId|Y-m-d" => adjustment
      */
     public static function excusedDaysBetween(Carbon $from, Carbon $to): array
     {
@@ -65,14 +70,22 @@ class LateArrivalService
                 $window = $leave->start_time && $leave->end_time
                     ? ' (' . Carbon::parse($leave->start_time)->format('H:i') . '–' . Carbon::parse($leave->end_time)->format('H:i') . ')'
                     : '';
-                $reason = $isGatepass ? 'Gatepass approved' . $window : 'First-half leave approved';
+                // 'from' lets classify() ignore a gatepass taken later in the day (an evening early out
+                // doesn't excuse a late morning).
+                $entry = $isGatepass
+                    ? ['reason' => 'Gatepass approved' . $window, 'offset' => self::GATEPASS_OFFSET_MINUTES,
+                        'from' => $leave->start_time ? Carbon::parse($leave->start_time)->format('H:i') : null]
+                    : ['reason' => 'First-half leave approved', 'offset' => self::FIRST_HALF_OFFSET_MINUTES, 'from' => null];
 
                 // copy(): max()/min() can return $from/$to themselves, which the loop would mutate.
                 $day = Carbon::parse($leave->start_date)->max($from->copy()->startOfDay())->copy();
                 $last = Carbon::parse($leave->end_date ?: $leave->start_date)->min($to->copy()->startOfDay())->copy();
 
                 for (; $day->lte($last); $day->addDay()) {
-                    $excused[$leave->employee_id . '|' . $day->toDateString()] = $reason;
+                    $key = $leave->employee_id . '|' . $day->toDateString();
+                    if (($excused[$key]['offset'] ?? 0) < $entry['offset']) {
+                        $excused[$key] = $entry;
+                    }
                 }
             });
 
@@ -152,35 +165,50 @@ class LateArrivalService
     }
 
     /**
-     * Classify one attendance day. `minutes` is the raw lateness after shift start;
-     * `counted_minutes` is what counts toward late arrivals (0 when not counted).
+     * Classify one attendance day. `minutes` is the lateness after the expected arrival (shift
+     * start, moved back by an approved gatepass / first-half leave — see excusedDaysBetween());
+     * `counted_minutes` is what counts toward late arrivals (0 when not counted). `adjustment`
+     * explains a moved start ("Gatepass approved: expected 10:30"), null otherwise.
      *
      * @param  array<string, bool>  $holidayDates
-     * @param  array<string, string>  $excusedDays  from excusedDaysBetween()
-     * @return array{minutes: int, counted_minutes: int, category: string|null, excuse: string|null}
+     * @param  array<string, array{reason: string, offset: int}>  $excusedDays  from excusedDaysBetween()
+     * @return array{minutes: int, counted_minutes: int, category: string|null, excuse: string|null, adjustment: string|null}
      */
     public static function classify(Attendance $attendance, array $holidayDates, array $excusedDays = []): array
     {
+        $none = ['minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null, 'adjustment' => null];
         $employee = $attendance->employee;
 
         if (!$employee || !$attendance->check_in) {
-            return ['minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null];
+            return $none;
         }
 
-        $minutes = AttendanceStatusService::lateArrivalMinutes($attendance, $employee);
+        $rawMinutes = AttendanceStatusService::lateArrivalMinutes($attendance, $employee);
 
-        if ($minutes <= 0) {
-            return ['minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null];
+        if ($rawMinutes <= 0) {
+            return $none;
         }
 
         $date = Carbon::parse($attendance->attendance_date);
         $excuse = $excusedDays[$employee->id . '|' . $date->toDateString()] ?? null;
+        $shiftStart = AttendanceStatusService::resolveShiftStart($attendance, $employee);
+        // A gatepass that starts an hour or more into the shift is an early exit, not a late start.
+        if ($excuse && $excuse['from'] && $excuse['from'] >= $shiftStart->copy()->addMinutes(self::GATEPASS_OFFSET_MINUTES)->format('H:i')) {
+            $excuse = null;
+        }
+        $adjustment = null;
+        $minutes = $rawMinutes;
+        if ($excuse) {
+            $minutes = max($rawMinutes - $excuse['offset'], 0);
+            $adjustment = $excuse['reason'] . ': expected ' . $shiftStart->copy()->addMinutes($excuse['offset'])->format('H:i');
+        }
 
         $category = match (true) {
             isset($holidayDates[$date->toDateString()]) => self::CATEGORY_HOLIDAY,
             self::isOffDay($attendance, $holidayDates) => self::CATEGORY_SUNDAY,
+            // Arrived within the allowance of the moved start → excused by the leave.
+            $excuse !== null && $minutes <= AttendanceStatusService::LATE_ARRIVAL_ALLOWANCE_MINUTES => self::CATEGORY_EXCUSED,
             $minutes <= AttendanceStatusService::LATE_ARRIVAL_ALLOWANCE_MINUTES => self::CATEGORY_ALLOWANCE,
-            $excuse !== null => self::CATEGORY_EXCUSED,
             $minutes > AttendanceStatusService::VERY_LATE_ARRIVAL_MINUTES => self::CATEGORY_VERY_LATE,
             default => self::CATEGORY_LATE,
         };
@@ -188,10 +216,11 @@ class LateArrivalService
         $counted = in_array($category, [self::CATEGORY_LATE, self::CATEGORY_VERY_LATE], true);
 
         return [
-            'minutes' => $minutes,
+            'minutes' => $category === self::CATEGORY_EXCUSED ? $rawMinutes : $minutes,
             'counted_minutes' => $counted ? $minutes : 0,
             'category' => $category,
-            'excuse' => $category === self::CATEGORY_EXCUSED ? $excuse : null,
+            'excuse' => $category === self::CATEGORY_EXCUSED ? $excuse['reason'] : null,
+            'adjustment' => $adjustment,
         ];
     }
 
@@ -335,7 +364,7 @@ class LateArrivalService
 
                 if (!$attendance->check_in) {
                     return $base + [
-                        'minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null,
+                        'minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null, 'adjustment' => null,
                         'check_in' => null, 'check_out' => null, 'stay_minutes' => 0, 'early_minutes' => 0,
                         'covered' => false, 'label' => 'No check-in', 'worked' => false,
                     ];
@@ -438,7 +467,7 @@ class LateArrivalService
             $padded->push($byDate[$key] ?? [
                 'date' => $date->copy(),
                 'shift_start' => '—', 'shift_end' => '—',
-                'minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null,
+                'minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null, 'adjustment' => null,
                 'check_in' => null, 'check_out' => null, 'stay_minutes' => 0, 'early_minutes' => 0, 'covered' => false,
                 'day_status' => match (true) {
                     isset($holidayDates[$key]) => 'Holiday',

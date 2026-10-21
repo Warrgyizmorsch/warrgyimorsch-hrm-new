@@ -375,6 +375,15 @@ class LeaveApplicationController extends Controller
                 ], 409);
             }
 
+            if (str_contains(strtolower($data['leave_category']), 'gatepass') && ($used = $this->earlyLeaveThisMonth($employee->id, $data['start_date']))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only one early leave (gatepass) is allowed per month. '
+                        . "{$employee->name} already has one on " . $used->start_date->format('d M Y')
+                        . ' (' . str_replace('_', ' ', $used->status) . ').',
+                ], 422);
+            }
+
             // The quota overflow can split one request into two applications — e-mail each one.
             $lastIdBefore = (int) LeaveApplication::max('id');
             $response = $this->createLeaveApplication($request, $data);
@@ -391,6 +400,19 @@ class LeaveApplicationController extends Controller
         } finally {
             $lock->release();
         }
+    }
+
+    /** The employee's early leave (gatepass) in that date's calendar month, if any — only one is allowed. */
+    private function earlyLeaveThisMonth(int $employeeId, string $date): ?LeaveApplication
+    {
+        $day = Carbon::parse($date);
+
+        return LeaveApplication::where('employee_id', $employeeId)
+            ->where('leave_category', 'like', '%gatepass%')
+            ->where('status', '!=', 'rejected')
+            ->whereBetween('start_date', [$day->copy()->startOfMonth()->toDateString(), $day->copy()->endOfMonth()->toDateString()])
+            ->orderBy('start_date')
+            ->first();
     }
 
     /**

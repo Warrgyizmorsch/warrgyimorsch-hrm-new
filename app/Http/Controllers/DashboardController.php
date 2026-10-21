@@ -388,15 +388,12 @@ class DashboardController extends Controller
             ->select(
                 'employees.id as employee_id',
                 'employees.name as employee_name',
-                DB::raw("
-                    CASE 
-                        WHEN leave_applications.leave_category = 'Full Day' THEN 'Full Day Leave'
-                        WHEN LOWER(leave_applications.leave_category) LIKE '%Half%' THEN 'Half Day'
-                        WHEN leave_applications.leave_category = 'Gatepass' THEN 'Early Leave'
-                        WHEN leave_applications.leave_category = 'WFH' THEN 'Working from Home'
-                        ELSE leave_applications.leave_category
-                    END as leave_type
-                ")
+                'leave_applications.leave_category as leave_type', // replaced by todayOutLabel() below
+                'leave_applications.leave_category',
+                'leave_applications.leave_type as day_type',
+                'leave_applications.start_time',
+                'leave_applications.end_time',
+                'leave_applications.status as leave_status'
             );
 
         $attendanceLeave = DB::table('attendances')
@@ -414,12 +411,18 @@ class DashboardController extends Controller
                 'employees.id as employee_id',
                 'employees.name as employee_name',
                 DB::raw("
-                    CASE 
+                    CASE
                         WHEN attendances.status = 'leave' THEN 'Full Day Leave'
                         WHEN attendances.status = 'half_day' THEN 'Half Day'
                         WHEN attendances.status = 'early_leave' THEN 'Early Leave'
                     END as leave_type
-                ")
+                "),
+                // same columns as $approvedLeave (UNION) — no leave request behind these rows
+                DB::raw('NULL as leave_category'),
+                DB::raw('NULL as day_type'),
+                DB::raw('NULL as start_time'),
+                DB::raw('NULL as end_time'),
+                DB::raw('NULL as leave_status')
             );
 
         $absentEmployees = DB::table('attendances')
@@ -446,7 +449,23 @@ class DashboardController extends Controller
         $todayLeaveEmployees = $attendanceLeave
             ->union($approvedLeave)
             ->get()
+            ->each(function ($row) {
+                if ($row->leave_category !== null) {
+                    $row->leave_type = $this->todayOutLabel($row);
+                }
+            })
             ->concat($this->todayAbsenceRows($today));
+
+        // Today's punches for every row (Who's Out Today shows them under the name).
+        $todayPunches = Attendance::whereDate('attendance_date', $today)
+            ->whereIn('employee_id', $todayLeaveEmployees->pluck('employee_id')->unique())
+            ->get(['employee_id', 'check_in', 'check_out', 'total_hours'])
+            ->keyBy('employee_id');
+        $todayLeaveEmployees->each(function ($row) use ($todayPunches) {
+            $att = $todayPunches->get($row->employee_id);
+            $row->check_in = $att?->check_in ? Carbon::parse($att->check_in)->format('h:i A') : null;
+            $row->check_out = $att?->check_out ? Carbon::parse($att->check_out)->format('h:i A') : null;
+        });
 
         // Late arrival on today
         $todayLateEmployees = $this->getLateEmployeesData();
@@ -940,6 +959,29 @@ class DashboardController extends Controller
      *   - No punch, nothing applied    → "Absent" (also for employees with no attendance row yet)
      * Approved leave / WFH and leave-type attendance rows are listed by the other queries.
      */
+    /**
+     * Exactly what was applied for, e.g. "Sick Leave · Half Day (First Half)",
+     * "Working from Home · Half Day (Second Half)", "Early Leave (Gatepass) · 04:00 PM – 05:00 PM".
+     */
+    private function todayOutLabel(object $row): string
+    {
+        $category = trim((string) $row->leave_category);
+        $dayType = trim((string) $row->day_type);
+        $cat = strtolower($category);
+        $time = fn ($t) => $t ? Carbon::parse($t)->format('h:i A') : null;
+
+        if (str_contains($cat, 'gatepass')) {
+            $from = $time($row->start_time);
+            $to = $time($row->end_time);
+            $label = 'Early Leave (Gatepass)' . ($from ? ' · ' . $from . ($to ? " – {$to}" : '') : '');
+        } else {
+            $name = (str_contains($cat, 'wfh') || str_contains($cat, 'work from home')) ? 'Working from Home' : ($category ?: 'Leave');
+            $label = $name . ($dayType !== '' ? ' · ' . $dayType : '');
+        }
+
+        return $label . (strtolower((string) $row->leave_status) === 'unauthorised' ? ' (unauthorised)' : '');
+    }
+
     private function todayAbsenceRows(string $today, $employeeIds = null)
     {
         $date = Carbon::parse($today);
@@ -1109,7 +1151,7 @@ class DashboardController extends Controller
         $context = $this->lateArrivalContext($today, $today);
         $late = $attendance
             ? LateArrivalService::classify($attendance, $context['holidays'], $context['excused'])
-            : ['minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null];
+            : ['minutes' => 0, 'counted_minutes' => 0, 'category' => null, 'excuse' => null, 'adjustment' => null];
         $checkIn = $attendance?->getRawPunchTime('check_in');
         $checkOut = $attendance?->getRawPunchTime('check_out');
 
