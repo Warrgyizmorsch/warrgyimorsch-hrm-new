@@ -385,11 +385,33 @@
                         <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
+                        @if($isAdmin)
+                            <li class="nxl-item">
+                                <a href="{{ route('assets.dashboard') }}" class="nxl-link">
+                                    <span class="nxl-micon"><i class="fas fa-chart-pie"></i></span>
+                                    <span class="nxl-mtext">Asset Dashboard</span>
+                                </a>
+                            </li>
+                        @endif
                         @if($isAdmin || $isTeamLeader)
                             <li class="nxl-item">
                                 <a href="{{ route('assets.index') }}" class="nxl-link">
                                     <span class="nxl-micon"><i class="fas fa-clipboard-list"></i></span>
                                     <span class="nxl-mtext">{{ $isAdmin ? 'Manage Assets' : 'Team Assets' }}</span>
+                                </a>
+                            </li>
+                        @endif
+                        @if($isAdmin)
+                            <li class="nxl-item">
+                                <a href="{{ route('assets.incidents.index') }}" class="nxl-link">
+                                    <span class="nxl-micon"><i class="fas fa-triangle-exclamation"></i></span>
+                                    <span class="nxl-mtext">Damage &amp; Loss</span>
+                                </a>
+                            </li>
+                            <li class="nxl-item">
+                                <a href="{{ route('assets.audits.index') }}" class="nxl-link">
+                                    <span class="nxl-micon"><i class="fas fa-list-check"></i></span>
+                                    <span class="nxl-mtext">Asset Audits</span>
                                 </a>
                             </li>
                         @endif
