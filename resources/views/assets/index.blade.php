@@ -36,9 +36,6 @@
         <div class="page-header-right ms-auto">
             <div class="page-header-right-items">
                 <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('assets.guide') }}" class="btn btn-light-brand d-flex align-items-center gap-2" style="border-radius: 10px; height: 44px;">
-                        <i class="feather-help-circle"></i> HOW TO USE
-                    </a>
                     <a href="javascript:void(0);" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm"
                         style="border-radius: 10px; background: #3858f9; border: none; height: 44px;"
                         data-bs-toggle="modal" data-bs-target="#declareAssetModal">

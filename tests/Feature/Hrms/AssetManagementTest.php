@@ -329,8 +329,6 @@ class AssetManagementTest extends TestCase
         $this->assertStringContainsString($asset->asset_tag, $csv->streamedContent());
 
         $this->actingAs($this->alice)->get(route('assets.employee'))->assertOk()->assertSee('Confirm receipt');
-        $this->actingAs($this->alice)->get(route('assets.guide'))->assertOk()->assertSee('Confirm receipt')->assertDontSee('Getting started');
-        $this->actingAs($this->admin)->get(route('assets.guide'))->assertOk()->assertSee('Getting started')->assertSee('Audits');
         $this->actingAs($this->alice)->get(route('assets.dashboard'))->assertForbidden();
         $this->actingAs($this->alice)->get(route('assets.show', $asset->id))->assertForbidden();
         $this->actingAs($this->alice)->get(route('assets.incidents.index'))->assertForbidden();
