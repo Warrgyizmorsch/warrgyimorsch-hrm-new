@@ -6,6 +6,7 @@
         ['assets.index', 'Inventory & Requests', 'feather-package', 0],
         ['assets.incidents.index', 'Damage & Loss', 'feather-alert-triangle', $openIncidentCount],
         ['assets.audits.index', 'Audits', 'feather-clipboard', 0],
+        ['assets.guide', 'How to use', 'feather-help-circle', 0],
     ];
 @endphp
 <nav class="am-subnav mb-4" aria-label="Asset management sections">
