@@ -143,6 +143,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Asset Management - Employee/Team Leader Routes (self + team-scoped, view-only, no admin actions)
     Route::get('/my-assets', [AssetController::class, 'employeeView'])->name('assets.employee');
+    // How-to guide for the asset module (sections shown depend on the viewer's role).
+    Route::view('/asset-guide', 'assets.guide')->name('assets.guide');
     Route::post('/my-assets/request', [AssetController::class, 'requestAsset'])->name('assets.request');
     // Declare a device you already hold (TL/HR may declare for their team; checked in the controller).
     Route::post('/asset-declarations', [AssetController::class, 'declare'])->name('assets.declare');

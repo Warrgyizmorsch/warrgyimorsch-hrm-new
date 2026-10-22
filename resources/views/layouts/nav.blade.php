@@ -421,6 +421,12 @@
                                 <span class="nxl-mtext">My Assets</span>
                             </a>
                         </li>
+                        <li class="nxl-item">
+                            <a href="{{ route('assets.guide') }}" class="nxl-link">
+                                <span class="nxl-micon"><i class="fas fa-circle-question"></i></span>
+                                <span class="nxl-mtext">How to Use</span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
 
