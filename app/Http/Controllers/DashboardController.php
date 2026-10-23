@@ -399,7 +399,8 @@ class DashboardController extends Controller
         $attendanceLeave = DB::table('attendances')
             ->join('employees', 'employees.id', '=', 'attendances.employee_id')
             ->whereDate('attendances.attendance_date', $today)
-            ->whereIn('attendances.status', ['leave', 'half_day', 'early_leave'])
+            // Not 'half_day': without a leave application that only means short hours (they were at work).
+            ->whereIn('attendances.status', ['leave', 'early_leave'])
             ->whereNotIn('attendances.employee_id', function ($q) use ($today) {
                 $q->select('employee_id')
                     ->from('leave_applications')
@@ -901,7 +902,8 @@ class DashboardController extends Controller
             ->join('employees', 'employees.id', '=', 'attendances.employee_id')
             ->whereIn('attendances.employee_id', $employeeIds)
             ->whereDate('attendances.attendance_date', $today)
-            ->whereIn('attendances.status', ['leave', 'half_day', 'early_leave'])
+            // Not 'half_day': without a leave application that only means short hours (they were at work).
+            ->whereIn('attendances.status', ['leave', 'early_leave'])
             ->whereNotIn('attendances.employee_id', function ($q) use ($today) {
                 $q->select('employee_id')
                     ->from('leave_applications')
@@ -982,6 +984,20 @@ class DashboardController extends Controller
         return $label . (strtolower((string) $row->leave_status) === 'unauthorised' ? ' (unauthorised)' : '');
     }
 
+    /** When a missing punch starts counting as absent: the employee's shift start + the late allowance. */
+    private function absentFrom(Employee $emp, Carbon $date): Carbon
+    {
+        $timeIn = ($date->isSunday() && $emp->sunday_time_in) ? $emp->sunday_time_in : ($emp->time_in ?: '09:30:00');
+
+        try {
+            $start = $date->copy()->setTimeFromTimeString(Carbon::parse($timeIn)->format('H:i:s'));
+        } catch (\Exception $e) {
+            $start = $date->copy()->setTime(9, 30);
+        }
+
+        return $start->addMinutes(AttendanceStatusService::LATE_ARRIVAL_ALLOWANCE_MINUTES);
+    }
+
     private function todayAbsenceRows(string $today, $employeeIds = null)
     {
         $date = Carbon::parse($today);
@@ -992,7 +1008,7 @@ class DashboardController extends Controller
         $employees = Employee::active()
             ->when($employeeIds !== null, fn ($q) => $q->whereIn('id', $employeeIds))
             ->where(fn ($q) => $q->whereNull('attendance_exempt')->orWhere('attendance_exempt', false)) // CEO / HR etc. don't punch
-            ->get(['id', 'name', 'working_mode']);
+            ->get(['id', 'name', 'working_mode', 'time_in', 'sunday_time_in']);
 
         $requests = LeaveApplication::whereIn('employee_id', $employees->pluck('id'))
             ->whereDate('start_date', '<=', $today)
@@ -1031,6 +1047,8 @@ class DashboardController extends Controller
                 $cat = strtolower((string) $pending->leave_category);
                 $label = (str_contains($cat, 'wfh') || str_contains($cat, 'work from home') ? 'Working from Home' : $pending->leave_category)
                     . ' (pending approval)';
+            } elseif ($date->isToday() && now()->lt($this->absentFrom($emp, $date))) {
+                $label = null; // their shift hasn't started yet (afternoon / night shifts)
             } else {
                 $label = 'Absent';
             }
