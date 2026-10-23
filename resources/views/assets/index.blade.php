@@ -20,6 +20,10 @@
         <div class="page-header-right ms-auto">
             <div class="page-header-right-items">
                 <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('assets.export') }}" class="btn btn-light-brand d-flex align-items-center gap-2"
+                        style="border-radius: 10px; height: 44px;" title="Download the full asset register (CSV)">
+                        <i class="feather-download"></i> EXPORT
+                    </a>
                     <a href="javascript:void(0);" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm"
                         style="border-radius: 10px; background: #3858f9; border: none; height: 44px;"
                         data-bs-toggle="modal" data-bs-target="#addAssetModal">
@@ -32,6 +36,9 @@
         <div class="page-header-right ms-auto">
             <div class="page-header-right-items">
                 <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('assets.guide') }}" class="btn btn-light-brand d-flex align-items-center gap-2" style="border-radius: 10px; height: 44px;">
+                        <i class="feather-help-circle"></i> HOW TO USE
+                    </a>
                     <a href="javascript:void(0);" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm"
                         style="border-radius: 10px; background: #3858f9; border: none; height: 44px;"
                         data-bs-toggle="modal" data-bs-target="#declareAssetModal">
@@ -43,7 +50,11 @@
         @endif
     </div>
 
+    @include('assets.partials.styles')
     <div class="main-content pt-4" style="font-family: 'Inter', sans-serif;">
+        @if($isAdmin)
+            @include('assets.partials.subnav', ['current' => 'assets.index'])
+        @endif
         <!-- Switcher Tabs -->
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
             <div class="tickets-switcher" style="display: inline-flex; background: #f1f5f9; padding: 5px; border-radius: 30px; gap: 4px; border: 1px solid #e2e8f0; overflow-x: auto; max-width: 100%;">
@@ -79,7 +90,7 @@
         <!-- Inventory Tab Section -->
         <div id="section-inventory" class="asset-tab-section">
             <!-- Inventory Sub-tabs -->
-            <div class="d-flex justify-content-start mb-3 gap-2" id="inventory-status-filter">
+            <div class="d-flex justify-content-start align-items-center flex-wrap mb-3 gap-2" id="inventory-status-filter">
                 <button class="status-filter-btn active" onclick="filterAssetStatus('all')" style="border: none; background: #f1f5f9; padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #64748b; transition: all 0.2s;">
                     All Stock ({{ $assets->count() }})
                 </button>
@@ -95,6 +106,13 @@
                 <button class="status-filter-btn" onclick="filterAssetStatus('Faulty')" style="border: none; background: #f1f5f9; padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #64748b; transition: all 0.2s;">
                     Faulty / Broken ({{ $assets->where('status', 'Faulty')->count() }})
                 </button>
+                <button class="status-filter-btn" onclick="filterAssetStatus('Lost')" style="border: none; background: #f1f5f9; padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #64748b; transition: all 0.2s;">
+                    Lost ({{ $assets->where('status', 'Lost')->count() }})
+                </button>
+                <button class="status-filter-btn" onclick="filterAssetStatus('Retired')" style="border: none; background: #f1f5f9; padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #64748b; transition: all 0.2s;">
+                    Retired ({{ $assets->where('status', 'Retired')->count() }})
+                </button>
+                <input type="search" id="inventory-search" class="form-control form-control-sm ms-auto" style="max-width: 240px; border-radius: 20px;" placeholder="Search tag, name, serial, employee" oninput="searchInventory(this.value)" aria-label="Search inventory">
             </div>
 
             <div class="card border-0 shadow-sm" style="border-radius: 16px; background: white; overflow: hidden; border: 1px solid #e2e8f0 !important;">
@@ -129,16 +147,21 @@
                                         elseif($asset->status == 'Allocated') $statusClass = 'status-in-process';
                                         elseif($asset->status == 'Maintenance') $statusClass = 'status-on-hold';
                                         elseif($asset->status == 'Faulty') $statusClass = 'status-rework';
+                                        elseif($asset->status == 'Lost') $statusClass = 'bg-soft-danger text-danger';
+                                        elseif($asset->status == 'Retired') $statusClass = 'bg-soft-secondary text-secondary';
 
                                         $assignedUser = $asset->activeAllocation->user ?? null;
                                         $assignedDept = $assignedUser->employee->departmentRef->name ?? $assignedUser->role ?? '';
                                         $assetSummary = $inventoryGroup->map(function($item) {
                                             $serial = $item->serial_number ? ' - SN: ' . $item->serial_number : '';
-                                            return $item->name . $serial;
+                                            return ($item->asset_tag ? $item->asset_tag . ' ' : '') . $item->name . $serial;
                                         })->implode(', ');
                                         $jsAllocations = $inventoryGroup->filter(fn($item) => $item->activeAllocation)->map(function($item) {
                                             return [
                                                 'id' => $item->activeAllocation->id,
+                                                'asset_id' => $item->id,
+                                                'asset_tag' => $item->asset_tag,
+                                                'ack' => $item->activeAllocation->acknowledgement_status,
                                                 'name' => $item->name ?? 'Unknown Asset',
                                                 'type' => $item->type ?? 'Other',
                                                 'serial_number' => $item->serial_number ?? 'N/A',
@@ -148,7 +171,7 @@
                                             ];
                                         })->values()->all();
                                     @endphp
-                                    <tr class="asset-row-item" data-status="{{ $asset->status }}" style="height: 75px; border-bottom: 1px solid #f1f5f9;">
+                                    <tr class="asset-row-item" data-status="{{ $asset->status }}" data-search="{{ strtolower($inventoryGroup->map(fn ($i) => $i->asset_tag . ' ' . $i->name . ' ' . $i->serial_number . ' ' . $i->brand)->implode(' ') . ' ' . ($assignedUser->name ?? '')) }}" style="height: 75px; border-bottom: 1px solid #f1f5f9;">
                                         <td class="ps-4">
                                             @php
                                                 $typeLower = strtolower($asset->type ?? '');
@@ -172,8 +195,15 @@
                                                 @endif
                                                 <div class="d-flex flex-column">
                                                     <span class="fw-bold text-dark fs-6">
-                                                        {{ $isAssignedGroup ? ($assignedUser->name ?? 'Assigned Employee') : $asset->name }}
+                                                        @if($isAssignedGroup)
+                                                            {{ $assignedUser->name ?? 'Assigned Employee' }}
+                                                        @else
+                                                            <a href="{{ route('assets.show', $asset->id) }}" class="text-dark">{{ $asset->name }}</a>
+                                                        @endif
                                                     </span>
+                                                    @if(!$isAssignedGroup && $asset->asset_tag)
+                                                        <span class="am-tag align-self-start mt-1">{{ $asset->asset_tag }}</span>
+                                                    @endif
                                                     <span class="badge bg-soft-primary text-primary mt-1 align-self-start" style="font-size: 10px; font-weight: 700; text-transform: uppercase;">
                                                         {{ $isAssignedGroup ? $inventoryGroup->count() . ' ASSETS' : $asset->type }}
                                                     </span>
@@ -234,6 +264,11 @@
                                                         <i class="feather-eye"></i> Manage Assets
                                                     </button>
                                                 @else
+                                                <a href="{{ route('assets.show', $asset->id) }}"
+                                                    class="avatar-text avatar-md bg-soft-info text-info rounded"
+                                                    title="View history & actions">
+                                                    <i class="feather-eye"></i>
+                                                </a>
                                                 @if($isAdmin)
                                                 @if($asset->status == 'Available')
                                                     <a href="javascript:void(0);"
@@ -244,7 +279,7 @@
                                                     </a>
                                                 @endif
                                                 @endif
-                                                @if($isAdmin || $isTeamLeader)
+                                                @if(($isAdmin || $isTeamLeader) && !$asset->isClosed())
                                                 <a href="javascript:void(0);"
                                                     class="avatar-text avatar-md bg-soft-primary text-primary rounded"
                                                     title="Edit"
@@ -252,7 +287,7 @@
                                                     <i class="feather-edit-3"></i>
                                                 </a>
                                                 @endif
-                                                @if($isAdmin)
+                                                @if($isAdmin && !$asset->activeAllocation)
                                                 <form action="{{ route('assets.destroy', $asset->id) }}" method="POST" onsubmit="return deleteData(event)">
                                                     @csrf
                                                     @method('DELETE')
@@ -260,9 +295,6 @@
                                                         <i class="feather-trash-2"></i>
                                                     </button>
                                                 </form>
-                                                @endif
-                                                @if(!$isAdmin && !$isTeamLeader)
-                                                    <span class="text-muted small">View only</span>
                                                 @endif
                                                 @endif
                                             </div>
@@ -823,6 +855,14 @@
                                         <label class="fw-semibold small mb-1">Asset Photo <span class="text-muted fw-normal">(optional, JPG/PNG/WebP, max 2 MB)</span></label>
                                         <input type="file" class="form-control" name="assets[0][image]" accept="image/jpeg,image/png,image/webp" style="border-radius: 8px;">
                                     </div>
+                                    <div class="col-12 am-register-block">
+                                        <button type="button" class="btn btn-link p-0 small fw-semibold text-decoration-none" onclick="this.nextElementSibling.classList.toggle('d-none')">
+                                            <i class="feather-chevron-down"></i> Make, purchase &amp; warranty details (optional)
+                                        </button>
+                                        <div class="row g-3 mt-1 d-none">
+                                            @include('assets.partials.register-fields', ['asset' => null, 'name' => fn ($f) => "assets[0][$f]", 'idp' => 'addRow0'])
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -952,6 +992,21 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="row g-3">
+                            <div class="col-sm-5">
+                                <label class="fw-semibold mb-2" for="manual-alloc-condition">Condition</label>
+                                <select class="form-select" name="condition" id="manual-alloc-condition" style="border-radius: 8px;">
+                                    @foreach(\App\Models\Asset::CONDITIONS as $c)
+                                        <option value="{{ $c }}" @selected($c === 'Good')>{{ $c }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-sm-7">
+                                <label class="fw-semibold mb-2" for="manual-alloc-note">Note</label>
+                                <input type="text" class="form-control" name="note" id="manual-alloc-note" maxlength="500" placeholder="e.g. New joiner kit" style="border-radius: 8px;">
+                            </div>
+                        </div>
+                        <p class="text-muted small mt-3 mb-0">The employee will be asked to confirm receipt from their My Assets page.</p>
                     </div>
                     <div class="modal-footer border-top-0 d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-soft-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
@@ -1028,6 +1083,11 @@
                                 <option value="Faulty">Broken / Scrapped (Asset status set to Faulty)</option>
                             </select>
                         </div>
+                        <div class="mb-3">
+                            <label class="fw-semibold mb-2" for="return-note">Note</label>
+                            <input type="text" class="form-control" name="note" id="return-note" maxlength="500" placeholder="e.g. Resigned, last day 30 Oct" style="height: 44px; border-radius: 10px;">
+                        </div>
+                        <p class="text-muted small mb-0">Damaged by the employee and want to track the cost? Open the asset (eye icon) and use <b>Report damage</b>.</p>
                     </div>
                     <div class="modal-footer border-top-0 d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-soft-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
@@ -1154,9 +1214,11 @@
             <label class="fw-semibold small mb-1">Asset Photo <span class="text-muted fw-normal">(optional, JPG/PNG/WebP, max 2 MB)</span></label>
             <input type="file" class="form-control" name="assets[${nextIndex}][image]" accept="image/jpeg,image/png,image/webp" style="border-radius: 8px;">
         </div>
+        <div class="am-register-slot"></div>
     </div>
 </div>`;
                     container.insertAdjacentHTML('beforeend', rowTemplate);
+                    cloneRegisterFields(container.lastElementChild, nextIndex);
                     renumberAssetRows();
                     syncBatchAssignStatus();
                 });
@@ -1165,6 +1227,43 @@
             const batchAssignSelect = document.getElementById('batch-assign-user');
             if (batchAssignSelect) {
                 batchAssignSelect.addEventListener('change', syncBatchAssignStatus);
+            }
+        });
+
+        function cloneRegisterFields(row, index) {
+            const source = document.querySelector('#assets-container .asset-entry-row .am-register-block');
+            const slot = row.querySelector('.am-register-slot');
+            if (!source || !slot) return;
+            const block = source.cloneNode(true);
+            block.querySelectorAll('input').forEach(input => { input.value = ''; });
+            block.querySelectorAll('select').forEach(select => { select.value = 'Good'; });
+            block.querySelectorAll('[id]').forEach(el => { el.id = el.id.replace(/^addRow\d+/, 'addRow' + index); });
+            block.querySelectorAll('label[for]').forEach(el => { el.htmlFor = el.htmlFor.replace(/^addRow\d+/, 'addRow' + index); });
+            block.querySelector('.row').classList.add('d-none');
+            const wrap = document.createElement('div');
+            wrap.className = 'col-12 am-register-block';
+            wrap.innerHTML = block.innerHTML;
+            slot.replaceWith(wrap);
+        }
+
+        function searchInventory(term) {
+            const q = (term || '').trim().toLowerCase();
+            document.querySelectorAll('.asset-row-item').forEach(row => {
+                const matchesSearch = !q || (row.dataset.search || '').includes(q);
+                row.classList.toggle('d-none', !matchesSearch);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const params = new URLSearchParams(window.location.search);
+            const wanted = params.get('status');
+            if (wanted) {
+                const btn = Array.from(document.querySelectorAll('#inventory-status-filter .status-filter-btn'))
+                    .find(b => (b.getAttribute('onclick') || '').includes("'" + wanted + "'"));
+                if (btn) btn.click();
+            }
+            if (window.location.hash === '#add' && document.getElementById('addAssetModal')) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('addAssetModal')).show();
             }
         });
 
@@ -1297,7 +1396,12 @@
                                     <div style="width: 32px; height: 32px; background: rgba(56, 88, 249, 0.08); color: #3858f9; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" class="me-2">
                                         <i class="${iconClass}" style="font-size: 15px;"></i>
                                     </div>`}
-                                    <h6 class="fw-bold text-dark mb-0 fs-6">${asset.name}</h6>
+                                    <div>
+                                        <h6 class="fw-bold text-dark mb-0 fs-6"><a href="{{ url('asset-management') }}/${asset.asset_id}" class="text-dark">${escapeHtml(asset.name || '')}</a></h6>
+                                        ${asset.asset_tag ? `<span class="am-tag">${escapeHtml(asset.asset_tag)}</span>` : ''}
+                                        ${asset.ack === 'pending' ? '<span class="badge bg-soft-warning text-warning ms-1" style="font-size:9px;">AWAITING CONFIRMATION</span>' : ''}
+                                        ${asset.ack === 'disputed' ? '<span class="badge bg-soft-danger text-danger ms-1" style="font-size:9px;">DISPUTED</span>' : ''}
+                                    </div>
                                 </div>
                                 <p class="text-muted small mb-2" style="font-size: 11px;">SN: <b class="text-dark d-inline-block" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">${asset.serial_number}</b></p>                                
                                 <div class="mb-3">

@@ -105,7 +105,7 @@ body.zoho-portal .nxl-container {
 }
 
 body.zoho-portal .nxl-content {
-    padding: 0 !important;
+    padding: 10px !important;
 }
 
 body.zoho-portal .main-content {
@@ -1887,7 +1887,7 @@ body.zoho-portal .zoho-form-body .form-select:focus {
 }
 
 body.zoho-portal .main-content.zoho-module-content {
-    padding: 0 !important;
+    padding: 5px !important;
     background: var(--zoho-page-bg);
 }
 

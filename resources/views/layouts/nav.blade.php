@@ -385,6 +385,14 @@
                         <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
+                        @if($isAdmin)
+                            <li class="nxl-item">
+                                <a href="{{ route('assets.dashboard') }}" class="nxl-link">
+                                    <span class="nxl-micon"><i class="fas fa-chart-pie"></i></span>
+                                    <span class="nxl-mtext">Asset Dashboard</span>
+                                </a>
+                            </li>
+                        @endif
                         @if($isAdmin || $isTeamLeader)
                             <li class="nxl-item">
                                 <a href="{{ route('assets.index') }}" class="nxl-link">
@@ -393,10 +401,30 @@
                                 </a>
                             </li>
                         @endif
+                        @if($isAdmin)
+                            <li class="nxl-item">
+                                <a href="{{ route('assets.incidents.index') }}" class="nxl-link">
+                                    <span class="nxl-micon"><i class="fas fa-triangle-exclamation"></i></span>
+                                    <span class="nxl-mtext">Damage &amp; Loss</span>
+                                </a>
+                            </li>
+                            <li class="nxl-item">
+                                <a href="{{ route('assets.audits.index') }}" class="nxl-link">
+                                    <span class="nxl-micon"><i class="fas fa-list-check"></i></span>
+                                    <span class="nxl-mtext">Asset Audits</span>
+                                </a>
+                            </li>
+                        @endif
                         <li class="nxl-item">
                             <a href="{{ route('assets.employee') }}" class="nxl-link">
                                 <span class="nxl-micon"><i class="fas fa-user-tag"></i></span>
                                 <span class="nxl-mtext">My Assets</span>
+                            </a>
+                        </li>
+                        <li class="nxl-item">
+                            <a href="{{ route('assets.guide') }}" class="nxl-link">
+                                <span class="nxl-micon"><i class="fas fa-circle-question"></i></span>
+                                <span class="nxl-mtext">How to Use</span>
                             </a>
                         </li>
                     </ul>

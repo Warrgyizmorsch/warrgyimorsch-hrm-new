@@ -143,9 +143,14 @@ Route::middleware(['auth'])->group(function () {
 
     // Asset Management - Employee/Team Leader Routes (self + team-scoped, view-only, no admin actions)
     Route::get('/my-assets', [AssetController::class, 'employeeView'])->name('assets.employee');
+    // How-to guide for the asset module (sections shown depend on the viewer's role).
+    Route::view('/asset-guide', 'assets.guide')->name('assets.guide');
     Route::post('/my-assets/request', [AssetController::class, 'requestAsset'])->name('assets.request');
     // Declare a device you already hold (TL/HR may declare for their team; checked in the controller).
     Route::post('/asset-declarations', [AssetController::class, 'declare'])->name('assets.declare');
+    // Confirm / dispute receipt of an allocated device, and report damage or loss of your own device.
+    Route::post('/my-assets/{allocation}/acknowledge', [AssetController::class, 'acknowledge'])->whereNumber('allocation')->name('assets.acknowledge');
+    Route::post('/my-assets/report-incident', [\App\Http\Controllers\AssetIncidentController::class, 'reportByEmployee'])->name('assets.incidents.report');
 
     Route::get('/help', fn () => view('pages.help'))->name('help');
     Route::get('/terms', fn () => view('pages.terms'))->name('terms');
@@ -160,6 +165,24 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::post('/asset-requests/{id}/reject', [AssetController::class, 'reject'])->name('assets.reject');
     Route::post('/asset-requests/{id}/return', [AssetController::class, 'markReturned'])->name('assets.markReturned');
     Route::post('/asset-management/{id}/allocate-manual', [AssetController::class, 'allocateManual'])->name('assets.allocateManual');
+    // Asset register: dashboard, export, details, return / retire, incidents (damage & loss), audits.
+    Route::get('/asset-management/dashboard', [\App\Http\Controllers\AssetDashboardController::class, 'index'])->name('assets.dashboard');
+    Route::get('/asset-management/export', [\App\Http\Controllers\AssetDashboardController::class, 'export'])->name('assets.export');
+    Route::post('/asset-management/{id}/details', [AssetController::class, 'updateDetails'])->whereNumber('id')->name('assets.details.update');
+    Route::post('/asset-management/{id}/return', [AssetController::class, 'returnAsset'])->whereNumber('id')->name('assets.return');
+    Route::post('/asset-management/{id}/retire', [AssetController::class, 'retire'])->whereNumber('id')->name('assets.retire');
+    Route::post('/asset-management/{id}/reactivate', [AssetController::class, 'reactivate'])->whereNumber('id')->name('assets.reactivate');
+    Route::get('/asset-incidents', [\App\Http\Controllers\AssetIncidentController::class, 'index'])->name('assets.incidents.index');
+    Route::post('/asset-incidents', [\App\Http\Controllers\AssetIncidentController::class, 'store'])->name('assets.incidents.store');
+    Route::post('/asset-incidents/{incident}/repair', [\App\Http\Controllers\AssetIncidentController::class, 'sendToRepair'])->name('assets.incidents.repair');
+    Route::post('/asset-incidents/{incident}/resolve', [\App\Http\Controllers\AssetIncidentController::class, 'resolve'])->name('assets.incidents.resolve');
+    Route::post('/asset-incidents/{incident}/recovery', [\App\Http\Controllers\AssetIncidentController::class, 'updateRecovery'])->name('assets.incidents.recovery');
+    Route::get('/asset-audits', [\App\Http\Controllers\AssetAuditController::class, 'index'])->name('assets.audits.index');
+    Route::post('/asset-audits', [\App\Http\Controllers\AssetAuditController::class, 'store'])->name('assets.audits.store');
+    Route::get('/asset-audits/{audit}', [\App\Http\Controllers\AssetAuditController::class, 'show'])->name('assets.audits.show');
+    Route::post('/asset-audits/{audit}/record', [\App\Http\Controllers\AssetAuditController::class, 'record'])->name('assets.audits.record');
+    Route::post('/asset-audits/{audit}/complete', [\App\Http\Controllers\AssetAuditController::class, 'complete'])->name('assets.audits.complete');
+    Route::post('/asset-audits/{audit}/cancel', [\App\Http\Controllers\AssetAuditController::class, 'cancel'])->name('assets.audits.cancel');
 
     Route::get('/dashboard/summary', [DashboardController::class, 'getMonthlySummary'])->name('dashboard.summary');
     Route::get('/dashboard/chart', [DashboardController::class, 'getChartData'])->name('dashboard.chart');
@@ -323,6 +346,9 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     // (scoped in the controller); store/destroy/allocate/reject/return stay admin-only.
     Route::get('/asset-management', [AssetController::class, 'index'])->name('assets.index');
     Route::put('/asset-management/{id}', [AssetController::class, 'update'])->name('assets.update');
+    // Asset page (history, holder, incidents) and transfer - TL: only assets held by their team (checked in the controller).
+    Route::get('/asset-management/{id}', [AssetController::class, 'show'])->whereNumber('id')->name('assets.show');
+    Route::post('/asset-management/{id}/transfer', [AssetController::class, 'transfer'])->whereNumber('id')->name('assets.transfer');
     // Verify / reject asset declarations (TL: own team only; never own or self-entered — see AccessControl).
     Route::post('/asset-declarations/{id}/verify', [AssetController::class, 'verifyDeclaration'])->name('assets.declarations.verify');
     Route::post('/asset-declarations/{id}/reject', [AssetController::class, 'rejectDeclaration'])->name('assets.declarations.reject');
