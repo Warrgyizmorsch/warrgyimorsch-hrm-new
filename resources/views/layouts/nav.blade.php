@@ -31,6 +31,9 @@
                     $navOpen = fn (...$patterns) => $navActive(...$patterns) ? 'zoho-menu-open' : '';
                     $navLinkActive = fn (...$patterns) => $navActive(...$patterns) ? 'active' : '';
                     $navItemActive = fn (...$patterns) => $navActive(...$patterns) ? 'active' : '';
+
+                    // Locked until HR approves the self-filled profile — every other link would just bounce back.
+                    $profileLocked = (bool) auth()->user()->employee?->isProfileLocked();
                 @endphp
 
             <div class="zoho-sidebar-scroll">
@@ -38,6 +41,14 @@
                 <li class="nxl-item nxl-caption">
                     <label>Navigation</label>
                 </li>
+                @if($profileLocked)
+                <li class="nxl-item active">
+                    <a href="{{ route('profile.complete') }}" class="nxl-link active">
+                        <span class="nxl-micon"><i class="feather-user-check"></i></span>
+                        <span class="nxl-mtext">Complete your profile</span>
+                    </a>
+                </li>
+                @else
                 <li class="nxl-item {{ $navItemActive('dashboard') }}">
                     <a href="{{ route('dashboard') }}" class="nxl-link {{ $navLinkActive('dashboard') }}">
                         <span class="nxl-micon"><i class="feather-airplay"></i></span>
@@ -443,6 +454,7 @@
                         <span class="nxl-mtext">Login Activity</span>
                     </a>
                 </li>
+                @endif
 
             </ul>
             <div id="zohoSidebarNoResults" class="zoho-sidebar-no-results d-none">No modules found</div>

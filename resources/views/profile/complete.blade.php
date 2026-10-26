@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', $isOnboarding ? 'Complete your profile' : 'My details')
+
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 <link rel="stylesheet" href="{{ asset('assets/css/hrm-employee-dashboard.css') }}?v={{ filemtime(public_path('assets/css/hrm-employee-dashboard.css')) ?: time() }}">
@@ -10,8 +12,9 @@
     .selfp-banner--wait { background: rgba(245, 158, 11, .1); color: #a16207; }
     .selfp-banner--back { background: rgba(239, 68, 68, .08); color: #b91c1c; }
     .selfp-readonly { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px 20px; }
+    .selfp-readonly > div { min-width: 0; }
     .selfp-readonly div small { display: block; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
-    .selfp-readonly div span { font-weight: 600; color: #0f172a; }
+    .selfp-readonly div span { display: block; font-weight: 600; color: #0f172a; overflow-wrap: anywhere; }
     .selfp-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 0 40px; }
 </style>
 @endpush

@@ -1,6 +1,8 @@
 @php
     $role = str_replace(' ', '_', strtolower(auth()->user()->role ?? 'employee'));
     $isAdminNav = in_array($role, ['super_admin', 'manager', 'hr_executive']);
+    // Waiting for HR to approve the self-filled profile: only /my-details and logout work, so hide the rest.
+    $profileLocked = (bool) auth()->user()->employee?->isProfileLocked();
     $pageTitle = trim($__env->yieldContent('page_title')) ?: match (true) {
         request()->routeIs('dashboard') => 'Home',
         request()->routeIs('employees.*') => 'Employees',
@@ -26,6 +28,9 @@
                 </button>
                 <span class="zoho-topbar-badge">HRM</span>
                 <ul class="zoho-topbar-nav">
+                    @if($profileLocked)
+                    <li><a href="{{ route('profile.complete') }}" class="active">Complete your profile</a></li>
+                    @else
                     <li><a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">Home</a></li>
                     @if($isAdminNav)
                         <li><a href="{{ route('employees.index') }}" class="{{ request()->routeIs('employees.*') ? 'active' : '' }}">Employees</a></li>
@@ -38,10 +43,12 @@
                         <li><a href="{{ route('projects.index') }}" class="{{ request()->routeIs('projects.*') ? 'active' : '' }}">Projects</a></li>
                     @endif
                     <li><a href="{{ route('tickets.index') }}" class="{{ request()->routeIs('tickets.*') ? 'active' : '' }}">Support</a></li>
+                    @endif
                 </ul>
             </div>
 
             <div class="zoho-topbar-actions">
+                @unless($profileLocked)
                 <button type="button" class="zoho-topbar-icon" data-bs-toggle="modal" data-bs-target="#ticketModal" title="Raise Ticket">
                     <i class="feather-plus"></i>
                 </button>
@@ -53,6 +60,7 @@
                 <button type="button" class="zoho-topbar-icon" data-bs-toggle="modal" data-bs-target="#qhNoteModal" title="Quick Note / Task">
                     <i class="feather-edit-3"></i>
                 </button>
+                @endunless
 
                 @php
                     // Bell contents (also served live by /notifications/feed — see the script at the end).
@@ -70,6 +78,7 @@
                         ->join('');
                 @endphp
 
+                @unless($profileLocked)
                 <button type="button" id="zohoNotifyBell"
                         class="zoho-topbar-icon zoho-topbar-notify"
                         data-bs-toggle="offcanvas"
@@ -80,6 +89,7 @@
                     @php $bellCount = $bell['count']; @endphp
                     <span class="zoho-notify-badge {{ $bellCount > 0 ? '' : 'd-none' }}" id="zohoNotifyBadge">{{ $bellCount > 9 ? '9+' : $bellCount }}</span>
                 </button>
+                @endunless
 
                 <button type="button"
                         class="zoho-topbar-profile"
@@ -578,6 +588,7 @@
 </style>
 <script>
 (function () {
+    if (@json($profileLocked)) return; // feed/push routes are blocked until the profile is approved
     var FEED_URL = @json(route('notifications.feed'));
     var ICON_URL = @json(asset('favicon.ico'));
     var PUSH = {
