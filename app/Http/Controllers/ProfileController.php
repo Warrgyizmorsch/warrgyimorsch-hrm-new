@@ -25,11 +25,10 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): View
+    public function edit(Request $request): RedirectResponse
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
+        // The stock Breeze page let users edit name/email directly; the real profile lives at profile.show.
+        return Redirect::route('profile.show');
     }
 
     /**
@@ -40,34 +39,25 @@ class ProfileController extends Controller
         $user = $request->user();
         $employee = Employee::find($user->employee_id);
 
+        // Employees can only change their photo here: name is HR-only and mobile goes through the
+        // approval form (SelfProfileController). A login with no employee record keeps its display name.
         $request->validate([
-            'name' => 'required|string|max:255',
-            'mobile_number' => 'nullable|string|max:20',
+            'name' => $employee ? 'nullable' : 'required|string|max:255', // ignored for employees
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
-        $user->update([
-            'name' => $request->name,
-        ]);
+        if (!$employee) {
+            $user->update(['name' => $request->name]);
+        } elseif ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('employees', $filename, 'public');
 
-        if ($employee) {
-            $updateData = [
-                'name' => $request->name,
-                'mobile_number' => $request->mobile_number
-            ];
-
-            if ($request->hasFile('photo')) {
-                $file = $request->file('photo');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('employees', $filename, 'public');
-
-                if ($employee->photo && \Storage::disk('public')->exists($employee->photo)) {
-                    \Storage::disk('public')->delete($employee->photo);
-                }
-                $updateData['photo'] = $path;
+            if ($employee->photo && \Storage::disk('public')->exists($employee->photo)) {
+                \Storage::disk('public')->delete($employee->photo);
             }
 
-            $employee->update($updateData);
+            $employee->update(['photo' => $path]);
         }
 
         return Redirect::route('profile.show')->with('success', 'Profile updated successfully! ✓');

@@ -62,8 +62,9 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @php $submitted = $profileRequest->submittedValues(); @endphp
                             @foreach(\App\Models\EmployeeProfileRequest::FIELDS as $field => $label)
-                                @php $value = old($field, $profileRequest->data[$field] ?? ''); @endphp
+                                @php $value = old($field, $submitted[$field] ?? ''); @endphp
                                 <tr class="{{ !$isOnboarding && in_array($field, $changed, true) ? 'pa-changed' : '' }}">
                                     <td class="fw-semibold">{{ $label }}
                                         @if(!$isOnboarding && in_array($field, $changed, true))<div class="pa-tag">changed</div>@endif

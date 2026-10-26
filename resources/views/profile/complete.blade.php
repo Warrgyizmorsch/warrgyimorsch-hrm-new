@@ -62,7 +62,6 @@
                     <div><small>Employee Code</small><span>{{ $employee->employee_code ?: '—' }}</span></div>
                     <div><small>Name</small><span>{{ $employee->name }}</span></div>
                     <div><small>Email</small><span>{{ $employee->email ?: '—' }}</span></div>
-                    <div><small>Mobile</small><span>{{ $employee->mobile_number ?: '—' }}</span></div>
                     <div><small>Department</small><span>{{ $employee->departmentRef->name ?? '—' }}</span></div>
                     <div><small>Designation</small><span>{{ $employee->designation ?: '—' }}</span></div>
                     <div><small>Date of Joining</small><span>{{ $employee->date_of_joining ? \Carbon\Carbon::parse($employee->date_of_joining)->format('d M Y') : '—' }}</span></div>
@@ -101,6 +100,14 @@
                                     @endforeach
                                 </div>
                                 @if($err('gender'))<div class="text-danger small">{{ $err('gender') }}</div>@endif
+                            </div>
+                            <div class="hrm-field">
+                                <label>Mobile No. <span class="req">*</span></label>
+                                <div class="hrm-input-wrap"><i class="bi bi-phone"></i>
+                                    <input type="tel" name="mobile_number" class="form-control @if($err('mobile_number')) is-invalid @endif" value="{{ $val('mobile_number') }}"
+                                        inputmode="numeric" maxlength="15" placeholder="10-digit mobile number" required>
+                                </div>
+                                @if($err('mobile_number'))<div class="text-danger small">{{ $err('mobile_number') }}</div>@endif
                             </div>
                             <div class="hrm-field">
                                 <label>Address <span class="req">*</span></label>

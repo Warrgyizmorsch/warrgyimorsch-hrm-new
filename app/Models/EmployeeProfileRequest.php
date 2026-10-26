@@ -24,6 +24,7 @@ class EmployeeProfileRequest extends Model
     public const FIELDS = [
         'date_of_birth' => 'Date of Birth',
         'gender' => 'Gender',
+        'mobile_number' => 'Mobile No.',
         'address' => 'Address',
         'aadhaar_number' => 'Aadhaar No.',
         'pan_number' => 'PAN No.',
@@ -67,6 +68,7 @@ class EmployeeProfileRequest extends Model
         return [
             'date_of_birth' => ['required', 'date', 'before:' . now()->subYears(14)->toDateString(), 'after:1940-01-01'],
             'gender' => ['required', Rule::in(['male', 'female'])],
+            'mobile_number' => ['required', 'regex:/^[6-9]\d{9}$/'],
             'address' => ['required', 'string', 'max:500'],
             'aadhaar_number' => ['required', 'regex:/^\d{12}$/'],
             'pan_number' => ['required', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/'],
@@ -80,6 +82,7 @@ class EmployeeProfileRequest extends Model
     {
         return [
             'date_of_birth.before' => 'Please check the date of birth.',
+            'mobile_number.regex' => 'Mobile number must be a 10-digit Indian mobile number.',
             'aadhaar_number.regex' => 'Aadhaar number must be 12 digits.',
             'pan_number.regex' => 'PAN must look like ABCDE1234F (5 letters, 4 digits, 1 letter).',
             'account_number.regex' => 'Account number must be 9–18 digits.',
@@ -101,6 +104,10 @@ class EmployeeProfileRequest extends Model
                 $input[$key] = strtoupper(preg_replace('/\s+/', '', (string) $input[$key]));
             }
         }
+        if (isset($input['mobile_number'])) {
+            // "+91 63767 34812" / "07239849705" → the bare 10 digits.
+            $input['mobile_number'] = preg_replace('/^(?:\+?91|0)(?=\d{10}$)/', '', preg_replace('/[\s()-]+/', '', (string) $input['mobile_number']));
+        }
 
         return $input;
     }
@@ -117,11 +124,21 @@ class EmployeeProfileRequest extends Model
         return $values;
     }
 
+    /**
+     * Submitted values, with the employee's current value for any field the request doesn't
+     * carry (requests made before that field became self-service).
+     */
+    public function submittedValues(): array
+    {
+        return ($this->data ?? []) + self::currentValues($this->employee);
+    }
+
     /** Fields whose submitted value differs from what's on the employee record now. */
     public function changedFields(): array
     {
         $current = self::currentValues($this->employee);
+        $submitted = $this->submittedValues();
 
-        return array_keys(array_filter(self::FIELDS, fn ($label, $field) => (string) ($this->data[$field] ?? '') !== (string) ($current[$field] ?? ''), ARRAY_FILTER_USE_BOTH));
+        return array_keys(array_filter(self::FIELDS, fn ($label, $field) => (string) ($submitted[$field] ?? '') !== (string) ($current[$field] ?? ''), ARRAY_FILTER_USE_BOTH));
     }
 }

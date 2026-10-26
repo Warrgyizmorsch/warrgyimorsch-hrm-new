@@ -20,7 +20,7 @@ class SelfProfileController extends Controller
         $employee = $this->employee();
         $openRequest = $employee->openProfileRequest();
 
-        $values = $openRequest?->data ?? EmployeeProfileRequest::currentValues($employee);
+        $values = $openRequest?->submittedValues() ?? EmployeeProfileRequest::currentValues($employee);
         if (!$openRequest && $employee->profile_status === Employee::PROFILE_PENDING) {
             // employees.gender is NOT NULL, so a placeholder is stored at account creation —
             // don't pre-select it; the employee must choose.

@@ -278,8 +278,6 @@
                             <form id="photoUploadForm" action="{{ route('profile.update') }}" method="POST"
                                 enctype="multipart/form-data" class="d-none">
                                 @csrf @method('PATCH')
-                                <input type="hidden" name="name" value="{{ $user->name }}">
-                                <input type="hidden" name="mobile_number" value="{{ $employee?->mobile_number ?? '' }}">
                                 <input type="file" id="profile_photo_input" name="photo" accept="image/*"
                                     onchange="document.getElementById('photoUploadForm').submit();">
                             </form>
@@ -350,7 +348,7 @@
                                     @elseif($myOpenRequest?->status === 'returned')
                                         <i class="feather-alert-circle text-danger"></i> HR sent your change request back: “{{ $myOpenRequest->review_note }}”
                                     @else
-                                        Need to update your address, ID or bank details? Changes go to HR for approval.
+                                        Need to update your mobile number, address, ID or bank details? Changes go to HR for approval.
                                     @endif
                                 </span>
                                 <a href="{{ route('profile.complete') }}" class="btn btn-sm btn-outline-primary">
@@ -659,26 +657,48 @@
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form action="{{ route('profile.update') }}" method="POST">
-                    @csrf @method('PATCH')
+                @if($employee)
+                    {{-- Name/email belong to HR; mobile goes through the approval form like address and bank details. --}}
                     <div class="modal-body">
                         <div class="premium-input-group">
-                            <label>Display Name</label>
-                            <input type="text" name="name" class="premium-control form-control" value="{{ $user->name }}"
-                                required>
+                            <label>Name</label>
+                            <input type="text" class="premium-control form-control" value="{{ $employee->name }}" readonly>
                         </div>
-                        <div class="premium-input-group mb-0">
+                        <div class="premium-input-group">
+                            <label>Email</label>
+                            <input type="text" class="premium-control form-control" value="{{ $user->email }}" readonly>
+                        </div>
+                        <div class="premium-input-group">
                             <label>Mobile Number</label>
-                            <input type="text" name="mobile_number" class="premium-control form-control"
-                                value="{{ $employee?->mobile_number ?? '' }}">
+                            <input type="text" class="premium-control form-control" value="{{ $employee->mobile_number }}" readonly>
                         </div>
+                        <p class="text-muted small mb-0">
+                            Name and email can only be changed by HR — please tell them if something is wrong.
+                            To change your mobile number, address, ID or bank details, use <strong>Update my details</strong>; HR approves the change.
+                        </p>
                     </div>
                     <div class="modal-footer border-0 p-4">
                         <button type="button" class="btn btn-soft-secondary rounded-pill px-5 fw-bold"
-                            data-bs-dismiss="modal">Discard</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold">Apply Changes</button>
+                            data-bs-dismiss="modal">Close</button>
+                        <a href="{{ route('profile.complete') }}" class="btn btn-primary rounded-pill px-5 fw-bold">Update my details</a>
                     </div>
-                </form>
+                @else
+                    <form action="{{ route('profile.update') }}" method="POST">
+                        @csrf @method('PATCH')
+                        <div class="modal-body">
+                            <div class="premium-input-group mb-0">
+                                <label>Display Name</label>
+                                <input type="text" name="name" class="premium-control form-control" value="{{ $user->name }}"
+                                    required>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 p-4">
+                            <button type="button" class="btn btn-soft-secondary rounded-pill px-5 fw-bold"
+                                data-bs-dismiss="modal">Discard</button>
+                            <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold">Apply Changes</button>
+                        </div>
+                    </form>
+                @endif
             </div>
         </div>
     </div>
