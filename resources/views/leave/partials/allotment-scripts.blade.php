@@ -28,7 +28,14 @@
     window.applyYearlyMetric = function () {
         const metric = document.getElementById('yearlyMetricSelect')?.value || 'available';
         document.querySelectorAll('#yearlyTable .la-year-cell').forEach(function (cell) {
-            cell.textContent = cell.dataset.future ? '—' : parseFloat(cell.dataset[metric] || '0').toFixed(1);
+            const isFuture = cell.dataset.future === '1';
+            const showScheduledUsage = isFuture && metric === 'used';
+            cell.textContent = isFuture && !showScheduledUsage
+                ? '—'
+                : parseFloat(cell.dataset[metric] || '0').toFixed(1);
+            cell.title = showScheduledUsage
+                ? 'Approved leave scheduled for this month; not yet taken'
+                : (isFuture ? 'Not allotted yet' : '');
         });
         const totalHeader = document.getElementById('yearlyTotalHeader');
         if (totalHeader) {
