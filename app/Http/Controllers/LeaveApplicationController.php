@@ -129,42 +129,6 @@ class LeaveApplicationController extends Controller
         $query->where('leave_category', 'LIKE', '%' . $category . '%');
     }
 
-    private function getAttendanceStatusFromLeave(string $leaveCategory, ?string $leaveType = null): string
-    {
-        $normalizedCategory = strtolower($leaveCategory);
-        $normalizedType = strtolower($leaveType ?? '');
-
-        if (str_contains($normalizedType, 'half')) {
-            return 'half_day';
-        }
-
-        if (str_contains($normalizedCategory, 'wfh')) {
-            return 'wfh';
-        }
-
-        if (str_contains($normalizedCategory, 'gatepass')) {
-            return 'early_leave';
-        }
-
-        return 'leave';
-    }
-
-    private function getAttendanceHoursFromLeave(string $leaveCategory, ?string $leaveType = null): int
-    {
-        $normalizedCategory = strtolower($leaveCategory);
-        $normalizedType = strtolower($leaveType ?? '');
-
-        if (str_contains($normalizedType, 'half')) {
-            return 4;
-        }
-
-        if (str_contains($normalizedCategory, 'wfh')) {
-            return 8;
-        }
-
-        return 0;
-    }
-
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -613,14 +577,17 @@ class LeaveApplicationController extends Controller
 
             // A full-day leave approved for a day that already has real biometric
             // punches must not overwrite them — the employee was genuinely present
-            // that day. Half-day leave and Gatepass (early leave) are different:
+            // that day. Half-day leave, WFH and Gatepass (early leave) are different:
             // partial punches are expected there, so creditApprovedLeave() corrects
             // the status to reflect the approved leave without touching the real
-            // check-in/out/hours. This mirrors the credit applied on every biometric
-            // re-sync (AttendanceService::processEmployeePunchSet), so it isn't
+            // check-in/out/hours. A lone punch is no real attendance, so the leave
+            // status applies and the punch is kept. This mirrors what every biometric
+            // re-sync does (AttendanceService::processEmployeePunchSet), so it isn't
             // reverted the next time attendance syncs.
             if ($existing && ($existing->check_in !== null || $existing->check_out !== null)) {
-                if ($hasBothPunches) {
+                if (!$hasBothPunches) {
+                    $existing->update(\App\Services\AttendanceStatusService::attributesForLeave($leave));
+                } elseif ($leave->status === 'approved') {
                     $existing->update([
                         'status' => \App\Services\AttendanceStatusService::creditApprovedLeave(
                             $existing->status ?? '',
@@ -640,18 +607,10 @@ class LeaveApplicationController extends Controller
                     'employee_id' => $leave->employee_id,
                     'attendance_date' => $date->format('Y-m-d')
                 ],
-                [
-                    'status' => $this->getAttendanceStatusFromLeave(
-                        $leave->leave_category,
-                        $leave->leave_type
-                    ),
-                    'total_hours' => $this->getAttendanceHoursFromLeave(
-                        $leave->leave_category,
-                        $leave->leave_type
-                    ),
-                    'check_in' => null,
-                    'check_out' => null
-                ]
+                array_merge(
+                    \App\Services\AttendanceStatusService::attributesForLeave($leave),
+                    ['check_in' => null, 'check_out' => null]
+                )
             );
         }
     }
@@ -666,6 +625,29 @@ class LeaveApplicationController extends Controller
             ->first();
 
         return $winner && !$winner->isWfh();
+    }
+
+    // Undo what an application wrote: its punchless rows go away; a day with real punches
+    // keeps them and returns to its punch-derived status. Manual corrections stay as they are.
+    private function clearLeaveFromAttendance(LeaveApplication $leave, Carbon $start, Carbon $end): void
+    {
+        $service = \App\Services\AttendanceStatusService::class;
+
+        Attendance::where('employee_id', $leave->employee_id)
+            ->where('attendance_date', '>=', $start->format('Y-m-d'))
+            ->where('attendance_date', '<=', $end->format('Y-m-d'))
+            ->where('is_manual', false)
+            ->whereIn('status', ['leave', 'half_day', 'half_day_leave', 'wfh', 'early_leave', 'unpaid_leave', 'unauthorised'])
+            ->get()
+            ->each(function (Attendance $record) use ($service) {
+                if ($record->check_in === null && $record->check_out === null) {
+                    $record->delete();
+                } elseif ($record->check_in !== null && $record->check_out !== null) {
+                    $record->update(['status' => $service::resolveStatusFromHours((float) $record->total_hours)]);
+                } else {
+                    $record->update(['status' => 'missing_punch', 'total_hours' => 0]);
+                }
+            });
     }
 
     // After an approval is revoked and its attendance rows cleared, re-apply other
@@ -709,17 +691,14 @@ class LeaveApplicationController extends Controller
         $oldStatus = $leave->status;
         $newStatus = $request->status;
 
-        if ($newStatus === 'approved' && $oldStatus !== 'approved') {
-            $this->applyApprovedLeaveToAttendance($leave);
-        } elseif ($oldStatus === 'approved' && $newStatus !== 'approved') {
-            $startDate = Carbon::parse($leave->start_date);
-            $endDate = $leave->end_date ? Carbon::parse($leave->end_date) : $startDate->copy();
+        // These decisions all write to attendance (the biometric sync restores the same three).
+        $writesAttendance = ['approved', 'unpaid', 'unauthorised'];
+        $statusChanged = $oldStatus !== $newStatus;
+        $startDate = Carbon::parse($leave->start_date);
+        $endDate = $leave->end_date ? Carbon::parse($leave->end_date) : $startDate->copy();
 
-            Attendance::where('employee_id', $leave->employee_id)
-                ->where('attendance_date', '>=', $startDate->format('Y-m-d'))
-                ->where('attendance_date', '<=', $endDate->format('Y-m-d'))
-                ->whereIn('status', ['leave', 'half_day', 'wfh', 'early_leave'])
-                ->delete();
+        if ($statusChanged && in_array($oldStatus, $writesAttendance, true)) {
+            $this->clearLeaveFromAttendance($leave, $startDate, $endDate);
         }
 
         // Level 2 (manager) decision with remarks; marks the TL level as bypassed if still open.
@@ -728,7 +707,11 @@ class LeaveApplicationController extends Controller
             $this->approval->managerUpdate($leave, auth()->user(), $newStatus, trim($request->remarks))
         ));
 
-        if ($oldStatus === 'approved' && $newStatus !== 'approved') {
+        if ($statusChanged && in_array($newStatus, $writesAttendance, true)) {
+            $this->applyApprovedLeaveToAttendance($leave);
+        }
+
+        if ($statusChanged && in_array($oldStatus, $writesAttendance, true)) {
             $this->reapplyOverlappingApprovedLeaves($leave, $startDate, $endDate);
         }
 

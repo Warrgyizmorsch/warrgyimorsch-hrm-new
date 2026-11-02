@@ -255,23 +255,24 @@ class PayrollController extends Controller
             $dateKey = $date ? Carbon::parse($date)->format('Y-m-d') : null;
             $activityDays = $dateKey ? Attendance::computeActivityDays([$dateKey]) : [];
             $isActivityDay = (bool) ($activityDays[$dateKey] ?? false);
+            $historyService = app(AttendanceHistoryService::class);
 
-            $details->each(function ($attendance) use ($holiday, $isActivityDay) {
+            $details->each(function ($attendance) use ($holiday, $dateKey, $historyService) {
                 if ($holiday) {
                     $attendance->is_holiday = true;
                     $attendance->holiday_title = $holiday->title;
                 }
 
-                $resolved = AttendanceStatusService::resolveDisplayStatus(
-                    $attendance,
-                    (bool) $holiday,
-                    $isActivityDay
-                );
+                // Same pipeline as Attendance History and payroll (Sunday rule and monthly
+                // late-arrival grace included), so one day reads the same on every screen.
+                $day = Carbon::parse($dateKey);
+                $row = collect($historyService->buildMonthlyHistory((int) $attendance->employee_id, $day->copy()->startOfMonth(), $day))
+                    ->firstWhere('date_key', $dateKey);
 
-                $attendance->display_status = $resolved['label'];
-                $attendance->display_status_key = $resolved['key'];
-                $attendance->display_status_class = $resolved['class'];
-                $attendance->is_activity = $resolved['is_activity'];
+                $attendance->display_status = $row['status'];
+                $attendance->display_status_key = $row['status_key'];
+                $attendance->display_status_class = $row['statusClass'];
+                $attendance->is_activity = $row['is_activity'];
             });
 
             return response()->json([
@@ -1357,6 +1358,18 @@ class PayrollController extends Controller
 
             $checkIn = !empty($emp['check_in']) ? $emp['check_in'] : null;
             $checkOut = !empty($emp['check_out']) ? $emp['check_out'] : null;
+            $pickedStatus = !empty($emp['status']) ? strtolower($emp['status']) : $attendance->status;
+            $statusChanged = $pickedStatus !== $attendance->status;
+
+            // This form posts every employee on the date: leave the ones nobody touched alone,
+            // otherwise one edit recalculates and locks the whole day against device syncs.
+            if (
+                !$statusChanged
+                && substr((string) $checkIn, 0, 5) === substr((string) $attendance->getRawPunchTime('check_in'), 0, 5)
+                && substr((string) $checkOut, 0, 5) === substr((string) $attendance->getRawPunchTime('check_out'), 0, 5)
+            ) {
+                continue;
+            }
 
             $totalHours = 0;
 
@@ -1383,14 +1396,18 @@ class PayrollController extends Controller
             $attendance->check_in = $checkIn;
             $attendance->check_out = $checkOut;
             $attendance->total_hours = $totalHours;
-            $attendance->status = AttendanceStatusService::resolveStoredStatus(
-                $emp['status'] ?? $attendance->status ?? 'absent',
-                $totalHours,
-                (bool) ($checkIn && $checkOut)
-            );
-            // Both punches set by hand — lock this record so a later device sync/rebuild
-            // can't overwrite the manual correction.
-            $attendance->is_manual = (bool) ($checkIn && $checkOut);
+            // A status the admin picked is kept as-is, same as updateByName(). Only a punch
+            // edit that leaves the status alone derives it from the new hours.
+            $attendance->status = $statusChanged
+                ? $pickedStatus
+                : AttendanceStatusService::resolveStoredStatus(
+                    $attendance->status ?? 'absent',
+                    $totalHours,
+                    (bool) ($checkIn && $checkOut)
+                );
+            // Both punches or the status set by hand — lock this record so a later device
+            // sync/rebuild can't overwrite the manual correction.
+            $attendance->is_manual = (bool) ($checkIn && $checkOut) || $statusChanged;
 
             $attendance->save();
         }
@@ -1966,13 +1983,29 @@ class PayrollController extends Controller
     public function updateByName(Request $request, $employee_id)
     {
         foreach ($request->attendance_ids as $id) {
+            $record = Attendance::where('employee_id', $employee_id)->find($id);
+
+            if (!$record) {
+                continue;
+            }
+
             $checkIn = $request->check_in[$id] ?? null;
             $checkOut = $request->check_out[$id] ?? null;
 
             $totalHours = null;
             // Admin picked this status explicitly in the edit form — respect it as-is,
             // don't silently recompute it from hours (that overwrote manual corrections).
-            $status = strtolower($request->status[$id] ?? 'absent');
+            $status = strtolower(($request->status[$id] ?? '') ?: 'absent');
+            $statusChanged = $status !== $record->status;
+
+            // The form posts every row in the selected range: leave untouched ones alone.
+            if (
+                !$statusChanged
+                && substr((string) $checkIn, 0, 5) === substr((string) $record->getRawPunchTime('check_in'), 0, 5)
+                && substr((string) $checkOut, 0, 5) === substr((string) $record->getRawPunchTime('check_out'), 0, 5)
+            ) {
+                continue;
+            }
 
             // Calculate total working hours
             if ($checkIn && $checkOut) {
@@ -1988,14 +2021,14 @@ class PayrollController extends Controller
                 $totalHours = round($minutes / 60, 2);
             }
 
-            Attendance::where('id', $id)->update([
+            $record->update([
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
                 'status' => $status,
                 'total_hours' => $totalHours,
-                // Both punches set by hand — lock this record so a later device sync/rebuild
-                // can't overwrite the manual correction.
-                'is_manual' => (bool) ($checkIn && $checkOut),
+                // Both punches or the status set by hand — lock this record so a later device
+                // sync/rebuild can't overwrite the manual correction.
+                'is_manual' => (bool) ($checkIn && $checkOut) || $statusChanged,
             ]);
         }
 
@@ -2488,6 +2521,7 @@ class PayrollController extends Controller
             DB::raw('COUNT(DISTINCT CASE WHEN attendances.total_hours > 9.5 THEN attendances.id END) as overtime_count'),
             DB::raw("COUNT(DISTINCT CASE
                 WHEN attendances.status = 'half_day_leave'
+                    OR (attendances.status = 'half_day' AND attendances.is_manual = 1)
                     OR ({$halfDay})
                 THEN attendances.id END) as half_day_count"),
             DB::raw("COUNT(DISTINCT CASE WHEN attendances.status IN ('leave', 'half_day_leave', 'unpaid_leave') THEN attendances.id END) as leave_count"),

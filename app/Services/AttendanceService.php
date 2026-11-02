@@ -236,9 +236,12 @@ class AttendanceService
 
             $resolved = self::resolveForEmployee($entry['punches'], $entry['employee'], $entry['attendance_date']);
 
-            if ($resolved['check_in'] !== null && $resolved['check_out'] !== null) {
-                $leave = self::approvedLeaveCoveringDate($entry['employee_id'], $entry['attendance_date']);
+            $leave = self::approvedLeaveCoveringDate($entry['employee_id'], $entry['attendance_date']);
 
+            if ($leave && ($resolved['check_in'] === null || $resolved['check_out'] === null)) {
+                // A stray single punch on an approved day isn't a real attendance record.
+                $resolved = array_merge($resolved, AttendanceStatusService::attributesForLeave($leave));
+            } elseif ($resolved['check_in'] !== null && $resolved['check_out'] !== null) {
                 if ($leave) {
                     $isNightShift = self::isNightShiftEmployee($entry['employee']);
                     $resolved['status'] = AttendanceStatusService::creditApprovedLeave(
@@ -306,17 +309,16 @@ class AttendanceService
                 ->map(fn ($log) => Carbon::parse($log->timestamp))
                 ->all();
 
-            $clearedDates = $this->clearAttendanceForEmployeeRebuild($employee, $punches);
-
             $dates = $this->processEmployeePunchSet($employee, $punches);
             $processedGroups += count($dates);
             $allDates = array_merge($allDates, $dates);
 
-            // The clear above wiped every non-manual day in the employee's punch range,
-            // including WFH / leave / half-day-leave days that have no punches. Restore
-            // those from their leave applications (or mark absent) for this employee —
-            // otherwise each sync silently erased approved WFH and leave.
-            $this->fillMissingAttendanceForDates($clearedDates, [$employee->id]);
+            // Days in the punch range that no longer have punches are reset in place from
+            // their leave applications (or to absent). Rows are never deleted and recreated:
+            // that changed their ids every sync, so an edit form opened a minute earlier
+            // saved against an id that no longer existed and the change was silently lost.
+            $rangeDates = $this->resetUnpunchedDaysForRebuild($employee, $punches, $dates);
+            $this->fillMissingAttendanceForDates($rangeDates, [$employee->id]);
         }
 
         $this->fillMissingAttendanceForDates(array_unique($allDates));
@@ -333,12 +335,14 @@ class AttendanceService
     }
 
     /**
-     * Remove existing attendance rows before a log rebuild so stale midday punches do not remain.
+     * Reset non-manual days in the punch range that the rebuild found no punches for, so
+     * stale punches do not remain.
      *
      * @param  Carbon[]  $punches
-     * @return string[] every calendar date (Y-m-d) in the cleared range, capped at today
+     * @param  string[]  $punchedDates  attendance dates the rebuild just wrote from punches
+     * @return string[] every calendar date (Y-m-d) in the range, capped at today
      */
-    private function clearAttendanceForEmployeeRebuild(Employee $employee, array $punches): array
+    private function resetUnpunchedDaysForRebuild(Employee $employee, array $punches, array $punchedDates): array
     {
         if ($punches === []) {
             return [];
@@ -352,10 +356,29 @@ class AttendanceService
         $minDate = min($calendarDates);
         $maxDate = max($calendarDates);
 
+        $holidayDates = Holiday::whereBetween(DB::raw('DATE(date)'), [$minDate, $maxDate])
+            ->pluck('date')
+            ->map(fn ($d) => Carbon::parse($d)->toDateString())
+            ->all();
+
         Attendance::where('employee_id', $employee->id)
             ->whereBetween('attendance_date', [$minDate, $maxDate])
             ->where('is_manual', false)
-            ->delete();
+            ->whereNotIn('attendance_date', $punchedDates)
+            ->get()
+            ->each(function (Attendance $record) use ($employee, $holidayDates) {
+                if ($record->attendance_date->isSunday()) {
+                    $record->delete();
+                    return;
+                }
+
+                $date = $record->attendance_date->toDateString();
+
+                $record->update(array_merge(
+                    ['check_in' => null, 'check_out' => null],
+                    $this->attributesForUnpunchedDay($employee->id, $date, in_array($date, $holidayDates, true))
+                ));
+            });
 
         $cleared = [];
         $last = Carbon::parse($maxDate)->min(Carbon::today());
@@ -485,58 +508,41 @@ class AttendanceService
                     continue;
                 }
 
-                // A holiday-master date stays a holiday: a WFH/leave range spanning it
-                // must not stamp it (an 'absent' row on a holiday displays as Holiday).
-                $leaveApplication = in_array($carbonDate->toDateString(), $holidayDates, true)
-                    ? null
-                    : LeaveApplication::where('employee_id', $employee->id)
-                        ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
-                        ->coveringDate($date)
-                        ->preferActualLeave()
-                        ->first();
-
-                $status = 'absent';
-                $totalHours = 0;
-
-                if ($leaveApplication) {
-                    $leaveStatus = strtolower(trim($leaveApplication->status ?? ''));
-                    $leaveType = strtolower(trim($leaveApplication->leave_type ?? ''));
-                    $leaveCategory = strtolower(trim($leaveApplication->leave_category ?? ''));
-
-                    if ($leaveStatus === 'unpaid') {
-                        $status = 'unpaid_leave';
-                    } elseif ($leaveStatus === 'unauthorised') {
-                        $status = 'unauthorised';
-                    } elseif ($leaveType === 'wfh' || $leaveCategory === 'wfh') {
-                        $status = 'wfh';
-                        $totalHours = 8;
-                    } elseif (
-                        $leaveCategory === 'gatepass'
-                        || $leaveCategory === 'early leave'
-                        || $leaveType === 'gatepass leave'
-                        || $leaveType === 'early leave'
-                    ) {
-                        $status = 'early_leave';
-                        $totalHours = 1;
-                    } elseif ($leaveCategory === 'half day' || (float) $leaveApplication->total_days == 0.5) {
-                        $status = 'half_day_leave';
-                        $totalHours = 4;
-                    } else {
-                        $status = 'leave';
-                        $totalHours = 0;
-                    }
-                }
-
-                Attendance::create([
-                    'employee_id' => $employee->id,
-                    'attendance_date' => $date,
-                    'check_in' => null,
-                    'check_out' => null,
-                    'total_hours' => $totalHours,
-                    'status' => $status,
-                ]);
+                Attendance::create(array_merge(
+                    [
+                        'employee_id' => $employee->id,
+                        'attendance_date' => $date,
+                        'check_in' => null,
+                        'check_out' => null,
+                    ],
+                    $this->attributesForUnpunchedDay(
+                        $employee->id,
+                        $date,
+                        in_array($carbonDate->toDateString(), $holidayDates, true)
+                    )
+                ));
             }
         }
+    }
+
+    /**
+     * @return array{status: string, total_hours: int}
+     */
+    private function attributesForUnpunchedDay(int $employeeId, string $date, bool $isHoliday): array
+    {
+        // A holiday-master date stays a holiday: a WFH/leave range spanning it
+        // must not stamp it (an 'absent' row on a holiday displays as Holiday).
+        $leaveApplication = $isHoliday
+            ? null
+            : LeaveApplication::where('employee_id', $employeeId)
+                ->whereIn('status', ['approved', 'unpaid', 'unauthorised'])
+                ->coveringDate($date)
+                ->preferActualLeave()
+                ->first();
+
+        return $leaveApplication
+            ? AttendanceStatusService::attributesForLeave($leaveApplication)
+            : ['status' => 'absent', 'total_hours' => 0];
     }
 
     private static function approvedLeaveCoveringDate(int $employeeId, string $date): ?LeaveApplication

@@ -124,9 +124,12 @@ class AttendanceStatusService
      * biometric re-sync, so the credit survives resyncs instead of being recomputed away.
      *
      * - Half-day leave: partial punches are expected — if the worked half alone doesn't
-     *   clear the half-day threshold, the leave covers the rest of the day.
+     *   clear the half-day threshold, the leave covers the rest of the day. Stored as
+     *   half_day_leave because every screen recomputes a plain half_day from its hours.
      * - Gatepass / Early Leave: the employee was permitted to leave ~1hr early — that
-     *   hour is credited toward the Present/Half-day threshold.
+     *   hour is credited toward the Present/Half-day threshold. A day the credit lifts to
+     *   full is stored as early_leave, which screens keep instead of recomputing from hours.
+     * - Full-day WFH: office punches short of a full day don't undo the approved WFH.
      * - Any other (full-day) leave category is left untouched here: real punches on a
      *   full-day-leave date mean the employee was genuinely present, which callers must
      *   decide separately (this method never manufactures a 'leave' status).
@@ -149,14 +152,22 @@ class AttendanceStatusService
         $leaveCategory = strtolower($leaveCategory);
 
         if (str_contains($leaveType, 'half')) {
-            return $hours >= self::HALF_DAY_MIN_HOURS ? $rawStatus : 'half_day';
+            return $hours >= self::HALF_DAY_MIN_HOURS ? $rawStatus : 'half_day_leave';
+        }
+
+        if (str_contains($leaveCategory, 'wfh') || str_contains($leaveType, 'wfh')) {
+            return $hours >= $fullDayHours ? $rawStatus : 'wfh';
         }
 
         if (str_contains($leaveCategory, 'gatepass')) {
+            if ($hours >= $fullDayHours) {
+                return 'present';
+            }
+
             $credited = $hours + 1.0;
 
             if ($credited >= $fullDayHours) {
-                return 'present';
+                return 'early_leave';
             }
 
             if ($credited >= self::HALF_DAY_MIN_HOURS) {
@@ -165,6 +176,29 @@ class AttendanceStatusService
         }
 
         return $rawStatus;
+    }
+
+    /**
+     * Attendance status and hours a leave application gives a day without complete punches.
+     * Single source of truth for the approval flow and the biometric sync, so both write
+     * the same thing for the same application.
+     *
+     * @return array{status: string, total_hours: int}
+     */
+    public static function attributesForLeave(\App\Models\LeaveApplication $leave): array
+    {
+        $leaveStatus = strtolower(trim($leave->status ?? ''));
+        $leaveType = strtolower($leave->leave_type ?? '');
+        $leaveCategory = strtolower($leave->leave_category ?? '');
+
+        return match (true) {
+            $leaveStatus === 'unpaid' => ['status' => 'unpaid_leave', 'total_hours' => 0],
+            $leaveStatus === 'unauthorised' => ['status' => 'unauthorised', 'total_hours' => 0],
+            str_contains($leaveType, 'half'), (float) $leave->total_days === 0.5 => ['status' => 'half_day_leave', 'total_hours' => 4],
+            $leave->isWfh() => ['status' => 'wfh', 'total_hours' => 8],
+            str_contains($leaveCategory, 'gatepass'), str_contains($leaveType, 'early leave'), str_contains($leaveCategory, 'early leave') => ['status' => 'early_leave', 'total_hours' => 1],
+            default => ['status' => 'leave', 'total_hours' => 0],
+        };
     }
 
     /**
@@ -239,7 +273,8 @@ class AttendanceStatusService
             return self::result('Missing Punch', 'missing_punch', false);
         }
 
-        if ($hasPunches || ($hours > 0 && !self::isLeaveDerivedStatus($status))) {
+        // Real hours here, not $hours: the Saturday credit alone must not turn a punchless day into Absent.
+        if ($hasPunches || (float) ($record->total_hours ?? 0) > 0) {
             if ($hours >= $fullDayHours) {
                 $isEarly = $checkOutHm && $checkOutHm >= '15:00' && $checkOutHm < '17:30';
 
@@ -332,6 +367,7 @@ class AttendanceStatusService
 
         return "attendances.check_in IS NOT NULL
             AND attendances.check_out IS NOT NULL
+            AND attendances.is_manual = 0
             AND attendances.status NOT IN (" . self::leaveDerivedStatusesSql() . ")
             AND COALESCE(attendances.total_hours, 0) >= {$full}";
     }
@@ -343,6 +379,7 @@ class AttendanceStatusService
 
         return "attendances.check_in IS NOT NULL
             AND attendances.check_out IS NOT NULL
+            AND attendances.is_manual = 0
             AND attendances.status NOT IN (" . self::leaveDerivedStatusesSql() . ")
             AND COALESCE(attendances.total_hours, 0) >= {$half}
             AND COALESCE(attendances.total_hours, 0) < {$full}";
