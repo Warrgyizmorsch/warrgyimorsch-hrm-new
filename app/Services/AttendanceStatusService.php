@@ -20,7 +20,7 @@ class AttendanceStatusService
     /** Late arrivals beyond this many minutes after shift start are reported separately as "very late". */
     public const VERY_LATE_ARRIVAL_MINUTES = 30;
 
-    public const FULL_DAY_HOURS = 8.5;
+    public const FULL_DAY_HOURS = 8.0;
 
     public const NIGHT_SHIFT_FULL_DAY_HOURS = 8.0;
 
@@ -253,7 +253,14 @@ class AttendanceStatusService
         // is the source of truth for its status. Without this, the hours-first rules below would
         // silently recompute a different label right after a manual save, making the correction
         // look like it never took effect even though it was written to the database correctly.
+        // The hours still set a floor: a day that reached the threshold never reads lower.
         if ($record->is_manual) {
+            if ($hasPunches && in_array($status, ['half_day', 'absent'], true) && $hours >= $fullDayHours) {
+                $status = 'present';
+            } elseif ($hasPunches && $status === 'absent' && $hours >= self::HALF_DAY_MIN_HOURS) {
+                $status = 'half_day';
+            }
+
             return self::result(self::labelForStatus($status), $status, false);
         }
 
@@ -312,7 +319,7 @@ class AttendanceStatusService
     }
 
     /**
-     * Payable day fraction for payroll (8.5h = 1, 4–8.5h = 0.5).
+     * Payable day fraction for payroll (8h = 1, 4–8h = 0.5).
      */
     public static function resolvePayableDayFraction(Attendance $record): float
     {
@@ -361,28 +368,38 @@ class AttendanceStatusService
         return "'leave','wfh','unpaid_leave','half_day_leave','unauthorised','early_leave'";
     }
 
+    /** Worked hours plus the Saturday activity hour, as resolveDisplayStatus() counts them. */
+    private static function creditedHoursSql(): string
+    {
+        $credit = self::SATURDAY_CREDIT_HOURS;
+
+        return "(COALESCE(attendances.total_hours, 0) + IF(DAYOFWEEK(attendances.attendance_date) = 7, {$credit}, 0))";
+    }
+
     public static function punchDerivedFullDaySql(): string
     {
         $full = self::FULL_DAY_HOURS;
+        $hours = self::creditedHoursSql();
 
         return "attendances.check_in IS NOT NULL
             AND attendances.check_out IS NOT NULL
-            AND attendances.is_manual = 0
+            AND (attendances.is_manual = 0 OR attendances.status IN ('half_day', 'absent'))
             AND attendances.status NOT IN (" . self::leaveDerivedStatusesSql() . ")
-            AND COALESCE(attendances.total_hours, 0) >= {$full}";
+            AND {$hours} >= {$full}";
     }
 
     public static function punchDerivedHalfDaySql(): string
     {
         $full = self::FULL_DAY_HOURS;
         $half = self::HALF_DAY_MIN_HOURS;
+        $hours = self::creditedHoursSql();
 
         return "attendances.check_in IS NOT NULL
             AND attendances.check_out IS NOT NULL
-            AND attendances.is_manual = 0
+            AND (attendances.is_manual = 0 OR attendances.status = 'absent')
             AND attendances.status NOT IN (" . self::leaveDerivedStatusesSql() . ")
-            AND COALESCE(attendances.total_hours, 0) >= {$half}
-            AND COALESCE(attendances.total_hours, 0) < {$full}";
+            AND {$hours} >= {$half}
+            AND {$hours} < {$full}";
     }
 
     public static function labelForStatus(string $status): string

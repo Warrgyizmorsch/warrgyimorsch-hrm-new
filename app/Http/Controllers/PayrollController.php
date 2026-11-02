@@ -10,6 +10,7 @@ use App\Models\LeaveAllotment;
 use App\Models\Employee;
 use App\Models\Holiday;
 use App\Services\AttendanceHistoryService;
+use App\Services\AttendanceLogService;
 use App\Services\AttendanceStatusService;
 use App\Services\IncrementService;
 use App\Services\LateArrivalService;
@@ -221,6 +222,123 @@ class PayrollController extends Controller
         );
 
         return [$paginator, $employeeSummary];
+    }
+
+    public function attendanceLog(Request $request, AttendanceLogService $log)
+    {
+        $user = auth()->user();
+        $role = str_replace(' ', '_', strtolower($user->role ?? 'employee'));
+        $isTeamLeader = in_array($role, ['team_leader', 'business_operation_head']);
+
+        [$startDate, $endDate] = $log->dateRange($request);
+        $employees = $log->employeesFor($user, $isTeamLeader, $startDate, $endDate);
+        $result = $log->build($request, $employees, $startDate, $endDate);
+
+        $perPage = (int) $request->query('per_page', 20);
+        if (!in_array($perPage, [20, 50, 100], true)) {
+            $perPage = 20;
+        }
+
+        $page = max(1, (int) $request->query('page', 1));
+        $attendance = new \Illuminate\Pagination\LengthAwarePaginator(
+            $result['rows']->forPage($page, $perPage)->values(),
+            $result['rows']->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('payroll.attendance-log', [
+            'attendance' => $attendance,
+            'employees' => $employees,
+            'departments' => $isTeamLeader ? collect() : Department::orderBy('name')->get(['id', 'name']),
+            'counts' => $result['counts'],
+            'overtimeCount' => $result['overtime'],
+            'payableDays' => $result['payable'],
+            'perPage' => $perPage,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+        ]);
+    }
+
+    /** The Attendance History list as Excel, with the same filters applied. */
+    public function exportAttendanceLog(Request $request, AttendanceLogService $log)
+    {
+        [$startDate, $endDate] = $log->dateRange($request);
+        $employees = $log->employeesFor(auth()->user(), false, $startDate, $endDate);
+        $result = $log->build($request, $employees, $startDate, $endDate);
+
+        return Excel::download(
+            new \App\Exports\AttendanceLogExport($result['rows']),
+            'attendance_log_' . $startDate->toDateString() . '_to_' . $endDate->toDateString() . '.xlsx'
+        );
+    }
+
+    /** Edit one employee's day from the list; creates the record for a day that has none. */
+    public function saveAttendanceDay(Request $request)
+    {
+        $data = $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'attendance_date' => 'required|date|before_or_equal:today',
+            'check_in' => 'nullable|date_format:H:i',
+            'check_out' => 'nullable|date_format:H:i',
+            'status' => 'required|in:present,absent,missing_punch,half_day,half_day_leave,wfh,leave,unpaid_leave,unauthorised,late,activity,early_leave',
+        ]);
+
+        $attendance = Attendance::firstOrNew(
+            ['employee_id' => $data['employee_id'], 'attendance_date' => Carbon::parse($data['attendance_date'])->toDateString()],
+            ['status' => 'absent', 'total_hours' => 0]
+        );
+
+        $this->applyManualAttendanceEdit($attendance, $data['check_in'] ?? null, $data['check_out'] ?? null, $data['status']);
+
+        return response()->json(['success' => true, 'message' => 'Attendance updated']);
+    }
+
+    /**
+     * Save a hand edit: a status the admin picked is kept as-is, a punch edit that leaves the
+     * status alone derives it from the new hours. Untouched rows are skipped, because the bulk
+     * forms post every row and saving those would recalculate and lock them against syncs.
+     */
+    private function applyManualAttendanceEdit(Attendance $attendance, ?string $checkIn, ?string $checkOut, ?string $pickedStatus): void
+    {
+        $checkIn = $checkIn ? substr($checkIn, 0, 5) : null;
+        $checkOut = $checkOut ? substr($checkOut, 0, 5) : null;
+        $pickedStatus = $pickedStatus ? strtolower($pickedStatus) : $attendance->status;
+        $statusChanged = $pickedStatus !== $attendance->status;
+        $punchesChanged = $checkIn !== (substr((string) $attendance->getRawPunchTime('check_in'), 0, 5) ?: null)
+            || $checkOut !== (substr((string) $attendance->getRawPunchTime('check_out'), 0, 5) ?: null);
+
+        if ($attendance->exists && !$statusChanged && !$punchesChanged) {
+            return;
+        }
+
+        if ($punchesChanged) {
+            $totalHours = 0;
+
+            if ($checkIn && $checkOut) {
+                $minutes = Carbon::createFromFormat('H:i', $checkIn)->diffInMinutes(Carbon::createFromFormat('H:i', $checkOut), false);
+                // A check-out earlier than the check-in is a night shift ending the next day.
+                $totalHours = round(($minutes < 0 ? $minutes + 24 * 60 : $minutes) / 60, 2);
+            }
+
+            $attendance->check_in = $checkIn;
+            $attendance->check_out = $checkOut;
+            $attendance->total_hours = $totalHours;
+        }
+
+        $attendance->status = $statusChanged
+            ? $pickedStatus
+            : AttendanceStatusService::resolveStoredStatus(
+                $attendance->status ?? 'absent',
+                (float) $attendance->total_hours,
+                (bool) ($checkIn && $checkOut)
+            );
+        // Both punches or the status set by hand — lock this record so a later device
+        // sync/rebuild can't overwrite the manual correction.
+        $attendance->is_manual = (bool) ($checkIn && $checkOut) || $statusChanged;
+
+        $attendance->save();
     }
 
     /**
@@ -1356,60 +1474,12 @@ class PayrollController extends Controller
                 continue;
             }
 
-            $checkIn = !empty($emp['check_in']) ? $emp['check_in'] : null;
-            $checkOut = !empty($emp['check_out']) ? $emp['check_out'] : null;
-            $pickedStatus = !empty($emp['status']) ? strtolower($emp['status']) : $attendance->status;
-            $statusChanged = $pickedStatus !== $attendance->status;
+            $this->applyManualAttendanceEdit($attendance, $emp['check_in'] ?? null, $emp['check_out'] ?? null, $emp['status'] ?? null);
+        }
 
-            // This form posts every employee on the date: leave the ones nobody touched alone,
-            // otherwise one edit recalculates and locks the whole day against device syncs.
-            if (
-                !$statusChanged
-                && substr((string) $checkIn, 0, 5) === substr((string) $attendance->getRawPunchTime('check_in'), 0, 5)
-                && substr((string) $checkOut, 0, 5) === substr((string) $attendance->getRawPunchTime('check_out'), 0, 5)
-            ) {
-                continue;
-            }
-
-            $totalHours = 0;
-
-            // calculate total hours if both times exist
-            if ($checkIn && $checkOut) {
-                try {
-                    $in = \Carbon\Carbon::createFromFormat('H:i', $checkIn);
-                    $out = \Carbon\Carbon::createFromFormat('H:i', $checkOut);
-
-                    $diffMinutes = $in->diffInMinutes($out, false);
-
-                    // handle night shift
-                    if ($diffMinutes < 0) {
-                        $diffMinutes += 24 * 60;
-                    }
-
-                    $totalHours = round($diffMinutes / 60, 2);
-
-                } catch (\Exception $e) {
-                    $totalHours = 0;
-                }
-            }
-
-            $attendance->check_in = $checkIn;
-            $attendance->check_out = $checkOut;
-            $attendance->total_hours = $totalHours;
-            // A status the admin picked is kept as-is, same as updateByName(). Only a punch
-            // edit that leaves the status alone derives it from the new hours.
-            $attendance->status = $statusChanged
-                ? $pickedStatus
-                : AttendanceStatusService::resolveStoredStatus(
-                    $attendance->status ?? 'absent',
-                    $totalHours,
-                    (bool) ($checkIn && $checkOut)
-                );
-            // Both punches or the status set by hand — lock this record so a later device
-            // sync/rebuild can't overwrite the manual correction.
-            $attendance->is_manual = (bool) ($checkIn && $checkOut) || $statusChanged;
-
-            $attendance->save();
+        if ($request->input('from') === 'log') {
+            return redirect()->route('attendance.log', ['start_date' => $attendance_date, 'end_date' => $attendance_date, 'range' => 'custom'])
+                ->with('success', 'Attendance updated successfully');
         }
 
         return redirect()->route('payroll.attendance')
@@ -1953,7 +2023,7 @@ class PayrollController extends Controller
 
     public function editByName(Request $request, $employee_id)
     {
-        $employee = Employee::active()->findOrFail($employee_id);
+        $employee = Employee::findOrFail($employee_id);
 
         $query = Attendance::where('employee_id', $employee_id);
 
@@ -1983,57 +2053,24 @@ class PayrollController extends Controller
     public function updateByName(Request $request, $employee_id)
     {
         foreach ($request->attendance_ids as $id) {
-            $record = Attendance::where('employee_id', $employee_id)->find($id);
+            $attendance = Attendance::where('employee_id', $employee_id)->find($id);
 
-            if (!$record) {
-                continue;
+            if ($attendance) {
+                $this->applyManualAttendanceEdit($attendance, $request->check_in[$id] ?? null, $request->check_out[$id] ?? null, $request->status[$id] ?? null);
             }
-
-            $checkIn = $request->check_in[$id] ?? null;
-            $checkOut = $request->check_out[$id] ?? null;
-
-            $totalHours = null;
-            // Admin picked this status explicitly in the edit form — respect it as-is,
-            // don't silently recompute it from hours (that overwrote manual corrections).
-            $status = strtolower(($request->status[$id] ?? '') ?: 'absent');
-            $statusChanged = $status !== $record->status;
-
-            // The form posts every row in the selected range: leave untouched ones alone.
-            if (
-                !$statusChanged
-                && substr((string) $checkIn, 0, 5) === substr((string) $record->getRawPunchTime('check_in'), 0, 5)
-                && substr((string) $checkOut, 0, 5) === substr((string) $record->getRawPunchTime('check_out'), 0, 5)
-            ) {
-                continue;
-            }
-
-            // Calculate total working hours
-            if ($checkIn && $checkOut) {
-                $inTime = \Carbon\Carbon::createFromFormat('H:i', $checkIn);
-                $outTime = \Carbon\Carbon::createFromFormat('H:i', $checkOut);
-
-                // support night shift
-                if ($outTime->lt($inTime)) {
-                    $outTime->addDay();
-                }
-
-                $minutes = $inTime->diffInMinutes($outTime);
-                $totalHours = round($minutes / 60, 2);
-            }
-
-            $record->update([
-                'check_in' => $checkIn,
-                'check_out' => $checkOut,
-                'status' => $status,
-                'total_hours' => $totalHours,
-                // Both punches or the status set by hand — lock this record so a later device
-                // sync/rebuild can't overwrite the manual correction.
-                'is_manual' => (bool) ($checkIn && $checkOut) || $statusChanged,
-            ]);
         }
 
-        return redirect()->route('payroll.attendace.employee')
-            ->with('success', 'Employee attendance updated successfully');
+        if ($request->input('from') !== 'log') {
+            return redirect()->route('payroll.attendace.employee')
+                ->with('success', 'Employee attendance updated successfully');
+        }
+
+        return redirect()->route('attendance.log', array_filter([
+            'employee_id' => $employee_id,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'range' => $request->filled('start_date') ? 'custom' : null,
+        ]))->with('success', 'Employee attendance updated successfully');
     }
 
     /**
@@ -2511,6 +2548,7 @@ class PayrollController extends Controller
         $holiday = $this->attendanceHolidayExistsSql();
         $fullDay = AttendanceStatusService::punchDerivedFullDaySql();
         $halfDay = AttendanceStatusService::punchDerivedHalfDaySql();
+        $fullDayHours = AttendanceStatusService::FULL_DAY_HOURS;
 
         return [
             DB::raw("COUNT(DISTINCT CASE
@@ -2521,7 +2559,7 @@ class PayrollController extends Controller
             DB::raw('COUNT(DISTINCT CASE WHEN attendances.total_hours > 9.5 THEN attendances.id END) as overtime_count'),
             DB::raw("COUNT(DISTINCT CASE
                 WHEN attendances.status = 'half_day_leave'
-                    OR (attendances.status = 'half_day' AND attendances.is_manual = 1)
+                    OR (attendances.status = 'half_day' AND attendances.is_manual = 1 AND COALESCE(attendances.total_hours, 0) + IF(DAYOFWEEK(attendances.attendance_date) = 7, 1, 0) < {$fullDayHours})
                     OR ({$halfDay})
                 THEN attendances.id END) as half_day_count"),
             DB::raw("COUNT(DISTINCT CASE WHEN attendances.status IN ('leave', 'half_day_leave', 'unpaid_leave') THEN attendances.id END) as leave_count"),

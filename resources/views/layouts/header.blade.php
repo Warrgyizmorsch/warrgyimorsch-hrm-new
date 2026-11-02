@@ -6,6 +6,7 @@
     $pageTitle = trim($__env->yieldContent('page_title')) ?: match (true) {
         request()->routeIs('dashboard') => 'Home',
         request()->routeIs('employees.*') => 'Employees',
+        request()->routeIs('attendance.log') => 'New Attendance History',
         request()->routeIs('payroll.attendance*', 'payroll.attendace.employee') => 'Attendance History',
         request()->routeIs('payroll.*') => 'Payroll',
         request()->routeIs('daily-tasks.*') => 'Daily Tasks',
@@ -36,6 +37,7 @@
                         <li><a href="{{ route('employees.index') }}" class="{{ request()->routeIs('employees.*') ? 'active' : '' }}">Employees</a></li>
                         <li><a href="{{ route('payroll.index') }}" class="{{ request()->routeIs('payroll.index') ? 'active' : '' }}">Payroll</a></li>
                         <li><a href="{{ route('payroll.attendance') }}" class="{{ request()->routeIs('payroll.attendance*', 'payroll.attendace.employee') ? 'active' : '' }}">Attendance History</a></li>
+                        <li><a href="{{ route('attendance.log') }}" class="{{ request()->routeIs('attendance.log') ? 'active' : '' }}">New Attendance History</a></li>
                     @endif
                     <li><a href="{{ route('daily-tasks.index') }}" class="{{ request()->routeIs('daily-tasks.*') ? 'active' : '' }}">Tasks</a></li>
                     <li><a href="{{ route('leave.history') }}" class="{{ request()->routeIs('leave.*', 'holidays.*') ? 'active' : '' }}">Leave</a></li>

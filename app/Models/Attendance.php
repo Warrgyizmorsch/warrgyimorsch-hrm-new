@@ -165,7 +165,7 @@ class Attendance extends Model
     }
 
     /**
-     * Resolve display status using hours-first rules (8.5h full day, 4h min half day).
+     * Resolve display status using hours-first rules (8h full day, 4h min half day).
      */
     public function resolvePayrollDisplayStatus(
         bool $isHoliday = false,

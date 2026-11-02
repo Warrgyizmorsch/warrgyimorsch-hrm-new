@@ -91,6 +91,8 @@ class AttendanceHistoryService
                     'total_hours' => Attendance::formatTotalHours($record->total_hours),
                     'total_hours_decimal' => (float) ($record->total_hours ?? 0),
                     'attendance_id' => $record->id,
+                    'stored_status' => $record->status,
+                    'is_manual' => (bool) $record->is_manual,
                     'is_activity' => $resolved['is_activity'] ?? false,
                     'excluded_from_payable' => $excludedFromPayable,
                 ];
@@ -195,6 +197,7 @@ class AttendanceHistoryService
             'total_hours' => '--',
             'total_hours_decimal' => 0,
             'attendance_id' => null,
+            'is_manual' => false,
             'is_activity' => false,
             'excluded_from_payable' => $excludedFromPayable,
         ];

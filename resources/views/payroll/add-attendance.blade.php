@@ -27,7 +27,9 @@
         ->sortBy(fn ($dept) => strtolower($dept->name))
         ->values();
     $hasNoDepartment = collect($employees)->contains(fn ($emp) => !$emp->departmentRef);
-    $backUrl = $missingOnly ? route('payroll.attendance.missing') : route('payroll.attendance');
+    $backUrl = request('from') === 'log'
+        ? route('attendance.log', $isEdit ? ['start_date' => $edit_date, 'end_date' => $edit_date, 'range' => 'custom'] : [])
+        : ($missingOnly ? route('payroll.attendance.missing') : route('payroll.attendance'));
     $headerActions = '
         <a href="' . $backUrl . '" class="zoho-btn-outline">
             <i class="feather-arrow-left"></i> Back
@@ -57,6 +59,7 @@
         <div class="att-mark-card">
             <form action="{{ $isEdit ? route('payroll.attendance.updateByDate', $edit_date) : route('payroll.attendance.store') }}" method="POST" id="attendanceForm">
                 @csrf
+                <input type="hidden" name="from" value="{{ request('from') }}">
                 @if($isEdit)
                     @method('PUT')
                 @endif

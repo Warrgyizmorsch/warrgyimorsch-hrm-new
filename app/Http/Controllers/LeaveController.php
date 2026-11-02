@@ -228,19 +228,28 @@ class LeaveController extends Controller
         if (!$isAdmin) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        $month = $request->input('month');
+        // The column holds both "9" and "09". Saving under one spelling while a row exists under
+        // the other added a second allotment instead of replacing it, inflating the balance.
+        $month = sprintf('%02d', (int) $request->input('month'));
+        $monthVariants = [$month, (string) (int) $month];
         $year = Carbon::now()->format('Y');
 
         $allotments = $request->input('allotments', []);
         $employeeIds = array_keys($allotments);
 
         // Remove allotments for employees who were removed from the list in UI
-        LeaveAllotment::where('month', $month)
+        LeaveAllotment::whereIn('month', $monthVariants)
             ->where('year', $year)
             ->whereNotIn('employee_id', $employeeIds)
             ->delete();
 
         foreach ($allotments as $employeeId => $count) {
+            LeaveAllotment::where('employee_id', $employeeId)
+                ->where('year', $year)
+                ->where('month', (string) (int) $month)
+                ->where('month', '!=', $month)
+                ->delete();
+
             LeaveAllotment::updateOrCreate(
                 [
                     'employee_id' => $employeeId,

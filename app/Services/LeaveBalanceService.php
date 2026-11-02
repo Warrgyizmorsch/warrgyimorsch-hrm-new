@@ -233,27 +233,46 @@ class LeaveBalanceService
             return [];
         }
 
-        $monthlyAllotments = LeaveAllotment::where('employee_id', $employeeId)
-            ->orderBy('year')
-            ->orderBy('month')
-            ->get();
+        // One row per calendar month, not per allotment row: a second allotment in a month
+        // counted that month's leave twice, and a month with none skipped its leave, so
+        // this timeline disagreed with the balance everywhere else.
+        $allotments = LeaveAllotment::where('employee_id', $employeeId)->get();
+        $allotmentMap = $this->buildAllotmentMap($allotments);
+
+        if ($allotments->isEmpty()) {
+            return [];
+        }
+
+        $leaves = LeaveApplication::where('employee_id', $employeeId)->where('status', 'approved')->get();
+        $lastMonth = now()->startOfMonth();
+
+        foreach ($allotments as $allotment) {
+            $lastMonth = $lastMonth->max(Carbon::createFromDate((int) $allotment->year, (int) $allotment->month, 1)->startOfMonth());
+        }
+
+        $firstMonth = $this->resolveFirstLeaveBalanceMonth($lastMonth, $allotments, $leaves);
+        $usedByMonth = $this->buildMonthlyUsedMap(
+            $leaves,
+            $lastMonth->copy()->endOfMonth(),
+            $this->buildHolidayLookup($firstMonth, $lastMonth->copy()->endOfMonth())
+        );
 
         $rows = [];
         $carryForward = 0.0;
 
-        foreach ($monthlyAllotments as $allotment) {
-            $monthDate = Carbon::createFromDate((int) $allotment->year, (int) $allotment->month, 1)->startOfMonth();
-            $used = $this->getDeductibleLeaveDaysBetween(
-                $employee,
-                $monthDate->copy()->startOfMonth(),
-                $monthDate->copy()->endOfMonth()
-            );
+        for ($monthDate = $firstMonth->copy(); $monthDate->lte($lastMonth); $monthDate->addMonth()) {
+            $allotted = $this->allottedFromMap($allotmentMap, $monthDate);
+            $used = (float) ($usedByMonth[$monthDate->format('Y') . '-' . ((int) $monthDate->format('m'))] ?? 0);
 
-            $monthResult = $this->closeMonthBalance($carryForward, (float) $allotment->leave_count, $used);
+            if ($allotted <= 0 && $used <= 0 && $carryForward <= 0) {
+                continue;
+            }
+
+            $monthResult = $this->closeMonthBalance($carryForward, $allotted, $used);
 
             $rows[] = [
-                'type' => strtoupper($monthDate->format('F')) . " ({$allotment->year})",
-                'allotted' => (float) $allotment->leave_count,
+                'type' => strtoupper($monthDate->format('F')) . " ({$monthDate->format('Y')})",
+                'allotted' => $allotted,
                 'used' => $used,
                 'available' => $monthResult['closing'],
                 'unpaid_leave' => $monthResult['unpaid_leave'],

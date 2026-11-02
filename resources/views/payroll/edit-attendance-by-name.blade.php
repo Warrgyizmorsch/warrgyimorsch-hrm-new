@@ -21,6 +21,9 @@
             <form action="{{ route('payroll.attendance.employee.updateByName', $employee->id) }}" method="POST">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="from" value="{{ request('from') }}">
+                <input type="hidden" name="start_date" value="{{ request('start_date') }}">
+                <input type="hidden" name="end_date" value="{{ request('end_date') }}">
 
                 <div class="row g-3 mb-4">
                     <!-- Employee Name -->
@@ -249,7 +252,7 @@
 
                 <!-- Buttons -->
                 <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
-                    <a href="{{ route('payroll.attendace.employee') }}" class="btn btn-outline-secondary w-100 w-sm-auto">
+                    <a href="{{ request('from') === 'log' ? route('attendance.log', array_filter(['employee_id' => $employee->id, 'start_date' => request('start_date'), 'end_date' => request('end_date'), 'range' => request('start_date') ? 'custom' : null])) : route('payroll.attendace.employee') }}" class="btn btn-outline-secondary w-100 w-sm-auto">
                         Cancel
                     </a>
 

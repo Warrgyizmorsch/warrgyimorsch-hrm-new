@@ -54,6 +54,10 @@ Route::get('/payroll/attendance', [PayrollController::class, 'attendance'])
             ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,business_operation_head,team_leader'])
             ->name('payroll.attendance');
 
+Route::get('/attendance-log', [PayrollController::class, 'attendanceLog'])
+            ->middleware(['auth', 'role.access:super_admin,manager,hr_executive,business_operation_head,team_leader'])
+            ->name('attendance.log');
+
 Route::get('/suggestions', [SuggestionController::class, 'index'])
             ->middleware(['auth', 'role.access:super_admin,manager'])
             ->name('suggestions.index');
@@ -307,6 +311,8 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::put('/payroll/attendance/date/{attendance_date}', [PayrollController::class, 'updateByDate'])->name('payroll.attendance.updateByDate');
     Route::post('/payroll/attendance', [PayrollController::class, 'storeAttendance'])->name('payroll.attendance.store');
     Route::post('/payroll/attendance/export', [PayrollController::class, 'exportAttendance'])->name('payroll.attendance.export');
+    Route::get('/payroll/attendance/log-export', [PayrollController::class, 'exportAttendanceLog'])->name('payroll.attendance.logExport');
+    Route::post('/payroll/attendance/save-day', [PayrollController::class, 'saveAttendanceDay'])->name('payroll.attendance.saveDay');
     Route::post('/payroll/attendance/import', [PayrollController::class, 'import'])->name('payroll.attendance.import');
     Route::get('/payroll/attendance/details', [PayrollController::class, 'getAttendanceDetails'])->name('payroll.attendance.details');
     Route::delete('/payroll/attendance/{id}', [PayrollController::class, 'destroyAttendance'])->name('payroll.attendance.destroy');
