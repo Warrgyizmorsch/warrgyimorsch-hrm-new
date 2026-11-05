@@ -18,8 +18,9 @@
                         <input type="hidden" name="_token" value="' . csrf_token() . '">
                         <label class="form-label fw-bold small text-dark mb-2">Import Payroll (Excel/CSV)</label>
                         <input type="month" class="form-control mb-2" name="month" value="' . date('Y-m') . '" required>
-                        <input type="file" class="form-control mb-3" name="import_file" accept=".xlsx,.xls,.csv" required>
-                        <button type="submit" class="zoho-btn-primary w-100">Upload &amp; Save</button>
+                        <input type="file" class="form-control mb-2" name="import_file" accept=".xlsx,.xls,.csv" required>
+                        <a href="' . route('payroll.import.template') . '" class="d-block small mb-3">Download template</a>
+                        <button type="submit" class="zoho-btn-primary w-100">Upload &amp; Preview</button>
                     </form>
                 </div>
             </div>' : '';

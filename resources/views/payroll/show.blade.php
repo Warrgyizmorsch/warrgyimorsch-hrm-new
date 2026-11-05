@@ -68,7 +68,7 @@
                     <div class="text-muted small fw-bold text-uppercase" style="font-size: 10px;">ECS</div>
                     <i class="bi bi-credit-card-2-front text-muted fs-6"></i>
                 </div>
-                <div class="fs-4 fw-bold mb-0 text-dark">0.00</div>
+                <div class="fs-4 fw-bold mb-0 text-danger">{{ number_format($payroll->esi_deduction ?? 0, 2) }}</div>
             </div>
         </div>
 

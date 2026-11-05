@@ -32,6 +32,7 @@ class Payroll extends Model
         'loan_recovery_deduction',
         'other_deduction',
         'net_salary',
+        'monthly_salary',
         'salary_loss',
         'status',
         'payment_date',

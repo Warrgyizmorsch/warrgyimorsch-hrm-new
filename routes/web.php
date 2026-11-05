@@ -20,6 +20,7 @@ use App\Http\Controllers\MasterController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\PayrollImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectChecklistController;
 use App\Http\Controllers\ProjectPhaseController;
@@ -297,7 +298,11 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::post('/payroll/calculate', [PayrollController::class, 'calculatePayroll'])->name('payroll.calculate');
     Route::post('/payroll/sendDateRange', [PayrollController::class, 'calculateInRage'])->name('payroll.sendDateRange');
     Route::post('/payroll/store', [PayrollController::class, 'storePayroll'])->name('payroll.store');
-    Route::post('/payroll/import', [PayrollController::class, 'importPayroll'])->name('payroll.import');
+    Route::post('/payroll/import', [PayrollImportController::class, 'upload'])->name('payroll.import');
+    Route::get('/payroll/import/template', [PayrollImportController::class, 'template'])->name('payroll.import.template');
+    Route::get('/payroll/import/preview', [PayrollImportController::class, 'preview'])->name('payroll.import.preview');
+    Route::post('/payroll/import/confirm', [PayrollImportController::class, 'confirm'])->name('payroll.import.confirm');
+    Route::post('/payroll/import/cancel', [PayrollImportController::class, 'cancel'])->name('payroll.import.cancel');
     Route::get('/payroll/{id}/edit', [PayrollController::class, 'editPayroll'])->name('payroll.edit');
     Route::put('/payroll/{id}', [PayrollController::class, 'updatePayroll'])->name('payroll.update');
   
