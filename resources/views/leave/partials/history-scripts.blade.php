@@ -606,6 +606,188 @@
         window.__lhToastTimer = setTimeout(() => toast.classList.remove('toast-show'), type === 'success' ? 2500 : 5000);
     }
 
+    // ---------- bulk actions ----------
+    const BULK_STATUS_LABEL = {
+        approved: 'Approve',
+        rejected: 'Reject',
+        on_hold: 'Put on hold',
+        unpaid: 'Mark as unpaid',
+        unauthorised: 'Mark as unauthorised',
+    };
+    let leaveBulkStatus = null;
+    let leaveBulkIds = [];
+
+    function leaveBulkSelected() {
+        return Array.from(document.querySelectorAll('.lh-bulk-check:checked'));
+    }
+
+    function leaveBulkVisibleBoxes() {
+        return Array.from(document.querySelectorAll('.lh-bulk-check'))
+            .filter(box => box.closest('tr').style.display !== 'none');
+    }
+
+    function refreshLeaveBulkBar() {
+        const bar = document.getElementById('leaveBulkBar');
+        if (!bar) return;
+
+        const selected = leaveBulkSelected();
+        const visible = leaveBulkVisibleBoxes();
+        const all = document.getElementById('leaveBulkAll');
+        bar.classList.toggle('d-none', selected.length === 0);
+        document.getElementById('leaveBulkCount').textContent = selected.length;
+
+        // A button that could do nothing for this selection stays disabled.
+        // A status already held by every selected row counts as nothing to do.
+        bar.querySelectorAll('[data-bulk-status]').forEach(btn => {
+            btn.disabled = !selected.some(box => box.dataset.canDecide === '1' && box.dataset.status !== btn.dataset.bulkStatus);
+        });
+        const deleteBtn = document.getElementById('leaveBulkDelete');
+        if (deleteBtn) {
+            deleteBtn.disabled = !selected.some(box => box.dataset.canDelete === '1');
+        }
+        if (all) {
+            const picked = visible.filter(box => box.checked).length;
+            all.checked = visible.length > 0 && picked === visible.length;
+            all.indeterminate = picked > 0 && picked < visible.length;
+            all.disabled = visible.length === 0;
+        }
+    }
+
+    // After the server answers: a clean run just reloads; otherwise say exactly what was left undone.
+    function finishLeaveBulk(result) {
+        const skipped = Array.isArray(result.data.skipped) ? result.data.skipped : [];
+        if (!skipped.length) {
+            showToast(result.message || result.data.message, result.ok ? 'success' : 'error');
+            if (result.ok) setTimeout(() => window.location.reload(), 1500);
+            return;
+        }
+        Swal.fire({
+            title: result.data.message,
+            icon: result.ok ? 'info' : 'warning',
+            html: `<p class="small text-muted">${skipped.length} not changed:</p><ul class="lh-bulk-skipped">`
+                + skipped.map(s => `<li><strong>${escapeHtml(s.employee)}</strong>: ${escapeHtml(s.reason)}</li>`).join('')
+                + '</ul>',
+        }).then(() => window.location.reload());
+    }
+
+    function postLeaveBulk(url, payload) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(payload)
+        }).then(readServerResponse);
+    }
+
+    function openLeaveBulkDrawer(status) {
+        const selected = leaveBulkSelected();
+        const eligible = selected.filter(box => box.dataset.canDecide === '1' && box.dataset.status !== status);
+        if (!eligible.length) return;
+
+        leaveBulkStatus = status;
+        leaveBulkIds = eligible.map(box => Number(box.value));
+
+        const label = BULK_STATUS_LABEL[status];
+        const noun = eligible.length === 1 ? 'application' : 'applications';
+        document.getElementById('leaveBulkModalLabel').textContent = `${label}: ${eligible.length} ${noun}`;
+        document.getElementById('leaveBulkSummary').textContent = `${label} ${eligible.length} selected ${noun}.`;
+        document.getElementById('leaveBulkSubmit').textContent = `${label} ${eligible.length} ${noun}`;
+
+        const left = selected.length - eligible.length;
+        document.getElementById('leaveBulkNotEligible').classList.toggle('d-none', left === 0);
+        document.getElementById('leaveBulkNotEligibleText').textContent =
+            `${left} other selected ${left === 1 ? 'application is' : 'applications are'} already decided or not yours to decide, and will not be changed.`;
+
+        const tlPending = eligible.filter(box => box.dataset.tlPending === '1').length;
+        document.getElementById('leaveBulkTlWarning').classList.toggle('d-none', tlPending === 0);
+        document.getElementById('leaveBulkTlWarningText').textContent =
+            `The Team Leader hasn't acted on ${tlPending} of these (Level 1). Deciding now will skip their approval.`;
+
+        document.getElementById('leaveBulkRemarks').value = '';
+        bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('leaveBulkModal')).show();
+        setTimeout(() => document.getElementById('leaveBulkRemarks').focus(), 300);
+    }
+
+    function leaveBulkDelete() {
+        const selected = leaveBulkSelected();
+        const eligible = selected.filter(box => box.dataset.canDelete === '1');
+        if (!eligible.length) return;
+
+        const left = selected.length - eligible.length;
+        Swal.fire({
+            title: `Delete ${eligible.length} application${eligible.length === 1 ? '' : 's'}?`,
+            text: "You won't be able to revert this!"
+                + (left ? ` ${left} other selected already written to attendance will not be deleted.` : ''),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'No, cancel',
+            reverseButtons: true,
+            customClass: {
+                confirmButton: 'btn btn-danger px-4',
+                cancelButton: 'btn btn-light-brand px-4 me-3'
+            },
+            buttonsStyling: false
+        }).then(answer => {
+            if (!answer.isConfirmed) return;
+            postLeaveBulk('{{ route("leave.bulkDestroy") }}', { ids: eligible.map(box => Number(box.value)) })
+                .then(finishLeaveBulk)
+                .catch(() => showToast('Could not reach the server. Please check your connection and try again.', 'error'));
+        });
+    }
+
+    function initLeaveBulkActions() {
+        const bar = document.getElementById('leaveBulkBar');
+        if (!bar) return;
+
+        document.getElementById('leaveBulkAll')?.addEventListener('change', function () {
+            leaveBulkVisibleBoxes().forEach(box => { box.checked = this.checked; });
+            refreshLeaveBulkBar();
+        });
+        document.querySelectorAll('.lh-bulk-check').forEach(box => box.addEventListener('change', refreshLeaveBulkBar));
+        document.getElementById('leaveBulkClear').addEventListener('click', function () {
+            leaveBulkSelected().forEach(box => { box.checked = false; });
+            refreshLeaveBulkBar();
+        });
+        bar.querySelectorAll('[data-bulk-status]').forEach(btn => {
+            btn.addEventListener('click', () => openLeaveBulkDrawer(btn.dataset.bulkStatus));
+        });
+        document.getElementById('leaveBulkDelete')?.addEventListener('click', leaveBulkDelete);
+
+        document.getElementById('leaveBulkForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const remarks = document.getElementById('leaveBulkRemarks').value.trim();
+            if (remarks.length < 3) {
+                showToast('Please enter remarks / reason for this decision.', 'error');
+                document.getElementById('leaveBulkRemarks').focus();
+                return;
+            }
+            const submit = document.getElementById('leaveBulkSubmit');
+            if (submit.disabled) return;
+            submit.disabled = true;
+
+            postLeaveBulk('{{ route("leave.bulkAction") }}', { ids: leaveBulkIds, status: leaveBulkStatus, remarks })
+                .then(result => {
+                    if (!result.ok && !Array.isArray(result.data.skipped)) {
+                        submit.disabled = false;
+                        showToast(result.message, 'error');
+                        return;
+                    }
+                    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('leaveBulkModal')).hide();
+                    finishLeaveBulk(result);
+                })
+                .catch(() => {
+                    submit.disabled = false;
+                    showToast('Could not reach the server. Please check your connection and try again.', 'error');
+                });
+        });
+
+        refreshLeaveBulkBar();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof feather !== 'undefined') {
             feather.replace();
@@ -632,7 +814,14 @@
             document.querySelectorAll('#leaveHistoryTable tbody tr.leave-history-row').forEach(row => {
                 row.style.display = !term || row.textContent.toLowerCase().includes(term) ? '' : 'none';
             });
+            // A row the filter hides must not stay selected: it would be changed without being seen.
+            document.querySelectorAll('.lh-bulk-check:checked').forEach(box => {
+                if (box.closest('tr').style.display === 'none') box.checked = false;
+            });
+            refreshLeaveBulkBar();
         });
+
+        initLeaveBulkActions();
 
         document.getElementById('applyLeaveModal')?.addEventListener('shown.bs.offcanvas', function () {
             if (typeof feather !== 'undefined') {

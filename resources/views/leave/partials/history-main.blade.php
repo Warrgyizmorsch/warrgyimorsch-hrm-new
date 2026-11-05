@@ -198,11 +198,38 @@
                 </div>
             </div>
 
+            @php
+                // Tick boxes only for people who can act in bulk; TLs get Level 1 approve / reject only.
+                $canBulk = ($isAdmin ?? false) || ($isTeamLeader ?? false);
+                $bulkIsManager = !empty($isAdmin);
+            @endphp
+            @if($canBulk)
+                <div class="lh-bulk-bar d-none" id="leaveBulkBar" role="toolbar" aria-label="Bulk actions on selected leave applications">
+                    <span class="lh-bulk-count"><strong id="leaveBulkCount">0</strong> selected</span>
+                    <div class="lh-bulk-actions">
+                        <button type="button" class="lh-bulk-btn lh-bulk-btn--approve" data-bulk-status="approved"><i class="feather-check"></i> Approve</button>
+                        <button type="button" class="lh-bulk-btn lh-bulk-btn--reject" data-bulk-status="rejected"><i class="feather-x"></i> Reject</button>
+                        @if($bulkIsManager)
+                            <button type="button" class="lh-bulk-btn" data-bulk-status="on_hold"><i class="feather-pause"></i> On Hold</button>
+                            <button type="button" class="lh-bulk-btn" data-bulk-status="unpaid">Unpaid</button>
+                            <button type="button" class="lh-bulk-btn" data-bulk-status="unauthorised">Unauthorised</button>
+                            <button type="button" class="lh-bulk-btn lh-bulk-btn--reject" id="leaveBulkDelete"><i class="feather-trash-2"></i> Delete</button>
+                        @endif
+                    </div>
+                    <button type="button" class="lh-bulk-clear" id="leaveBulkClear">Clear selection</button>
+                </div>
+            @endif
+
             <div class="card-body p-0 zoho-list-body">
                 <div class="table-responsive zoho-table-wrap">
                     <table class="table zoho-data-table mb-0" id="leaveHistoryTable">
                         <thead>
                             <tr>
+                                @if($canBulk)
+                                    <th class="lh-col-check">
+                                        <input type="checkbox" class="form-check-input" id="leaveBulkAll" aria-label="Select all on this page" title="Select all on this page">
+                                    </th>
+                                @endif
                                 <th class="lh-col-sr">Sr.No</th>
                                 <th class="lh-col-employee">Employee</th>
                                 <th class="lh-col-center">Status</th>
@@ -240,8 +267,26 @@
                                     $totalDays = (float) ($leave->total_days ?? 0);
                                     $statusKey = str_replace(' ', '_', strtolower($leave->status));
                                     $leaveTypeDisplay = $leave->leave_type == 'Gatepass Leave' ? 'Early Leave' : $leave->leave_type;
+
+                                    // Same rules the server applies: bulk decisions touch open requests only,
+                                    // bulk delete leaves alone anything that wrote to attendance.
+                                    $bulkCanDecide = in_array($leave->id, $tlActionableIds ?? [], true)
+                                        || (in_array($leave->id, $managerActionableIds ?? [], true) && in_array($statusKey, ['pending', 'on_hold'], true));
+                                    $bulkCanDelete = $bulkIsManager && !in_array($statusKey, ['approved', 'unpaid', 'unauthorised'], true);
                                 @endphp
                                 <tr class="leave-history-row" data-leave-row="{{ $leave->id }}">
+                                    @if($canBulk)
+                                        <td class="lh-col-check">
+                                            @if($bulkCanDecide || $bulkCanDelete)
+                                                <input type="checkbox" class="form-check-input lh-bulk-check" value="{{ $leave->id }}"
+                                                    aria-label="Select {{ $leave->employee->name }}"
+                                                    data-can-decide="{{ $bulkCanDecide ? 1 : 0 }}"
+                                                    data-can-delete="{{ $bulkCanDelete ? 1 : 0 }}"
+                                                    data-status="{{ $statusKey }}"
+                                                    data-tl-pending="{{ $bulkIsManager && $leave->tl_status === 'pending' ? 1 : 0 }}">
+                                            @endif
+                                        </td>
+                                    @endif
                                     <td class="lh-col-sr text-muted fw-semibold">{{ $leaves->firstItem() + $key }}</td>
                                     <td class="lh-col-employee">
                                         <a href="javascript:void(0)" class="lh-emp-link" onclick="openViewModal({{ $leave->id }})">
@@ -314,7 +359,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-5 text-muted">No leave applications found.</td>
+                                    <td colspan="{{ $canBulk ? 9 : 8 }}" class="text-center py-5 text-muted">No leave applications found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -136,6 +136,35 @@
         </div>
     </div>
 
+    {{-- Bulk decision: one status + one remark for all the ticked applications --}}
+    <div class="offcanvas offcanvas-end zoho-ui-drawer lh-side-drawer lh-action-drawer" tabindex="-1" id="leaveBulkModal" aria-labelledby="leaveBulkModalLabel">
+        <div class="offcanvas-header zoho-offcanvas-head border-bottom">
+            <h5 class="offcanvas-title zoho-offcanvas-title" id="leaveBulkModalLabel">Bulk update</h5>
+            <button type="button" class="zoho-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="Close">
+                <i class="feather-x"></i>
+            </button>
+        </div>
+        <div class="offcanvas-body lh-action-drawer-body">
+            <p id="leaveBulkSummary" class="lh-detail-value mb-2"></p>
+            <div id="leaveBulkNotEligible" class="lh-approval-warning d-none">
+                <i class="feather-info"></i>
+                <span id="leaveBulkNotEligibleText"></span>
+            </div>
+            <div id="leaveBulkTlWarning" class="lh-approval-warning d-none">
+                <i class="feather-alert-triangle"></i>
+                <span id="leaveBulkTlWarningText"></span>
+            </div>
+            <form id="leaveBulkForm" novalidate>
+                <div class="lh-form-field">
+                    <label for="leaveBulkRemarks">Remarks / reason <span class="text-danger">*</span></label>
+                    <textarea id="leaveBulkRemarks" class="form-control" rows="4" maxlength="2000"
+                        placeholder="The same remark is saved on every selected application and shown to each employee." required></textarea>
+                </div>
+                <button type="submit" id="leaveBulkSubmit" class="zoho-btn-primary w-100 mt-3">Confirm</button>
+            </form>
+        </div>
+    </div>
+
     <div class="offcanvas offcanvas-end zoho-ui-drawer lh-side-drawer lh-view-drawer" tabindex="-1" id="viewLeaveModal" aria-labelledby="viewLeaveModalLabel">
         <div class="offcanvas-header zoho-offcanvas-head border-bottom lh-view-drawer-head">
             <div class="d-flex align-items-center w-100 gap-3">

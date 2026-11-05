@@ -23,6 +23,9 @@ use Illuminate\Support\Facades\Mail;
 
 class LeaveApplicationController extends Controller
 {
+    /** These decisions all write to attendance (the biometric sync restores the same three). */
+    private const WRITES_ATTENDANCE = ['approved', 'unpaid', 'unauthorised'];
+
     public function __construct(
         private LeaveBalanceService $leaveBalanceService,
         private LeaveApprovalService $approval,
@@ -691,29 +694,7 @@ class LeaveApplicationController extends Controller
         $oldStatus = $leave->status;
         $newStatus = $request->status;
 
-        // These decisions all write to attendance (the biometric sync restores the same three).
-        $writesAttendance = ['approved', 'unpaid', 'unauthorised'];
-        $statusChanged = $oldStatus !== $newStatus;
-        $startDate = Carbon::parse($leave->start_date);
-        $endDate = $leave->end_date ? Carbon::parse($leave->end_date) : $startDate->copy();
-
-        if ($statusChanged && in_array($oldStatus, $writesAttendance, true)) {
-            $this->clearLeaveFromAttendance($leave, $startDate, $endDate);
-        }
-
-        // Level 2 (manager) decision with remarks; marks the TL level as bypassed if still open.
-        $leave->update(array_merge(
-            ['status' => $request->status],
-            $this->approval->managerUpdate($leave, auth()->user(), $newStatus, trim($request->remarks))
-        ));
-
-        if ($statusChanged && in_array($newStatus, $writesAttendance, true)) {
-            $this->applyApprovedLeaveToAttendance($leave);
-        }
-
-        if ($statusChanged && in_array($oldStatus, $writesAttendance, true)) {
-            $this->reapplyOverlappingApprovedLeaves($leave, $startDate, $endDate);
-        }
+        $this->applyManagerDecision($leave, $newStatus, trim($request->remarks));
 
         LeaveApplicationLog::record($leave, 'manager_update', 'manager', strtolower((string) $oldStatus), $newStatus, trim($request->remarks));
 
@@ -727,6 +708,217 @@ class LeaveApplicationController extends Controller
         // }
 
         return response()->json(['success' => true, 'message' => 'Status updated successfully']);
+    }
+
+    /** Save a Level 2 decision and bring attendance in line with it (shared by single and bulk). */
+    private function applyManagerDecision(LeaveApplication $leave, string $newStatus, string $remarks): void
+    {
+        $oldStatus = $leave->status;
+        $statusChanged = $oldStatus !== $newStatus;
+        $startDate = Carbon::parse($leave->start_date);
+        $endDate = $leave->end_date ? Carbon::parse($leave->end_date) : $startDate->copy();
+
+        if ($statusChanged && in_array($oldStatus, self::WRITES_ATTENDANCE, true)) {
+            $this->clearLeaveFromAttendance($leave, $startDate, $endDate);
+        }
+
+        // Level 2 (manager) decision with remarks; marks the TL level as bypassed if still open.
+        $leave->update(array_merge(
+            ['status' => $newStatus],
+            $this->approval->managerUpdate($leave, auth()->user(), $newStatus, $remarks)
+        ));
+
+        if ($statusChanged && in_array($newStatus, self::WRITES_ATTENDANCE, true)) {
+            $this->applyApprovedLeaveToAttendance($leave);
+        }
+
+        if ($statusChanged && in_array($oldStatus, self::WRITES_ATTENDANCE, true)) {
+            $this->reapplyOverlappingApprovedLeaves($leave, $startDate, $endDate);
+        }
+    }
+
+    /**
+     * Same decision and remarks on many leaves. Managers/HR take the Level 2 decision, team
+     * leaders the Level 1 one. Only open requests are touched: a leave someone already decided
+     * is never overturned in bulk (use the row's Update Status for that). Each leave is saved
+     * on its own, so one failure doesn't stop the rest; anything not done is reported back.
+     */
+    public function bulkAction(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1|max:100',
+            'ids.*' => 'integer|distinct',
+            'status' => 'required|in:approved,rejected,on_hold,unpaid,unauthorised',
+            'remarks' => 'required|string|min:3|max:2000',
+        ], [
+            'ids.required' => 'Please select at least one leave application.',
+            'ids.max' => 'You can update at most 100 applications at a time.',
+            'remarks.required' => 'Please enter remarks / reason for this decision.',
+        ]);
+
+        $user = auth()->user();
+        $isManager = $this->approval->isApprover($user);
+
+        if (!$isManager && !($this->approval->isTeamLeader($user) && in_array($validated['status'], ['approved', 'rejected'], true))) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to take this action.'], 403);
+        }
+
+        // Mails go out one by one after the response; a big batch must not hit the PHP time limit.
+        @set_time_limit(0);
+
+        $remarks = trim($validated['remarks']);
+        $leaves = LeaveApplication::with('employee')->whereIn('id', $validated['ids'])->get()->keyBy('id');
+        $done = 0;
+        $skipped = [];
+
+        foreach ($validated['ids'] as $id) {
+            $leave = $leaves->get($id);
+            if (!$leave) {
+                $skipped[] = ['employee' => 'LA-' . str_pad((string) $id, 4, '0', STR_PAD_LEFT), 'reason' => 'This application no longer exists.'];
+                continue;
+            }
+
+            try {
+                $reason = $isManager
+                    ? $this->bulkManagerDecide($leave, $validated['status'], $remarks)
+                    : $this->bulkTeamLeaderDecide($leave, $validated['status'], $remarks);
+            } catch (\Throwable $e) {
+                report($e);
+                $reason = 'Could not be saved. Please try this one again.';
+            }
+
+            if ($reason !== null) {
+                $skipped[] = ['employee' => $leave->employee?->name ?? 'Employee', 'reason' => $reason];
+                continue;
+            }
+
+            $done++;
+        }
+
+        $label = str_replace('_', ' ', $validated['status']);
+
+        return response()->json([
+            'success' => $done > 0,
+            'updated' => $done,
+            'skipped' => $skipped,
+            'message' => $done > 0
+                ? ($isManager
+                    ? "{$done} application(s) updated to {$label}."
+                    : ($validated['status'] === 'approved'
+                        ? "{$done} application(s) approved at Level 1 and sent to the manager."
+                        : "{$done} application(s) rejected."))
+                : 'None of the selected applications could be updated.',
+        ]);
+    }
+
+    /** @return string|null Why this leave was skipped, or null when the decision was saved. */
+    private function bulkManagerDecide(LeaveApplication $leave, string $newStatus, string $remarks): ?string
+    {
+        $user = auth()->user();
+
+        // Locked and re-checked: someone else may have decided it after this page was loaded.
+        $result = DB::transaction(function () use ($leave, $user, $newStatus, $remarks) {
+            $locked = LeaveApplication::with('employee')->lockForUpdate()->findOrFail($leave->id);
+            $current = strtolower((string) $locked->status);
+
+            if (!$this->approval->canManagerAct($user, $locked)) {
+                return ['reason' => 'You cannot take the final decision on this leave.'];
+            }
+            if (!in_array($current, ['pending', 'on_hold'], true)) {
+                return ['reason' => 'Already ' . str_replace('_', ' ', $current) . '. Use Update Status on the row to change it.'];
+            }
+            if ($current === $newStatus) {
+                return ['reason' => 'Already ' . str_replace('_', ' ', $current) . '.'];
+            }
+
+            $this->applyManagerDecision($locked, $newStatus, $remarks);
+
+            return ['leave' => $locked, 'old' => $current];
+        });
+
+        if (isset($result['reason'])) {
+            return $result['reason'];
+        }
+
+        // After the commit: the log table is MyISAM (a rollback wouldn't undo it), and a
+        // notification problem must not report a saved decision as failed.
+        $this->afterBulkDecision($result['leave'], function (LeaveApplication $saved) use ($result, $newStatus, $remarks) {
+            LeaveApplicationLog::record($saved, 'manager_update', 'manager', $result['old'], $newStatus, $remarks);
+            $this->notifications->managerDecided($saved, $result['old']);
+        });
+
+        return null;
+    }
+
+    /** @return string|null Why this leave was skipped, or null when the decision was saved. */
+    private function bulkTeamLeaderDecide(LeaveApplication $leave, string $decision, string $remarks): ?string
+    {
+        $user = auth()->user();
+
+        if (!$this->approval->canTeamLeaderAct($user, $leave)) {
+            return 'No longer waiting for your approval.';
+        }
+
+        $decided = $this->approval->teamLeaderDecide($leave, $user, $decision, $remarks);
+        $this->afterBulkDecision($decided, fn (LeaveApplication $saved) => $this->notifications->teamLeaderDecided($saved));
+
+        return null;
+    }
+
+    private function afterBulkDecision(LeaveApplication $leave, callable $callback): void
+    {
+        try {
+            $callback($leave);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * Delete many applications. Decisions that wrote to attendance are skipped, because deleting
+     * them would leave those attendance rows behind: change their status first.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1|max:100',
+            'ids.*' => 'integer|distinct',
+        ], [
+            'ids.required' => 'Please select at least one leave application.',
+            'ids.max' => 'You can delete at most 100 applications at a time.',
+        ]);
+
+        $done = 0;
+        $skipped = [];
+
+        foreach (LeaveApplication::with('employee')->whereIn('id', $validated['ids'])->get() as $leave) {
+            $current = strtolower((string) $leave->status);
+            if (in_array($current, self::WRITES_ATTENDANCE, true)) {
+                $skipped[] = [
+                    'employee' => $leave->employee?->name ?? 'Employee',
+                    'reason' => 'Already ' . $current . ', so it has attendance entries. Change its status first.',
+                ];
+                continue;
+            }
+
+            \Illuminate\Support\Facades\Log::info('Leave application bulk deleted', [
+                'leave_id' => $leave->id,
+                'employee_id' => $leave->employee_id,
+                'status' => $leave->status,
+                'by_user_id' => auth()->id(),
+            ]);
+            $leave->delete();
+            $done++;
+        }
+
+        return response()->json([
+            'success' => $done > 0,
+            'updated' => $done,
+            'skipped' => $skipped,
+            'message' => $done > 0
+                ? "{$done} application(s) deleted."
+                : 'None of the selected applications could be deleted.',
+        ]);
     }
 
     /** Level 1: the employee's Team Leader approves or rejects, with mandatory remarks. */

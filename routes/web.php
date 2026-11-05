@@ -288,6 +288,7 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/leave/export', [LeaveApplicationController::class, 'export'])->name('leave.export');
     Route::post('/leave/action', [LeaveApplicationController::class, 'updateAction'])->name('leave.updateAction');
     Route::delete('/leave/application/{id}', [LeaveApplicationController::class, 'destroy'])->name('leave.application.destroy');
+    Route::post('/leave/bulk-delete', [LeaveApplicationController::class, 'bulkDestroy'])->name('leave.bulkDestroy');
 
    
     Route::get('/payroll/attendance/get', [PayrollController::class, 'getAttendance'])->name('payroll.attendance.get');
@@ -341,6 +342,8 @@ Route::middleware(['auth', "role.access:$TeamLeaderRoles"])->group(function () {
     // Level 1 of the two-level leave approval: the employee's Team Leader approves/rejects with remarks
     // (the controller checks the leave belongs to someone this TL leads). Level 2 is leave.updateAction.
     Route::post('/leave/tl-action', [LeaveApplicationController::class, 'teamLeaderAction'])->name('leave.tlAction');
+    // Same decision on many leaves: Level 2 for managers/HR, Level 1 for TLs (checked per leave in the controller).
+    Route::post('/leave/bulk-action', [LeaveApplicationController::class, 'bulkAction'])->name('leave.bulkAction');
 
     // Same: view-only attendance history, scoped to the team leader's own department;
     // add/edit/import/export/delete stay admin-only.
