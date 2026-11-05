@@ -161,7 +161,7 @@
                             <label>Employee</label>
                             <div class="dropdown">
                                 <button class="wghrm-custom-select-btn dropdown-toggle" type="button"
-                                    data-bs-toggle="dropdown" data-bs-auto-close="outside" id="employeeSelectBtn">
+                                    data-bs-toggle="dropdown" data-bs-auto-close="outside" data-fixed-menu id="employeeSelectBtn">
                                     Select employee
                                 </button>
                                 <div class="dropdown-menu wghrm-custom-dropdown-menu w-100">
@@ -194,6 +194,10 @@
                 </div>
 
                 <div class="payroll-calc-result-wrap">
+                    <div id="payrollSavedNotice" class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2" style="display: none !important;">
+                        <span id="payrollSavedNoticeText"></span>
+                        <button type="button" id="payrollRecalcBtn" class="btn btn-sm btn-outline-primary" onclick="calculateLivePayroll()">Recalculate from attendance</button>
+                    </div>
                     <div id="noCalculation" style="display: none;"></div>
                     <input type="hidden" id="payrollIdForUpdate" value="">
                     <input type="hidden" id="isEditMode" value="false">
@@ -236,6 +240,18 @@
                                         <input type="number" id="inputMedical"
                                             class="form-control">
                                     </div>
+
+                                    <div class="col-lg col-md-6" id="rowDearnessAllowance" style="display:none;">
+                                        <label class="form-label small text-muted">Dearness Allowance</label>
+                                        <input type="number" id="inputDearnessAllowance"
+                                            class="form-control" readonly>
+                                    </div>
+
+                                    <div class="col-lg col-md-6" id="rowVariableEarning" style="display:none;">
+                                        <label class="form-label small text-muted">Variable Earning</label>
+                                        <input type="number" id="inputVariableEarning"
+                                            class="form-control" placeholder="0.00">
+                                    </div>
                                 </div>
 
                                 <div id="overtime_box" class="mt-3" style="display:none;"></div>
@@ -268,6 +284,24 @@
                                         <label class="form-label small text-muted">Other</label>
                                         <input type="number" id="inputOther"
                                             class="form-control">
+                                    </div>
+
+                                    <div class="col-md-3" id="rowEpf" style="display:none;">
+                                        <label class="form-label small text-muted">EPF</label>
+                                        <input type="number" id="inputEpf"
+                                            class="form-control" placeholder="0.00">
+                                    </div>
+
+                                    <div class="col-md-3" id="rowProfessionalTax" style="display:none;">
+                                        <label class="form-label small text-muted">Professional Tax</label>
+                                        <input type="number" id="inputProfessionalTax"
+                                            class="form-control" placeholder="0.00">
+                                    </div>
+
+                                    <div class="col-md-3" id="rowLoanRecovery" style="display:none;">
+                                        <label class="form-label small text-muted">Loan Recovery</label>
+                                        <input type="number" id="inputLoanRecovery"
+                                            class="form-control" placeholder="0.00">
                                     </div>
                                 </div>
                             </div>
@@ -359,7 +393,7 @@
                                                 style="background:#3858f9;border:none;border-radius:12px;"
                                                 onclick="savePayroll(this)">
                                                 <i class="bi bi-check2-circle me-2"></i>
-                                                SUBMIT PAYROLL
+                                                <span id="payrollSubmitLabel">SUBMIT PAYROLL</span>
                                             </button>
                                         </div>
 
@@ -437,7 +471,7 @@
                                         <td class="text-center">
                                             <div class="dropdown">
                                                 <span class="payroll-status-badge {{ $statusBadgeClass }} dropdown-toggle"
-                                                    data-bs-toggle="dropdown" data-bs-boundary="viewport">
+                                                    data-bs-toggle="dropdown" data-bs-boundary="viewport" data-fixed-menu>
                                                     {{ $payroll->status }}
                                                 </span>
                                                 <ul class="dropdown-menu dropdown-menu-end zoho-more-menu">
@@ -453,7 +487,8 @@
                                                     <i class="feather-eye"></i>
                                                 </button>
                                                 <div class="dropdown">
-                                                    <button type="button" class="zoho-icon-btn" data-bs-toggle="dropdown" title="More actions">
+                                                    {{-- Fixed positioning: the table's scroll area would otherwise cut the menu off. --}}
+                                                    <button type="button" class="zoho-icon-btn" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-fixed-menu title="More actions">
                                                         <i class="feather-more-horizontal"></i>
                                                     </button>
                                                     <ul class="dropdown-menu dropdown-menu-end zoho-more-menu">
@@ -521,26 +556,6 @@
 @endsection
 
 @push('modals')
-    <!-- Payroll Calculation Offcanvas -->
-    <div class="offcanvas offcanvas-end border-0 shadow-lg" tabindex="-1" id="payrollCalculationOffcanvas"
-        style="width: 650px !important; background: #f8fafc;">
-        <div class="offcanvas-header bg-white border-bottom px-4 py-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="avatar-text avatar-md bg-soft-primary text-primary rounded-3">
-                    <i class="feather-calculator"></i>
-                </div>
-                <div>
-                    <h5 class="offcanvas-title fw-bold text-dark">Enterprise Payroll Engine</h5>
-                    <p class="text-muted small mb-0">Generate and validate monthly employee payslips</p>
-                </div>
-            </div>
-            <button type="button" class="btn-close shadow-none" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body p-0">
-            @include('payroll._calculation_form')
-        </div>
-    </div>
-
     <!-- Statement Modal -->
     <div class="modal fade" id="payrollDetailModal" tabindex="-1" aria-labelledby="payrollModalLabel" aria-hidden="true"
         data-bs-backdrop="true">
@@ -776,53 +791,8 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        const payroll = data.data;
-                        
-                        // Set the payroll ID for update
-                        document.getElementById('payrollIdForUpdate').value = id;
-                        
-                        // Pre-fill form fields
-                        document.getElementById('employeeSelect').value = payroll.employee_id;
-                        document.getElementById('employeeSelectBtn').innerText = payroll.employee_name;
-                        document.getElementById('monthSelect').value = payroll.month;
-                        document.getElementById('inputPayableDays').value = payroll.payable_days || '';
-                        document.getElementById('inputBasic').value = payroll.basic_salary || '';
-                        document.getElementById('inputHRA').value = payroll.hra || '';
-                        document.getElementById('inputConveyance').value = payroll.conveyance_allowance || '';
-                        document.getElementById('inputMedical').value = payroll.medical_allowance || '';
-                        document.getElementById('inputPF').value = payroll.pf_deduction || '';
-                        document.getElementById('inputESI').value = payroll.esi_deduction || '';
-                        document.getElementById('inputOther').value = payroll.other_deduction || '';
-
-                        const isBD = payroll.is_business_development;
-                        document.getElementById('rowDearnessAllowance').style.display = isBD ? '' : 'none';
-                        document.getElementById('rowVariableEarning').style.display = isBD ? '' : 'none';
-                        document.getElementById('rowEpf').style.display = isBD ? '' : 'none';
-                        document.getElementById('rowProfessionalTax').style.display = isBD ? '' : 'none';
-                        document.getElementById('rowLoanRecovery').style.display = isBD ? '' : 'none';
-                        document.getElementById('inputDearnessAllowance').value = payroll.dearness_allowance || 0;
-                        document.getElementById('inputVariableEarning').value = payroll.variable_earning || 0;
-                        document.getElementById('inputEpf').value = payroll.epf_deduction || 0;
-                        document.getElementById('inputProfessionalTax').value = payroll.professional_tax_deduction || 0;
-                        document.getElementById('inputLoanRecovery').value = payroll.loan_recovery_deduction || 0;
-
-                        // Set currentPayrollData for calculations
-                        window.currentPayrollData = payroll;
-                        
-                        // Set the isEditMode flag
-                        document.getElementById('isEditMode').value = 'true';
-                        
-                        // Show calculation result
-                        document.getElementById('calculationResult').style.display = 'block';
-                        document.getElementById('noCalculation').style.display = 'none';
-                        
-                        // Recalculate to show totals
-                        recalculate();
-                        
-                        // Open offcanvas
-                        const offcanvasEl = document.getElementById('payrollCalculationOffcanvas');
-                        const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
-                        offcanvas.show();
+                        showSavedPayroll(data.data);
+                        document.querySelector('.payroll-calc-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
                     } else {
                         alert('Error loading payroll data: ' + data.message);
                     }
@@ -1177,7 +1147,12 @@
 
     // Use a unique scoped setup if possible, or just re-ensure listeners
     function initPayrollLogic() {
-        document.addEventListener('input', recalculate);
+        // Only this form's fields: typing in the list search must not touch the figures.
+        document.addEventListener('input', function (event) {
+            if (event.target.closest && event.target.closest('#calculationResult')) {
+                recalculate(event);
+            }
+        });
         const daysInput = document.getElementById('inputPayableDays');
         if(daysInput) {
             daysInput.addEventListener('input', function () {
@@ -1252,11 +1227,12 @@
         let autoPF = currentPayrollData?.pf_enabled ? earnedBasic * 0.12 : 0;
         let autoESI = (currentPayrollData?.esi_enabled && gross <= 21000) ? gross * 0.0075 : 0;
 
-        if (sourceId !== 'inputPF' && document.getElementById('inputPF')) {
+        // A PF/ESI typed by hand or loaded from a saved payroll is kept, not recomputed.
+        if (!isManualPF && sourceId !== 'inputPF' && document.getElementById('inputPF')) {
             document.getElementById('inputPF').value = autoPF.toFixed(2);
         }
 
-        if (sourceId !== 'inputESI' && document.getElementById('inputESI')) {
+        if (!isManualESI && sourceId !== 'inputESI' && document.getElementById('inputESI')) {
             document.getElementById('inputESI').value = autoESI.toFixed(2);
         }
 
@@ -1293,10 +1269,15 @@
         }
     }
 
+    // Menus inside the table and the form panel: their scroll areas would otherwise cut the menu off.
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-fixed-menu]').forEach(function (toggle) {
+            new bootstrap.Dropdown(toggle, { popperConfig: { strategy: 'fixed' } });
+        });
+    });
+
+    // Employee + month: open what is already saved for editing; only calculate if nothing is saved yet.
     function calculatePayroll() {
-        isManualDays = false;
-        isManualPF = false;
-        isManualESI = false;
         const month = document.getElementById('monthSelect').value;
         const employeeId = document.getElementById('employeeSelect').value;
 
@@ -1304,6 +1285,96 @@
             alert('Please select person and month');
             return;
         }
+
+        const query = new URLSearchParams({ employee_id: employeeId, month });
+        fetch(`{{ route('payroll.lookup') }}?${query}`, { headers: { 'Accept': 'application/json' } })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    alert(data.message || 'Could not check for a saved payroll.');
+                } else if (data.data) {
+                    showSavedPayroll(data.data);
+                } else {
+                    calculateLivePayroll();
+                }
+            })
+            .catch(() => alert('Could not check for a saved payroll. Please refresh and try again.'));
+    }
+
+    function setPayrollNotice(text, showRecalc) {
+        const notice = document.getElementById('payrollSavedNotice');
+        document.getElementById('payrollSavedNoticeText').textContent = text;
+        document.getElementById('payrollRecalcBtn').style.display = showRecalc ? '' : 'none';
+        notice.style.setProperty('display', text ? 'flex' : 'none', 'important');
+    }
+
+    function setPayrollOverride(amount) {
+        document.getElementById('overrideCheck').checked = amount !== null;
+        document.getElementById('overrideAmount').disabled = amount === null;
+        document.getElementById('overrideAmount').value = amount === null ? '' : amount;
+    }
+
+    // Show a saved payroll exactly as stored. Nothing is recomputed until a field is changed.
+    function showSavedPayroll(p) {
+        currentPayrollData = p;
+        document.getElementById('payrollIdForUpdate').value = p.id;
+        document.getElementById('isEditMode').value = 'true';
+        document.getElementById('employeeSelect').value = p.employee_id;
+        document.getElementById('employeeSelectBtn').innerText = p.employee_name;
+        document.getElementById('monthSelect').value = p.month;
+        document.getElementById('payrollSubmitLabel').textContent = 'UPDATE PAYROLL';
+        setPayrollOverride(null);
+
+        // Saved days can exceed the month (extra days added by HR), so they are not capped.
+        isManualDays = true;
+        displayPayrollData(p);
+
+        // A saved gross the components don't produce (override, import) stays as the override.
+        const money = id => parseFloat(document.getElementById(id).innerText.replace(/[₹,\s]/g, '')) || 0;
+        const savedGross = Number(p.gross_salary || 0);
+        if (Math.abs(savedGross - money('tableGrossSalary')) > 0.011) {
+            setPayrollOverride((savedGross - Number(p.variable_earning || 0)).toFixed(2));
+        }
+
+        const rupees = value => '₹ ' + Number(value || 0).toFixed(2);
+        document.getElementById('tableGrossSalary').innerText = rupees(p.gross_salary);
+        document.getElementById('tableTotalDeductions').innerText = rupees(p.deductions);
+        document.getElementById('tableNetSalary').innerText = rupees(p.net_salary);
+        document.getElementById('resultUnpaidDays').innerText = Number(p.unpaid_days || 0).toFixed(2);
+        document.getElementById('resultSalaryLoss').innerText = rupees(p.salary_loss);
+
+        const monthLabel = new Date(p.month + '-01').toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+        const live = p.live_payable_days !== null && p.live_payable_days !== undefined
+            && Math.abs(Number(p.live_payable_days) - Number(p.payable_days)) > 0.001
+            ? ` Attendance now works out to ${Number(p.live_payable_days)} payable days (saved: ${Number(p.payable_days)}).`
+            : '';
+        setPayrollNotice(`Saved payroll loaded: ${p.employee_name}, ${monthLabel} (${String(p.status).replace(/_/g, ' ')}). Change what you need, then Update Payroll.${live}`, true);
+
+        document.getElementById('noCalculation').style.display = 'none';
+        document.getElementById('calculationResult').style.display = 'block';
+    }
+
+    function calculateLivePayroll() {
+        isManualDays = false;
+        isManualPF = false;
+        isManualESI = false;
+        const month = document.getElementById('monthSelect').value;
+        const employeeId = document.getElementById('employeeSelect').value;
+        const replacesSaved = document.getElementById('isEditMode').value === 'true';
+
+        if (!month || !employeeId) {
+            alert('Please select person and month');
+            return;
+        }
+
+        // From here on this is a new calculation: it must never save into a payroll opened earlier.
+        document.getElementById('payrollIdForUpdate').value = '';
+        document.getElementById('isEditMode').value = 'false';
+        document.getElementById('payrollSubmitLabel').textContent = 'SUBMIT PAYROLL';
+        setPayrollOverride(null);
+        setPayrollNotice(replacesSaved
+            ? 'Recalculated from attendance. Submitting replaces the saved payroll for this month, including any manual changes, variable earning and other deductions.'
+            : '', false);
 
         const noCalc = document.getElementById('noCalculation');
         noCalc.innerHTML = `<div class="py-5 text-center"><div class="spinner-border text-primary"></div></div>`;
@@ -1334,8 +1405,9 @@
         document.getElementById('inputHRA').value = p.hra;
         document.getElementById('inputConveyance').value = p.conveyance_allowance;
         document.getElementById('inputMedical').value = p.medical_allowance;
-        isManualPF = false;
-        isManualESI = false;
+        // Saved payrolls (they have an id) keep their stored PF/ESI.
+        isManualPF = Boolean(p.id);
+        isManualESI = Boolean(p.id);
         document.getElementById('inputPF').value = p.pf_deduction;
         document.getElementById('inputESI').value = p.esi_deduction;
         document.getElementById('inputOther').value = p.other_deduction || 0;
@@ -1421,7 +1493,8 @@
             : '<span class="text-muted">No deductible leave this month.</span>';
 
         const totalDays = Number(p.total_days || 0);
-        const payable = Number(p.payable_days || 0);
+        // The breakdown is built from attendance, so its total is the attendance figure, not a saved edit.
+        const payable = Number(p.live_payable_days ?? p.payable_days ?? 0);
 
         box.innerHTML = `
             <div class="pdb-card">
@@ -1499,8 +1572,10 @@
                 (parseFloat(document.getElementById('inputProfessionalTax').value) || 0) +
                 (parseFloat(document.getElementById('inputLoanRecovery').value) || 0)
             ).toFixed(2),
-            net_salary: document.getElementById('tableNetSalary').innerText.replace(/[₹,]/g,''),
-            gross_salary: document.getElementById('tableGrossSalary').innerText.replace(/[₹,]/g,'')
+            net_salary: document.getElementById('tableNetSalary').innerText.replace(/[₹,\s]/g,''),
+            gross_salary: document.getElementById('tableGrossSalary').innerText.replace(/[₹,\s]/g,''),
+            unpaid_days: document.getElementById('resultUnpaidDays').innerText.trim(),
+            salary_loss: document.getElementById('resultSalaryLoss').innerText.replace(/[₹,\s]/g,'')
         };
         
         const url = isEditMode ? `{{ url("/payroll") }}/${payrollId}` : '{{ url("/payroll/store") }}';
@@ -1540,53 +1615,5 @@
         });
     }
 
-    // Reset form when offcanvas is hidden
-    function resetPayrollForm() {
-        document.getElementById('payrollIdForUpdate').value = '';
-        document.getElementById('isEditMode').value = 'false';
-        document.getElementById('employeeSelect').value = '';
-        document.getElementById('employeeSelectBtn').innerText = 'Select';
-        document.getElementById('monthSelect').value = new Date().toISOString().substring(0, 7);
-        document.getElementById('inputPayableDays').value = '';
-        document.getElementById('inputBasic').value = '';
-        document.getElementById('inputHRA').value = '';
-        document.getElementById('inputConveyance').value = '';
-        document.getElementById('inputMedical').value = '';
-        document.getElementById('inputPF').value = '';
-        document.getElementById('inputESI').value = '';
-        document.getElementById('inputOther').value = '';
-        document.getElementById('inputDearnessAllowance').value = '';
-        document.getElementById('inputVariableEarning').value = '';
-        document.getElementById('inputEpf').value = '';
-        document.getElementById('inputProfessionalTax').value = '';
-        document.getElementById('inputLoanRecovery').value = '';
-        document.getElementById('rowDearnessAllowance').style.display = 'none';
-        document.getElementById('rowVariableEarning').style.display = 'none';
-        document.getElementById('rowEpf').style.display = 'none';
-        document.getElementById('rowProfessionalTax').style.display = 'none';
-        document.getElementById('rowLoanRecovery').style.display = 'none';
-        document.getElementById('overrideCheck').checked = false;
-        document.getElementById('overrideAmount').disabled = true;
-        document.getElementById('overrideAmount').value = '';
-
-        currentPayrollData = null;
-        isManualDays = false;
-        isManualPF = false;
-        isManualESI = false;
-        currentPayrollTotalDays = 0;
-
-        document.getElementById('calculationResult').style.display = 'none';
-        document.getElementById('noCalculation').style.display = 'block';
-    }
-
-    // Add event listener to reset form when offcanvas is hidden
-    document.addEventListener('DOMContentLoaded', function() {
-        const offcanvasEl = document.getElementById('payrollCalculationOffcanvas');
-        if (offcanvasEl) {
-            offcanvasEl.addEventListener('hidden.bs.offcanvas', function() {
-                resetPayrollForm();
-            });
-        }
-    });
 </script>
 @endpush

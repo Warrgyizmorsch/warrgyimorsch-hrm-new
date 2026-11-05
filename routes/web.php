@@ -78,7 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/payroll/employee', [PayrollController::class, 'payrollEmployee'])->name('payroll.empindex');
     Route::get('/payroll/export', [PayrollController::class, 'export'])->name('payroll.export');
     Route::post('/payroll/{id}/remarks', [PayrollController::class, 'saveRemarks']);
-    Route::get('/payroll/{id}', [PayrollController::class, 'show'])->name('payroll.show');
+    Route::get('/payroll/{id}', [PayrollController::class, 'show'])->whereNumber('id')->name('payroll.show');
 });
 
 
@@ -304,6 +304,7 @@ Route::middleware(['auth', "role.access:$adminRoles"])->group(function () {
     Route::get('/payroll/import/preview', [PayrollImportController::class, 'preview'])->name('payroll.import.preview');
     Route::post('/payroll/import/confirm', [PayrollImportController::class, 'confirm'])->name('payroll.import.confirm');
     Route::post('/payroll/import/cancel', [PayrollImportController::class, 'cancel'])->name('payroll.import.cancel');
+    Route::get('/payroll/lookup', [PayrollController::class, 'lookupPayroll'])->name('payroll.lookup');
     Route::get('/payroll/{id}/edit', [PayrollController::class, 'editPayroll'])->name('payroll.edit');
     Route::put('/payroll/{id}', [PayrollController::class, 'updatePayroll'])->name('payroll.update');
   

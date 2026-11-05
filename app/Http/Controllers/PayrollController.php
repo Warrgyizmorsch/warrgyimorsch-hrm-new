@@ -1698,35 +1698,10 @@ class PayrollController extends Controller
     {
         try {
             $payroll = Payroll::with('employee')->findOrFail($id);
-            
+
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'id' => $payroll->id,
-                    'employee_id' => $payroll->employee_id,
-                    'employee_name' => $payroll->employee->name,
-                    'department' => $payroll->employee->departmentRef?->name,
-                    'department_id' => $payroll->employee->department_id,
-                    'is_business_development' => $payroll->employee->department_id === Department::businessDevelopmentId(),
-                    'month' => $payroll->month,
-                    'payable_days' => $payroll->payable_days,
-                    'basic_salary' => $payroll->basic_salary,
-                    'dearness_allowance' => $payroll->dearness_allowance,
-                    'hra' => $payroll->hra,
-                    'conveyance_allowance' => $payroll->conveyance_allowance,
-                    'medical_allowance' => $payroll->medical_allowance,
-                    'other_allowance' => $payroll->other_allowance,
-                    'variable_earning' => $payroll->variable_earning,
-                    'gross_salary' => $payroll->gross_salary,
-                    'pf_deduction' => $payroll->pf_deduction,
-                    'esi_deduction' => $payroll->esi_deduction,
-                    'epf_deduction' => $payroll->epf_deduction,
-                    'professional_tax_deduction' => $payroll->professional_tax_deduction,
-                    'loan_recovery_deduction' => $payroll->loan_recovery_deduction,
-                    'other_deduction' => $payroll->other_deduction,
-                    'net_salary' => $payroll->net_salary,
-                    'status' => $payroll->status,
-                ]
+                'data' => $this->payrollEditData($payroll),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -1734,6 +1709,61 @@ class PayrollController extends Controller
                 'message' => 'Error: ' . $e->getMessage(),
             ]);
         }
+    }
+
+    /** The saved payroll for this employee and month, if there is one (data is null otherwise). */
+    public function lookupPayroll(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|integer',
+            'month' => ['required', 'regex:/^\d{4}-\d{2}$/'],
+        ]);
+
+        $payroll = Payroll::with('employee')
+            ->where('employee_id', $validated['employee_id'])
+            ->where('month', $validated['month'])
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => $payroll ? $this->payrollEditData($payroll) : null,
+        ]);
+    }
+
+    /**
+     * Everything stored on the payroll, plus what the form needs to recompute it correctly if
+     * a field is changed. The attendance figures are for review only; they don't replace saved values.
+     */
+    private function payrollEditData(Payroll $payroll): array
+    {
+        $employee = $payroll->employee;
+
+        $live = [];
+        try {
+            $response = $this->calculatePayroll(new Request([
+                'employee_id' => $payroll->employee_id,
+                'month' => $payroll->month,
+            ]))->getData(true);
+            $live = ($response['success'] ?? false) ? $response['payroll'] : [];
+        } catch (\Throwable $e) {
+            // e.g. an inactive employee: the saved payroll can still be edited, just without the review panel.
+            report($e);
+        }
+
+        return array_merge($payroll->attributesToArray(), [
+            'employee_name' => $employee?->name,
+            'emp_name' => $employee?->name,
+            'department' => $employee?->departmentRef?->name,
+            'department_id' => $employee?->department_id,
+            'is_business_development' => $employee && $employee->department_id === Department::businessDevelopmentId(),
+            'total_days' => Carbon::createFromFormat('Y-m', $payroll->month)->startOfMonth()->daysInMonth,
+            'pf_enabled' => (bool) $employee?->pf,
+            'esi_enabled' => (bool) $employee?->esi,
+            'overtime_pay' => $live['overtime_pay'] ?? 0,
+            'attendance_payable_days' => $live['attendance_payable_days'] ?? null,
+            'live_payable_days' => $live['payable_days'] ?? null,
+            'day_breakdown' => $live['day_breakdown'] ?? null,
+        ]);
     }
 
     /**
