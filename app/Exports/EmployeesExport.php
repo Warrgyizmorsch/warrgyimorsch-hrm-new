@@ -65,6 +65,7 @@ class EmployeesExport extends DefaultValueBinder implements FromCollection, With
             'MEDICAL ALLOWANCE',
             'OTHER ALLOWANCE',
             'TOTAL ANNUAL CTC',
+            'STATUS',
         ];
     }
 
@@ -108,6 +109,8 @@ class EmployeesExport extends DefaultValueBinder implements FromCollection, With
             $emp->medical_allowance ?? 0,
             $emp->other_allowance ?? 0,
             $totalSalary,
+            // Same rule as the list's Status box: a deactivated account shows as Inactive (Left).
+            optional($emp->user)->account_status === 'inactive' ? 'Inactive (Left)' : $emp->employment_status_label,
         ];
     }
 
@@ -182,6 +185,7 @@ class EmployeesExport extends DefaultValueBinder implements FromCollection, With
             'AD' => 25,  // MEDICAL
             'AE' => 22,  // OTHER
             'AF' => 22,  // TOTAL
+            'AG' => 18,  // STATUS
         ];
     }
 }

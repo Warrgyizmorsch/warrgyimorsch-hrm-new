@@ -62,8 +62,47 @@ class EmployeeController extends Controller
             ->orderBy('name')
             ->get();
 
-        $employees = $baseQuery
-            ->with(['user', 'departmentRef', 'biometricEnrollments', 'latestIncrement'])
+        $employees = $this->filteredEmployeesQuery($request, $baseQuery)
+            ->with(['user', 'departmentRef', 'biometricEnrollments', 'latestIncrement']);
+
+        // Status tab counts — every filter above applies, only the status itself is left open.
+        $statusCounts = $this->statusTabCounts(clone $employees);
+
+        $employees = $this->applyStatusAndSort($request, $employees)
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return view('employees.index', compact(
+            'employees',
+            'perPage',
+            'employeeFilterOptions',
+            'search',
+            'employeeFilter',
+            'roleFilter',
+            'departmentFilter',
+            'statusFilter',
+            'pfFilter',
+            'esiFilter',
+            'insuranceFilter',
+            'statusCounts'
+        ));
+    }
+
+    /**
+     * The list's search + filter bar (everything except the status tab and sort), shared by
+     * the list page and the Excel export so the export always matches what's on screen.
+     */
+    private function filteredEmployeesQuery(Request $request, $baseQuery)
+    {
+        $search = trim((string) $request->query('search', ''));
+        $employeeFilter = $request->query('employee_id');
+        $roleFilter = trim((string) $request->query('role', ''));
+        $departmentFilter = $request->query('department_id');
+        $pfFilter = trim((string) $request->query('pf', ''));
+        $esiFilter = trim((string) $request->query('esi', ''));
+        $insuranceFilter = trim((string) $request->query('insurance', ''));
+
+        return $baseQuery
             ->leftJoin('users', 'users.employee_id', '=', 'employees.id')
             ->select('employees.*')
             ->when($search !== '', function ($query) use ($search) {
@@ -94,11 +133,19 @@ class EmployeeController extends Controller
             ->when($esiFilter === 'no', fn ($query) => $query->where('employees.esi', false))
             ->when($insuranceFilter === 'yes', fn ($query) => $query->where('employees.insurance', true))
             ->when($insuranceFilter === 'no', fn ($query) => $query->where('employees.insurance', false));
+    }
 
-        // Status tab counts — every filter above applies, only the status itself is left open.
-        $statusCounts = $this->statusTabCounts(clone $employees);
+    /**
+     * The status tab (active / inactive / an employment status) and the list ordering.
+     */
+    private function applyStatusAndSort(Request $request, $employees)
+    {
+        $search = trim((string) $request->query('search', ''));
+        $statusFilter = trim((string) $request->query('status', ''));
+        // Date of Joining column sort (server-side, so it works across pages): doj_asc = oldest first.
+        $sort = in_array($request->query('sort'), ['doj_asc', 'doj_desc'], true) ? $request->query('sort') : '';
 
-        $employees = $employees
+        return $employees
             ->when($statusFilter === 'active', function ($query) {
                 $query->where(function ($subQuery) {
                     $subQuery->whereNull('users.account_status')
@@ -135,24 +182,7 @@ class EmployeeController extends Controller
                 $query->orderByRaw('employees.date_of_joining IS NULL') // no date → last
                     ->orderBy('employees.date_of_joining', $sort === 'doj_asc' ? 'asc' : 'desc');
             })
-            ->orderBy('employees.name')
-            ->paginate($perPage)
-            ->appends($request->query());
-
-        return view('employees.index', compact(
-            'employees',
-            'perPage',
-            'employeeFilterOptions',
-            'search',
-            'employeeFilter',
-            'roleFilter',
-            'departmentFilter',
-            'statusFilter',
-            'pfFilter',
-            'esiFilter',
-            'insuranceFilter',
-            'statusCounts'
-        ));
+            ->orderBy('employees.name');
     }
 
     /**
@@ -891,6 +921,14 @@ class EmployeeController extends Controller
         return response()->json(['message' => "{$employee->name} was deleted. Payroll records were kept."]);
     }
 
+    /** Roles allowed to export the employee list (salary, bank, ID numbers). Used by the view too. */
+    public const EXPORT_ROLES = ['super_admin', 'admin', 'manager', 'hr_executive'];
+
+    public static function canExport(): bool
+    {
+        return in_array(str_replace(' ', '_', strtolower((string) optional(auth()->user())->role)), self::EXPORT_ROLES, true);
+    }
+
     private function canPermanentlyDelete(): bool
     {
         return in_array(str_replace(' ', '_', strtolower((string) auth()->user()->role)), ['super_admin', 'admin'], true);
@@ -908,9 +946,18 @@ class EmployeeController extends Controller
         }
     }
 
-    public function export()
+    /**
+     * Excel export of the employee list, honouring the same search / filters / status tab /
+     * sort as the list page. Contains salary, bank and ID numbers, so admins only.
+     */
+    public function export(Request $request)
     {
-        $employees = Employee::with('departmentRef')->orderBy('name', 'asc')->get();
+        abort_unless(self::canExport(), 403, 'Only admin / HR can export the employee list.');
+
+        $employees = $this->applyStatusAndSort($request, $this->filteredEmployeesQuery($request, Employee::query()))
+            ->with(['user', 'departmentRef'])
+            ->get();
+
         $filename = "employees_" . date('Y-m-d_H-i-s') . ".xlsx";
         return Excel::download(new EmployeesExport($employees), $filename);
     }

@@ -1,9 +1,11 @@
-@if(in_array(strtolower(auth()->user()->role), ['admin', 'super_admin', 'super admin']))
+@if(\App\Http\Controllers\EmployeeController::canExport())
     <li>
-        <a class="dropdown-item" href="{{ route('employees.export') }}">
+        <a class="dropdown-item" href="{{ route('employees.export', request()->except(['page', 'per_page'])) }}">
             <i class="feather-download"></i> Export
         </a>
     </li>
+@endif
+@if(in_array(strtolower(auth()->user()->role), ['admin', 'super_admin', 'super admin']))
     <li>
         <a class="dropdown-item" href="javascript:void(0)" onclick="location.reload()">
             <i class="feather-refresh-cw"></i> Refresh List

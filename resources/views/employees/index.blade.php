@@ -172,7 +172,10 @@
             $employeePrimaryAction = in_array(strtolower(auth()->user()->role), ['admin', 'super_admin', 'super admin'])
                 ? '<a href="' . route('employees.create') . '" class="zoho-btn-primary"><i class="feather-plus"></i> Add Employee</a>'
                 : '';
-            $employeeExtraActions = '';
+            // Export Excel — carries the current search/filters/status tab so the file matches the list.
+            $employeeExtraActions = \App\Http\Controllers\EmployeeController::canExport()
+                ? '<a href="' . e(route('employees.export', request()->except(['page', 'per_page']))) . '" class="zoho-icon-btn" title="Export to Excel"><i class="feather-download"></i></a>'
+                : '';
             $canApproveProfiles = in_array(str_replace(' ', '_', strtolower(auth()->user()->role)), ['super_admin', 'manager', 'hr_executive'], true);
             $pendingProfileCount = $canApproveProfiles ? \App\Models\EmployeeProfileRequest::pending()->count() : 0;
             $employeeScopeLinks = [['label' => 'View All Data', 'url' => route('employees.index'), 'active' => true]];
