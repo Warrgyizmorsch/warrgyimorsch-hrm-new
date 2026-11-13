@@ -13,6 +13,7 @@ use App\Services\AttendanceHistoryService;
 use App\Services\AttendanceLogService;
 use App\Services\AttendanceStatusService;
 use App\Services\IncrementService;
+use App\Services\SalaryStructureService;
 use App\Services\LateArrivalService;
 use App\Services\LeaveBalanceService;
 use Illuminate\Http\Request;
@@ -703,16 +704,11 @@ class PayrollController extends Controller
             $professionalTaxDeduction = $isBusinessDevelopment ? (float) ($request->professional_tax_deduction ?? 0) : 0;
             $loanRecoveryDeduction = $isBusinessDevelopment ? (float) ($request->loan_recovery_deduction ?? 0) : 0;
 
-            // PF (12% of earned basic for payable days)
-            if ($employee->pf) {
-                $earnedBasic = ($employee->basic_salary / $totalDays) * $payableDays;
-                $pf = $earnedBasic * 0.12;
-            }
-
-            // ESI (0.75% of gross when enabled and gross <= 21000)
-            if ($employee->esi && $grossSalary <= 21000) {
-                $esi = $grossSalary * 0.0075;
-            }
+            // Employee PF: 12% of earned basic — only for PF members.
+            // Employee ESIC: 0.75% of gross — only for ESI members whose monthly gross is within the ESIC limit.
+            $earnedBasic = ($employee->basic_salary / $totalDays) * $payableDays;
+            $pf = SalaryStructureService::employeePf($earnedBasic, (bool) $employee->pf);
+            $esi = SalaryStructureService::employeeEsic($grossSalary, $monthlySalary, (bool) $employee->esi);
 
             $totalDeductions = $pf + $esi + $otherDeduction + $epfDeduction + $professionalTaxDeduction + $loanRecoveryDeduction;
 

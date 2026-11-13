@@ -39,7 +39,8 @@
             </div>
         </div>
 
-        <!-- PF Deduction -->
+        <!-- PF Deduction (only when deducted) -->
+        @if(($payroll->pf_deduction ?? 0) > 0)
         <div class="col-6 col-md-4">
             <div class="p-3 bg-light rounded-3 border">
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -49,6 +50,7 @@
                 <div class="fs-4 fw-bold mb-0 text-danger">{{ number_format($payroll->pf_deduction ?? 0, 2) }}</div>
             </div>
         </div>
+        @endif
 
         <!-- Other Cuts -->
         <div class="col-6 col-md-4">
@@ -61,7 +63,8 @@
             </div>
         </div>
 
-        <!-- ECS -->
+        <!-- ESIC (only when deducted) -->
+        @if(($payroll->esi_deduction ?? 0) > 0)
         <div class="col-6 col-md-4">
             <div class="p-3 bg-light rounded-3 border">
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -71,6 +74,7 @@
                 <div class="fs-4 fw-bold mb-0 text-danger">{{ number_format($payroll->esi_deduction ?? 0, 2) }}</div>
             </div>
         </div>
+        @endif
 
         <!-- Total Net Salary -->
         <div class="col-6 col-md-4">
@@ -105,7 +109,7 @@
                 <div class="fw-bold fs-6">₹ {{ number_format($payroll->hra, 2) }}</div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="text-muted mb-1 small">Conveyance</div>
+                <div class="text-muted mb-1 small">Travel Allowance</div>
                 <div class="fw-bold fs-6">₹ {{ number_format($payroll->conveyance_allowance, 2) }}</div>
             </div>
             <div class="col-6 col-md-3">

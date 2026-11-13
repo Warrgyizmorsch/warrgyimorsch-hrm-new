@@ -299,8 +299,9 @@
         if(document.getElementById('tableGrossSalary')) document.getElementById('tableGrossSalary').innerText = '₹ ' + gross.toFixed(2);
 
         let earnedBasic = totalDays > 0 ? (basic / totalDays) * payableDays : 0;
-        let autoPF = currentPayrollData?.pf_enabled ? earnedBasic * 0.12 : 0;
-        let autoESI = (currentPayrollData?.esi_enabled && gross <= 21000) ? gross * 0.0075 : 0;
+        // Same rules as SalaryStructureService: PF 12% of earned basic, ESIC 0.75% of gross (monthly gross <= 21000), rounded to the rupee.
+        let autoPF = currentPayrollData?.pf_enabled ? Math.round(earnedBasic * 0.12) : 0;
+        let autoESI = (currentPayrollData?.esi_enabled && fullSalary <= 21000) ? Math.round(gross * 0.0075) : 0;
 
         if (sourceId !== 'inputPF' && document.getElementById('inputPF')) {
             document.getElementById('inputPF').value = autoPF.toFixed(2);

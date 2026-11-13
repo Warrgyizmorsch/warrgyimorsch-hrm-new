@@ -1613,29 +1613,33 @@
                                                                                         <div class="salary-label"><i class="bi bi-cash"></i>Basic Salary</div>
                                                                                         <div class="salary-amount">₹ ${parseFloat(emp.basic_salary || 0).toLocaleString('en-IN')}</div>
                                                                                     </div>
-                                                                                    ${emp.is_business_development ? `
+                                                                                    ${parseFloat(emp.dearness_allowance || 0) > 0 ? `
                                                                                     <div class="salary-item">
                                                                                         <div class="salary-label"><i class="bi bi-cash"></i>Dearness Allowance</div>
                                                                                         <div class="salary-amount">₹ ${parseFloat(emp.dearness_allowance || 0).toLocaleString('en-IN')}</div>
                                                                                     </div>` : ''}
+                                                                                    ${parseFloat(emp.hra || 0) > 0 ? `
                                                                                     <div class="salary-item">
                                                                                         <div class="salary-label"><i class="bi bi-house"></i>HRA</div>
                                                                                         <div class="salary-amount">₹ ${parseFloat(emp.hra || 0).toLocaleString('en-IN')}</div>
-                                                                                    </div>
+                                                                                    </div>` : ''}
+                                                                                    ${parseFloat(emp.conveyance_allowance || 0) > 0 ? `
                                                                                     <div class="salary-item">
                                                                                         <div class="salary-label"><i class="bi bi-truck"></i>Conveyance</div>
                                                                                         <div class="salary-amount">₹ ${parseFloat(emp.conveyance_allowance || 0).toLocaleString('en-IN')}</div>
-                                                                                    </div>
+                                                                                    </div>` : ''}
+                                                                                    ${parseFloat(emp.medical_allowance || 0) > 0 ? `
                                                                                     <div class="salary-item">
                                                                                         <div class="salary-label"><i class="bi bi-activity"></i>Medical</div>
                                                                                         <div class="salary-amount">₹ ${parseFloat(emp.medical_allowance || 0).toLocaleString('en-IN')}</div>
-                                                                                    </div>
+                                                                                    </div>` : ''}
+                                                                                    ${parseFloat(emp.other_allowance || 0) > 0 ? `
                                                                                     <div class="salary-item">
                                                                                         <div class="salary-label"><i class="bi bi-gift"></i>Other Allowance</div>
                                                                                         <div class="salary-amount">₹ ${parseFloat(emp.other_allowance || 0).toLocaleString('en-IN')}</div>
-                                                                                    </div>
+                                                                                    </div>` : ''}
                                                                                     <div class="salary-total">
-                                                                                        <div class="salary-label"><strong>Total Salary</strong></div>
+                                                                                        <div class="salary-label"><strong>Gross Salary</strong></div>
                                                                                         <div class="salary-amount total">₹ ${(parseFloat(emp.basic_salary || 0) + parseFloat(emp.dearness_allowance || 0) + parseFloat(emp.hra || 0) + parseFloat(emp.conveyance_allowance || 0) + parseFloat(emp.medical_allowance || 0) + parseFloat(emp.other_allowance || 0)).toLocaleString('en-IN')}</div>
                                                                                     </div>
                                                                                 </div>

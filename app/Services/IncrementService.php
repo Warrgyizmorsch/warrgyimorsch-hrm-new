@@ -12,9 +12,8 @@ use Illuminate\Support\Facades\DB;
  *
  *   record()      HR enters effective date + monthly amount. A date on/before today is applied at once;
  *                 a future one waits and is applied by `increments:apply-due` (daily schedule).
- *   apply()       New gross = current gross + amount, split into the salary components the same way
- *                 the employee's salary is split today (Business Development: configured ratios;
- *                 everyone else: current proportions). The before/after split is kept on the row.
+ *   apply()       New gross = current gross + amount, split into Basic / HRA / Other by
+ *                 SalaryStructureService. The before/after split is kept on the row.
  *   salaryAsOf()  The salary components valid for a given payroll month, so October payroll
  *                 calculated after a 1 November increment still uses the October salary.
  *   nextDueDate() Last increment (or joining date) + config('increment.cycle_months').
@@ -49,25 +48,10 @@ class IncrementService
         return round(array_sum($components), 2);
     }
 
-    /** Split $newGross like the employee's current salary. */
+    /** Split $newGross into Basic / HRA / Other (same rules as every salary, see SalaryStructureService). */
     public function splitFor(Employee $employee, float $newGross): array
     {
-        $breakdown = SalaryStructureService::breakdown($newGross, $employee->department_id);
-        if ($breakdown) {
-            return array_merge(array_fill_keys(self::SALARY_FIELDS, 0.0), $breakdown);
-        }
-
-        $current = $this->components($employee);
-        $oldGross = $this->gross($current);
-        if ($oldGross <= 0) {
-            return array_merge(array_fill_keys(self::SALARY_FIELDS, 0.0), ['basic_salary' => round($newGross, 2)]);
-        }
-
-        $factor = $newGross / $oldGross;
-        $new = array_map(fn ($v) => round($v * $factor, 2), $current);
-        $new['basic_salary'] = round($new['basic_salary'] + ($newGross - array_sum($new)), 2); // rounding drift
-
-        return $new;
+        return array_merge(array_fill_keys(self::SALARY_FIELDS, 0.0), SalaryStructureService::breakdown($newGross));
     }
 
     public function record(Employee $employee, Carbon $effectiveDate, float $amount, ?string $remarks, ?int $userId): EmployeeIncrement

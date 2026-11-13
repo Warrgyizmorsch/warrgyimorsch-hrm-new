@@ -2,43 +2,69 @@
 
 namespace App\Services;
 
-use App\Models\Department;
-use Illuminate\Support\Str;
-
+/**
+ * Splits a monthly gross salary into Basic / HRA / Other allowance (see config/salary_structure.php)
+ * and works out the employee's PF / ESIC. The same rules apply to every department.
+ */
 class SalaryStructureService
 {
     /**
-     * Split a gross salary into components using the configured percentages
-     * for the given department (e.g. "Business Development"). Returns null
-     * if no breakdown is configured for that department. Rounding drift is
-     * absorbed into the last component so the parts always sum exactly to
-     * the input gross.
+     * Gross -> salary components. What is left after Basic + HRA is split into fixed Medical and
+     * Travel (conveyance) amounts, capped by what is available, with the rest as Other allowance.
+     * DA is no longer used and is returned as 0 so saving the result clears any old value.
+     * The parts always add up exactly to $gross.
+     *
+     * $departmentId is unused (kept so existing callers keep working).
      */
-    public static function breakdown(float $gross, ?int $departmentId): ?array
+    public static function breakdown(float $gross, ?int $departmentId = null): array
     {
-        $name = $departmentId ? Department::find($departmentId)?->name : null;
-        $ratios = $name ? config('salary_structure.' . Str::slug($name, '_')) : null;
+        $gross = max(0, round($gross, 2));
+        $basic = round($gross * (float) config('salary_structure.basic_of_gross', 0.5));
+        $hra = round($basic * (float) config('salary_structure.hra_of_basic', 0.4));
+        $remaining = max(0, round($gross - $basic - $hra, 2));
+        $medical = min((float) config('salary_structure.medical_allowance', 1250), $remaining);
+        $conveyance = min((float) config('salary_structure.conveyance_allowance', 1600), $remaining - $medical);
 
-        if (empty($ratios)) {
-            return null;
-        }
-
-        $components = [];
-        foreach ($ratios as $field => $ratio) {
-            $components[$field] = round($gross * $ratio, 2);
-        }
-
-        $sum = array_sum($components);
-        $lastField = array_key_last($components);
-        $components[$lastField] = round($components[$lastField] + ($gross - $sum), 2);
-
-        return $components;
+        return [
+            'basic_salary' => $basic,
+            'dearness_allowance' => 0.0,
+            'hra' => $hra,
+            'conveyance_allowance' => round($conveyance, 2),
+            'medical_allowance' => round($medical, 2),
+            'other_allowance' => round($remaining - $medical - $conveyance, 2),
+        ];
     }
 
-    public static function isConfigured(?int $departmentId): bool
+    /** Employee PF on the (earned) basic; 0 when the employee is not in PF. */
+    public static function employeePf(float $basic, bool $eligible): float
     {
-        $name = $departmentId ? Department::find($departmentId)?->name : null;
+        return $eligible ? round($basic * (float) config('salary_structure.employee_pf_rate', 0.12)) : 0.0;
+    }
 
-        return $name && !empty(config('salary_structure.' . Str::slug($name, '_')));
+    /**
+     * Employee ESIC on the (earned) gross; 0 when the employee is not in ESI or their full monthly
+     * gross is above the ESIC wage limit.
+     */
+    public static function employeeEsic(float $earnedGross, float $monthlyGross, bool $eligible): float
+    {
+        if (!$eligible || $monthlyGross > (float) config('salary_structure.esic_gross_limit', 21000)) {
+            return 0.0;
+        }
+
+        return round($earnedGross * (float) config('salary_structure.employee_esic_rate', 0.0075));
+    }
+
+    /** Values the employee forms need for their live preview. */
+    public static function jsConfig(): array
+    {
+        return [
+            'basic_of_gross' => (float) config('salary_structure.basic_of_gross', 0.5),
+            'hra_of_basic' => (float) config('salary_structure.hra_of_basic', 0.4),
+            'medical_allowance' => (float) config('salary_structure.medical_allowance', 1250),
+            'conveyance_allowance' => (float) config('salary_structure.conveyance_allowance', 1600),
+            'employee_pf_rate' => (float) config('salary_structure.employee_pf_rate', 0.12),
+            'employee_esic_rate' => (float) config('salary_structure.employee_esic_rate', 0.0075),
+            'esic_gross_limit' => (float) config('salary_structure.esic_gross_limit', 21000),
+        ];
     }
 }

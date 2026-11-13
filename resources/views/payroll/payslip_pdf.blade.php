@@ -295,17 +295,16 @@
                                     <td class="text-right">&#8377;{{ number_format($payroll->medical_allowance, 2) }}</td>
                                 </tr>
                             @endif
+                            @if($payroll->conveyance_allowance > 0)
+                                <tr>
+                                    <td>Travel Allowance</td>
+                                    <td class="text-right">&#8377;{{ number_format($payroll->conveyance_allowance, 2) }}</td>
+                                </tr>
+                            @endif
                             @if($payroll->other_allowance > 0)
                                 <tr>
                                     <td>Other Allowances</td>
                                     <td class="text-right">&#8377;{{ number_format($payroll->other_allowance, 2) }}</td>
-                                </tr>
-                            @endif
-                            @if($payroll->conveyance_allowance > 0)
-                                <tr>
-                                    <td>Conveyance</td>
-                                    <td class="text-right">&#8377;{{ number_format($payroll->conveyance_allowance, 2) }}
-                                    </td>
                                 </tr>
                             @endif
                             @if(($payroll->variable_earning ?? 0) > 0)

@@ -94,31 +94,47 @@
 
                 <div class="tab-pane fade" id="salary" role="tabpanel" aria-labelledby="salary-tab">
                     <div class="zoho-detail-grid">
+                        @php
+                            $sal = $employee->basic_salary + $employee->dearness_allowance + $employee->hra
+                                + $employee->conveyance_allowance + $employee->medical_allowance + $employee->other_allowance;
+                            $salPf = \App\Services\SalaryStructureService::employeePf((float) $employee->basic_salary, (bool) $employee->pf);
+                            $salEsic = \App\Services\SalaryStructureService::employeeEsic((float) $sal, (float) $sal, (bool) $employee->esi);
+                            $salRows = [
+                                'Basic Salary' => $employee->basic_salary,
+                                'Dearness Allowance' => $employee->dearness_allowance,
+                                'HRA' => $employee->hra,
+                                'Conveyance Allowance' => $employee->conveyance_allowance,
+                                'Medical Allowance' => $employee->medical_allowance,
+                                'Other Allowance' => $employee->other_allowance,
+                            ];
+                        @endphp
                         <div class="zoho-detail-row">
-                            <div class="zoho-detail-label">Basic Salary</div>
-                            <div class="zoho-detail-value is-highlight">₹ {{ number_format($employee->basic_salary ?? 0, 2) }}</div>
+                            <div class="zoho-detail-label">Gross Salary (monthly)</div>
+                            <div class="zoho-detail-value is-highlight">₹ {{ number_format($sal, 2) }}</div>
                         </div>
-                        @if($employee->department_id === \App\Models\Department::businessDevelopmentId())
+                        @foreach($salRows as $label => $amount)
+                            @if(($amount ?? 0) > 0)
+                            <div class="zoho-detail-row">
+                                <div class="zoho-detail-label">{{ $label }}</div>
+                                <div class="zoho-detail-value">₹ {{ number_format($amount, 2) }}</div>
+                            </div>
+                            @endif
+                        @endforeach
+                        @if($salPf > 0)
                         <div class="zoho-detail-row">
-                            <div class="zoho-detail-label">Dearness Allowance</div>
-                            <div class="zoho-detail-value">₹ {{ number_format($employee->dearness_allowance ?? 0, 2) }}</div>
+                            <div class="zoho-detail-label">Employee PF (12% of Basic)</div>
+                            <div class="zoho-detail-value">₹ {{ number_format($salPf, 2) }}</div>
+                        </div>
+                        @endif
+                        @if($salEsic > 0)
+                        <div class="zoho-detail-row">
+                            <div class="zoho-detail-label">Employee ESIC (0.75% of Gross)</div>
+                            <div class="zoho-detail-value">₹ {{ number_format($salEsic, 2) }}</div>
                         </div>
                         @endif
                         <div class="zoho-detail-row">
-                            <div class="zoho-detail-label">HRA</div>
-                            <div class="zoho-detail-value">₹ {{ number_format($employee->hra ?? 0, 2) }}</div>
-                        </div>
-                        <div class="zoho-detail-row">
-                            <div class="zoho-detail-label">Conveyance Allowance</div>
-                            <div class="zoho-detail-value">₹ {{ number_format($employee->conveyance_allowance ?? 0, 2) }}</div>
-                        </div>
-                        <div class="zoho-detail-row">
-                            <div class="zoho-detail-label">Medical Allowance</div>
-                            <div class="zoho-detail-value">₹ {{ number_format($employee->medical_allowance ?? 0, 2) }}</div>
-                        </div>
-                        <div class="zoho-detail-row">
-                            <div class="zoho-detail-label">Other Allowance</div>
-                            <div class="zoho-detail-value">₹ {{ number_format($employee->other_allowance ?? 0, 2) }}</div>
+                            <div class="zoho-detail-label">Monthly Take-home (full month)</div>
+                            <div class="zoho-detail-value is-highlight">₹ {{ number_format($sal - $salPf - $salEsic, 2) }}</div>
                         </div>
                         <div class="zoho-detail-row">
                             <div class="zoho-detail-label">PF Status</div>

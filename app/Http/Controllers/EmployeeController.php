@@ -245,8 +245,7 @@ class EmployeeController extends Controller
                 'bank_name' => "$bankRule|string|max:255",
                 'account_number' => "$bankRule|string|max:50",
                 'ifsc_code' => "$bankRule|string|max:20",
-                'basic_salary' => 'required_without:gross_salary|nullable|numeric|min:0',
-                'gross_salary' => 'required_without:basic_salary|nullable|numeric|min:0',
+                'gross_salary' => 'required|numeric|min:0',
                 'working_mode' => 'required|in:Office,Work from home',
                 'employment_status' => 'nullable|in:' . implode(',', array_keys(Employee::EMPLOYMENT_STATUSES)),
             ] + EmployeeDocument::validationRules(), [], EmployeeDocument::validationAttributes());
@@ -280,24 +279,8 @@ class EmployeeController extends Controller
                 $data['esi'] = $request->has('esi');
                 $data['insurance'] = $request->has('insurance');
 
-                // Salary Defaults
-                $data['dearness_allowance'] = $request->dearness_allowance ?? 0;
-                $data['hra'] = $request->hra ?? 0;
-                $data['conveyance_allowance'] = $request->conveyance_allowance ?? 0;
-                $data['medical_allowance'] = $request->medical_allowance ?? 0;
-                $data['other_allowance'] = $request->other_allowance ?? 0;
-
-                // For departments with a configured salary structure (currently Business
-                // Development), a single Gross Salary input replaces manual component entry —
-                // the backend, not the browser, is the source of truth for the split.
-                if ($request->filled('gross_salary')) {
-                    $breakdown = SalaryStructureService::breakdown((float) $request->gross_salary, (int) $request->department_id);
-                    if ($breakdown) {
-                        $data = array_merge($data, $breakdown);
-                    } else {
-                        $data['basic_salary'] = $request->gross_salary;
-                    }
-                }
+                // Salary: HR enters Gross only; the backend splits it into Basic / HRA / Other.
+                $data = array_merge($data, SalaryStructureService::breakdown((float) $request->gross_salary));
 
                 // Handle Photo upload
                 if ($request->hasFile('photo')) {
@@ -715,7 +698,6 @@ class EmployeeController extends Controller
                 'working_mode' => 'required|in:Office,Work from home',
                 'attendance_exempt' => 'nullable|boolean',
                 'employment_status' => 'nullable|in:' . implode(',', array_keys(Employee::EMPLOYMENT_STATUSES)),
-                'basic_salary' => 'nullable|numeric|min:0',
                 'gross_salary' => 'nullable|numeric|min:0',
             ] + EmployeeDocument::validationRules(), [], EmployeeDocument::validationAttributes());
 
@@ -749,27 +731,15 @@ class EmployeeController extends Controller
                     'bank_name' => $request->bank_name,
                     'account_number' => $request->account_number,
                     'ifsc_code' => $request->ifsc_code,
-                    'basic_salary' => $request->basic_salary ?? 0,
-                    'dearness_allowance' => $request->dearness_allowance ?? 0,
-                    'hra' => $request->hra ?? 0,
-                    'conveyance_allowance' => $request->conveyance_allowance ?? 0,
-                    'medical_allowance' => $request->medical_allowance ?? 0,
-                    'other_allowance' => $request->other_allowance ?? 0,
                     'working_mode' => $request->working_mode,
                     'attendance_exempt' => $request->boolean('attendance_exempt'),
                     'employment_status' => $request->employment_status ?: ($employee->employment_status ?: 'working'),
                 ];
 
-                // For departments with a configured salary structure (currently Business
-                // Development), a single Gross Salary input replaces manual component entry —
-                // the backend, not the browser, is the source of truth for the split.
+                // Salary: HR enters Gross only; the backend splits it into Basic / HRA / Other.
+                // Gross left blank (or not in the form) keeps the current salary untouched.
                 if ($request->filled('gross_salary')) {
-                    $breakdown = SalaryStructureService::breakdown((float) $request->gross_salary, (int) $request->department_id);
-                    if ($breakdown) {
-                        $updateData = array_merge($updateData, $breakdown);
-                    } else {
-                        $updateData['basic_salary'] = $request->gross_salary;
-                    }
+                    $updateData = array_merge($updateData, SalaryStructureService::breakdown((float) $request->gross_salary));
                 }
 
                 // Only update password if provided

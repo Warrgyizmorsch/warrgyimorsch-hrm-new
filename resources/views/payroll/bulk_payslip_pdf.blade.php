@@ -290,22 +290,30 @@
                                         <td class="text-right">₹{{ number_format($payroll->dearness_allowance, 2) }}</td>
                                     </tr>
                                 @endif
-                                <tr>
-                                    <td>HRA</td>
-                                    <td class="text-right">₹{{ number_format($payroll->hra, 2) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Medical Allowance</td>
-                                    <td class="text-right">₹{{ number_format($payroll->medical_allowance, 2) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Other Allowances</td>
-                                    <td class="text-right">₹{{ number_format($payroll->other_allowance, 2) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Conveyance Allowance</td>
-                                    <td class="text-right">₹{{ number_format($payroll->conveyance_allowance, 2) }}</td>
-                                </tr>
+                                @if(($payroll->hra ?? 0) > 0)
+                                    <tr>
+                                        <td>HRA</td>
+                                        <td class="text-right">₹{{ number_format($payroll->hra, 2) }}</td>
+                                    </tr>
+                                @endif
+                                @if(($payroll->medical_allowance ?? 0) > 0)
+                                    <tr>
+                                        <td>Medical Allowance</td>
+                                        <td class="text-right">₹{{ number_format($payroll->medical_allowance, 2) }}</td>
+                                    </tr>
+                                @endif
+                                @if(($payroll->conveyance_allowance ?? 0) > 0)
+                                    <tr>
+                                        <td>Travel Allowance</td>
+                                        <td class="text-right">₹{{ number_format($payroll->conveyance_allowance, 2) }}</td>
+                                    </tr>
+                                @endif
+                                @if(($payroll->other_allowance ?? 0) > 0)
+                                    <tr>
+                                        <td>Other Allowances</td>
+                                        <td class="text-right">₹{{ number_format($payroll->other_allowance, 2) }}</td>
+                                    </tr>
+                                @endif
                                 @if(($payroll->variable_earning ?? 0) > 0)
                                     <tr>
                                         <td>Variable Earning</td>
@@ -325,14 +333,18 @@
                                     <td>TDS</td>
                                     <td class="text-right">₹0.00</td>
                                 </tr>
-                                <tr>
-                                    <td>PF</td>
-                                    <td class="text-right">₹{{ number_format($payroll->pf_deduction, 2) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>ESI / ECS</td>
-                                    <td class="text-right">₹{{ number_format($payroll->esi_deduction, 2) }}</td>
-                                </tr>
+                                @if(($payroll->pf_deduction ?? 0) > 0)
+                                    <tr>
+                                        <td>PF</td>
+                                        <td class="text-right">₹{{ number_format($payroll->pf_deduction, 2) }}</td>
+                                    </tr>
+                                @endif
+                                @if(($payroll->esi_deduction ?? 0) > 0)
+                                    <tr>
+                                        <td>ESI / ECS</td>
+                                        <td class="text-right">₹{{ number_format($payroll->esi_deduction, 2) }}</td>
+                                    </tr>
+                                @endif
                                 <tr>
                                     <td>Other Cuts</td>
                                     <td class="text-right">₹{{ number_format($payroll->other_deduction, 2) }}</td>
